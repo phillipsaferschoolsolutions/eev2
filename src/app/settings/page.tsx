@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,9 +68,9 @@ export default function SettingsPage() {
              <p className="text-sm text-muted-foreground">Theme settings are available on the <a href="/theming" className="text-primary underline">Theming page</a>.</p>
              <div>
               <Label htmlFor="fontSize">Font Size</Label>
-                <select id="fontSize" className="w-full p-2 border rounded-md bg-input">
+                <select id="fontSize" defaultValue="medium" className="w-full p-2 border rounded-md bg-input">
                     <option value="small">Small</option>
-                    <option value="medium" selected>Medium</option>
+                    <option value="medium">Medium</option>
                     <option value="large">Large</option>
                 </select>
              </div>
