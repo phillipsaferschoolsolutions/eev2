@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
-  useSidebar, // Added
+  useSidebar, 
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/icons/logo";
 import {
@@ -24,11 +24,10 @@ import {
   Palette,
   Settings,
   LogOut,
-  PanelLeftClose, // Added
-  PanelLeftOpen,  // Added
+  PanelLeftClose, 
+  PanelLeftOpen,  
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -46,7 +45,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar side="left" variant="sidebar" collapsible="icon">
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2.5">
         <Logo />
       </SidebarHeader>
       <SidebarContent className="flex-grow p-2">
