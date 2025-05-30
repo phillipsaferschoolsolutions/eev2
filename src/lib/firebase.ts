@@ -3,6 +3,7 @@ import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore'; // Added
 import { getFunctions, type Functions } from 'firebase/functions';
+import { getStorage, type FirebaseStorage } from 'firebase/storage'; // Added
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,8 +17,9 @@ const firebaseConfig = {
 
 let app: FirebaseApp;
 let auth: Auth;
-let firestore: Firestore; // Added
+let firestore: Firestore;
 let functions: Functions;
+let storage: FirebaseStorage; // Added
 
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);
@@ -26,9 +28,9 @@ if (getApps().length === 0) {
 }
 
 auth = getAuth(app);
-firestore = getFirestore(app); // Initialized
+firestore = getFirestore(app);
 functions = getFunctions(app);
-
+storage = getStorage(app); // Initialized
 
 // Check if all required environment variables are set
 // This is more of a developer-time check; consider more robust checks for production
@@ -45,4 +47,4 @@ if (
 }
 
 
-export { app, auth, firestore, functions }; // Exported firestore
+export { app, auth, firestore, functions, storage }; // Exported storage

@@ -1,11 +1,13 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, ChangeEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; // Firebase Storage
+import { storage } from "@/lib/firebase"; // Firebase Storage instance
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,15 +19,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress"; // For upload progress
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, submitCompletedAssignment, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
-import { AlertTriangle, FileUp, MessageSquare, Send } from "lucide-react";
+import { AlertTriangle, FileUp, MessageSquare, Send, Paperclip, XCircle, CheckCircle2 } from "lucide-react";
 
 // Define a base schema for dynamic form generation
-// For now, it's a generic record, but can be refined if common validation rules emerge
 const formSchema = z.record(z.any());
-type FormData = z.infer<typeof formSchema>;
+type FormDataSchema = z.infer<typeof formSchema>;
+
+interface UploadedFileDetail {
+  name: string;
+  url: string;
+}
 
 export default function CompleteAssignmentPage() {
   const params = useParams();
@@ -40,7 +47,13 @@ export default function CompleteAssignmentPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors } } = useForm<FormData>({
+  // State for file uploads
+  const [uploadProgress, setUploadProgress] = useState<{ [questionId: string]: number }>({});
+  const [uploadedFileDetails, setUploadedFileDetails] = useState<{ [questionId: string]: UploadedFileDetail | null }>({});
+  const [uploadErrors, setUploadErrors] = useState<{ [questionId: string]: string | null }>({});
+
+
+  const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, setValue } = useForm<FormDataSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {},
   });
@@ -64,23 +77,25 @@ export default function CompleteAssignmentPage() {
       // router.push('/auth'); // Optionally redirect
       return;
     }
+    if (!userProfile?.account) {
+      setError("User account information is missing. Cannot load assignment.");
+      setIsLoading(false);
+      return;
+    }
 
     async function fetchAssignment() {
       setIsLoading(true);
       setError(null);
       try {
-        const fetchedAssignment = await getAssignmentById(assignmentId, userProfile?.account);
+        const fetchedAssignment = await getAssignmentById(assignmentId, userProfile.account);
         if (fetchedAssignment) {
           setAssignment(fetchedAssignment);
-          // Initialize form default values based on fetched assignment (if needed for edits, less so for completion)
           const defaultVals: FieldValues = {};
           fetchedAssignment.questions.forEach(q => {
-            defaultVals[q.id] = ''; // Default empty answer
+            defaultVals[q.id] = ''; 
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
-            // File inputs are uncontrolled by react-hook-form value
           });
           reset(defaultVals);
-
         } else {
           setError("Assignment not found or you do not have permission to access it.");
           toast({ variant: "destructive", title: "Error", description: "Assignment not found." });
@@ -98,50 +113,103 @@ export default function CompleteAssignmentPage() {
     fetchAssignment();
   }, [assignmentId, user, userProfile, authLoading, profileLoading, reset, toast, router]);
 
-  const onSubmit: SubmitHandler<FormData> = async (data) => {
-    if (!assignment || !userProfile?.account) {
+  const handleFileUpload = async (questionId: string, file: File) => {
+    if (!user || !assignment) {
+      setUploadErrors(prev => ({ ...prev, [questionId]: "User or assignment data missing." }));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit example
+        setUploadErrors(prev => ({ ...prev, [questionId]: "File exceeds 5MB limit." }));
+        toast({ variant: "destructive", title: "Upload Error", description: "File exceeds 5MB limit."});
+        return;
+    }
+
+
+    setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
+    setUploadErrors(prev => ({ ...prev, [questionId]: null }));
+    setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
+
+
+    const storagePath = `assignment_uploads/${assignment.id}/${user.uid}/${questionId}/${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, storagePath);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on('state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(prev => ({ ...prev, [questionId]: progress }));
+      },
+      (error) => {
+        console.error("Upload failed for question " + questionId + ":", error);
+        setUploadErrors(prev => ({ ...prev, [questionId]: error.message }));
+        toast({ variant: "destructive", title: "Upload Failed", description: `Could not upload ${file.name}: ${error.message}` });
+        setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          setUploadedFileDetails(prev => ({ ...prev, [questionId]: { name: file.name, url: downloadURL } }));
+          toast({ title: "Upload Successful", description: `${file.name} uploaded.` });
+          setUploadProgress(prev => ({ ...prev, [questionId]: 100 })); // Ensure progress shows complete
+        } catch (err) {
+            console.error("Failed to get download URL for " + questionId + ":", err);
+            const errorMessage = err instanceof Error ? err.message : "Unknown error getting URL.";
+            setUploadErrors(prev => ({ ...prev, [questionId]: "Failed to get file URL: " + errorMessage }));
+        }
+      }
+    );
+  };
+  
+  const removeUploadedFile = (questionId: string) => {
+    // Note: This only removes it from client state. Actual deletion from Firebase Storage is a separate, more complex operation.
+    // For now, this allows re-uploading.
+    setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
+    setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
+    setUploadErrors(prev => ({ ...prev, [questionId]: null }));
+    // Clear the file input visually if possible (hard to do reliably cross-browser)
+    const fileInput = document.getElementById(`${questionId}_file`) as HTMLInputElement;
+    if (fileInput) fileInput.value = ""; 
+  };
+
+
+  const onSubmit: SubmitHandler<FormDataSchema> = async (data) => {
+    if (!assignment || !userProfile?.account || !user) {
         toast({ variant: "destructive", title: "Submission Error", description: "Cannot submit, assignment or user account data missing." });
         return;
     }
     setIsSubmitting(true);
 
     const formData = new FormData();
-    
-    // Append structured answers, comments, etc.
-    // The backend /completed/:id expects specific field names.
-    // This part needs to align with how your backend processes completed assignments.
-    // For now, let's assume we send a JSON string of answers and individual files.
-    
     const answersObject: Record<string, any> = {};
 
     assignment.questions.forEach(question => {
         answersObject[question.id] = {
-            answer: data[question.id]
+            answer: data[question.id] || "" // Ensure answer is at least an empty string
         };
         if (question.comment && data[`${question.id}_comment`]) {
             answersObject[question.id].comment = data[`${question.id}_comment`];
         }
-        // Handle file uploads
-        const fileInput = document.getElementById(`${question.id}_file`) as HTMLInputElement;
-        if (question.photoUpload && fileInput && fileInput.files && fileInput.files[0]) {
-            formData.append(question.id, fileInput.files[0]); // Use question.id or a specific naming convention for files
-            // We might also want to store a reference in answersObject, e.g., fileName
-            answersObject[question.id].fileName = fileInput.files[0].name;
+        // Add uploaded file details (URL and name)
+        if (question.photoUpload && uploadedFileDetails[question.id]) {
+            answersObject[question.id].file = {
+                name: uploadedFileDetails[question.id]!.name,
+                url: uploadedFileDetails[question.id]!.url,
+            };
         }
     });
 
-    formData.append("answers", JSON.stringify(answersObject)); // Example: sending answers as a JSON string
+    formData.append("answers", JSON.stringify(answersObject));
     formData.append("assignmentId", assignment.id);
     formData.append("assessmentName", assignment.assessmentName || "Unnamed Assignment");
     formData.append("accountSubmittedFor", userProfile.account);
-    // Add other metadata backend might expect for a completed assignment
-    // formData.append("userId", user.uid); 
-    // formData.append("userEmail", user.email || "");
+    formData.append("userId", user.uid);
+    formData.append("userEmail", user.email || "");
+
 
     try {
       await submitCompletedAssignment(assignment.id, formData, userProfile.account);
       toast({ title: "Success", description: "Assignment submitted successfully." });
-      router.push("/assignments"); // Redirect to assignments list or a thank you page
+      router.push("/assessment-forms"); // Redirect to assignments list or a thank you page
     } catch (err) {
       console.error("Failed to submit assignment:", err);
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
@@ -154,6 +222,15 @@ export default function CompleteAssignmentPage() {
   const parseOptions = (options: string | string[] | undefined): string[] => {
     if (!options) return [];
     if (Array.isArray(options)) return options;
+    try {
+      // First try to parse as JSON array of strings
+      const parsed = JSON.parse(options);
+      if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+        return parsed;
+      }
+    } catch (e) {
+      // If not JSON, fall back to semicolon split
+    }
     return options.split(';').map(opt => opt.trim()).filter(opt => opt);
   };
 
@@ -205,7 +282,6 @@ export default function CompleteAssignmentPage() {
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </Label>
 
-                  {/* Render input based on question.component */}
                   {['text', 'number', 'email', 'url', 'tel', 'date', 'time', 'datetime-local'].includes(question.component) && (
                     <Input
                       id={question.id}
@@ -265,16 +341,15 @@ export default function CompleteAssignmentPage() {
                     />
                   )}
 
-                  {question.component === 'checkbox' && !question.options && ( // Single checkbox for boolean
+                  {question.component === 'checkbox' && !question.options && ( 
                      <Controller
                         name={question.id}
                         control={control}
-                        // rules={{ required: question.required ? "This checkbox is required" : false }}
                         render={({ field }) => (
                             <div className="flex items-center space-x-2 bg-background p-2 rounded-md">
                                 <Checkbox
                                     id={question.id}
-                                    checked={field.value}
+                                    checked={field.value || false}
                                     onCheckedChange={field.onChange}
                                 />
                                 <Label htmlFor={question.id} className="font-normal">Confirm</Label>
@@ -283,13 +358,12 @@ export default function CompleteAssignmentPage() {
                     />
                   )}
                   
-                  {/* Placeholder for multi-checkbox group if options are present */}
                   {question.component === 'checkbox' && question.options && (
                     <div className="space-y-2 bg-background p-2 rounded-md">
                         {parseOptions(question.options).map(opt => (
                             <Controller
                                 key={opt}
-                                name={`${question.id}.${opt}`} // e.g., q1.optionA
+                                name={`${question.id}.${opt}`} 
                                 control={control}
                                 render={({ field }) => (
                                     <div className="flex items-center space-x-2">
@@ -306,10 +380,8 @@ export default function CompleteAssignmentPage() {
                     </div>
                   )}
 
-
                   {formErrors[question.id] && <p className="text-sm text-destructive">{formErrors[question.id]?.message as string}</p>}
 
-                  {/* Comment Field */}
                   {question.comment && (
                     <div className="mt-3">
                       <Label htmlFor={`${question.id}_comment`} className="text-sm text-muted-foreground flex items-center">
@@ -325,20 +397,50 @@ export default function CompleteAssignmentPage() {
                     </div>
                   )}
 
-                  {/* File Upload Field */}
                   {question.photoUpload && (
-                    <div className="mt-3">
+                    <div className="mt-4 space-y-2">
                       <Label htmlFor={`${question.id}_file`} className="text-sm text-muted-foreground flex items-center">
-                        <FileUp className="h-4 w-4 mr-1"/> Upload File (Optional)
+                        <FileUp className="h-4 w-4 mr-1"/> Upload File (Optional, Max 5MB)
                       </Label>
-                      <Input
-                        id={`${question.id}_file`}
-                        type="file"
-                        className="mt-1 bg-background/80"
-                        // react-hook-form doesn't control file inputs directly in the same way.
-                        // We will access its value via document.getElementById in onSubmit.
-                        // onChange={(e) => field.onChange(e.target.files)} // if using Controller
-                      />
+                      {!uploadedFileDetails[question.id] && !uploadProgress[question.id] && (
+                        <Input
+                          id={`${question.id}_file`}
+                          type="file"
+                          className="mt-1 bg-background/80"
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleFileUpload(question.id, e.target.files[0]);
+                            }
+                          }}
+                          disabled={!!uploadProgress[question.id] && uploadProgress[question.id] > 0 && uploadProgress[question.id] < 100}
+                        />
+                      )}
+                      {uploadProgress[question.id] > 0 && uploadProgress[question.id] < 100 && (
+                        <div className="space-y-1">
+                           <Progress value={uploadProgress[question.id]} className="w-full h-2" />
+                           <p className="text-xs text-muted-foreground text-center">Uploading: {Math.round(uploadProgress[question.id] || 0)}%</p>
+                        </div>
+                      )}
+                      {uploadErrors[question.id] && (
+                        <Alert variant="destructive" className="text-xs p-2">
+                           <XCircle className="h-4 w-4" />
+                          <AlertDescription>{uploadErrors[question.id]}</AlertDescription>
+                           <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs mt-1" onClick={() => handleFileUpload(question.id, (document.getElementById(`${question.id}_file`) as HTMLInputElement)?.files?.[0]!)}>Retry</Button>
+                        </Alert>
+                      )}
+                      {uploadedFileDetails[question.id] && (
+                        <div className="flex items-center justify-between p-2 border rounded-md bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
+                          <div className="flex items-center gap-2 text-green-700 dark:text-green-400 text-sm">
+                            <CheckCircle2 className="h-4 w-4"/>
+                            <a href={uploadedFileDetails[question.id]?.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">
+                              {uploadedFileDetails[question.id]?.name}
+                            </a>
+                          </div>
+                          <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeUploadedFile(question.id)}>
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </fieldset>
@@ -346,7 +448,7 @@ export default function CompleteAssignmentPage() {
             ))}
 
             <div className="flex justify-end pt-6">
-              <Button type="submit" size="lg" disabled={isSubmitting}>
+              <Button type="submit" size="lg" disabled={isSubmitting || Object.values(uploadProgress).some(p => p > 0 && p < 100)}>
                 <Send className="mr-2 h-5 w-5" />
                 {isSubmitting ? "Submitting..." : "Submit Assignment"}
               </Button>
