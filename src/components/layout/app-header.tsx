@@ -51,7 +51,7 @@ export function AppHeader() {
             size="icon"
             aria-label="Toggle Theme"
             onClick={() => {
-              if (mounted) {
+              if (mounted && resolvedTheme) {
                 setTheme(resolvedTheme === "dark" ? "light" : "dark");
               }
             }}
