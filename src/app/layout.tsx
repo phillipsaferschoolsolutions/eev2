@@ -1,3 +1,4 @@
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -7,6 +8,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "next-themes";
+import { AuthProvider } from "@/context/auth-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,25 +60,27 @@ export default function RootLayout({
           "antialiased font-sans"
         )}
       >
-        <ThemeProvider 
-          attribute="class" 
-          defaultTheme="light" 
-          enableSystem={false}
-          themes={THEME_IDS}
-        >
-          <SidebarProvider>
-            <AppSidebar />
-            <div className="flex flex-col flex-1 min-h-screen">
-              <AppHeader />
-              <SidebarInset className="flex-grow">
-                <main className="p-4 sm:p-6 lg:p-8 flex-grow">
-                  {children}
-                </main>
-              </SidebarInset>
-            </div>
-            <Toaster />
-          </SidebarProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider 
+            attribute="class" 
+            defaultTheme="light" 
+            enableSystem={false}
+            themes={THEME_IDS}
+          >
+            <SidebarProvider>
+              <AppSidebar />
+              <div className="flex flex-col flex-1 min-h-screen">
+                <AppHeader />
+                <SidebarInset className="flex-grow">
+                  <main className="p-4 sm:p-6 lg:p-8 flex-grow">
+                    {children}
+                  </main>
+                </SidebarInset>
+              </div>
+              <Toaster />
+            </SidebarProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Sidebar,
   SidebarHeader,
@@ -23,11 +23,15 @@ import {
   FilePieChart,
   Palette,
   Settings,
-  LogOut,
+  LogOut as LogOutIcon,
   PanelLeftClose, 
   PanelLeftOpen,  
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/context/auth-context";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -42,6 +46,19 @@ const navItems = [
 export function AppSidebar() {
   const pathname = usePathname();
   const sidebarContext = useSidebar();
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      router.push('/auth');
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Logout Failed", description: error.message });
+    }
+  };
 
   return (
     <Sidebar side="left" variant="sidebar" collapsible="icon">
@@ -89,24 +106,28 @@ export function AppSidebar() {
               )}
             </SidebarMenuButton>
           </SidebarMenuItem>
-          <SidebarMenuItem>
-             <Link href="/settings" passHref legacyBehavior>
-                <SidebarMenuButton asChild tooltip="Settings">
-                  <a>
-                    <Settings className="h-5 w-5" />
-                    <span>Settings</span>
-                  </a>
-                </SidebarMenuButton>
-              </Link>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Logout">
-              <button onClick={() => alert("Logout clicked")}>
-                <LogOut className="h-5 w-5" />
-                <span>Logout</span>
-              </button>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {user && ( // Only show settings if logged in, or adjust behavior
+            <SidebarMenuItem>
+              <Link href="/settings" passHref legacyBehavior>
+                  <SidebarMenuButton asChild tooltip="Settings">
+                    <a>
+                      <Settings className="h-5 w-5" />
+                      <span>Settings</span>
+                    </a>
+                  </SidebarMenuButton>
+                </Link>
+            </SidebarMenuItem>
+          )}
+          {user && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Logout" onClick={handleLogout}>
+                <button>
+                  <LogOutIcon className="h-5 w-5" />
+                  <span>Logout</span>
+                </button>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
