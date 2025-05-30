@@ -5,9 +5,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle, UserCircle } from "lucide-react";
-// Updated import: AssignmentMetadata is more appropriate for a list view
 import type { AssignmentMetadata as FetchedAssignment } from "@/services/assignmentFunctionsService"; 
-import { getAssignmentListMetadata } from "@/services/assignmentFunctionsService"; // Changed to getAssignmentListMetadata
+import { getAssignmentListMetadata } from "@/services/assignmentFunctionsService"; 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/context/auth-context"; 
@@ -27,12 +26,12 @@ export default function AssessmentFormsPage() {
 
   useEffect(() => {
     async function fetchAssignments() {
-      if (!user || !userProfile || !userProfile.account) {
+      if (!user || !userProfile || !userProfile.account || userProfile.account.trim() === '') {
         if (!authLoading && !profileLoading) { 
           if(!user){
             setError("You must be logged in to view assignments.");
-          } else if (!userProfile?.account) {
-            setError("User account information is not available. Cannot fetch assignments.");
+          } else if (!userProfile?.account || userProfile.account.trim() === '') {
+            setError("User account information is not available or is invalid. Cannot fetch assignments. Please check your user profile settings.");
           }
           setIsLoadingAssignments(false);
           setAssignments([]); 
@@ -43,17 +42,20 @@ export default function AssessmentFormsPage() {
       try {
         setIsLoadingAssignments(true);
         setError(null);
-        // Changed to use getAssignmentListMetadata
         const fetchedAssignmentsData = await getAssignmentListMetadata(userProfile.account); 
         setAssignments(fetchedAssignmentsData); 
       } catch (err) {
         console.error(err);
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while fetching assignments.";
+        
         if (errorMessage.includes("403")) {
-          setError(`API Error: 403 Forbidden. The Cloud Function denied access. This could be due to CORS settings, incorrect account header expectations, or the function's internal authorization logic. Please check your Cloud Function logs and configuration.`);
+          setError(`API Error: 403 Forbidden. The Cloud Function denied access. This could be due to CORS settings, incorrect 'account' header, or the function's internal authorization logic. Please check your Cloud Function logs and configuration.`);
         } else if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("unauthorized")) {
           setError(errorMessage + " This might be due to Firestore security rules or the Cloud Function requiring specific permissions.");
-        } else {
+        } else if (errorMessage.includes("Account name is required and cannot be empty")) {
+           setError("User account information is not available or is invalid. Cannot fetch assignments. Please check your user profile settings.");
+        }
+        else {
           setError(errorMessage);
         }
         setAssignments([]); 
