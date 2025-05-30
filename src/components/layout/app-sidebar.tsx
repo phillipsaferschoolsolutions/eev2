@@ -60,6 +60,10 @@ export function AppSidebar() {
     }
   };
 
+  if (pathname === '/auth') {
+    return null;
+  }
+
   return (
     <Sidebar side="left" variant="sidebar" collapsible="icon">
       <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2.5">

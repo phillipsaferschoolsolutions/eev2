@@ -22,9 +22,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Mail, KeyRound, Smartphone, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
@@ -37,7 +36,7 @@ const emailPasswordSchema = z.object({
 type EmailPasswordFormData = z.infer<typeof emailPasswordSchema>;
 
 const phoneSchema = z.object({
-  phoneNumber: z.string().min(10, { message: 'Invalid phone number' }), // Basic validation
+  phoneNumber: z.string().min(10, { message: 'Invalid phone number' }), 
 });
 type PhoneFormData = z.infer<typeof phoneSchema>;
 
@@ -80,60 +79,43 @@ export function AuthForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [currentTab, setCurrentTab] = useState("login");
+  const [currentTab, setCurrentTab] = useState("login"); // Default to login
 
   const [phoneStep, setPhoneStep] = useState<'input' | 'otp'>('input');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
-
-  const {
-    register: registerEmailPassword,
-    handleSubmit: handleSubmitEmailPassword,
-    formState: { errors: emailPasswordErrors },
-    reset: resetEmailPasswordForm,
-  } = useForm<EmailPasswordFormData>({
+  const loginForm = useForm<EmailPasswordFormData>({
     resolver: zodResolver(emailPasswordSchema),
   });
 
-  const {
-    register: registerPhone,
-    handleSubmit: handleSubmitPhone,
-    formState: { errors: phoneErrors },
-    reset: resetPhoneForm,
-  } = useForm<PhoneFormData>({
+  const signupForm = useForm<EmailPasswordFormData>({
+    resolver: zodResolver(emailPasswordSchema),
+  });
+
+  const phoneForm = useForm<PhoneFormData>({
     resolver: zodResolver(phoneSchema),
   });
 
-  const {
-    register: registerOtp,
-    handleSubmit: handleSubmitOtp,
-    formState: { errors: otpErrors },
-    reset: resetOtpForm,
-  } = useForm<OtpFormData>({
+  const otpForm = useForm<OtpFormData>({
     resolver: zodResolver(otpSchema),
   });
 
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.push('/'); // Redirect if already logged in
+      router.push('/'); 
     }
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    // Initialize reCAPTCHA for phone auth when the tab is active and phone step is 'input'
     if (currentTab === 'phone' && phoneStep === 'input' && recaptchaContainerRef.current && !recaptchaVerifierRef.current) {
-      if (window.grecaptcha && typeof window.grecaptcha.render === 'function') {
-         // Ensure reCAPTCHA script is loaded
+      if (typeof window.grecaptcha !== 'undefined' && typeof window.grecaptcha.render === 'function') {
         recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
-            'size': 'invisible', // can also be 'normal'
-            'callback': (response: any) => {
-              // reCAPTCHA solved, allow signInWithPhoneNumber.
-            },
+            'size': 'invisible',
+            'callback': (response: any) => {},
             'expired-callback': () => {
-              // Response expired. Ask user to solve reCAPTCHA again.
               toast({ variant: "destructive", title: "reCAPTCHA expired", description: "Please try sending the OTP again." });
               resetRecaptcha();
             }
@@ -144,18 +126,15 @@ export function AuthForm() {
           });
       } else {
         console.warn("reCAPTCHA script not loaded yet.");
-        // Optionally, try again after a short delay or prompt user to refresh
       }
     }
-    // Cleanup reCAPTCHA on unmount or when tab/step changes
     return () => {
       resetRecaptcha();
     };
-  }, [currentTab, phoneStep]);
+  }, [currentTab, phoneStep, toast]);
 
   const resetRecaptcha = () => {
     if (recaptchaVerifierRef.current) {
-        // Attempt to clear the reCAPTCHA widget
         const widgetId = recaptchaVerifierRef.current.widgetId;
         if (typeof widgetId === 'number' && window.grecaptcha && typeof window.grecaptcha.reset === 'function') {
             try {
@@ -164,14 +143,13 @@ export function AuthForm() {
                 console.warn("Error resetting reCAPTCHA widget:", e);
             }
         }
-        recaptchaVerifierRef.current.clear(); // Clear verifier instance
+        recaptchaVerifierRef.current.clear(); 
         recaptchaVerifierRef.current = null;
     }
     if (recaptchaContainerRef.current) {
-        recaptchaContainerRef.current.innerHTML = ''; // Clear the container
+        recaptchaContainerRef.current.innerHTML = ''; 
     }
   };
-
 
   const handleEmailPasswordSubmit = async (data: EmailPasswordFormData, isSignUp: boolean) => {
     setIsLoading(true);
@@ -180,11 +158,12 @@ export function AuthForm() {
       if (isSignUp) {
         await createUserWithEmailAndPassword(auth, data.email, data.password);
         toast({ title: "Account Created!", description: "Welcome! You are now logged in." });
+        signupForm.reset();
       } else {
         await signInWithEmailAndPassword(auth, data.email, data.password);
         toast({ title: "Logged In!", description: "Welcome back!" });
+        loginForm.reset();
       }
-      resetEmailPasswordForm();
       router.push('/');
     } catch (err: any) {
       setError(err.message || 'An unknown error occurred.');
@@ -202,10 +181,8 @@ export function AuthForm() {
       provider = new GoogleAuthProvider();
     } else if (providerName === 'microsoft') {
       provider = new OAuthProvider('microsoft.com');
-      // Optionally add scopes for Microsoft: provider.addScope('user.read');
     } else if (providerName === 'apple') {
       provider = new OAuthProvider('apple.com');
-      // Optionally add scopes for Apple: provider.addScope('email'); provider.addScope('name');
     } else {
       setError('Invalid provider');
       setIsLoading(false);
@@ -234,12 +211,12 @@ export function AuthForm() {
       const result = await signInWithPhoneNumber(auth, data.phoneNumber, recaptchaVerifierRef.current);
       setConfirmationResult(result);
       setPhoneStep('otp');
-      resetPhoneForm();
+      phoneForm.reset();
       toast({ title: "OTP Sent", description: "Please check your phone for the verification code." });
     } catch (err: any) {
       setError(err.message || 'Failed to send OTP.');
       toast({ variant: "destructive", title: "OTP Error", description: err.message });
-      resetRecaptcha(); // Reset reCAPTCHA on error
+      resetRecaptcha(); 
     } finally {
       setIsLoading(false);
     }
@@ -257,7 +234,7 @@ export function AuthForm() {
       await confirmationResult.confirm(data.otp);
       toast({ title: "Logged In!", description: "Successfully verified phone number." });
       setPhoneStep('input');
-      resetOtpForm();
+      otpForm.reset();
       resetRecaptcha();
       router.push('/');
     } catch (err: any) {
@@ -270,11 +247,12 @@ export function AuthForm() {
   
   const handleTabChange = (value: string) => {
     setCurrentTab(value);
-    setError(null); // Clear errors when switching tabs
-    resetEmailPasswordForm();
-    resetPhoneForm();
-    resetOtpForm();
-    setPhoneStep('input'); // Reset phone auth flow
+    setError(null); 
+    loginForm.reset();
+    signupForm.reset();
+    phoneForm.reset();
+    otpForm.reset();
+    setPhoneStep('input'); 
     resetRecaptcha();
   };
 
@@ -282,15 +260,15 @@ export function AuthForm() {
     return <p className="text-center text-muted-foreground">Loading authentication status...</p>;
   }
   if (user) {
-     // This should be handled by useEffect redirect, but as a fallback
     return <p className="text-center text-muted-foreground">Already logged in. Redirecting...</p>;
   }
 
 
   return (
     <Tabs defaultValue="login" className="w-full" onValueChange={handleTabChange} value={currentTab}>
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="login">Email/Password</TabsTrigger>
+      <TabsList className="grid w-full grid-cols-4">
+        <TabsTrigger value="login">Login</TabsTrigger>
+        <TabsTrigger value="signup">Sign Up</TabsTrigger>
         <TabsTrigger value="phone">Phone</TabsTrigger>
         <TabsTrigger value="social">Social</TabsTrigger>
       </TabsList>
@@ -306,57 +284,58 @@ export function AuthForm() {
       <TabsContent value="login">
         <Card className="border-0 shadow-none">
           <CardContent className="space-y-6 pt-6">
-            {/* Login Form */}
-            <form onSubmit={handleSubmitEmailPassword(data => handleEmailPasswordSubmit(data, false))} className="space-y-4">
+            <form onSubmit={loginForm.handleSubmit(data => handleEmailPasswordSubmit(data, false))} className="space-y-4">
               <div>
                 <Label htmlFor="login-email">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input id="login-email" type="email" placeholder="you@example.com" {...registerEmailPassword('email')} className="pl-10" />
+                  <Input id="login-email" type="email" placeholder="you@example.com" {...loginForm.register('email')} className="pl-10" />
                 </div>
-                {emailPasswordErrors.email && <p className="text-sm text-destructive mt-1">{emailPasswordErrors.email.message}</p>}
+                {loginForm.formState.errors.email && <p className="text-sm text-destructive mt-1">{loginForm.formState.errors.email.message}</p>}
               </div>
               <div>
                 <Label htmlFor="login-password">Password</Label>
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input id="login-password" type={showPassword ? "text" : "password"} placeholder="••••••••" {...registerEmailPassword('password')} className="pl-10 pr-10" />
+                  <Input id="login-password" type={showPassword ? "text" : "password"} placeholder="••••••••" {...loginForm.register('password')} className="pl-10 pr-10" />
                   <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </Button>
                 </div>
-                {emailPasswordErrors.password && <p className="text-sm text-destructive mt-1">{emailPasswordErrors.password.message}</p>}
+                {loginForm.formState.errors.password && <p className="text-sm text-destructive mt-1">{loginForm.formState.errors.password.message}</p>}
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Logging in...' : 'Login'}
               </Button>
             </form>
-            <Separator />
-            {/* Sign Up Form Trigger (conceptually part of 'login' tab for now, or move to separate section) */}
-            <p className="text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?
-            </p>
-            <form onSubmit={handleSubmitEmailPassword(data => handleEmailPasswordSubmit(data, true))} className="space-y-4">
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="signup">
+        <Card className="border-0 shadow-none">
+          <CardContent className="space-y-6 pt-6">
+            <form onSubmit={signupForm.handleSubmit(data => handleEmailPasswordSubmit(data, true))} className="space-y-4">
                <div>
-                <Label htmlFor="signup-email">Sign Up Email</Label>
+                <Label htmlFor="signup-email">Email</Label>
                  <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input id="signup-email" type="email" placeholder="you@example.com" {...registerEmailPassword('email')} className="pl-10" />
+                  <Input id="signup-email" type="email" placeholder="you@example.com" {...signupForm.register('email')} className="pl-10" />
                 </div>
-                {emailPasswordErrors.email && <p className="text-sm text-destructive mt-1">{emailPasswordErrors.email.message}</p>}
+                {signupForm.formState.errors.email && <p className="text-sm text-destructive mt-1">{signupForm.formState.errors.email.message}</p>}
               </div>
               <div>
-                <Label htmlFor="signup-password">Sign Up Password</Label>
+                <Label htmlFor="signup-password">Password</Label>
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input id="signup-password" type={showPassword ? "text" : "password"} placeholder="Create a password" {...registerEmailPassword('password')} className="pl-10 pr-10" />
+                  <Input id="signup-password" type={showPassword ? "text" : "password"} placeholder="Create a password" {...signupForm.register('password')} className="pl-10 pr-10" />
                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </Button>
                 </div>
-                {emailPasswordErrors.password && <p className="text-sm text-destructive mt-1">{emailPasswordErrors.password.message}</p>}
+                {signupForm.formState.errors.password && <p className="text-sm text-destructive mt-1">{signupForm.formState.errors.password.message}</p>}
               </div>
-              <Button type="submit" className="w-full" variant="outline" disabled={isLoading}>
+              <Button type="submit" className="w-full" variant="default" disabled={isLoading}>
                 {isLoading ? 'Signing up...' : 'Sign Up with Email'}
               </Button>
             </form>
@@ -364,18 +343,19 @@ export function AuthForm() {
         </Card>
       </TabsContent>
 
+
       <TabsContent value="phone">
         <Card className="border-0 shadow-none">
           <CardContent className="space-y-6 pt-6">
             {phoneStep === 'input' && (
-              <form onSubmit={handleSubmitPhone(handleSendOtp)} className="space-y-4">
+              <form onSubmit={phoneForm.handleSubmit(handleSendOtp)} className="space-y-4">
                 <div>
                   <Label htmlFor="phone-number">Phone Number</Label>
                   <div className="relative">
                     <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input id="phone-number" type="tel" placeholder="+1 123 456 7890" {...registerPhone('phoneNumber')} className="pl-10" />
+                    <Input id="phone-number" type="tel" placeholder="+1 123 456 7890" {...phoneForm.register('phoneNumber')} className="pl-10" />
                   </div>
-                  {phoneErrors.phoneNumber && <p className="text-sm text-destructive mt-1">{phoneErrors.phoneNumber.message}</p>}
+                  {phoneForm.formState.errors.phoneNumber && <p className="text-sm text-destructive mt-1">{phoneForm.formState.errors.phoneNumber.message}</p>}
                 </div>
                 <div ref={recaptchaContainerRef} id="recaptcha-container" className="my-4"></div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
@@ -384,14 +364,14 @@ export function AuthForm() {
               </form>
             )}
             {phoneStep === 'otp' && (
-              <form onSubmit={handleSubmitOtp(handleVerifyOtp)} className="space-y-4">
+              <form onSubmit={otpForm.handleSubmit(handleVerifyOtp)} className="space-y-4">
                 <div>
                   <Label htmlFor="otp">Verification Code (OTP)</Label>
                    <div className="relative">
                      <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input id="otp" type="text" placeholder="Enter 6-digit OTP" {...registerOtp('otp')} className="pl-10" />
+                    <Input id="otp" type="text" placeholder="Enter 6-digit OTP" {...otpForm.register('otp')} className="pl-10" />
                   </div>
-                  {otpErrors.otp && <p className="text-sm text-destructive mt-1">{otpErrors.otp.message}</p>}
+                  {otpForm.formState.errors.otp && <p className="text-sm text-destructive mt-1">{otpForm.formState.errors.otp.message}</p>}
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? 'Verifying...' : 'Verify OTP & Login/Sign Up'}
