@@ -35,6 +35,17 @@ const emailPasswordSchema = z.object({
 });
 type EmailPasswordFormData = z.infer<typeof emailPasswordSchema>;
 
+const signupEmailPasswordSchema = emailPasswordSchema
+  .extend({
+    confirmPassword: z.string().min(6, { message: 'Password must be at least 6 characters' }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'], // Set error on confirmPassword field
+  });
+type SignupEmailPasswordFormData = z.infer<typeof signupEmailPasswordSchema>;
+
+
 const phoneSchema = z.object({
   phoneNumber: z.string().min(10, { message: 'Invalid phone number' }),
 });
@@ -107,7 +118,8 @@ export function AuthForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [currentTab, setCurrentTab] = useState("login"); // Default to login
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [currentTab, setCurrentTab] = useState("login"); 
 
   const [phoneStep, setPhoneStep] = useState<'input' | 'otp'>('input');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
@@ -116,18 +128,22 @@ export function AuthForm() {
 
   const loginForm = useForm<EmailPasswordFormData>({
     resolver: zodResolver(emailPasswordSchema),
+    defaultValues: { email: "", password: "" },
   });
 
-  const signupForm = useForm<EmailPasswordFormData>({
-    resolver: zodResolver(emailPasswordSchema),
+  const signupForm = useForm<SignupEmailPasswordFormData>({
+    resolver: zodResolver(signupEmailPasswordSchema),
+    defaultValues: { email: "", password: "", confirmPassword: "" },
   });
 
   const phoneForm = useForm<PhoneFormData>({
     resolver: zodResolver(phoneSchema),
+    defaultValues: { phoneNumber: "" },
   });
 
   const otpForm = useForm<OtpFormData>({
     resolver: zodResolver(otpSchema),
+    defaultValues: { otp: "" },
   });
 
 
@@ -139,7 +155,8 @@ export function AuthForm() {
 
   useEffect(() => {
     if (currentTab === 'phone' && phoneStep === 'input' && recaptchaContainerRef.current && !recaptchaVerifierRef.current) {
-      if (typeof window.grecaptcha !== 'undefined' && typeof window.grecaptcha.render === 'function') {
+      // Ensure reCAPTCHA script is loaded
+      if (typeof window !== 'undefined' && (window as any).grecaptcha && (window as any).grecaptcha.render) {
         recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
             'size': 'invisible',
             'callback': (response: any) => {},
@@ -153,7 +170,9 @@ export function AuthForm() {
              setError("Failed to render reCAPTCHA. Please refresh.");
           });
       } else {
-        console.warn("reCAPTCHA script not loaded yet.");
+        // Script might not be loaded yet, or div is not ready. Firebase usually handles script loading.
+        // We might need to delay or ensure the container is visible.
+        console.warn("reCAPTCHA script not loaded or container not ready.");
       }
     }
     return () => {
@@ -163,23 +182,23 @@ export function AuthForm() {
 
   const resetRecaptcha = () => {
     if (recaptchaVerifierRef.current) {
-        const widgetId = recaptchaVerifierRef.current.widgetId;
-        if (typeof widgetId === 'number' && window.grecaptcha && typeof window.grecaptcha.reset === 'function') {
+        const widgetId = (recaptchaVerifierRef.current as any).widgetId;
+        if (typeof widgetId === 'number' && (window as any).grecaptcha && typeof (window as any).grecaptcha.reset === 'function') {
             try {
-                window.grecaptcha.reset(widgetId);
+                (window as any).grecaptcha.reset(widgetId);
             } catch (e) {
                 console.warn("Error resetting reCAPTCHA widget:", e);
             }
         }
-        recaptchaVerifierRef.current.clear();
+        recaptchaVerifierRef.current.clear(); // Firebase SDK method
         recaptchaVerifierRef.current = null;
     }
     if (recaptchaContainerRef.current) {
-        recaptchaContainerRef.current.innerHTML = '';
+        recaptchaContainerRef.current.innerHTML = ''; // Clear the div
     }
   };
 
-  const handleEmailPasswordSubmit = async (data: EmailPasswordFormData, isSignUp: boolean) => {
+  const handleEmailPasswordSubmit = async (data: EmailPasswordFormData | SignupEmailPasswordFormData, isSignUp: boolean) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -194,8 +213,9 @@ export function AuthForm() {
       }
       router.push('/');
     } catch (err: any) {
-      setError(err.message || 'An unknown error occurred.');
-      toast({ variant: "destructive", title: "Authentication Failed", description: err.message });
+      const firebaseError = err as { code?: string; message?: string };
+      setError(firebaseError.message || 'An unknown error occurred.');
+      toast({ variant: "destructive", title: "Authentication Failed", description: firebaseError.message });
     } finally {
       setIsLoading(false);
     }
@@ -221,9 +241,21 @@ export function AuthForm() {
       await signInWithPopup(auth, provider);
       toast({ title: "Logged In!", description: `Successfully signed in with ${providerName}.` });
       router.push('/');
-    } catch (err: any) {
-      setError(err.message || 'An unknown error occurred.');
-      toast({ variant: "destructive", title: "Authentication Failed", description: err.message });
+    } catch (err: any)
+     {
+      const firebaseError = err as { code?: string; message?: string };
+      // Handle specific errors like 'auth/popup-closed-by-user' or 'auth/account-exists-with-different-credential'
+      if (firebaseError.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in process was cancelled.');
+        toast({ variant: "default", title: "Sign-in Cancelled", description: "The sign-in process was cancelled." });
+      } else if (firebaseError.code === 'auth/account-exists-with-different-credential') {
+         setError('An account already exists with the same email address but different sign-in credentials. Try signing in using a method you’ve used before.');
+         toast({ variant: "destructive", title: "Account Conflict", description: 'An account already exists with this email using a different sign-in method.'});
+      }
+      else {
+        setError(firebaseError.message || 'An unknown error occurred.');
+        toast({ variant: "destructive", title: "Authentication Failed", description: firebaseError.message });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -234,7 +266,15 @@ export function AuthForm() {
     setError(null);
     try {
       if (!recaptchaVerifierRef.current) {
-        throw new Error("reCAPTCHA verifier not initialized.");
+        // Attempt to re-initialize if it's missing, common if tab was hidden then shown
+        if (recaptchaContainerRef.current && typeof window !== 'undefined' && (window as any).grecaptcha) {
+           recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+            'size': 'invisible', 'callback': () => {}, 'expired-callback': () => { resetRecaptcha(); }
+          });
+          await recaptchaVerifierRef.current.render();
+        } else {
+          throw new Error("reCAPTCHA verifier not initialized. Please ensure the reCAPTCHA container is visible.");
+        }
       }
       const result = await signInWithPhoneNumber(auth, data.phoneNumber, recaptchaVerifierRef.current);
       setConfirmationResult(result);
@@ -242,9 +282,10 @@ export function AuthForm() {
       phoneForm.reset();
       toast({ title: "OTP Sent", description: "Please check your phone for the verification code." });
     } catch (err: any) {
-      setError(err.message || 'Failed to send OTP.');
-      toast({ variant: "destructive", title: "OTP Error", description: err.message });
-      resetRecaptcha();
+      const firebaseError = err as { code?: string; message?: string };
+      setError(firebaseError.message || 'Failed to send OTP.');
+      toast({ variant: "destructive", title: "OTP Error", description: firebaseError.message });
+      resetRecaptcha(); 
     } finally {
       setIsLoading(false);
     }
@@ -254,7 +295,7 @@ export function AuthForm() {
     setIsLoading(true);
     setError(null);
     if (!confirmationResult) {
-      setError('No OTP confirmation result found. Please try again.');
+      setError('No OTP confirmation result found. Please try sending an OTP again.');
       setIsLoading(false);
       return;
     }
@@ -263,11 +304,12 @@ export function AuthForm() {
       toast({ title: "Logged In!", description: "Successfully verified phone number." });
       setPhoneStep('input');
       otpForm.reset();
-      resetRecaptcha();
+      resetRecaptcha(); // Reset reCAPTCHA after successful OTP verification
       router.push('/');
     } catch (err: any) {
-      setError(err.message || 'Failed to verify OTP.');
-      toast({ variant: "destructive", title: "OTP Verification Failed", description: err.message });
+      const firebaseError = err as { code?: string; message?: string };
+      setError(firebaseError.message || 'Failed to verify OTP.');
+      toast({ variant: "destructive", title: "OTP Verification Failed", description: firebaseError.message });
     } finally {
       setIsLoading(false);
     }
@@ -275,20 +317,24 @@ export function AuthForm() {
 
   const handleTabChange = (value: string) => {
     setCurrentTab(value);
-    setError(null);
+    setError(null); // Clear errors on tab change
+    // Reset forms
     loginForm.reset();
     signupForm.reset();
     phoneForm.reset();
     otpForm.reset();
-    setPhoneStep('input');
-    resetRecaptcha();
+    setPhoneStep('input'); // Reset phone auth to input step
+    setShowPassword(false); // Reset password visibility
+    setShowConfirmPassword(false);
+    resetRecaptcha(); // Reset reCAPTCHA when switching to/from phone tab
   };
 
   if (authLoading) {
     return <p className="text-center text-muted-foreground">Loading authentication status...</p>;
   }
-  if (user) {
-    return <p className="text-center text-muted-foreground">Already logged in. Redirecting...</p>;
+  // If user is already logged in, redirect (handled by useEffect)
+  if (user && !authLoading) {
+     return <p className="text-center text-muted-foreground">Already logged in. Redirecting...</p>;
   }
 
 
@@ -327,6 +373,7 @@ export function AuthForm() {
                   <Input id="login-password" type={showPassword ? "text" : "password"} placeholder="••••••••" {...loginForm.register('password')} className="pl-10 pr-10" />
                   <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
                   </Button>
                 </div>
                 {loginForm.formState.errors.password && <p className="text-sm text-destructive mt-1">{loginForm.formState.errors.password.message}</p>}
@@ -359,9 +406,22 @@ export function AuthForm() {
                   <Input id="signup-password" type={showPassword ? "text" : "password"} placeholder="Create a password" {...signupForm.register('password')} className="pl-10 pr-10" />
                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
                   </Button>
                 </div>
                 {signupForm.formState.errors.password && <p className="text-sm text-destructive mt-1">{signupForm.formState.errors.password.message}</p>}
+              </div>
+              <div>
+                <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input id="signup-confirm-password" type={showConfirmPassword ? "text" : "password"} placeholder="Confirm your password" {...signupForm.register('confirmPassword')} className="pl-10 pr-10" />
+                   <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    <span className="sr-only">{showConfirmPassword ? "Hide confirm password" : "Show confirm password"}</span>
+                  </Button>
+                </div>
+                {signupForm.formState.errors.confirmPassword && <p className="text-sm text-destructive mt-1">{signupForm.formState.errors.confirmPassword.message}</p>}
               </div>
               <Button type="submit" className="w-full" variant="default" disabled={isLoading}>
                 {isLoading ? 'Signing up...' : 'Sign Up with Email'}
@@ -385,7 +445,7 @@ export function AuthForm() {
                   </div>
                   {phoneForm.formState.errors.phoneNumber && <p className="text-sm text-destructive mt-1">{phoneForm.formState.errors.phoneNumber.message}</p>}
                 </div>
-                <div ref={recaptchaContainerRef} id="recaptcha-container" className="my-4"></div>
+                <div ref={recaptchaContainerRef} id="recaptcha-container" className="my-4 flex justify-center"></div> {/* Ensure this div is rendered and visible */}
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? 'Sending OTP...' : 'Send OTP'}
                 </Button>
@@ -415,3 +475,4 @@ export function AuthForm() {
     </Tabs>
   );
 }
+
