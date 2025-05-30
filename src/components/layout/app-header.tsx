@@ -13,10 +13,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sun, Moon, Bell } from "lucide-react";
-import { useTheme } from "next-themes"; 
+import { useTheme } from "next-themes";
+import { useState, useEffect } from "react"; // Import useState and useEffect
 
 export function AppHeader() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
@@ -30,14 +36,29 @@ export function AppHeader() {
           {/* Can add breadcrumbs or page title here */}
         </div>
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            aria-label="Toggle Theme" 
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Toggle Theme"
+            onClick={() => {
+              // setTheme will use the client-side resolvedTheme after mount
+              if (mounted) {
+                setTheme(resolvedTheme === "dark" ? "light" : "dark");
+              }
+            }}
           >
-            <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            {mounted ? (
+              <> {/* Render actual theme-dependent icons only when mounted */}
+                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              </>
+            ) : (
+              <> {/* Render a static placeholder for SSR and initial client render */}
+                 {/* Sun visible by default (matches light theme), Moon hidden */}
+                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all" />
+                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all" />
+              </>
+            )}
             <span className="sr-only">Toggle theme</span>
           </Button>
           <Button variant="ghost" size="icon" aria-label="Notifications">
