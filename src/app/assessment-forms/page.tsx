@@ -4,8 +4,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle, AlertCircle } from "lucide-react";
-import Link from "next/link";
+import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle } from "lucide-react";
 import type { Assignment } from "@/types/Assignment";
 import { getAssignments } from "@/services/assignmentService";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,14 +75,21 @@ export default function AssessmentFormsPage() {
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Error Fetching Assignments</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>
+                {error}
+                {error && error.toLowerCase().includes("permission") && (
+                  <p className="mt-2 text-xs">
+                    This error often indicates an issue with Firestore security rules. Please ensure your rules allow read access to the 'assignments' collection for the currently authenticated user.
+                  </p>
+                )}
+              </AlertDescription>
             </Alert>
           )}
           {!isLoading && !error && assignments.length === 0 && (
             <div className="border rounded-lg p-6 text-center bg-muted/20">
               <ListOrdered className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-xl font-semibold mb-2">No Assignments Yet</h3>
-              <p className="text-muted-foreground mb-4">No assignments found in your Firestore 'assignments' collection.</p>
+              <p className="text-muted-foreground mb-4">No assignments found in your Firestore 'assignments' collection. This could also be due to Firestore security rules.</p>
             </div>
           )}
           {!isLoading && !error && assignments.length > 0 && (
