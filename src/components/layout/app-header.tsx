@@ -32,7 +32,7 @@ export function AppHeader() {
   useEffect(() => {
     setMounted(true);
     setCurrentHeaderClassName(cn(baseHeaderClasses, themeDependentHeaderClasses));
-  }, []); // Empty dependency array ensures this runs once on mount after initial render
+  }, [baseHeaderClasses, themeDependentHeaderClasses]); // Added dependencies
 
   const isDark = mounted && resolvedTheme === "dark";
 
