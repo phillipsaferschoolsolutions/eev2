@@ -1,9 +1,11 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Palette, Sun, Moon, Contrast, Terminal, Waves, Leaf, Sunset, Building } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useState, useEffect } from "react";
 
 const appThemes = [
   { id: "light", name: "Default Light", description: "The standard clean and professional theme.", icon: Sun, isDark: false, gradient: "from-blue-100 to-indigo-100" },
@@ -20,6 +22,11 @@ const appThemes = [
 
 export default function ThemingPage() {
   const { theme: currentTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleThemeChange = (themeId: string) => {
     setTheme(themeId);
@@ -54,7 +61,7 @@ export default function ThemingPage() {
                 <Button
                   onClick={() => handleThemeChange(themeOption.id)}
                   className="w-full mt-auto"
-                  variant={currentTheme === themeOption.id ? "default" : "outline"}
+                  variant={mounted && currentTheme === themeOption.id ? "default" : "outline"}
                 >
                   Apply Theme
                 </Button>
