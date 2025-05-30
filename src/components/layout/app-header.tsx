@@ -22,23 +22,22 @@ export function AppHeader() {
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   // Base classes that are not theme-dependent for the header tag
   const baseHeaderClasses = "sticky top-0 z-10 border-b backdrop-blur-sm";
   // Theme-dependent class part for the header tag
   const themeDependentHeaderClasses = "bg-background/80";
 
-  const headerClassName = mounted
-    ? cn(baseHeaderClasses, themeDependentHeaderClasses)
-    : baseHeaderClasses;
+  const [currentHeaderClassName, setCurrentHeaderClassName] = useState(baseHeaderClasses);
+
+  useEffect(() => {
+    setMounted(true);
+    setCurrentHeaderClassName(cn(baseHeaderClasses, themeDependentHeaderClasses));
+  }, []); // Empty dependency array ensures this runs once on mount after initial render
 
   const isDark = mounted && resolvedTheme === "dark";
 
   return (
-    <header className={headerClassName}>
+    <header className={currentHeaderClassName}>
       {/* Gradient Accent Line */}
       <div className="h-0.5 w-full bg-gradient-to-r from-teal-300 to-cyan-600"></div>
 
