@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Palette, Sun, Moon, Contrast } from "lucide-react";
@@ -36,11 +38,11 @@ export default function ThemingPage() {
             <Card key={themeOption.id} className="overflow-hidden">
               <CardHeader className="p-0">
                 {/* Placeholder for theme preview image */}
-                <div 
-                  className={`h-32 w-full flex items-center justify-center bg-gradient-to-br 
-                    ${themeOption.id === 'default' ? 'from-blue-100 to-indigo-100' : 
-                    themeOption.id === 'dark' ? 'from-slate-800 to-slate-900' : 
-                    themeOption.id === 'high-contrast' ? 'from-black to-gray-700' : 
+                <div
+                  className={`h-32 w-full flex items-center justify-center bg-gradient-to-br
+                    ${themeOption.id === 'default' ? 'from-blue-100 to-indigo-100' :
+                    themeOption.id === 'dark' ? 'from-slate-800 to-slate-900' :
+                    themeOption.id === 'high-contrast' ? 'from-black to-gray-700' :
                     'from-sky-600 to-indigo-700'}`}
                   data-ai-hint="theme color palette"
                 >
@@ -50,8 +52,8 @@ export default function ThemingPage() {
               <CardContent className="p-4">
                 <h3 className="text-lg font-semibold mb-1">{themeOption.name}</h3>
                 <p className="text-sm text-muted-foreground mb-3 h-10">{themeOption.description}</p>
-                <Button 
-                  onClick={() => handleThemeChange(themeOption.id)} 
+                <Button
+                  onClick={() => handleThemeChange(themeOption.id)}
                   className="w-full"
                   // variant={theme === themeOption.id ? "default" : "outline"} // Example of active state
                   variant="outline"
@@ -63,7 +65,7 @@ export default function ThemingPage() {
           ))}
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardHeader>
             <CardTitle>Customization Tip</CardTitle>
