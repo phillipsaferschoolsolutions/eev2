@@ -1,8 +1,7 @@
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
-// import { getFirestore, type Firestore } from 'firebase/firestore';
-// import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import { getFirestore, type Firestore } from 'firebase/firestore'; // Added
 import { getFunctions, type Functions } from 'firebase/functions';
 
 const firebaseConfig = {
@@ -17,8 +16,7 @@ const firebaseConfig = {
 
 let app: FirebaseApp;
 let auth: Auth;
-// let firestore: Firestore;
-// let storage: FirebaseStorage;
+let firestore: Firestore; // Added
 let functions: Functions;
 
 if (getApps().length === 0) {
@@ -28,9 +26,8 @@ if (getApps().length === 0) {
 }
 
 auth = getAuth(app);
-functions = getFunctions(app); // Initialize Firebase Functions
-// firestore = getFirestore(app);
-// storage = getStorage(app);
+firestore = getFirestore(app); // Initialized
+functions = getFunctions(app);
 
 
 // Check if all required environment variables are set
@@ -48,4 +45,4 @@ if (
 }
 
 
-export { app, auth, functions /*, firestore, storage */ };
+export { app, auth, firestore, functions }; // Exported firestore

@@ -1,8 +1,15 @@
 
+"use client";
+
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckSquare, FilePlus2, ListOrdered, Edit } from "lucide-react";
+import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import type { Assignment } from "@/types/Assignment";
+import { getAssignments } from "@/services/assignmentService";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const sampleTemplates = [
   { id: "env1", name: "Environmental Safety Checklist", description: "General campus environment assessment.", icon: CheckSquare },
@@ -11,6 +18,27 @@ const sampleTemplates = [
 ];
 
 export default function AssessmentFormsPage() {
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchAssignments() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const fetchedAssignments = await getAssignments();
+        setAssignments(fetchedAssignments);
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : "An unknown error occurred while fetching assignments.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchAssignments();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -28,15 +56,52 @@ export default function AssessmentFormsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Your Assignments</CardTitle>
-          <CardDescription>Manage your existing assignments or create new ones.</CardDescription>
+          <CardDescription>Manage your existing assignments or create new ones from Firestore.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="border rounded-lg p-6 text-center bg-muted/20">
-            <ListOrdered className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No Assignments Yet</h3>
-            <p className="text-muted-foreground mb-4">Start by creating a new assignment or using a template.</p>
-            <Button variant="outline">Load My Assignments</Button>
-          </div>
+          {isLoading && (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-md border">
+                  <div>
+                    <Skeleton className="h-5 w-48 mb-1" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <Skeleton className="h-8 w-16" />
+                </div>
+              ))}
+            </div>
+          )}
+          {error && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error Fetching Assignments</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {!isLoading && !error && assignments.length === 0 && (
+            <div className="border rounded-lg p-6 text-center bg-muted/20">
+              <ListOrdered className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No Assignments Yet</h3>
+              <p className="text-muted-foreground mb-4">No assignments found in your Firestore 'assignments' collection.</p>
+            </div>
+          )}
+          {!isLoading && !error && assignments.length > 0 && (
+            <ul className="space-y-3">
+              {assignments.map((assignment) => (
+                <li key={assignment.id} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
+                  <div>
+                    <p className="font-medium">{assignment.assessmentName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {assignment.description || `Due: ${assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}`}
+                    </p>
+                  </div>
+                  {/* Future actions: View, Edit, Delete */}
+                  <Button variant="outline" size="sm">View</Button> 
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
 
@@ -67,7 +132,7 @@ export default function AssessmentFormsPage() {
         </CardContent>
       </Card>
        <p className="text-center text-muted-foreground text-sm pt-4">
-        Full assignment builder functionality coming soon.
+        Full assignment builder functionality and template integration with Firestore coming soon.
       </p>
     </div>
   );
