@@ -181,14 +181,12 @@ async function authedFetch<T>(
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   } else {
-    // For some public endpoints, a token might not be strictly necessary,
-    // but for most authenticated actions, this would be an issue.
     console.warn(`authedFetch: No token available for endpoint: ${endpoint}`);
   }
 
   const trimmedAccountName = accountName?.trim();
   if (trimmedAccountName) {
-    headers.set('account', trimmedAccountName); // Ensure 'account' key is lowercase
+    headers.set('account', trimmedAccountName); 
   }
 
 
@@ -206,7 +204,6 @@ async function authedFetch<T>(
     try {
       errorData = await response.json();
     } catch (e) {
-      // If response is not JSON, use statusText
       errorData = { message: response.statusText || `HTTP error ${response.status}` };
     }
     console.error(`API Error ${response.status} for ${endpoint}:`, errorData);
@@ -216,8 +213,8 @@ async function authedFetch<T>(
   }
 
   const contentType = response.headers.get("content-type");
-  if (response.status === 204) { // No Content
-    return undefined as any as T; // Or specific handling if T can be void
+  if (response.status === 204) { 
+    return undefined as any as T; 
   }
 
   if (contentType && contentType.indexOf("application/json") !== -1) {
@@ -225,22 +222,17 @@ async function authedFetch<T>(
   } else {
     const textResponse = await response.text();
     if (textResponse) {
-      // This case might occur if the server sends plain text for success messages not in JSON format.
-      // If T is expected to be a string, this is fine.
-      // If T is an object, this will likely cause issues unless the textResponse is empty or can be parsed.
-      // For now, we return it as T, but this might need refinement based on actual API behavior.
       console.warn(`authedFetch: Response from ${endpoint} was text/plain but JSON might be expected by caller. Body: "${textResponse.substring(0,100)}..."`);
       try {
-        // Attempt to parse if it looks like JSON, to handle cases where content-type might be wrong
         if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
           return JSON.parse(textResponse) as T;
         }
       } catch (e) {
          console.error(`authedFetch: Failed to parse non-JSON text response from ${endpoint} as JSON despite structure match. Error: ${e}`);
       }
-      return textResponse as any as T; // Cast to T, caller must be aware if it's text
+      return textResponse as any as T; 
     }
-    return undefined as any as T; // Return undefined if textResponse is empty
+    return undefined as any as T; 
   }
 }
 
@@ -252,10 +244,11 @@ async function authedFetch<T>(
  * Account name is passed in the 'account' header.
  */
 export async function getAllAssignmentsWithContent(accountName: string): Promise<FullAssignment[]> {
-  if (!accountName || accountName.trim() === '') {
+  const trimmedAccountName = accountName?.trim();
+  if (!trimmedAccountName) {
      throw new Error('Account name is required and cannot be empty to fetch assignments.');
   }
-  const result = await authedFetch<FullAssignment[] | undefined>('/', {}, accountName);
+  const result = await authedFetch<FullAssignment[] | undefined>('/', {}, trimmedAccountName);
   return result || [];
 }
 
@@ -267,7 +260,7 @@ export async function getAllAssignmentsWithContent(accountName: string): Promise
 export async function getAssignmentListMetadata(accountName: string): Promise<AssignmentMetadata[]> {
   const trimmedAccountName = accountName?.trim();
   if (!trimmedAccountName) {
-     throw new Error('Account name is required and cannot be empty to fetch assignment list.');
+     throw new Error('Account name is required and cannot be empty for getAssignmentListMetadata.');
   }
   const result = await authedFetch<AssignmentMetadata[] | undefined>('/assignmentlist', {}, trimmedAccountName);
   return result || [];
@@ -322,13 +315,15 @@ export async function deleteAssignment(id: string, accountName?: string): Promis
 }
 
 /**
- * 17. PUT /completed/:id (multipart form-data)
- * Uploads a completed assignment. Supports image uploads.
+ * NEW: 17. PUT /completednew/:id (multipart form-data, but answers JSON contains file URLs)
+ * Uploads a completed assignment. 
  * Account name ('account' header) might be needed.
  */
 export async function submitCompletedAssignment(id: string, formData: FormData, accountName?: string): Promise<CompletedAssignmentResponse> {
   if (!id) throw new Error('Assignment ID is required.');
-  return authedFetch<CompletedAssignmentResponse>(`/completed/${id}`, {
+  // Note: The 'id' here is the assignmentId for which the completion is being submitted.
+  // The endpoint path itself contains this ID.
+  return authedFetch<CompletedAssignmentResponse>(`/completednew/${id}`, {
     method: 'PUT',
     body: formData, // Content-Type will be set by browser for FormData
   }, accountName);
@@ -518,7 +513,7 @@ export async function saveDataCsv(id: string, csvFormData: FormData, accountName
   if (!id) throw new Error('ID is required.');
   return authedFetch<SaveDataResponse>(`/save_data/${id}`, {
     method: 'POST',
-    body: csvFormData, // Content-Type will be set by browser for FormData
+    body: csvFormData, 
   }, accountName);
 }
 
@@ -551,3 +546,4 @@ export async function savePendingSubmission(assignmentId: string, payload: Draft
     body: JSON.stringify(payload),
   }, trimmedAccountName);
 }
+
