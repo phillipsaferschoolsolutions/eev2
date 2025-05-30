@@ -34,6 +34,7 @@ export default function AssessmentFormsPage() {
             setError("User account information is not available. Cannot fetch assignments.");
           }
           setIsLoadingAssignments(false);
+          setAssignments([]); // Ensure assignments is an array
         }
         return;
       }
@@ -42,7 +43,7 @@ export default function AssessmentFormsPage() {
         setIsLoadingAssignments(true);
         setError(null);
         const fetchedAssignmentsData = await getAllAssignmentsWithContent(userProfile.account);
-        setAssignments(fetchedAssignmentsData);
+        setAssignments(fetchedAssignmentsData); // getAllAssignmentsWithContent now guarantees an array
       } catch (err) {
         console.error(err);
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while fetching assignments.";
@@ -53,6 +54,7 @@ export default function AssessmentFormsPage() {
         } else {
           setError(errorMessage);
         }
+        setAssignments([]); // Ensure assignments is an empty array on error
       } finally {
         setIsLoadingAssignments(false);
       }
@@ -62,6 +64,7 @@ export default function AssessmentFormsPage() {
       fetchAssignments();
     } else {
       setIsLoadingAssignments(true); 
+      setAssignments([]); // Ensure assignments is an array while loading auth/profile
     }
   }, [user, userProfile, authLoading, profileLoading]);
 

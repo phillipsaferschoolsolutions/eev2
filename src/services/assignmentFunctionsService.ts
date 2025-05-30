@@ -152,7 +152,7 @@ async function authedFetch<T>(
     headers.set('Authorization', `Bearer ${token}`);
   }
   if (accountName) { 
-    headers.set('account', accountName); // Changed header name to 'account'
+    headers.set('account', accountName); 
   }
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
@@ -183,9 +183,6 @@ async function authedFetch<T>(
   if (contentType && contentType.indexOf("application/json") !== -1) {
     return response.json() as Promise<T>;
   } else {
-    // For non-JSON responses (like 200 OK for DELETE/PUT with no body), 
-    // return a success marker or handle as appropriate.
-    // For now, returning undefined for non-JSON success, adjust if specific functions expect other types.
     return undefined as any as T; 
   }
 }
@@ -199,7 +196,9 @@ async function authedFetch<T>(
  */
 export async function getAllAssignmentsWithContent(accountName: string): Promise<FullAssignment[]> {
   if (!accountName) throw new Error('Account name is required to fetch assignments.');
-  return authedFetch<FullAssignment[]>('/', {}, accountName);
+  // Explicitly type what authedFetch might return based on its implementation for 204/non-JSON success
+  const result = await authedFetch<FullAssignment[] | undefined>('/', {}, accountName);
+  return result || []; // Ensure an array is always returned, fulfilling the Promise<FullAssignment[]>
 }
 
 /**
@@ -209,7 +208,8 @@ export async function getAllAssignmentsWithContent(accountName: string): Promise
  */
 export async function getAssignmentListMetadata(accountName: string): Promise<AssignmentMetadata[]> {
   if (!accountName) throw new Error('Account name is required to fetch assignment list.');
-  return authedFetch<AssignmentMetadata[]>('/assignmentlist', {}, accountName);
+  const result = await authedFetch<AssignmentMetadata[] | undefined>('/assignmentlist', {}, accountName);
+  return result || [];
 }
 
 /**
@@ -217,9 +217,10 @@ export async function getAssignmentListMetadata(accountName: string): Promise<As
  * Returns a full assignment by ID including permissions logic.
  * Account name ('account' header) might be needed for permission checks.
  */
-export async function getAssignmentById(id: string, accountName?: string): Promise<AssignmentWithPermissions> {
+export async function getAssignmentById(id: string, accountName?: string): Promise<AssignmentWithPermissions | null> {
   if (!id) throw new Error('Assignment ID is required.');
-  return authedFetch<AssignmentWithPermissions>(`/${id}`, {}, accountName);
+  const result = await authedFetch<AssignmentWithPermissions | undefined>(`/${id}`, {}, accountName);
+  return result || null; // Return null if not found or no content
 }
 
 /**
@@ -228,6 +229,7 @@ export async function getAssignmentById(id: string, accountName?: string): Promi
  * Account name ('account' header) might be needed.
  */
 export async function createAssignment(payload: CreateAssignmentPayload, accountName?: string): Promise<FullAssignment> { 
+  // Assuming create always returns the full assignment or throws error
   return authedFetch<FullAssignment>('/createassignment', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -241,7 +243,7 @@ export async function createAssignment(payload: CreateAssignmentPayload, account
  */
 export async function updateAssignment(id: string, payload: Partial<UpdateAssignmentPayload>, accountName?: string): Promise<void> {
   if (!id) throw new Error('Assignment ID is required.');
-  await authedFetch<void>(`/${id}`, {
+  await authedFetch<void>(`/${id}`, { // void for 200 OK no body expected by default
     method: 'PUT',
     body: JSON.stringify(payload),
   }, accountName);
@@ -254,7 +256,7 @@ export async function updateAssignment(id: string, payload: Partial<UpdateAssign
  */
 export async function deleteAssignment(id: string, accountName?: string): Promise<void> {
   if (!id) throw new Error('Assignment ID is required.');
-  await authedFetch<void>(`/${id}`, {
+  await authedFetch<void>(`/${id}`, { // void for 200 OK no body
     method: 'DELETE',
   }, accountName);
 }
@@ -266,6 +268,7 @@ export async function deleteAssignment(id: string, accountName?: string): Promis
  */
 export async function submitCompletedAssignment(id: string, formData: FormData, accountName?: string): Promise<CompletedAssignmentResponse> {
   if (!id) throw new Error('Assignment ID is required.');
+  // Assuming this endpoint returns JSON
   return authedFetch<CompletedAssignmentResponse>(`/completed/${id}`, {
     method: 'PUT',
     body: formData,
@@ -279,7 +282,8 @@ export async function submitCompletedAssignment(id: string, formData: FormData, 
  */
 export async function getMyAssignments(accountName: string, userEmail?: string): Promise<AssignmentMetadata[]> {
   const endpoint = userEmail ? `/tome/${encodeURIComponent(userEmail)}` : '/tome';
-  return authedFetch<AssignmentMetadata[]>(endpoint, {}, accountName);
+  const result = await authedFetch<AssignmentMetadata[] | undefined>(endpoint, {}, accountName);
+  return result || [];
 }
 
 /**
@@ -288,112 +292,112 @@ export async function getMyAssignments(accountName: string, userEmail?: string):
  * The account header ('account': accountName) is still needed for auth/context.
  */
 export async function getAssignmentsByLocation(payload: ByLocationPayload, accountName: string): Promise<FullAssignment[]> {
-    return authedFetch<FullAssignment[]>('/bylocation', {
+    const result = await authedFetch<FullAssignment[] | undefined>('/bylocation', {
         method: 'POST',
         body: JSON.stringify(payload),
     }, accountName); 
+    return result || [];
 }
 
 
 /**
  * 6. GET /header/:lat/:lng
  * Returns current weather + reverse-geolocation for user’s location.
- * Account header ('account') might not be needed if this is a general utility endpoint. Assuming not for now.
  */
-export async function getWeatherAndLocation(lat: number, lng: number, accountName?: string): Promise<WeatherLocationData> {
-    return authedFetch<WeatherLocationData>(`/header/${lat}/${lng}`, {}, accountName); 
+export async function getWeatherAndLocation(lat: number, lng: number, accountName?: string): Promise<WeatherLocationData | null> {
+    const result = await authedFetch<WeatherLocationData | undefined>(`/header/${lat}/${lng}`, {}, accountName); 
+    return result || null;
 }
 
 /**
  * 10. GET /types
  * Returns hardcoded list of assignment types.
- * Account name ('account' header) might be needed.
  */
 export async function getAssignmentTypes(accountName?: string): Promise<string[]> {
-  return authedFetch<string[]>('/types', {}, accountName);
+  const result = await authedFetch<string[] | undefined>('/types', {}, accountName);
+  return result || [];
 }
 
 /**
  * 3. GET /questionsbyschool/:assignmentId/:period
- * Account name ('account' header) needed.
  */
-export async function getQuestionsBySchool(assignmentId: string, period: string, accountName: string): Promise<QuestionsBySchoolResponse> {
+export async function getQuestionsBySchool(assignmentId: string, period: string, accountName: string): Promise<QuestionsBySchoolResponse | null> {
   if (!assignmentId || !period) throw new Error('Assignment ID and period are required.');
-  return authedFetch<QuestionsBySchoolResponse>(`/questionsbyschool/${assignmentId}/${period}`, {}, accountName);
+  const result = await authedFetch<QuestionsBySchoolResponse | undefined>(`/questionsbyschool/${assignmentId}/${period}`, {}, accountName);
+  return result || null;
 }
 
 /**
  * 4. GET /schoolswithquestions/:assignmentId/:period
- * Account name ('account' header) needed.
  */
-export async function getSchoolsWithQuestions(assignmentId: string, period: string, accountName: string): Promise<SchoolsWithQuestionsResponse> {
+export async function getSchoolsWithQuestions(assignmentId: string, period: string, accountName: string): Promise<SchoolsWithQuestionsResponse | null> {
   if (!assignmentId || !period) throw new Error('Assignment ID and period are required.');
-  return authedFetch<SchoolsWithQuestionsResponse>(`/schoolswithquestions/${assignmentId}/${period}`, {}, accountName);
+  const result = await authedFetch<SchoolsWithQuestionsResponse | undefined>(`/schoolswithquestions/${assignmentId}/${period}`, {}, accountName);
+  return result || null;
 }
 
 /**
  * 5. GET /dailysnapshot
- * Account name ('account' header) needed.
  */
-export async function getDailySnapshot(accountName: string): Promise<DailySnapshotResponse> {
-  return authedFetch<DailySnapshotResponse>('/dailysnapshot', {}, accountName);
+export async function getDailySnapshot(accountName: string): Promise<DailySnapshotResponse | null> {
+  const result = await authedFetch<DailySnapshotResponse | undefined>('/dailysnapshot', {}, accountName);
+  return result || null;
 }
 
 /**
  * 8. GET /dailysitesnapshot/tome/:userEmail
- * Account name ('account' header) needed.
  */
-export async function getDailySiteSnapshotForUser(userEmail: string, accountName: string): Promise<AssignmentMetadata> {
+export async function getDailySiteSnapshotForUser(userEmail: string, accountName: string): Promise<AssignmentMetadata | null> {
   if (!userEmail) throw new Error('User email is required.');
-  return authedFetch<AssignmentMetadata>(`/dailysitesnapshot/tome/${encodeURIComponent(userEmail)}`, {}, accountName);
+  const result = await authedFetch<AssignmentMetadata | undefined>(`/dailysitesnapshot/tome/${encodeURIComponent(userEmail)}`, {}, accountName);
+  return result || null;
 }
 
 /**
  * 9. GET /dailysnapshot/:id/:period
- * Account name ('account' header) needed.
  */
-export async function getDailySnapshotByIdAndPeriod(id: string, period: string, accountName: string): Promise<DailySnapshotResponse> {
+export async function getDailySnapshotByIdAndPeriod(id: string, period: string, accountName: string): Promise<DailySnapshotResponse | null> {
   if (!id || !period) throw new Error('Assignment ID and period are required.');
-  return authedFetch<DailySnapshotResponse>(`/dailysnapshot/${id}/${period}`, {}, accountName);
+  const result = await authedFetch<DailySnapshotResponse | undefined>(`/dailysnapshot/${id}/${period}`, {}, accountName);
+  return result || null;
 }
 
 /**
  * 12. GET /assignedTo/:userEmail
- * Account name ('account' header) needed.
  */
 export async function getAssignedToUser(userEmail: string, accountName: string): Promise<AssignedToUserResponse> {
   if (!userEmail) throw new Error('User email is required.');
-  return authedFetch<AssignedToUserResponse>(`/assignedTo/${encodeURIComponent(userEmail)}`, {}, accountName);
+  const result = await authedFetch<AssignedToUserResponse | undefined>(`/assignedTo/${encodeURIComponent(userEmail)}`, {}, accountName);
+  return result || [];
 }
 
 /**
  * 13. GET /author/:userId
- * Account name ('account' header) needed.
  */
 export async function getAssignmentsByAuthor(userId: string, accountName: string): Promise<AssignmentMetadata[]> {
   if (!userId) throw new Error('User ID is required.');
-  return authedFetch<AssignmentMetadata[]>(`/author/${userId}`, {}, accountName);
+  const result = await authedFetch<AssignmentMetadata[] | undefined>(`/author/${userId}`, {}, accountName);
+  return result || [];
 }
 
 /**
  * 14. GET /completedByMe
- * Account name ('account' header) needed.
  */
-export async function getAssignmentsCompletedByMe(accountName: string): Promise<CompletedByMeResponse> {
-  return authedFetch<CompletedByMeResponse>('/completedByMe', {}, accountName);
+export async function getAssignmentsCompletedByMe(accountName: string): Promise<CompletedByMeResponse | null> {
+  const result = await authedFetch<CompletedByMeResponse | undefined>('/completedByMe', {}, accountName);
+  return result || null; // Or { completedAssignments: [] } if an empty object is preferred over null
 }
 
 /**
  * 15. GET /widgets/trends
- * Account name ('account' header) needed.
  */
-export async function getWidgetTrends(accountName: string): Promise<TrendsResponse> {
-  return authedFetch<TrendsResponse>('/widgets/trends', {}, accountName);
+export async function getWidgetTrends(accountName: string): Promise<TrendsResponse | null> {
+  const result = await authedFetch<TrendsResponse | undefined>('/widgets/trends', {}, accountName);
+  return result || null;
 }
 
 /**
  * 19. POST /save_data/:id (multipart form-data)
- * Account name ('account' header) might be needed.
  */
 export async function saveDataCsv(id: string, csvFormData: FormData, accountName?: string): Promise<SaveDataResponse> {
   if (!id) throw new Error('ID is required.');
@@ -405,16 +409,15 @@ export async function saveDataCsv(id: string, csvFormData: FormData, accountName
 
 /**
  * 20. GET /pending/:id
- * Account name ('account' header) needed.
  */
 export async function getPendingSubmissions(id: string, accountName: string): Promise<PendingAssignmentsResponse> {
   if (!id) throw new Error('ID is required for pending submissions.'); 
-  return authedFetch<PendingAssignmentsResponse>(`/pending/${id}`, {}, accountName);
+  const result = await authedFetch<PendingAssignmentsResponse | undefined>(`/pending/${id}`, {}, accountName);
+  return result || [];
 }
 
 /**
  * 21. POST /pending/:assignmentId
- * Account name ('account' header) might be needed.
  */
 export async function savePendingSubmission(assignmentId: string, payload: DraftAssignmentPayload, accountName?: string): Promise<PostPendingResponse> {
   if (!assignmentId) throw new Error('Assignment ID is required.');
@@ -423,6 +426,3 @@ export async function savePendingSubmission(assignmentId: string, payload: Draft
     body: JSON.stringify(payload),
   }, accountName);
 }
-
-// Placeholder for function 24 if needed
-// export async function someOtherFunction(...) { ... }
