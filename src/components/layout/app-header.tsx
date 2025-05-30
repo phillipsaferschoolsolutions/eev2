@@ -24,7 +24,7 @@ export function AppHeader() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+  }, []); // Empty dependency array ensures this runs once on mount
 
   // isDark is only true if mounted and theme is dark
   const isDark = mounted && resolvedTheme === "dark";
@@ -48,18 +48,25 @@ export function AppHeader() {
           }}
           suppressHydrationWarning={true} 
         >
-          {mounted ? (
-            // After mount, render based on actual theme
-            isDark ? (
-              <Moon className="h-5 w-5" />
-            ) : (
-              <Sun className="h-5 w-5" />
-            )
-          ) : (
-            // For SSR and initial client render, render a default static Sun icon.
-            // This aims to match the structure the server seems to be outputting.
-            <Sun className="h-5 w-5" /> 
-          )}
+          {/* 
+            Always render both Sun and Moon.
+            CSS classes will control visibility and rotation based on isDark.
+            isDark is false on server and initial client render (when mounted is false),
+            so Sun will be visible and Moon hidden by default.
+            After mount, isDark updates and classes change accordingly.
+          */}
+          <Sun
+            className={cn(
+              "h-5 w-5 transition-all",
+              isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100"
+            )}
+          />
+          <Moon
+            className={cn(
+              "absolute h-5 w-5 transition-all",
+              isDark ? "rotate-0 scale-100" : "rotate-90 scale-0"
+            )}
+          />
           <span className="sr-only">Toggle theme</span>
         </Button>
         <Button variant="ghost" size="icon" aria-label="Notifications">
@@ -88,4 +95,3 @@ export function AppHeader() {
     </header>
   );
 }
-
