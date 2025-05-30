@@ -12,10 +12,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sun, Moon, Bell } from "lucide-react";
-import { useTheme } from "next-themes"; // Assuming next-themes is or will be installed for theme toggling
+import { useTheme } from "next-themes"; 
 
 export function AppHeader() {
-  // const { theme, setTheme } = useTheme(); // Placeholder for theme toggle functionality
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-6">
@@ -24,7 +24,12 @@ export function AppHeader() {
         {/* Can add breadcrumbs or page title here */}
       </div>
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" aria-label="Toggle Theme" onClick={() => alert("Theme toggle coming soon!") /*setTheme(theme === "light" ? "dark" : "light")*/}>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          aria-label="Toggle Theme" 
+          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+        >
           <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           <span className="sr-only">Toggle theme</span>
@@ -55,9 +60,3 @@ export function AppHeader() {
     </header>
   );
 }
-
-// Note: For theme toggling to work, 'next-themes' package would be needed.
-// And ThemeProvider in layout.tsx:
-// import { ThemeProvider } from "next-themes"
-// <ThemeProvider attribute="class" defaultTheme="system" enableSystem> ... </ThemeProvider>
-// For now, theme toggle is a placeholder.
