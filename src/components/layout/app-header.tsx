@@ -14,7 +14,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sun, Moon, Bell } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useState, useEffect } from "react"; // Import useState and useEffect
+import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 export function AppHeader() {
   const { setTheme, resolvedTheme } = useTheme();
@@ -24,8 +25,17 @@ export function AppHeader() {
     setMounted(true);
   }, []);
 
+  // Base classes that are not theme-dependent for the header tag
+  const baseHeaderClasses = "sticky top-0 z-10 border-b backdrop-blur-sm";
+  // Theme-dependent class part for the header tag
+  const themeDependentHeaderClasses = "bg-background/80";
+
+  const headerClassName = mounted 
+    ? cn(baseHeaderClasses, themeDependentHeaderClasses) 
+    : baseHeaderClasses;
+
   return (
-    <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur-sm">
+    <header className={headerClassName}>
       {/* Gradient Accent Line */}
       <div className="h-0.5 w-full bg-gradient-to-r from-teal-300 to-cyan-600"></div>
 
@@ -41,7 +51,6 @@ export function AppHeader() {
             size="icon"
             aria-label="Toggle Theme"
             onClick={() => {
-              // setTheme will use the client-side resolvedTheme after mount
               if (mounted) {
                 setTheme(resolvedTheme === "dark" ? "light" : "dark");
               }
@@ -54,7 +63,6 @@ export function AppHeader() {
               </>
             ) : (
               <> {/* Render a static placeholder for SSR and initial client render */}
-                 {/* Sun visible by default (matches light theme), Moon hidden */}
                 <Sun className="h-5 w-5 rotate-0 scale-100 transition-all" />
                 <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all" />
               </>
