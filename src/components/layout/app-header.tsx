@@ -48,25 +48,28 @@ export function AppHeader() {
           }}
           suppressHydrationWarning={true} 
         >
-          {/* 
-            Always render both Sun and Moon.
-            CSS classes will control visibility and rotation based on isDark.
-            isDark is false on server and initial client render (when mounted is false),
-            so Sun will be visible and Moon hidden by default.
-            After mount, isDark updates and classes change accordingly.
-          */}
-          <Sun
-            className={cn(
-              "h-5 w-5 transition-all",
-              isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100"
-            )}
-          />
-          <Moon
-            className={cn(
-              "absolute h-5 w-5 transition-all",
-              isDark ? "rotate-0 scale-100" : "rotate-90 scale-0"
-            )}
-          />
+          {mounted ? (
+            <>
+              <Sun
+                className={cn(
+                  "h-5 w-5 transition-all",
+                  isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100"
+                )}
+              />
+              <Moon
+                className={cn(
+                  "absolute h-5 w-5 transition-all",
+                  isDark ? "rotate-0 scale-100" : "rotate-90 scale-0"
+                )}
+              />
+            </>
+          ) : (
+            <>
+              {/* Static render for SSR and initial client render. Theme is assumed light here. */}
+              <Sun className="h-5 w-5 transition-all rotate-0 scale-100" />
+              <Moon className="absolute h-5 w-5 transition-all rotate-90 scale-0" />
+            </>
+          )}
           <span className="sr-only">Toggle theme</span>
         </Button>
         <Button variant="ghost" size="icon" aria-label="Notifications">
@@ -95,3 +98,4 @@ export function AppHeader() {
     </header>
   );
 }
+
