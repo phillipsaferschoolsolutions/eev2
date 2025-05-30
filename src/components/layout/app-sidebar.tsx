@@ -101,7 +101,7 @@ export function AppSidebar() {
               </Link>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Logout" variant="outline">
+            <SidebarMenuButton asChild tooltip="Logout">
               <button onClick={() => alert("Logout clicked")}>
                 <LogOut className="h-5 w-5" />
                 <span>Logout</span>
