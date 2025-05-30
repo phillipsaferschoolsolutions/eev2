@@ -1,3 +1,4 @@
+
 "use client";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -45,12 +46,14 @@ export function AppHeader() {
           }}
           suppressHydrationWarning={true} 
         >
-          {mounted ? (
-            <>
-              <Sun className={cn("h-5 w-5 transition-all", isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100")} />
-              <Moon className={cn("absolute h-5 w-5 transition-all", isDark ? "rotate-0 scale-100" : "rotate-90 scale-0")} />
-            </>
-          ) : null} {/* Render null for SSR and initial client render to avoid mismatch */}
+          <span key={mounted ? resolvedTheme : 'ssr_icons'}>
+            {mounted ? (
+              <>
+                <Sun className={cn("h-5 w-5 transition-all", isDark ? "rotate-90 scale-0" : "rotate-0 scale-100")} />
+                <Moon className={cn("absolute h-5 w-5 transition-all", isDark ? "rotate-0 scale-100" : "-rotate-90 scale-0")} />
+              </>
+            ) : null}
+          </span>
           <span className="sr-only">Toggle theme</span>
         </Button>
         <Button variant="ghost" size="icon" aria-label="Notifications">
