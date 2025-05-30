@@ -49,15 +49,16 @@ export function AppHeader() {
           suppressHydrationWarning={true} 
         >
           {mounted ? (
-            // Only render dynamic icons after client-side mount
+            // After mount, render based on actual theme
             isDark ? (
               <Moon className="h-5 w-5" />
             ) : (
               <Sun className="h-5 w-5" />
             )
           ) : (
-            // Render null on server and initial client render for the icon spot
-            null 
+            // For SSR and initial client render, render a default static Sun icon.
+            // This aims to match the structure the server seems to be outputting.
+            <Sun className="h-5 w-5" /> 
           )}
           <span className="sr-only">Toggle theme</span>
         </Button>
