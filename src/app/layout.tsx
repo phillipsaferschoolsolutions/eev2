@@ -33,7 +33,15 @@ const THEME_IDS = [
   'spring-meadow', 
   'slate-contrast', 
   'high-contrast-dark',
-  'high-contrast-light'
+  'high-contrast-light',
+  'solar-flare',
+  'nebula-night',
+  'emerald-forest',
+  'cyber-city',
+  'pastel-dream',
+  'volcanic-ash',
+  'coral-reef',
+  'arctic-aurora',
 ];
 
 export default function RootLayout({
