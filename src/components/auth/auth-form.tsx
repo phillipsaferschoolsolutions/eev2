@@ -15,8 +15,7 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
   type ConfirmationResult,
-  signInWithRedirect, // Import signInWithRedirect
-  getRedirectResult,   // Import getRedirectResult
+  signInWithPopup, // Reverted to signInWithPopup
 } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
@@ -161,49 +160,6 @@ export function AuthForm() {
     }
   }, [user, authLoading, router]);
 
-  // Effect to handle redirect results for social sign-ins
-  useEffect(() => {
-    const processRedirectResult = async () => {
-      if (!authLoading && !user) { // Only process if not loading and no user yet
-        try {
-          setIsLoading(true);
-          const result = await getRedirectResult(auth);
-          if (result) {
-            // User signed in. onAuthStateChanged will handle global state and redirection.
-            toast({
-              title: 'Logged In!',
-              description: `Successfully signed in with ${result.providerId}.`,
-            });
-          }
-        } catch (err: any) {
-          const firebaseError = err as { code?: string; message?: string };
-          if (firebaseError.code === 'auth/account-exists-with-different-credential') {
-            setError(
-              'An account already exists with the same email address but different sign-in credentials. Try signing in using a method you’ve used before.'
-            );
-            toast({
-              variant: 'destructive',
-              title: 'Account Conflict',
-              description:
-                'An account already exists with this email using a different sign-in method.',
-            });
-          } else if (firebaseError.code !== 'auth/no-redirect-operation') {
-            // Ignore 'auth/no-redirect-operation' as it's expected on initial load without a redirect.
-            setError(firebaseError.message || 'An unknown error occurred during redirect sign-in.');
-            toast({
-              variant: 'destructive',
-              title: 'Authentication Failed',
-              description: firebaseError.message,
-            });
-          }
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-    processRedirectResult();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, toast]); // Rerun when authLoading changes, especially after returning from a redirect.
 
   useEffect(() => {
     if (currentTab === 'phone' && phoneStep === 'input' && recaptchaContainerRef.current && !recaptchaVerifierRef.current) {
@@ -290,15 +246,30 @@ export function AuthForm() {
     }
 
     try {
-      await signInWithRedirect(auth, provider);
-      // User is redirected. Code execution effectively stops here for this request.
-      // The result will be handled by getRedirectResult in the useEffect hook upon return.
+      const result = await signInWithPopup(auth, provider);
+      toast({
+        title: 'Logged In!',
+        description: `Successfully signed in with ${result.providerId}.`,
+      });
+      // router.push('/'); // Redirection handled by main useEffect or AuthProvider
     } catch (err: any) {
       const firebaseError = err as { code?: string; message?: string };
-      // This catch is for immediate errors from signInWithRedirect before actual redirection
-      setError(firebaseError.message || `Failed to initiate sign-in with ${providerName}.`);
-      toast({ variant: "destructive", title: "Sign-in Error", description: firebaseError.message });
-      setIsLoading(false); 
+      if (firebaseError.code === 'auth/account-exists-with-different-credential') {
+        setError(
+          'An account already exists with the same email address but different sign-in credentials. Try signing in using a method you’ve used before.'
+        );
+        toast({
+          variant: 'destructive',
+          title: 'Account Conflict',
+          description:
+            'An account already exists with this email using a different sign-in method.',
+        });
+      } else {
+        setError(firebaseError.message || `Failed to sign in with ${providerName}.`);
+        toast({ variant: "destructive", title: "Sign-in Error", description: firebaseError.message });
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -321,7 +292,8 @@ export function AuthForm() {
       setPhoneStep('otp');
       phoneForm.reset();
       toast({ title: "OTP Sent", description: "Please check your phone for the verification code." });
-    } catch (err: any) {
+    } catch (err: any)
+       {
       const firebaseError = err as { code?: string; message?: string };
       setError(firebaseError.message || 'Failed to send OTP.');
       toast({ variant: "destructive", title: "OTP Error", description: firebaseError.message });
@@ -409,14 +381,9 @@ export function AuthForm() {
   };
 
 
-  if (authLoading && !user) { // Show loading only if not yet authenticated
+  if (authLoading && !user) { 
     return <p className="text-center text-muted-foreground py-8">Loading authentication status...</p>;
   }
-  // This useEffect handles redirecting *if* user becomes available.
-  // If user is already available initially, it redirects.
-  // If user becomes available after redirect, it also redirects.
-  // The redirect from social sign-in is handled by onAuthStateChanged in AuthProvider primarily.
-
 
   return (
     <Tabs defaultValue="login" className="w-full" onValueChange={handleTabChange} value={currentTab}>
