@@ -18,11 +18,11 @@ interface AssignmentField {
   author?: string;
   description?: string;
   dueDate?: string; 
-  accountSubmittedFor?: string; // Added from backend snippet
-  status?: string; // Added from backend snippet
-  frequency?: string; // Added from backend snippet
-  communityShare?: boolean; // Added from backend snippet
-  schoolSelectorId?: string | boolean; // Added from backend snippet
+  accountSubmittedFor?: string; 
+  status?: string; 
+  frequency?: string; 
+  communityShare?: boolean; 
+  schoolSelectorId?: string | boolean; 
 }
 
 interface AssignmentContentItem {
@@ -38,6 +38,7 @@ interface FullAssignment extends AssignmentField {
 }
 
 interface AssignmentMetadata extends AssignmentField {
+  // Currently same as AssignmentField, can be expanded if metadata differs more
 }
 
 interface FieldWithFlattenedOptions {
@@ -52,7 +53,6 @@ interface CreateAssignmentPayload {
   assignmentType?: string;
   description?: string;
   content: AssignmentContentItem[];
-  // Add accountSubmittedFor if needed by create endpoint
   accountSubmittedFor?: string;
 }
 
@@ -141,7 +141,12 @@ interface PostPendingResponse {
 async function getIdToken(): Promise<string | null> {
   const currentUser: User | null = auth.currentUser;
   if (currentUser) {
-    return currentUser.getIdToken();
+    try {
+      return await currentUser.getIdToken();
+    } catch (error) {
+      console.error("Error getting ID token:", error);
+      return null;
+    }
   }
   return null;
 }
@@ -157,12 +162,34 @@ async function authedFetch<T>(
 
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
+  } else {
+    console.warn(`authedFetch: No token available for endpoint: ${endpoint}`);
   }
   
-  // Set account header if accountName is provided and not empty
-  if (accountName && accountName.trim() !== '') { 
-    headers.set('account', accountName.trim()); 
+  const trimmedAccountName = accountName?.trim();
+  if (trimmedAccountName) {
+    headers.set('account', trimmedAccountName); // Explicitly lowercase 'account' key
+  } else {
+     // Only warn if the specific endpoint is known to strictly require the account header
+     if (endpoint === '/assignmentlist' || endpoint === '/') { 
+        console.warn(`authedFetch: accountName is missing or empty for endpoint: ${endpoint}. The 'account' header will not be set.`);
+     }
   }
+
+  // TEMPORARY DEBUG LOGGING:
+  console.log(`[TEMP DEBUG] authedFetch to endpoint: ${BASE_URL}${endpoint}`);
+  console.log(`[TEMP DEBUG] Using token: ${token ? 'Exists (not logging full token for security)' : 'MISSING'}`);
+  console.log(`[TEMP DEBUG] Account name for 'account' header: '${trimmedAccountName || 'Not Provided'}'`);
+  const headersObjectForLogging: Record<string, string> = {};
+  headers.forEach((value, key) => {
+    // For security, avoid logging the full Authorization token.
+    if (key.toLowerCase() === 'authorization' && value.toLowerCase().startsWith('bearer ')) {
+      headersObjectForLogging[key] = 'Bearer [REDACTED]';
+    } else {
+      headersObjectForLogging[key] = value;
+    }
+  });
+  console.log(`[TEMP DEBUG] Final headers being sent:`, headersObjectForLogging);
 
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
@@ -179,22 +206,39 @@ async function authedFetch<T>(
     try {
       errorData = await response.json();
     } catch (e) {
-      errorData = { message: response.statusText };
+      // If response is not JSON, use statusText
+      errorData = { message: response.statusText || `HTTP error ${response.status}` };
     }
+    console.error(`API Error ${response.status} for ${endpoint}:`, errorData);
     throw new Error(
       `API Error: ${response.status} ${errorData?.message || response.statusText}`
     );
   }
 
   const contentType = response.headers.get("content-type");
-  if (response.status === 204) { 
+  if (response.status === 204) { // No Content
     return undefined as any as T;
   }
+
   if (contentType && contentType.indexOf("application/json") !== -1) {
     return response.json() as Promise<T>;
   } else {
-     // If not JSON and not 204, might be plain text or other content.
-     // For now, we assume undefined if not JSON. Adapt if specific text responses are expected.
+    // Handle cases where response might be text but expected as JSON by the caller
+    const textResponse = await response.text();
+    if (textResponse) {
+      console.warn(`authedFetch: Response from ${endpoint} was not JSON (Content-Type: ${contentType}). Body: "${textResponse.substring(0,100)}..."`);
+      // Attempt to parse if it looks like JSON, to handle cases where content-type might be wrong
+      if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
+        try {
+          return JSON.parse(textResponse) as T;
+        } catch (e) {
+           console.error(`authedFetch: Failed to parse non-JSON text response from ${endpoint} as JSON despite structure match. Error: ${e}`);
+           // Depending on T, you might want to throw or return textResponse as any
+        }
+      }
+      // If T is expected to be string, this is fine. Otherwise, it could lead to type issues.
+      return textResponse as any as T; 
+    }
     return undefined as any as T; 
   }
 }
@@ -284,7 +328,7 @@ export async function submitCompletedAssignment(id: string, formData: FormData, 
   if (!id) throw new Error('Assignment ID is required.');
   return authedFetch<CompletedAssignmentResponse>(`/completed/${id}`, {
     method: 'PUT',
-    body: formData,
+    body: formData, // Content-Type will be set by browser for FormData
   }, accountName);
 }
 
@@ -461,7 +505,7 @@ export async function saveDataCsv(id: string, csvFormData: FormData, accountName
   if (!id) throw new Error('ID is required.');
   return authedFetch<SaveDataResponse>(`/save_data/${id}`, {
     method: 'POST',
-    body: csvFormData,
+    body: csvFormData, // Content-Type will be set by browser for FormData
   }, accountName);
 }
 
@@ -492,3 +536,5 @@ export async function savePendingSubmission(assignmentId: string, payload: Draft
     body: JSON.stringify(payload),
   }, accountName);
 }
+
+    
