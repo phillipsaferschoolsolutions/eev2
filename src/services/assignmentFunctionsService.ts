@@ -9,6 +9,7 @@ export type { AssignmentContentItem, FullAssignment, AssignmentMetadata, CreateA
 
 
 const BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/assignments';
+// Alternative URL: https://assignments-re4xxcez2a-uc.a.run.app
 
 // --- Interfaces based on your summary ---
 interface AssignmentField {
@@ -169,27 +170,7 @@ async function authedFetch<T>(
   const trimmedAccountName = accountName?.trim();
   if (trimmedAccountName) {
     headers.set('account', trimmedAccountName); // Explicitly lowercase 'account' key
-  } else {
-     // Only warn if the specific endpoint is known to strictly require the account header
-     if (endpoint === '/assignmentlist' || endpoint === '/') { 
-        console.warn(`authedFetch: accountName is missing or empty for endpoint: ${endpoint}. The 'account' header will not be set.`);
-     }
   }
-
-  // TEMPORARY DEBUG LOGGING:
-  console.log(`[TEMP DEBUG] authedFetch to endpoint: ${BASE_URL}${endpoint}`);
-  console.log(`[TEMP DEBUG] Using token: ${token ? 'Exists (not logging full token for security)' : 'MISSING'}`);
-  console.log(`[TEMP DEBUG] Account name for 'account' header: '${trimmedAccountName || 'Not Provided'}'`);
-  const headersObjectForLogging: Record<string, string> = {};
-  headers.forEach((value, key) => {
-    // For security, avoid logging the full Authorization token.
-    if (key.toLowerCase() === 'authorization' && value.toLowerCase().startsWith('bearer ')) {
-      headersObjectForLogging[key] = 'Bearer [REDACTED]';
-    } else {
-      headersObjectForLogging[key] = value;
-    }
-  });
-  console.log(`[TEMP DEBUG] Final headers being sent:`, headersObjectForLogging);
 
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
