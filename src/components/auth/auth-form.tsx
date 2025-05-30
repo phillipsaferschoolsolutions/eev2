@@ -90,7 +90,7 @@ const SocialLoginButtons = ({ isLoading, onSocialLogin }: { isLoading: boolean, 
           <span className="w-full border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">
+          <span className="bg-card px-2 text-muted-foreground">
             Or continue with
           </span>
         </div>
@@ -117,14 +117,21 @@ export function AuthForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
+  
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
   const [currentTab, setCurrentTab] = useState("login"); 
 
   const [phoneStep, setPhoneStep] = useState<'input' | 'otp'>('input');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+
+  const loginPasswordTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const signupPasswordTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const signupConfirmPasswordTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const loginForm = useForm<EmailPasswordFormData>({
     resolver: zodResolver(emailPasswordSchema),
@@ -155,7 +162,6 @@ export function AuthForm() {
 
   useEffect(() => {
     if (currentTab === 'phone' && phoneStep === 'input' && recaptchaContainerRef.current && !recaptchaVerifierRef.current) {
-      // Ensure reCAPTCHA script is loaded
       if (typeof window !== 'undefined' && (window as any).grecaptcha && (window as any).grecaptcha.render) {
         recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
             'size': 'invisible',
@@ -170,13 +176,15 @@ export function AuthForm() {
              setError("Failed to render reCAPTCHA. Please refresh.");
           });
       } else {
-        // Script might not be loaded yet, or div is not ready. Firebase usually handles script loading.
-        // We might need to delay or ensure the container is visible.
         console.warn("reCAPTCHA script not loaded or container not ready.");
       }
     }
     return () => {
       resetRecaptcha();
+      // Clear all timers on component unmount
+      if (loginPasswordTimerRef.current) clearTimeout(loginPasswordTimerRef.current);
+      if (signupPasswordTimerRef.current) clearTimeout(signupPasswordTimerRef.current);
+      if (signupConfirmPasswordTimerRef.current) clearTimeout(signupConfirmPasswordTimerRef.current);
     };
   }, [currentTab, phoneStep, toast]);
 
@@ -190,11 +198,11 @@ export function AuthForm() {
                 console.warn("Error resetting reCAPTCHA widget:", e);
             }
         }
-        recaptchaVerifierRef.current.clear(); // Firebase SDK method
+        recaptchaVerifierRef.current.clear(); 
         recaptchaVerifierRef.current = null;
     }
     if (recaptchaContainerRef.current) {
-        recaptchaContainerRef.current.innerHTML = ''; // Clear the div
+        recaptchaContainerRef.current.innerHTML = ''; 
     }
   };
 
@@ -203,7 +211,7 @@ export function AuthForm() {
     setError(null);
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, data.email, data.password);
+        await createUserWithEmailAndPassword(auth, data.email, (data as SignupEmailPasswordFormData).password);
         toast({ title: "Account Created!", description: "Welcome! You are now logged in." });
         signupForm.reset();
       } else {
@@ -244,7 +252,6 @@ export function AuthForm() {
     } catch (err: any)
      {
       const firebaseError = err as { code?: string; message?: string };
-      // Handle specific errors like 'auth/popup-closed-by-user' or 'auth/account-exists-with-different-credential'
       if (firebaseError.code === 'auth/popup-closed-by-user') {
         setError('Sign-in process was cancelled.');
         toast({ variant: "default", title: "Sign-in Cancelled", description: "The sign-in process was cancelled." });
@@ -266,7 +273,6 @@ export function AuthForm() {
     setError(null);
     try {
       if (!recaptchaVerifierRef.current) {
-        // Attempt to re-initialize if it's missing, common if tab was hidden then shown
         if (recaptchaContainerRef.current && typeof window !== 'undefined' && (window as any).grecaptcha) {
            recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
             'size': 'invisible', 'callback': () => {}, 'expired-callback': () => { resetRecaptcha(); }
@@ -304,7 +310,7 @@ export function AuthForm() {
       toast({ title: "Logged In!", description: "Successfully verified phone number." });
       setPhoneStep('input');
       otpForm.reset();
-      resetRecaptcha(); // Reset reCAPTCHA after successful OTP verification
+      resetRecaptcha(); 
       router.push('/');
     } catch (err: any) {
       const firebaseError = err as { code?: string; message?: string };
@@ -317,22 +323,61 @@ export function AuthForm() {
 
   const handleTabChange = (value: string) => {
     setCurrentTab(value);
-    setError(null); // Clear errors on tab change
-    // Reset forms
+    setError(null); 
     loginForm.reset();
     signupForm.reset();
     phoneForm.reset();
     otpForm.reset();
-    setPhoneStep('input'); // Reset phone auth to input step
-    setShowPassword(false); // Reset password visibility
+    setPhoneStep('input'); 
+    
+    setShowLoginPassword(false);
+    setShowSignupPassword(false);
     setShowConfirmPassword(false);
-    resetRecaptcha(); // Reset reCAPTCHA when switching to/from phone tab
+
+    if (loginPasswordTimerRef.current) {
+      clearTimeout(loginPasswordTimerRef.current);
+      loginPasswordTimerRef.current = null;
+    }
+    if (signupPasswordTimerRef.current) {
+      clearTimeout(signupPasswordTimerRef.current);
+      signupPasswordTimerRef.current = null;
+    }
+    if (signupConfirmPasswordTimerRef.current) {
+      clearTimeout(signupConfirmPasswordTimerRef.current);
+      signupConfirmPasswordTimerRef.current = null;
+    }
+    
+    resetRecaptcha(); 
   };
+
+  const togglePasswordVisibility = (
+    field: 'login' | 'signup' | 'confirm',
+    currentVisibility: boolean,
+    setVisibility: React.Dispatch<React.SetStateAction<boolean>>,
+    timerRef: React.MutableRefObject<NodeJS.Timeout | null>
+  ) => {
+    if (currentVisibility) { // If currently showing, then hide
+      setVisibility(false);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    } else { // If currently hidden, then show
+      setVisibility(true);
+      if (timerRef.current) { // Clear any old timer
+        clearTimeout(timerRef.current);
+      }
+      timerRef.current = setTimeout(() => {
+        setVisibility(false);
+        timerRef.current = null;
+      }, 15000);
+    }
+  };
+
 
   if (authLoading) {
     return <p className="text-center text-muted-foreground">Loading authentication status...</p>;
   }
-  // If user is already logged in, redirect (handled by useEffect)
   if (user && !authLoading) {
      return <p className="text-center text-muted-foreground">Already logged in. Redirecting...</p>;
   }
@@ -355,7 +400,7 @@ export function AuthForm() {
       )}
 
       <TabsContent value="login">
-        <Card className="border-0 shadow-none">
+        <Card className="border-0 shadow-none bg-card">
           <CardContent className="space-y-6 pt-6">
             <form onSubmit={loginForm.handleSubmit(data => handleEmailPasswordSubmit(data, false))} className="space-y-4">
               <div>
@@ -370,10 +415,11 @@ export function AuthForm() {
                 <Label htmlFor="login-password">Password</Label>
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input id="login-password" type={showPassword ? "text" : "password"} placeholder="••••••••" {...loginForm.register('password')} className="pl-10 pr-10" />
-                  <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
+                  <Input id="login-password" type={showLoginPassword ? "text" : "password"} placeholder="••••••••" {...loginForm.register('password')} className="pl-10 pr-10" />
+                  <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" 
+                          onClick={() => togglePasswordVisibility('login', showLoginPassword, setShowLoginPassword, loginPasswordTimerRef)}>
+                    {showLoginPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    <span className="sr-only">{showLoginPassword ? "Hide password" : "Show password"}</span>
                   </Button>
                 </div>
                 {loginForm.formState.errors.password && <p className="text-sm text-destructive mt-1">{loginForm.formState.errors.password.message}</p>}
@@ -388,7 +434,7 @@ export function AuthForm() {
       </TabsContent>
 
       <TabsContent value="signup">
-        <Card className="border-0 shadow-none">
+        <Card className="border-0 shadow-none bg-card">
           <CardContent className="space-y-6 pt-6">
             <form onSubmit={signupForm.handleSubmit(data => handleEmailPasswordSubmit(data, true))} className="space-y-4">
                <div>
@@ -403,10 +449,11 @@ export function AuthForm() {
                 <Label htmlFor="signup-password">Password</Label>
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input id="signup-password" type={showPassword ? "text" : "password"} placeholder="Create a password" {...signupForm.register('password')} className="pl-10 pr-10" />
-                   <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    <span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
+                  <Input id="signup-password" type={showSignupPassword ? "text" : "password"} placeholder="Create a password" {...signupForm.register('password')} className="pl-10 pr-10" />
+                   <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" 
+                           onClick={() => togglePasswordVisibility('signup', showSignupPassword, setShowSignupPassword, signupPasswordTimerRef)}>
+                    {showSignupPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    <span className="sr-only">{showSignupPassword ? "Hide password" : "Show password"}</span>
                   </Button>
                 </div>
                 {signupForm.formState.errors.password && <p className="text-sm text-destructive mt-1">{signupForm.formState.errors.password.message}</p>}
@@ -416,7 +463,8 @@ export function AuthForm() {
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input id="signup-confirm-password" type={showConfirmPassword ? "text" : "password"} placeholder="Confirm your password" {...signupForm.register('confirmPassword')} className="pl-10 pr-10" />
-                   <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                   <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" 
+                           onClick={() => togglePasswordVisibility('confirm', showConfirmPassword, setShowConfirmPassword, signupConfirmPasswordTimerRef)}>
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     <span className="sr-only">{showConfirmPassword ? "Hide confirm password" : "Show confirm password"}</span>
                   </Button>
@@ -433,7 +481,7 @@ export function AuthForm() {
       </TabsContent>
 
       <TabsContent value="phone">
-        <Card className="border-0 shadow-none">
+        <Card className="border-0 shadow-none bg-card">
           <CardContent className="space-y-6 pt-6">
             {phoneStep === 'input' && (
               <form onSubmit={phoneForm.handleSubmit(handleSendOtp)} className="space-y-4">
@@ -445,7 +493,7 @@ export function AuthForm() {
                   </div>
                   {phoneForm.formState.errors.phoneNumber && <p className="text-sm text-destructive mt-1">{phoneForm.formState.errors.phoneNumber.message}</p>}
                 </div>
-                <div ref={recaptchaContainerRef} id="recaptcha-container" className="my-4 flex justify-center"></div> {/* Ensure this div is rendered and visible */}
+                <div ref={recaptchaContainerRef} id="recaptcha-container" className="my-4 flex justify-center"></div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? 'Sending OTP...' : 'Send OTP'}
                 </Button>
