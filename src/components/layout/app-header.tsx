@@ -26,6 +26,7 @@ export function AppHeader() {
     setMounted(true);
   }, []);
 
+  // isDark is only true if mounted and theme is dark
   const isDark = mounted && resolvedTheme === "dark";
 
   return (
@@ -46,14 +47,21 @@ export function AppHeader() {
           }}
           suppressHydrationWarning={true} 
         >
-          <span key={mounted ? resolvedTheme : 'ssr_icons'}>
-            {mounted ? (
-              <>
-                <Sun className={cn("h-5 w-5 transition-all", isDark ? "rotate-90 scale-0" : "rotate-0 scale-100")} />
-                <Moon className={cn("absolute h-5 w-5 transition-all", isDark ? "rotate-0 scale-100" : "-rotate-90 scale-0")} />
-              </>
-            ) : null}
-          </span>
+          {/* Always render both icons. Control visibility/rotation via classes. */}
+          {/* Server and initial client render (mounted=false, isDark=false): Sun visible, Moon hidden. */}
+          {/* After mount (mounted=true): Classes update based on actual isDark state. */}
+          <Sun
+            className={cn(
+              "h-5 w-5 transition-all",
+              isDark ? "rotate-90 scale-0" : "rotate-0 scale-100"
+            )}
+          />
+          <Moon
+            className={cn(
+              "absolute h-5 w-5 transition-all",
+              isDark ? "rotate-0 scale-100" : "-rotate-90 scale-0"
+            )}
+          />
           <span className="sr-only">Toggle theme</span>
         </Button>
         <Button variant="ghost" size="icon" aria-label="Notifications">
