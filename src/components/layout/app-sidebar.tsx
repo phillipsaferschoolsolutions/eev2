@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -10,6 +11,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  useSidebar, // Added
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/icons/logo";
 import {
@@ -22,6 +24,8 @@ import {
   Palette,
   Settings,
   LogOut,
+  PanelLeftClose, // Added
+  PanelLeftOpen,  // Added
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -38,6 +42,7 @@ const navItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const sidebarContext = useSidebar();
 
   return (
     <Sidebar side="left" variant="sidebar" collapsible="icon">
@@ -67,6 +72,24 @@ export function AppSidebar() {
       <Separator className="my-2"/>
       <SidebarFooter className="p-2">
         <SidebarMenu>
+          <SidebarMenuItem className="hidden md:block"> {/* Desktop only toggle */}
+            <SidebarMenuButton
+              onClick={sidebarContext.toggleSidebar}
+              tooltip={sidebarContext.state === 'expanded' ? "Collapse sidebar" : "Expand sidebar"}
+            >
+              {sidebarContext.state === 'expanded' ? (
+                <>
+                  <PanelLeftClose className="h-5 w-5" />
+                  <span>Collapse</span>
+                </>
+              ) : (
+                <>
+                  <PanelLeftOpen className="h-5 w-5" />
+                  <span>Expand</span>
+                </>
+              )}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
              <Link href="/settings" passHref legacyBehavior>
                 <SidebarMenuButton asChild tooltip="Settings">
