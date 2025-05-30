@@ -27,9 +27,7 @@ export default function AssessmentFormsPage() {
   useEffect(() => {
     async function fetchAssignments() {
       if (!user || !userProfile || !userProfile.account) {
-        // If user or profile or account is not loaded/available yet, don't attempt to fetch.
-        // Or, if explicitly not logged in and profile is loaded but null.
-        if (!authLoading && !profileLoading) { // Only set error if initial auth/profile load is complete
+        if (!authLoading && !profileLoading) { 
           if(!user){
             setError("You must be logged in to view assignments.");
           } else if (!userProfile?.account) {
@@ -43,29 +41,28 @@ export default function AssessmentFormsPage() {
       try {
         setIsLoadingAssignments(true);
         setError(null);
-        // Pass the account name from the userProfile to the service function
         const fetchedAssignmentsData = await getAllAssignmentsWithContent(userProfile.account);
         setAssignments(fetchedAssignmentsData);
       } catch (err) {
         console.error(err);
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while fetching assignments.";
-        setError(errorMessage);
-        if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("unauthorized")) {
+        if (errorMessage.includes("403")) {
+          setError(`API Error: 403 Forbidden. The Cloud Function denied access. This could be due to CORS settings, incorrect account header expectations, or the function's internal authorization logic. Please check your Cloud Function logs and configuration.`);
+        } else if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("unauthorized")) {
           setError(errorMessage + " This might be due to Firestore security rules or the Cloud Function requiring specific permissions based on the X-User-Account header.");
+        } else {
+          setError(errorMessage);
         }
       } finally {
         setIsLoadingAssignments(false);
       }
     }
 
-    // Trigger fetch only when auth and profile loading is done.
     if (!authLoading && !profileLoading) {
       fetchAssignments();
     } else {
-      // Still loading auth or profile, show general loading for assignments too.
       setIsLoadingAssignments(true); 
     }
-  // Depend on user, userProfile, authLoading, and profileLoading to refetch if they change.
   }, [user, userProfile, authLoading, profileLoading]);
 
   const overallLoading = authLoading || profileLoading || isLoadingAssignments;
