@@ -143,7 +143,7 @@ async function getIdToken(): Promise<string | null> {
 async function authedFetch<T>(
   endpoint: string,
   options: RequestInit = {},
-  accountName?: string // Added accountName parameter
+  accountName?: string 
 ): Promise<T> {
   const token = await getIdToken();
   const headers = new Headers(options.headers || {});
@@ -151,8 +151,8 @@ async function authedFetch<T>(
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
-  if (accountName) { // Add account name header if provided
-    headers.set('X-User-Account', accountName); // Using 'X-User-Account' as custom header
+  if (accountName) { 
+    headers.set('location', accountName); // Changed header name to 'location'
   }
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
@@ -183,6 +183,9 @@ async function authedFetch<T>(
   if (contentType && contentType.indexOf("application/json") !== -1) {
     return response.json() as Promise<T>;
   } else {
+    // For non-JSON responses (like 200 OK for DELETE/PUT with no body), 
+    // return a success marker or handle as appropriate.
+    // For now, returning undefined for non-JSON success, adjust if specific functions expect other types.
     return undefined as any as T; 
   }
 }
@@ -192,7 +195,7 @@ async function authedFetch<T>(
 /**
  * 1. GET /
  * Returns full assignment content for a given account.
- * Account name is passed in X-User-Account header.
+ * Account name is passed in the 'location' header.
  */
 export async function getAllAssignmentsWithContent(accountName: string): Promise<FullAssignment[]> {
   if (!accountName) throw new Error('Account name is required to fetch assignments.');
@@ -202,7 +205,7 @@ export async function getAllAssignmentsWithContent(accountName: string): Promise
 /**
  * 2. GET /assignmentlist
  * Returns metadata for all assignments tied to an account.
- * Account name is passed in X-User-Account header.
+ * Account name is passed in the 'location' header.
  */
 export async function getAssignmentListMetadata(accountName: string): Promise<AssignmentMetadata[]> {
   if (!accountName) throw new Error('Account name is required to fetch assignment list.');
@@ -212,28 +215,29 @@ export async function getAssignmentListMetadata(accountName: string): Promise<As
 /**
  * 16. GET /:id
  * Returns a full assignment by ID including permissions logic.
+ * Account name (location) header might be needed for permission checks.
  */
 export async function getAssignmentById(id: string, accountName?: string): Promise<AssignmentWithPermissions> {
   if (!id) throw new Error('Assignment ID is required.');
-  // Assuming /:id endpoint might also need account for permission checks, though not explicitly stated for this one.
-  // If it strictly doesn't, the accountName param can be removed from this specific function.
   return authedFetch<AssignmentWithPermissions>(`/${id}`, {}, accountName);
 }
 
 /**
  * 18. POST /createassignment
  * Body: Full assignment object + content array
+ * Account name (location) header might be needed.
  */
 export async function createAssignment(payload: CreateAssignmentPayload, accountName?: string): Promise<FullAssignment> { 
   return authedFetch<FullAssignment>('/createassignment', {
     method: 'POST',
     body: JSON.stringify(payload),
-  }, accountName); // Pass accountName if endpoint requires it for context/permissions
+  }, accountName);
 }
 
 /**
  * 22. PUT /:id
  * Updates metadata of an existing assignment. Body: Partial assignment object. Returns 200 OK.
+ * Account name (location) header might be needed.
  */
 export async function updateAssignment(id: string, payload: Partial<UpdateAssignmentPayload>, accountName?: string): Promise<void> {
   if (!id) throw new Error('Assignment ID is required.');
@@ -246,6 +250,7 @@ export async function updateAssignment(id: string, payload: Partial<UpdateAssign
 /**
  * 23. DELETE /:id
  * Deletes an assignment by ID. Returns 200 OK.
+ * Account name (location) header might be needed.
  */
 export async function deleteAssignment(id: string, accountName?: string): Promise<void> {
   if (!id) throw new Error('Assignment ID is required.');
@@ -257,6 +262,7 @@ export async function deleteAssignment(id: string, accountName?: string): Promis
 /**
  * 17. PUT /completed/:id (multipart form-data)
  * Uploads a completed assignment. Supports image uploads.
+ * Account name (location) header might be needed.
  */
 export async function submitCompletedAssignment(id: string, formData: FormData, accountName?: string): Promise<CompletedAssignmentResponse> {
   if (!id) throw new Error('Assignment ID is required.');
@@ -268,7 +274,8 @@ export async function submitCompletedAssignment(id: string, formData: FormData, 
 
 /**
  * 7. GET /tome OR /tome/:userEmail
- * Gets assignments assigned to the current or specified user. Account header might be needed if backend filters by it.
+ * Gets assignments assigned to the current or specified user. 
+ * Account name (location) header might be needed for context.
  */
 export async function getMyAssignments(accountName: string, userEmail?: string): Promise<AssignmentMetadata[]> {
   const endpoint = userEmail ? `/tome/${encodeURIComponent(userEmail)}` : '/tome';
@@ -277,27 +284,30 @@ export async function getMyAssignments(accountName: string, userEmail?: string):
 
 /**
  * 11. POST /bylocation
- * Body: { location: string }
- * Returns: All assignments shared with that location. Account header likely needed.
+ * Body: { location: string } - This 'location' is the filter criteria, not the account header.
+ * The account header ('location': accountName) is still needed for auth/context.
  */
 export async function getAssignmentsByLocation(payload: ByLocationPayload, accountName: string): Promise<FullAssignment[]> {
     return authedFetch<FullAssignment[]>('/bylocation', {
         method: 'POST',
         body: JSON.stringify(payload),
-    }, accountName);
+    }, accountName); // accountName is for the 'location' header
 }
+
 
 /**
  * 6. GET /header/:lat/:lng
  * Returns current weather + reverse-geolocation for user’s location.
+ * Account header might not be needed if this is a general utility endpoint. Assuming not for now.
  */
 export async function getWeatherAndLocation(lat: number, lng: number): Promise<WeatherLocationData> {
-    return authedFetch<WeatherLocationData>(`/header/${lat}/${lng}`); // Account header likely not needed
+    return authedFetch<WeatherLocationData>(`/header/${lat}/${lng}`); 
 }
 
 /**
  * 10. GET /types
  * Returns hardcoded list of assignment types.
+ * Account name (location) header might be needed.
  */
 export async function getAssignmentTypes(accountName?: string): Promise<string[]> {
   return authedFetch<string[]>('/types', {}, accountName);
@@ -305,6 +315,7 @@ export async function getAssignmentTypes(accountName?: string): Promise<string[]
 
 /**
  * 3. GET /questionsbyschool/:assignmentId/:period
+ * Account name (location) header needed.
  */
 export async function getQuestionsBySchool(assignmentId: string, period: string, accountName: string): Promise<QuestionsBySchoolResponse> {
   if (!assignmentId || !period) throw new Error('Assignment ID and period are required.');
@@ -313,6 +324,7 @@ export async function getQuestionsBySchool(assignmentId: string, period: string,
 
 /**
  * 4. GET /schoolswithquestions/:assignmentId/:period
+ * Account name (location) header needed.
  */
 export async function getSchoolsWithQuestions(assignmentId: string, period: string, accountName: string): Promise<SchoolsWithQuestionsResponse> {
   if (!assignmentId || !period) throw new Error('Assignment ID and period are required.');
@@ -321,6 +333,7 @@ export async function getSchoolsWithQuestions(assignmentId: string, period: stri
 
 /**
  * 5. GET /dailysnapshot
+ * Account name (location) header needed.
  */
 export async function getDailySnapshot(accountName: string): Promise<DailySnapshotResponse> {
   return authedFetch<DailySnapshotResponse>('/dailysnapshot', {}, accountName);
@@ -328,6 +341,7 @@ export async function getDailySnapshot(accountName: string): Promise<DailySnapsh
 
 /**
  * 8. GET /dailysitesnapshot/tome/:userEmail
+ * Account name (location) header needed.
  */
 export async function getDailySiteSnapshotForUser(userEmail: string, accountName: string): Promise<AssignmentMetadata> {
   if (!userEmail) throw new Error('User email is required.');
@@ -336,6 +350,7 @@ export async function getDailySiteSnapshotForUser(userEmail: string, accountName
 
 /**
  * 9. GET /dailysnapshot/:id/:period
+ * Account name (location) header needed.
  */
 export async function getDailySnapshotByIdAndPeriod(id: string, period: string, accountName: string): Promise<DailySnapshotResponse> {
   if (!id || !period) throw new Error('Assignment ID and period are required.');
@@ -344,6 +359,7 @@ export async function getDailySnapshotByIdAndPeriod(id: string, period: string, 
 
 /**
  * 12. GET /assignedTo/:userEmail
+ * Account name (location) header needed.
  */
 export async function getAssignedToUser(userEmail: string, accountName: string): Promise<AssignedToUserResponse> {
   if (!userEmail) throw new Error('User email is required.');
@@ -352,6 +368,7 @@ export async function getAssignedToUser(userEmail: string, accountName: string):
 
 /**
  * 13. GET /author/:userId
+ * Account name (location) header needed.
  */
 export async function getAssignmentsByAuthor(userId: string, accountName: string): Promise<AssignmentMetadata[]> {
   if (!userId) throw new Error('User ID is required.');
@@ -360,6 +377,7 @@ export async function getAssignmentsByAuthor(userId: string, accountName: string
 
 /**
  * 14. GET /completedByMe
+ * Account name (location) header needed.
  */
 export async function getAssignmentsCompletedByMe(accountName: string): Promise<CompletedByMeResponse> {
   return authedFetch<CompletedByMeResponse>('/completedByMe', {}, accountName);
@@ -367,6 +385,7 @@ export async function getAssignmentsCompletedByMe(accountName: string): Promise<
 
 /**
  * 15. GET /widgets/trends
+ * Account name (location) header needed.
  */
 export async function getWidgetTrends(accountName: string): Promise<TrendsResponse> {
   return authedFetch<TrendsResponse>('/widgets/trends', {}, accountName);
@@ -374,6 +393,7 @@ export async function getWidgetTrends(accountName: string): Promise<TrendsRespon
 
 /**
  * 19. POST /save_data/:id (multipart form-data)
+ * Account name (location) header might be needed.
  */
 export async function saveDataCsv(id: string, csvFormData: FormData, accountName?: string): Promise<SaveDataResponse> {
   if (!id) throw new Error('ID is required.');
@@ -385,6 +405,7 @@ export async function saveDataCsv(id: string, csvFormData: FormData, accountName
 
 /**
  * 20. GET /pending/:id
+ * Account name (location) header needed.
  */
 export async function getPendingSubmissions(id: string, accountName: string): Promise<PendingAssignmentsResponse> {
   if (!id) throw new Error('ID is required for pending submissions.'); 
@@ -393,6 +414,7 @@ export async function getPendingSubmissions(id: string, accountName: string): Pr
 
 /**
  * 21. POST /pending/:assignmentId
+ * Account name (location) header might be needed.
  */
 export async function savePendingSubmission(assignmentId: string, payload: DraftAssignmentPayload, accountName?: string): Promise<PostPendingResponse> {
   if (!assignmentId) throw new Error('Assignment ID is required.');
@@ -401,3 +423,4 @@ export async function savePendingSubmission(assignmentId: string, payload: Draft
     body: JSON.stringify(payload),
   }, accountName);
 }
+

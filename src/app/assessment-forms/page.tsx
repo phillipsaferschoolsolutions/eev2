@@ -49,7 +49,7 @@ export default function AssessmentFormsPage() {
         if (errorMessage.includes("403")) {
           setError(`API Error: 403 Forbidden. The Cloud Function denied access. This could be due to CORS settings, incorrect account header expectations, or the function's internal authorization logic. Please check your Cloud Function logs and configuration.`);
         } else if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("unauthorized")) {
-          setError(errorMessage + " This might be due to Firestore security rules or the Cloud Function requiring specific permissions based on the X-User-Account header.");
+          setError(errorMessage + " This might be due to Firestore security rules or the Cloud Function requiring specific permissions.");
         } else {
           setError(errorMessage);
         }
@@ -177,3 +177,4 @@ export default function AssessmentFormsPage() {
     </div>
   );
 }
+
