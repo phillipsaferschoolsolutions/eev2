@@ -106,7 +106,7 @@ export function AppSidebar() {
               )}
             </SidebarMenuButton>
           </SidebarMenuItem>
-          {user && ( // Only show settings if logged in, or adjust behavior
+          {user && ( 
             <SidebarMenuItem>
               <Link href="/settings" passHref legacyBehavior>
                   <SidebarMenuButton asChild tooltip="Settings">
