@@ -43,13 +43,14 @@ export function AppHeader() {
               setTheme(resolvedTheme === "dark" ? "light" : "dark");
             }
           }}
+          suppressHydrationWarning={true} 
         >
           {mounted ? (
             <>
               <Sun className={cn("h-5 w-5 transition-all", isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100")} />
               <Moon className={cn("absolute h-5 w-5 transition-all", isDark ? "rotate-0 scale-100" : "rotate-90 scale-0")} />
             </>
-          ) : null } {/* Icons will render after mount */}
+          ) : null} {/* Render null for SSR and initial client render to avoid mismatch */}
           <span className="sr-only">Toggle theme</span>
         </Button>
         <Button variant="ghost" size="icon" aria-label="Notifications">
