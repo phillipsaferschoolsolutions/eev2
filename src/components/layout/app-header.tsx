@@ -22,12 +22,12 @@ export function AppHeader() {
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
+  // isDark is only true if mounted and theme is dark
+  const isDark = mounted && resolvedTheme === "dark";
+
   useEffect(() => {
     setMounted(true);
   }, []); // Empty dependency array ensures this runs once on mount
-
-  // isDark is only true if mounted and theme is dark
-  const isDark = mounted && resolvedTheme === "dark";
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 px-6 backdrop-blur-sm">
@@ -46,28 +46,34 @@ export function AppHeader() {
               setTheme(resolvedTheme === "dark" ? "light" : "dark");
             }
           }}
-          suppressHydrationWarning={true} 
+          // suppressHydrationWarning prop moved to individual icons
         >
           {mounted ? (
             <>
+              {/* Dynamic icons based on resolved theme after mount */}
               <Sun
                 className={cn(
                   "h-5 w-5 transition-all",
                   isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100"
                 )}
+                suppressHydrationWarning={true}
               />
               <Moon
                 className={cn(
                   "absolute h-5 w-5 transition-all",
                   isDark ? "rotate-0 scale-100" : "rotate-90 scale-0"
                 )}
+                suppressHydrationWarning={true}
               />
             </>
           ) : (
             <>
               {/* Static render for SSR and initial client render. Theme is assumed light here. */}
-              <Sun className="h-5 w-5 transition-all rotate-0 scale-100" />
-              <Moon className="absolute h-5 w-5 transition-all rotate-90 scale-0" />
+              {/* Server output might have dark: classes if html has class="dark" due to cookie. */}
+              {/* Client initial render will have these exact classes. */}
+              {/* suppressHydrationWarning handles the className mismatch. */}
+              <Sun className="h-5 w-5 transition-all rotate-0 scale-100" suppressHydrationWarning={true}/>
+              <Moon className="absolute h-5 w-5 transition-all rotate-90 scale-0" suppressHydrationWarning={true}/>
             </>
           )}
           <span className="sr-only">Toggle theme</span>
@@ -98,4 +104,3 @@ export function AppHeader() {
     </header>
   );
 }
-
