@@ -22,78 +22,64 @@ export function AppHeader() {
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  // Base classes that are not theme-dependent for the header tag
-  const baseHeaderClasses = "sticky top-0 z-10 border-b backdrop-blur-sm";
-  // Theme-dependent class part for the header tag
-  const themeDependentHeaderClasses = "bg-background/80";
-
-  const [currentHeaderClassName, setCurrentHeaderClassName] = useState(baseHeaderClasses);
-
   useEffect(() => {
     setMounted(true);
-    setCurrentHeaderClassName(cn(baseHeaderClasses, themeDependentHeaderClasses));
-  }, [baseHeaderClasses, themeDependentHeaderClasses]); // Added dependencies
+  }, []);
 
   const isDark = mounted && resolvedTheme === "dark";
 
   return (
-    <header className={currentHeaderClassName}>
-      {/* Gradient Accent Line */}
-      <div className="h-0.5 w-full bg-gradient-to-r from-teal-300 to-cyan-600"></div>
-
-      {/* Original Header Content with Padding */}
-      <div className="flex h-16 items-center gap-4 px-6">
-        <SidebarTrigger className="md:hidden" />
-        <div className="flex-1">
-          {/* Can add breadcrumbs or page title here */}
-        </div>
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Toggle Theme"
-            onClick={() => {
-              if (mounted && resolvedTheme) {
-                setTheme(resolvedTheme === "dark" ? "light" : "dark");
-              }
-            }}
-          >
-            {mounted ? (
-              <>
-                <Sun className={cn("h-5 w-5 transition-all", isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100")} />
-                <Moon className={cn("absolute h-5 w-5 transition-all", isDark ? "rotate-0 scale-100" : "rotate-90 scale-0")} />
-              </>
-            ) : (
-              <> {/* Render a static placeholder for SSR and initial client render */}
-                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all" />
-                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all" />
-              </>
-            )}
-            <span className="sr-only">Toggle theme</span>
-          </Button>
-          <Button variant="ghost" size="icon" aria-label="Notifications">
-              <Bell className="h-5 w-5" />
-              <span className="sr-only">Notifications</span>
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src="https://placehold.co/40x40.png" alt="User Avatar" data-ai-hint="user avatar" />
-                  <AvatarFallback>JD</AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild><Link href="/settings">Profile</Link></DropdownMenuItem>
-              <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => alert("Logout clicked")}>Log out</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 px-6 backdrop-blur-sm">
+      <SidebarTrigger className="md:hidden" />
+      <div className="flex-1">
+        {/* Can add breadcrumbs or page title here */}
+      </div>
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Toggle Theme"
+          onClick={() => {
+            if (mounted && resolvedTheme) {
+              setTheme(resolvedTheme === "dark" ? "light" : "dark");
+            }
+          }}
+        >
+          {mounted ? (
+            <>
+              <Sun className={cn("h-5 w-5 transition-all", isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100")} />
+              <Moon className={cn("absolute h-5 w-5 transition-all", isDark ? "rotate-0 scale-100" : "rotate-90 scale-0")} />
+            </>
+          ) : (
+            <> {/* Render a static placeholder for SSR and initial client render */}
+              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all" />
+              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all" />
+            </>
+          )}
+          <span className="sr-only">Toggle theme</span>
+        </Button>
+        <Button variant="ghost" size="icon" aria-label="Notifications">
+            <Bell className="h-5 w-5" />
+            <span className="sr-only">Notifications</span>
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+              <Avatar className="h-9 w-9">
+                <AvatarImage src="https://placehold.co/40x40.png" alt="User Avatar" data-ai-hint="user avatar" />
+                <AvatarFallback>JD</AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild><Link href="/settings">Profile</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => alert("Logout clicked")}>Log out</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
