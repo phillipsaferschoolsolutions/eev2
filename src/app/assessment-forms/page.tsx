@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckSquare, FilePlus2, ListOrdered, Edit } from "lucide-react";
@@ -14,27 +15,27 @@ export default function AssessmentFormsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Assessment Form Builder</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Assignment Builder</h1>
           <p className="text-lg text-muted-foreground">
-            Create, customize, and deploy safety assessment forms with ease.
+            Create, customize, and deploy assignments with ease.
           </p>
         </div>
         <Button size="lg">
-          <FilePlus2 className="mr-2 h-5 w-5" /> Create New Form
+          <FilePlus2 className="mr-2 h-5 w-5" /> Create New Assignment
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Your Forms</CardTitle>
-          <CardDescription>Manage your existing assessment forms or create new ones.</CardDescription>
+          <CardTitle>Your Assignments</CardTitle>
+          <CardDescription>Manage your existing assignments or create new ones.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="border rounded-lg p-6 text-center bg-muted/20">
             <ListOrdered className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No Forms Yet</h3>
-            <p className="text-muted-foreground mb-4">Start by creating a new form or using a template.</p>
-            <Button variant="outline">Load My Forms</Button>
+            <h3 className="text-xl font-semibold mb-2">No Assignments Yet</h3>
+            <p className="text-muted-foreground mb-4">Start by creating a new assignment or using a template.</p>
+            <Button variant="outline">Load My Assignments</Button>
           </div>
         </CardContent>
       </Card>
@@ -66,7 +67,7 @@ export default function AssessmentFormsPage() {
         </CardContent>
       </Card>
        <p className="text-center text-muted-foreground text-sm pt-4">
-        Full form builder functionality coming soon.
+        Full assignment builder functionality coming soon.
       </p>
     </div>
   );
