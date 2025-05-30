@@ -4,11 +4,13 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle } from "lucide-react";
-import type { Assignment } from "@/types/Assignment";
-import { getAssignments } from "@/services/assignmentService";
+import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle, UserCircle } from "lucide-react";
+import type { FullAssignment as FetchedAssignment } from "@/services/assignmentFunctionsService"; // Renamed to avoid conflict
+import { getAllAssignmentsWithContent } from "@/services/assignmentFunctionsService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useAuth } from "@/context/auth-context"; // Import useAuth
+import Link from "next/link";
 
 const sampleTemplates = [
   { id: "env1", name: "Environmental Safety Checklist", description: "General campus environment assessment.", icon: CheckSquare },
@@ -17,26 +19,56 @@ const sampleTemplates = [
 ];
 
 export default function AssessmentFormsPage() {
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, userProfile, loading: authLoading, profileLoading } = useAuth(); // Get user, profile and loading states
+  const [assignments, setAssignments] = useState<FetchedAssignment[]>([]);
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(true); // Separate loading for assignments
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchAssignments() {
+      if (!user || !userProfile || !userProfile.account) {
+        // If user or profile or account is not loaded/available yet, don't attempt to fetch.
+        // Or, if explicitly not logged in and profile is loaded but null.
+        if (!authLoading && !profileLoading) { // Only set error if initial auth/profile load is complete
+          if(!user){
+            setError("You must be logged in to view assignments.");
+          } else if (!userProfile?.account) {
+            setError("User account information is not available. Cannot fetch assignments.");
+          }
+          setIsLoadingAssignments(false);
+        }
+        return;
+      }
+
       try {
-        setIsLoading(true);
+        setIsLoadingAssignments(true);
         setError(null);
-        const fetchedAssignments = await getAssignments();
-        setAssignments(fetchedAssignments);
+        // Pass the account name from the userProfile to the service function
+        const fetchedAssignmentsData = await getAllAssignmentsWithContent(userProfile.account);
+        setAssignments(fetchedAssignmentsData);
       } catch (err) {
         console.error(err);
-        setError(err instanceof Error ? err.message : "An unknown error occurred while fetching assignments.");
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while fetching assignments.";
+        setError(errorMessage);
+        if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("unauthorized")) {
+          setError(errorMessage + " This might be due to Firestore security rules or the Cloud Function requiring specific permissions based on the X-User-Account header.");
+        }
       } finally {
-        setIsLoading(false);
+        setIsLoadingAssignments(false);
       }
     }
-    fetchAssignments();
-  }, []);
+
+    // Trigger fetch only when auth and profile loading is done.
+    if (!authLoading && !profileLoading) {
+      fetchAssignments();
+    } else {
+      // Still loading auth or profile, show general loading for assignments too.
+      setIsLoadingAssignments(true); 
+    }
+  // Depend on user, userProfile, authLoading, and profileLoading to refetch if they change.
+  }, [user, userProfile, authLoading, profileLoading]);
+
+  const overallLoading = authLoading || profileLoading || isLoadingAssignments;
 
   return (
     <div className="space-y-6">
@@ -44,7 +76,7 @@ export default function AssessmentFormsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Assignment Builder</h1>
           <p className="text-lg text-muted-foreground">
-            Create, customize, and deploy assignments with ease.
+            Create, customize, and deploy assignments for your account: {userProfile?.account || "Loading account..."}.
           </p>
         </div>
         <Button size="lg">
@@ -55,10 +87,14 @@ export default function AssessmentFormsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Your Assignments</CardTitle>
-          <CardDescription>Manage your existing assignments or create new ones from Firestore.</CardDescription>
+          <CardDescription>
+            {userProfile?.account 
+              ? `Assignments for account: ${userProfile.account}.`
+              : "Manage your existing assignments or create new ones."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading && (
+          {overallLoading && (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-md border">
@@ -71,28 +107,30 @@ export default function AssessmentFormsPage() {
               ))}
             </div>
           )}
-          {error && (
+          {error && !overallLoading && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Error Fetching Assignments</AlertTitle>
               <AlertDescription>
                 {error}
-                {error && error.toLowerCase().includes("permission") && (
-                  <p className="mt-2 text-xs">
-                    This error often indicates an issue with Firestore security rules. Please ensure your rules allow read access to the 'assignments' collection for the currently authenticated user.
-                  </p>
+                {!user && (
+                   <Button asChild className="mt-2">
+                    <Link href="/auth">Login</Link>
+                  </Button>
                 )}
               </AlertDescription>
             </Alert>
           )}
-          {!isLoading && !error && assignments.length === 0 && (
+          {!overallLoading && !error && assignments.length === 0 && (
             <div className="border rounded-lg p-6 text-center bg-muted/20">
               <ListOrdered className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-xl font-semibold mb-2">No Assignments Yet</h3>
-              <p className="text-muted-foreground mb-4">No assignments found in your Firestore 'assignments' collection. This could also be due to Firestore security rules.</p>
+              <p className="text-muted-foreground mb-4">
+                No assignments found for account '{userProfile?.account || "current account"}'. This could also be due to backend filtering or permissions.
+              </p>
             </div>
           )}
-          {!isLoading && !error && assignments.length > 0 && (
+          {!overallLoading && !error && assignments.length > 0 && (
             <ul className="space-y-3">
               {assignments.map((assignment) => (
                 <li key={assignment.id} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
@@ -102,7 +140,6 @@ export default function AssessmentFormsPage() {
                       {assignment.description || `Due: ${assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}`}
                     </p>
                   </div>
-                  {/* Future actions: View, Edit, Delete */}
                   <Button variant="outline" size="sm">View</Button> 
                 </li>
               ))}
@@ -138,7 +175,7 @@ export default function AssessmentFormsPage() {
         </CardContent>
       </Card>
        <p className="text-center text-muted-foreground text-sm pt-4">
-        Full assignment builder functionality and template integration with Firestore coming soon.
+        Full assignment builder functionality and template integration coming soon.
       </p>
     </div>
   );
