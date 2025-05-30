@@ -1,4 +1,3 @@
-
 "use client";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -50,12 +49,7 @@ export function AppHeader() {
               <Sun className={cn("h-5 w-5 transition-all", isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100")} />
               <Moon className={cn("absolute h-5 w-5 transition-all", isDark ? "rotate-0 scale-100" : "rotate-90 scale-0")} />
             </>
-          ) : (
-            <> {/* Render a static placeholder for SSR and initial client render */}
-              <Sun className="h-5 w-5 rotate-0 scale-100 transition-all" />
-              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all" />
-            </>
-          )}
+          ) : null } {/* Icons will render after mount */}
           <span className="sr-only">Toggle theme</span>
         </Button>
         <Button variant="ghost" size="icon" aria-label="Notifications">
