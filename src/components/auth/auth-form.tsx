@@ -36,7 +36,7 @@ const emailPasswordSchema = z.object({
 type EmailPasswordFormData = z.infer<typeof emailPasswordSchema>;
 
 const phoneSchema = z.object({
-  phoneNumber: z.string().min(10, { message: 'Invalid phone number' }), 
+  phoneNumber: z.string().min(10, { message: 'Invalid phone number' }),
 });
 type PhoneFormData = z.infer<typeof phoneSchema>;
 
@@ -70,6 +70,34 @@ const AppleIcon = () => (
     <path d="M19.05,14.36c-.05-.03-2.15-1.19-2.15-3.83,0-2.23,1.61-3.43,1.82-3.61a.88.88,0,0,0,.16-.72.91.91,0,0,0-.63-.61c-.22-.07-1.19-.32-2.39.62-.93.73-1.55,1.86-1.91,2.77-.6.06-1.26.06-1.92.06-1.3,0-2.55-.33-3.63-1.05-.93-.63-1.58-1.04-2.64-1.05-1.29,0-2.42.7-3.23,1.69-.18.22-.35.45-.51.69-1.09,1.61-.81,4.46.69,6.16.89,1,1.9,2.07,3.29,2.07s1.93-.78,2.61-1.21c.75-.47,1.38-.91,2.54-.91s1.53.34,2.28.83c.81.53,1.61,1.31,2.81,1.19.24,0,.48,0,.7-.05.1-.02.2-.04.3-.06.19-.05.38-.1.57-.17,1.1-.44,1.45-1.61,1.47-1.65C20.41,17.08,19.05,14.36,19.05,14.36ZM14.81,4.39c.79-.94,1.25-2.23.92-3.39-.84.09-1.9.63-2.73,1.55-.68.77-1.22,2.06-1,3.16C13.06,5.79,14.06,5.28,14.81,4.39Z" />
   </svg>
 );
+
+const SocialLoginButtons = ({ isLoading, onSocialLogin }: { isLoading: boolean, onSocialLogin: (provider: 'google' | 'microsoft' | 'apple') => void }) => {
+  return (
+    <>
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">
+            Or continue with
+          </span>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Button onClick={() => onSocialLogin('google')} className="w-full" variant="outline" disabled={isLoading}>
+          <GoogleIcon /> <span className="ml-2">Sign in with Google</span>
+        </Button>
+        <Button onClick={() => onSocialLogin('microsoft')} className="w-full" variant="outline" disabled={isLoading}>
+          <MicrosoftIcon /> <span className="ml-2">Sign in with Microsoft</span>
+        </Button>
+        <Button onClick={() => onSocialLogin('apple')} className="w-full" variant="outline" disabled={isLoading}>
+          <AppleIcon /> <span className="ml-2">Sign in with Apple</span>
+        </Button>
+      </div>
+    </>
+  );
+};
 
 
 export function AuthForm() {
@@ -105,7 +133,7 @@ export function AuthForm() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.push('/'); 
+      router.push('/');
     }
   }, [user, authLoading, router]);
 
@@ -143,11 +171,11 @@ export function AuthForm() {
                 console.warn("Error resetting reCAPTCHA widget:", e);
             }
         }
-        recaptchaVerifierRef.current.clear(); 
+        recaptchaVerifierRef.current.clear();
         recaptchaVerifierRef.current = null;
     }
     if (recaptchaContainerRef.current) {
-        recaptchaContainerRef.current.innerHTML = ''; 
+        recaptchaContainerRef.current.innerHTML = '';
     }
   };
 
@@ -216,7 +244,7 @@ export function AuthForm() {
     } catch (err: any) {
       setError(err.message || 'Failed to send OTP.');
       toast({ variant: "destructive", title: "OTP Error", description: err.message });
-      resetRecaptcha(); 
+      resetRecaptcha();
     } finally {
       setIsLoading(false);
     }
@@ -244,15 +272,15 @@ export function AuthForm() {
       setIsLoading(false);
     }
   };
-  
+
   const handleTabChange = (value: string) => {
     setCurrentTab(value);
-    setError(null); 
+    setError(null);
     loginForm.reset();
     signupForm.reset();
     phoneForm.reset();
     otpForm.reset();
-    setPhoneStep('input'); 
+    setPhoneStep('input');
     resetRecaptcha();
   };
 
@@ -266,11 +294,10 @@ export function AuthForm() {
 
   return (
     <Tabs defaultValue="login" className="w-full" onValueChange={handleTabChange} value={currentTab}>
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="login">Login</TabsTrigger>
         <TabsTrigger value="signup">Sign Up</TabsTrigger>
         <TabsTrigger value="phone">Phone</TabsTrigger>
-        <TabsTrigger value="social">Social</TabsTrigger>
       </TabsList>
 
       {error && (
@@ -308,6 +335,7 @@ export function AuthForm() {
                 {isLoading ? 'Logging in...' : 'Login'}
               </Button>
             </form>
+            <SocialLoginButtons isLoading={isLoading} onSocialLogin={handleSocialLogin} />
           </CardContent>
         </Card>
       </TabsContent>
@@ -339,10 +367,10 @@ export function AuthForm() {
                 {isLoading ? 'Signing up...' : 'Sign Up with Email'}
               </Button>
             </form>
+            <SocialLoginButtons isLoading={isLoading} onSocialLogin={handleSocialLogin} />
           </CardContent>
         </Card>
       </TabsContent>
-
 
       <TabsContent value="phone">
         <Card className="border-0 shadow-none">
@@ -381,22 +409,6 @@ export function AuthForm() {
                 </Button>
               </form>
             )}
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="social">
-        <Card className="border-0 shadow-none">
-          <CardContent className="space-y-4 pt-6">
-            <Button onClick={() => handleSocialLogin('google')} className="w-full" variant="outline" disabled={isLoading}>
-              <GoogleIcon /> <span className="ml-2">Sign in with Google</span>
-            </Button>
-            <Button onClick={() => handleSocialLogin('microsoft')} className="w-full" variant="outline" disabled={isLoading}>
-              <MicrosoftIcon /> <span className="ml-2">Sign in with Microsoft</span>
-            </Button>
-            <Button onClick={() => handleSocialLogin('apple')} className="w-full" variant="outline" disabled={isLoading}>
-              <AppleIcon /> <span className="ml-2">Sign in with Apple</span>
-            </Button>
           </CardContent>
         </Card>
       </TabsContent>
