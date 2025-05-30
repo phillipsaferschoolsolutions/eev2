@@ -16,6 +16,7 @@ import { Sun, Moon, Bell } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export function AppHeader() {
   const { setTheme, resolvedTheme } = useTheme();
@@ -30,9 +31,11 @@ export function AppHeader() {
   // Theme-dependent class part for the header tag
   const themeDependentHeaderClasses = "bg-background/80";
 
-  const headerClassName = mounted 
-    ? cn(baseHeaderClasses, themeDependentHeaderClasses) 
+  const headerClassName = mounted
+    ? cn(baseHeaderClasses, themeDependentHeaderClasses)
     : baseHeaderClasses;
+
+  const isDark = mounted && resolvedTheme === "dark";
 
   return (
     <header className={headerClassName}>
@@ -57,9 +60,9 @@ export function AppHeader() {
             }}
           >
             {mounted ? (
-              <> {/* Render actual theme-dependent icons only when mounted */}
-                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              <>
+                <Sun className={cn("h-5 w-5 transition-all", isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100")} />
+                <Moon className={cn("absolute h-5 w-5 transition-all", isDark ? "rotate-0 scale-100" : "rotate-90 scale-0")} />
               </>
             ) : (
               <> {/* Render a static placeholder for SSR and initial client render */}
@@ -85,8 +88,8 @@ export function AppHeader() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/settings">Profile</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => alert("Logout clicked")}>Log out</DropdownMenuItem>
             </DropdownMenuContent>
