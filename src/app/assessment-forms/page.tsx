@@ -5,11 +5,12 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle, UserCircle } from "lucide-react";
-import type { FullAssignment as FetchedAssignment } from "@/services/assignmentFunctionsService"; // Renamed to avoid conflict
-import { getAllAssignmentsWithContent } from "@/services/assignmentFunctionsService";
+// Updated import: AssignmentMetadata is more appropriate for a list view
+import type { AssignmentMetadata as FetchedAssignment } from "@/services/assignmentFunctionsService"; 
+import { getAssignmentListMetadata } from "@/services/assignmentFunctionsService"; // Changed to getAssignmentListMetadata
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useAuth } from "@/context/auth-context"; // Import useAuth
+import { useAuth } from "@/context/auth-context"; 
 import Link from "next/link";
 
 const sampleTemplates = [
@@ -19,9 +20,9 @@ const sampleTemplates = [
 ];
 
 export default function AssessmentFormsPage() {
-  const { user, userProfile, loading: authLoading, profileLoading } = useAuth(); // Get user, profile and loading states
+  const { user, userProfile, loading: authLoading, profileLoading } = useAuth(); 
   const [assignments, setAssignments] = useState<FetchedAssignment[]>([]);
-  const [isLoadingAssignments, setIsLoadingAssignments] = useState(true); // Separate loading for assignments
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(true); 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export default function AssessmentFormsPage() {
             setError("User account information is not available. Cannot fetch assignments.");
           }
           setIsLoadingAssignments(false);
-          setAssignments([]); // Ensure assignments is an array
+          setAssignments([]); 
         }
         return;
       }
@@ -42,8 +43,9 @@ export default function AssessmentFormsPage() {
       try {
         setIsLoadingAssignments(true);
         setError(null);
-        const fetchedAssignmentsData = await getAllAssignmentsWithContent(userProfile.account);
-        setAssignments(fetchedAssignmentsData); // getAllAssignmentsWithContent now guarantees an array
+        // Changed to use getAssignmentListMetadata
+        const fetchedAssignmentsData = await getAssignmentListMetadata(userProfile.account); 
+        setAssignments(fetchedAssignmentsData); 
       } catch (err) {
         console.error(err);
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while fetching assignments.";
@@ -54,7 +56,7 @@ export default function AssessmentFormsPage() {
         } else {
           setError(errorMessage);
         }
-        setAssignments([]); // Ensure assignments is an empty array on error
+        setAssignments([]); 
       } finally {
         setIsLoadingAssignments(false);
       }
@@ -64,7 +66,7 @@ export default function AssessmentFormsPage() {
       fetchAssignments();
     } else {
       setIsLoadingAssignments(true); 
-      setAssignments([]); // Ensure assignments is an array while loading auth/profile
+      setAssignments([]); 
     }
   }, [user, userProfile, authLoading, profileLoading]);
 
