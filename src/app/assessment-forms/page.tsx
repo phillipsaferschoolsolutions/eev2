@@ -145,7 +145,7 @@ export default function AssessmentFormsPage() {
     
     fetchAllAccountTasks();
 
-  }, [isAdmin, userProfile, authLoading, profileLoading]); // isAdmin is derived, so userProfile & profileLoading are dependencies
+  }, [isAdmin, userProfile, authLoading, profileLoading]); 
 
 
   const overallLoadingMyAssignments = authLoading || profileLoading || isLoadingMyAssignments;
@@ -162,6 +162,8 @@ export default function AssessmentFormsPage() {
   const displayableAllAccountAssignments = allAccountAssignments.filter(
     assignment => assignment && typeof assignment.id === 'string' && assignment.id.trim() !== ''
   );
+
+  console.log("[TEMP DEBUG AssessmentFormsPage] RENDERING with isAdmin:", isAdmin, "profileLoading:", profileLoading, "userProfile loaded:", !!userProfile, "permission:", userProfile?.permission);
 
   return (
     <div className="space-y-8">
@@ -359,3 +361,5 @@ export default function AssessmentFormsPage() {
     </div>
   );
 }
+
+    
