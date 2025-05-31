@@ -1,3 +1,4 @@
+
 // src/services/messagingService.ts
 'use client';
 
@@ -16,6 +17,7 @@ import {
   getDocs,
   type Timestamp,
   type Unsubscribe,
+  type FieldValue,
 } from 'firebase/firestore';
 
 /**
@@ -40,7 +42,6 @@ export async function getUsersForAccount(accountId: string, currentUserUid: stri
     const users: ChatUser[] = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data() as UserProfile;
-      // Ensure the user has a UID and is not the current user
       if (data.uid && data.uid !== currentUserUid) {
         users.push({
           uid: data.uid,
@@ -73,33 +74,49 @@ export async function sendMessage(
   senderUid: string,
   senderDisplayName: string,
   senderEmail: string,
-  text: string
+  text: string,
+  imageUrl?: string | null, // Optional image URL
+  imageName?: string | null  // Optional image name
 ): Promise<void> {
-  if (!threadId || !senderUid || !text.trim()) {
-    console.error('sendMessage: Missing required parameters (threadId, senderUid, text).');
+  if (!threadId || !senderUid || (!text.trim() && !imageUrl)) {
+    console.error('sendMessage: Missing required parameters (threadId, senderUid, text/imageUrl).');
     return;
   }
 
   try {
     const messagesRef = collection(firestore, 'chatThreads', threadId, 'messages');
-    await addDoc(messagesRef, {
+    const messageData: {
+        senderUid: string;
+        senderDisplayName: string;
+        senderEmail: string;
+        text: string;
+        timestamp: FieldValue;
+        imageUrl?: string;
+        imageName?: string;
+    } = {
       senderUid,
       senderDisplayName,
       senderEmail,
       text: text.trim(),
       timestamp: serverTimestamp(),
-    });
+    };
+
+    if (imageUrl) {
+      messageData.imageUrl = imageUrl;
+    }
+    if (imageName) {
+      messageData.imageName = imageName;
+    }
+
+    await addDoc(messagesRef, messageData);
   } catch (error) {
     console.error('Error sending message:', error);
-    throw error; // Re-throw to be caught by the UI
+    throw error; 
   }
 }
 
 /**
  * Sets up a real-time listener for messages in a chat thread.
- * @param threadId The ID of the chat thread.
- * @param callback Function to be called with the array of messages.
- * @returns An unsubscribe function to stop listening.
  */
 export function getMessages(
   threadId: string,
@@ -107,12 +124,11 @@ export function getMessages(
 ): Unsubscribe {
   if (!threadId) {
     console.error('getMessages: threadId is required.');
-    // Return a no-op unsubscribe function
     return () => {};
   }
 
   const messagesRef = collection(firestore, 'chatThreads', threadId, 'messages');
-  const q = query(messagesRef, orderBy('timestamp', 'asc'), limit(100)); // Get latest 100, consider pagination
+  const q = query(messagesRef, orderBy('timestamp', 'asc'), limit(100)); 
 
   const unsubscribe = onSnapshot(
     q,
@@ -126,17 +142,19 @@ export function getMessages(
           senderDisplayName: data.senderDisplayName,
           senderEmail: data.senderEmail,
           text: data.text,
-          timestamp: data.timestamp as Timestamp, // Firestore returns Timestamp object
+          timestamp: data.timestamp as Timestamp,
+          imageUrl: data.imageUrl, // Add imageUrl
+          imageName: data.imageName, // Add imageName
         });
       });
       callback(messages);
     },
     (error) => {
       console.error('Error listening to messages:', error);
-      // Potentially call callback with an error or empty array
       callback([]);
     }
   );
 
   return unsubscribe;
 }
+

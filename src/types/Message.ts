@@ -1,3 +1,4 @@
+
 // src/types/Message.ts
 import type { Timestamp, FieldValue } from 'firebase/firestore';
 
@@ -12,9 +13,12 @@ export interface ChatUser {
 export interface ChatMessage {
   id?: string; // Firestore document ID
   senderUid: string;
-  senderDisplayName: string; // Denormalized for easy display
-  senderEmail: string; // Denormalized for easy display
+  senderDisplayName: string; 
+  senderEmail: string; 
   text: string;
-  timestamp: Timestamp | FieldValue; // FieldValue on write, Timestamp on read
-  read?: boolean; // Optional: for read receipts
+  timestamp: Timestamp | FieldValue; 
+  imageUrl?: string; // Optional URL for an uploaded image
+  imageName?: string; // Optional name for the uploaded image
+  read?: boolean; 
 }
+
