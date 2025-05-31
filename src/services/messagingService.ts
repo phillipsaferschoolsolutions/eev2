@@ -22,14 +22,13 @@ import {
 
 /**
  * Fetches users belonging to a specific account.
- * Assumes user documents in Firestore 'users' collection have an 'account' and 'uid' field.
+ * Includes the current user in the list.
  */
-export async function getUsersForAccount(accountId: string, currentUserUid: string): Promise<ChatUser[]> {
+export async function getUsersForAccount(accountId: string, currentUserUid: string, currentUserEmail: string): Promise<ChatUser[]> {
   if (!accountId) {
     console.error('getUsersForAccount: accountId is required.');
     return [];
   }
-  // currentUserUid is still passed for potential future use or logging, but not for filtering here.
 
   try {
     const usersRef = collection(firestore, 'users');
@@ -39,21 +38,27 @@ export async function getUsersForAccount(accountId: string, currentUserUid: stri
     const users: ChatUser[] = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data() as UserProfile;
-      if (data.uid) { // Include all users with a UID from the account
+      // Ensure uid and email exist, as they are critical
+      if (data.uid && data.email) {
         users.push({
-          uid: data.uid,
+          uid: data.uid, // This should be the Firebase Auth UID from the Firestore doc
           displayName: data.displayName || data.email || 'Unnamed User',
           email: data.email,
           lastSeen: data.lastSeen as Timestamp | undefined,
         });
+      } else {
+        console.warn(`User document ${doc.id} is missing uid or email, skipping for chat list.`);
       }
     });
-    // Sort users client-side, e.g., by displayName.
-    // If the current user is in the list, you might want to sort them to the top or handle their position specifically.
+
+    // Sort users client-side: current user first, then by displayName.
     users.sort((a, b) => {
-        if (a.uid === currentUserUid) return -1; // Current user comes first
-        if (b.uid === currentUserUid) return 1;
-        return (a.displayName || '').localeCompare(b.displayName || '');
+      const aIsCurrentUser = (a.uid === currentUserUid) || (a.email === currentUserEmail);
+      const bIsCurrentUser = (b.uid === currentUserUid) || (b.email === currentUserEmail);
+
+      if (aIsCurrentUser && !bIsCurrentUser) return -1;
+      if (!aIsCurrentUser && bIsCurrentUser) return 1;
+      return (a.displayName || '').localeCompare(b.displayName || '');
     });
     return users;
   } catch (error) {
@@ -67,6 +72,7 @@ export async function getUsersForAccount(accountId: string, currentUserUid: stri
  */
 export function getDirectChatThreadId(uid1: string, uid2: string): string {
   if (!uid1 || !uid2) throw new Error("Both user UIDs are required to create a thread ID.");
+  // It's crucial that uid1 and uid2 are the actual Firebase Auth UIDs here for consistency
   const ids = [uid1, uid2].sort();
   return `dm_${ids[0]}_${ids[1]}`;
 }
@@ -76,7 +82,7 @@ export function getDirectChatThreadId(uid1: string, uid2: string): string {
  */
 export async function sendMessage(
   threadId: string,
-  senderUid: string,
+  senderUid: string, // Should be Firebase Auth UID
   senderDisplayName: string,
   senderEmail: string,
   text: string,

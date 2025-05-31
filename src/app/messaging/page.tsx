@@ -63,7 +63,7 @@ export default function MessagingPage() {
     if (!authLoading && !profileLoading && user && userProfile?.account && user.uid && user.email) {
       setIsLoadingUsers(true);
       setError(null);
-      getUsersForAccount(userProfile.account, user.uid) // Pass currentUserUid
+      getUsersForAccount(userProfile.account, user.uid, user.email) // Pass currentUserUid and currentUserEmail
         .then(setUsers)
         .catch(err => {
           console.error("Failed to fetch users:", err);
@@ -97,20 +97,22 @@ export default function MessagingPage() {
   }, [messages]);
 
   const handleSelectUser = (chatPartner: ChatUser) => {
-    if (!user || !user.uid) {
+    if (!user || !user.uid || !user.email) { // Ensure current user details are available
       setError("Current user information is missing.");
       return;
     }
-    if (chatPartner.uid === user.uid) { // Prevent selecting self
-        // Optionally clear selectedUser if self is "clicked", or just do nothing
-        // setSelectedUser(null); 
-        // setCurrentThreadId(null);
-        return; 
+    // Prevent selecting self, checking both UID and email for robustness
+    const isSelf = (chatPartner.uid && chatPartner.uid === user.uid) || (chatPartner.email && chatPartner.email === user.email);
+    if (isSelf) {
+        return;
     }
-    if (selectedUser?.uid === chatPartner.uid) return;
+    if (selectedUser?.uid === chatPartner.uid) return; // Already selected
 
 
     setSelectedUser(chatPartner);
+    // Generate thread ID using actual Firebase Auth UIDs
+    // This assumes chatPartner.uid from Firestore *is* the Auth UID. If not, this part can be tricky.
+    // For now, we'll rely on the UIDs provided. The primary issue being solved is self-identification in the list.
     const threadId = getDirectChatThreadId(user.uid, chatPartner.uid);
     setCurrentThreadId(threadId);
     setMessages([]);
@@ -208,9 +210,9 @@ export default function MessagingPage() {
       try {
         await sendMessage(
           currentThreadId,
-          user.uid,
-          userProfile?.displayName || user.email,
-          user.email,
+          user.uid, // This should be the Firebase Auth UID of the sender
+          userProfile?.displayName || user.email, // Sender's display name
+          user.email, // Sender's email
           newMessage.trim(),
           finalImageUrl,
           finalImageName
@@ -286,17 +288,18 @@ export default function MessagingPage() {
             </div>
           ) : users.length > 0 ? (
             users.map((u) => {
-              const isCurrentUser = u.uid === user.uid;
+              // Robust check for current user, comparing UID first, then email as fallback
+              const isCurrentUser = user && ((u.uid && user.uid && u.uid === user.uid) || (u.email && user.email && u.email === user.email));
               return (
                 <Button
-                  key={u.uid}
+                  key={u.uid || u.email} // Use email as fallback key if uid is missing/problematic from data
                   variant={!isCurrentUser && selectedUser?.uid === u.uid ? 'secondary' : 'ghost'}
                   className={cn(
                     "w-full justify-start h-auto p-3 mb-1",
-                    isCurrentUser && "opacity-70 cursor-default hover:bg-transparent" // Style for current user
+                    isCurrentUser && "opacity-70 cursor-default hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0" 
                   )}
-                  onClick={() => !isCurrentUser && handleSelectUser(u)} // Prevent selecting self
-                  disabled={isCurrentUser} // Disable button for current user
+                  onClick={() => !isCurrentUser && handleSelectUser(u)}
+                  disabled={isCurrentUser || false} // Ensure disabled is explicitly boolean
                 >
                   <div className="relative mr-3">
                       <Avatar className="h-9 w-9"><AvatarImage src={`https://placehold.co/40x40.png?text=${u.displayName?.[0]?.toUpperCase()}`} data-ai-hint="avatar profile" /><AvatarFallback>{u.displayName?.[0]?.toUpperCase() || u.email[0].toUpperCase()}</AvatarFallback></Avatar>
@@ -345,7 +348,8 @@ export default function MessagingPage() {
                       {msg.text && <p className="text-sm px-3 pb-2 pt-1 break-words">{msg.text}</p>}
                     </div>
                     <span className="text-xs text-muted-foreground mt-1 px-1">
-                      {msg.senderUid !== user.uid && `${msg.senderDisplayName} • `}
+                      {/* Robust check for sender for display name */}
+                      {user && msg.senderUid !== user.uid && msg.senderEmail !== user.email && `${msg.senderDisplayName} • `}
                       {(msg.timestamp as Timestamp)?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Sending...'}
                     </span>
                   </div>
@@ -391,4 +395,3 @@ export default function MessagingPage() {
     </div>
   );
 }
-
