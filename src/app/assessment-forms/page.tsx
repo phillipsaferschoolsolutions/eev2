@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle, UserCircle, FolderKanban, ServerIcon } from "lucide-react";
-import type { AssignmentMetadata as FetchedAssignment, AssignmentMetadata } from "@/services/assignmentFunctionsService";
+import type { AssignmentMetadata } from "@/services/assignmentFunctionsService"; // Renamed FetchedAssignment
 import { getMyAssignments, getAssignmentListMetadata } from "@/services/assignmentFunctionsService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -20,7 +20,7 @@ const sampleTemplates = [
 
 export default function AssessmentFormsPage() {
   const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
-  const [myAssignments, setMyAssignments] = useState<FetchedAssignment[]>([]);
+  const [myAssignments, setMyAssignments] = useState<AssignmentMetadata[]>([]);
   const [isLoadingMyAssignments, setIsLoadingMyAssignments] = useState(true);
   const [myAssignmentsError, setMyAssignmentsError] = useState<string | null>(null);
 
@@ -72,8 +72,8 @@ export default function AssessmentFormsPage() {
     if (!authLoading && !profileLoading) {
       fetchMyTasks();
     } else {
-      setIsLoadingMyAssignments(true);
-      setMyAssignments([]);
+      setIsLoadingMyAssignments(true); // Set loading if auth/profile is still loading
+      setMyAssignments([]); // Clear assignments while auth/profile is loading
     }
   }, [user, userProfile, authLoading, profileLoading]);
 
@@ -106,7 +106,7 @@ export default function AssessmentFormsPage() {
 
     if (isAdmin && !authLoading && !profileLoading) {
       fetchAllAccountTasks();
-    } else if (isAdmin) {
+    } else if (isAdmin) { // If admin but auth/profile is loading
       setIsLoadingAllAccountAssignments(true);
       setAllAccountAssignments([]);
     }
@@ -116,7 +116,10 @@ export default function AssessmentFormsPage() {
   const overallLoadingMyAssignments = authLoading || profileLoading || isLoadingMyAssignments;
 
   const displayableMyAssignments = myAssignments.filter(
-    assignment => assignment && typeof assignment.id === 'string' && assignment.id.trim() !== ''
+    assignment => {
+        const uniqueId = assignment.assignmentId || assignment.id;
+        return uniqueId && typeof uniqueId === 'string' && uniqueId.trim() !== '';
+    }
   );
 
   const displayableAllAccountAssignments = allAccountAssignments.filter(
@@ -189,19 +192,22 @@ export default function AssessmentFormsPage() {
           )}
           {!overallLoadingMyAssignments && !myAssignmentsError && displayableMyAssignments.length > 0 && (
             <ul className="space-y-3">
-              {displayableMyAssignments.map((assignment) => (
-                <li key={assignment.id} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
-                  <div>
-                    <p className="font-medium">{assignment.assessmentName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {assignment.description || `Due: ${assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}`}
-                    </p>
-                  </div>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/assignments/${assignment.id}/complete`}>Complete Task</Link>
-                  </Button>
-                </li>
-              ))}
+              {displayableMyAssignments.map((assignment) => {
+                const uniqueId = assignment.assignmentId || assignment.id;
+                return (
+                  <li key={uniqueId} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
+                    <div>
+                      <p className="font-medium">{assignment.assessmentName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {assignment.description || `Due: ${assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}`}
+                      </p>
+                    </div>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/assignments/${uniqueId}/complete`}>Complete Task</Link>
+                    </Button>
+                  </li>
+                );
+              })}
             </ul>
           )}
           {!overallLoadingMyAssignments && !myAssignmentsError && myAssignments.length > 0 && displayableMyAssignments.length === 0 && (

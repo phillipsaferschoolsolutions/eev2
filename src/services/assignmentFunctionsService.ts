@@ -30,7 +30,8 @@ export interface AssignmentQuestion {
 
 
 interface AssignmentField {
-  id: string;
+  id: string; // Firestore document ID
+  assignmentId?: string; // Another potential identifier, often the primary business key
   assignmentType?: string;
   assessmentName?: string;
   author?: string;
@@ -152,8 +153,7 @@ export interface PostPendingResponse {
 }
 
 
-const BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/assignments';
-// Alternative URL: https://assignments-re4xxcez2a-uc.a.run.app
+const BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/assignmentsv2';
 
 // --- Helper to get ID Token ---
 async function getIdToken(): Promise<string | null> {
@@ -222,7 +222,7 @@ async function authedFetch<T>(
   } else {
     const textResponse = await response.text();
     if (textResponse) {
-      console.warn(`authedFetch: Response from ${endpoint} was text/plain but JSON might be expected by caller. Body: "${textResponse.substring(0,100)}..."`);
+      // console.warn(`authedFetch: Response from ${endpoint} was text/plain but JSON might be expected by caller. Body: "${textResponse.substring(0,100)}..."`);
       try {
         if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
           return JSON.parse(textResponse) as T;
