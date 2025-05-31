@@ -9,20 +9,31 @@ import { useRouter } from 'next/navigation';
 import type { UserProfile } from '@/types/User'; // Import UserProfile
 import { getUserProfile } from '@/services/userService'; // Import userService
 
+interface CustomClaims {
+  admin?: boolean;
+  superAdmin?: boolean;
+  // Add other custom claims as needed
+  [key: string]: any;
+}
+
 interface AuthContextType {
   user: FirebaseUser | null;
-  userProfile: UserProfile | null; // Add userProfile
+  userProfile: UserProfile | null;
+  customClaims: CustomClaims | null; // Add customClaims
   loading: boolean; // Overall loading (auth state)
   profileLoading: boolean; // Specific loading for profile
+  claimsLoading: boolean; // Specific loading for claims
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null); // State for UserProfile
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [customClaims, setCustomClaims] = useState<CustomClaims | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(true); // State for profile loading
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [claimsLoading, setClaimsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -30,20 +41,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(currentUser);
       setLoading(false); // Auth state determined
 
-      if (currentUser && currentUser.email) {
-        setProfileLoading(true); // Start profile loading
+      if (currentUser) {
+        // Fetch Profile
+        setProfileLoading(true);
         try {
-          const profile = await getUserProfile(currentUser.email); // Use email as ID
-          setUserProfile(profile);
+          if (currentUser.email) {
+            const profile = await getUserProfile(currentUser.email);
+            setUserProfile(profile);
+          } else {
+            setUserProfile(null);
+          }
         } catch (error) {
           console.error("Failed to load user profile in AuthContext", error);
-          setUserProfile(null); // Reset profile on error
+          setUserProfile(null);
         } finally {
-          setProfileLoading(false); // Profile loading finished
+          setProfileLoading(false);
+        }
+
+        // Fetch Custom Claims
+        setClaimsLoading(true);
+        try {
+          const idTokenResult = await currentUser.getIdTokenResult(true); // Force refresh to get latest claims
+          setCustomClaims(idTokenResult.claims as CustomClaims);
+        } catch (error) {
+          console.error("Failed to load user custom claims in AuthContext", error);
+          setCustomClaims(null);
+        } finally {
+          setClaimsLoading(false);
         }
       } else {
-        setUserProfile(null); // No user, so no profile
-        setProfileLoading(false); // Not loading profile if no user
+        setUserProfile(null);
+        setCustomClaims(null);
+        setProfileLoading(false);
+        setClaimsLoading(false);
       }
     });
 
@@ -52,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, profileLoading }}>
+    <AuthContext.Provider value={{ user, userProfile, customClaims, loading, profileLoading, claimsLoading }}>
       {children}
     </AuthContext.Provider>
   );
