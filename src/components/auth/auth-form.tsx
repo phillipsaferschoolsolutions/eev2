@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // Added useSearchParams
 import { auth } from '@/lib/firebase';
 import {
   createUserWithEmailAndPassword,
@@ -15,7 +15,7 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
   type ConfirmationResult,
-  signInWithPopup, // Reverted to signInWithPopup
+  signInWithPopup,
 } from 'firebase/auth';
 
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,7 @@ const signupEmailPasswordSchema = emailPasswordSchema
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
-    path: ['confirmPassword'], // Set error on confirmPassword field
+    path: ['confirmPassword'],
   });
 type SignupEmailPasswordFormData = z.infer<typeof signupEmailPasswordSchema>;
 
@@ -114,15 +114,16 @@ const SocialLoginButtons = ({ isLoading, onSocialLogin }: { isLoading: boolean, 
 export function AuthForm() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams(); // Get search params
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
-  const [currentTab, setCurrentTab] = useState("login"); 
+
+  const [currentTab, setCurrentTab] = useState("login");
 
   const [phoneStep, setPhoneStep] = useState<'input' | 'otp'>('input');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
@@ -156,9 +157,14 @@ export function AuthForm() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.push('/');
+      const redirectUrl = searchParams.get('redirect');
+      if (redirectUrl) {
+        router.push(redirectUrl);
+      } else {
+        router.push('/'); // Default redirect
+      }
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, searchParams]);
 
 
   useEffect(() => {
@@ -198,11 +204,11 @@ export function AuthForm() {
                 console.warn("Error resetting reCAPTCHA widget:", e);
             }
         }
-        recaptchaVerifierRef.current.clear(); 
+        recaptchaVerifierRef.current.clear();
         recaptchaVerifierRef.current = null;
     }
     if (recaptchaContainerRef.current) {
-        recaptchaContainerRef.current.innerHTML = ''; 
+        recaptchaContainerRef.current.innerHTML = '';
     }
   };
 
@@ -219,7 +225,7 @@ export function AuthForm() {
         toast({ title: "Logged In!", description: "Welcome back!" });
         loginForm.reset();
       }
-      // router.push('/'); // Redirection handled by main useEffect or AuthProvider
+      // Redirection is handled by the main useEffect
     } catch (err: any) {
       const firebaseError = err as { code?: string; message?: string };
       setError(firebaseError.message || 'An unknown error occurred.');
@@ -251,7 +257,7 @@ export function AuthForm() {
         title: 'Logged In!',
         description: `Successfully signed in with ${result.providerId}.`,
       });
-      // router.push('/'); // Redirection handled by main useEffect or AuthProvider
+      // Redirection is handled by the main useEffect
     } catch (err: any) {
       const firebaseError = err as { code?: string; message?: string };
       if (firebaseError.code === 'auth/account-exists-with-different-credential') {
@@ -297,7 +303,7 @@ export function AuthForm() {
       const firebaseError = err as { code?: string; message?: string };
       setError(firebaseError.message || 'Failed to send OTP.');
       toast({ variant: "destructive", title: "OTP Error", description: firebaseError.message });
-      resetRecaptcha(); 
+      resetRecaptcha();
     } finally {
       setIsLoading(false);
     }
@@ -316,8 +322,8 @@ export function AuthForm() {
       toast({ title: "Logged In!", description: "Successfully verified phone number." });
       setPhoneStep('input');
       otpForm.reset();
-      resetRecaptcha(); 
-      // router.push('/'); // Redirection handled by main useEffect or AuthProvider
+      resetRecaptcha();
+      // Redirection is handled by the main useEffect
     } catch (err: any) {
       const firebaseError = err as { code?: string; message?: string };
       setError(firebaseError.message || 'Failed to verify OTP.');
@@ -329,13 +335,13 @@ export function AuthForm() {
 
   const handleTabChange = (value: string) => {
     setCurrentTab(value);
-    setError(null); 
+    setError(null);
     loginForm.reset();
     signupForm.reset();
     phoneForm.reset();
     otpForm.reset();
-    setPhoneStep('input'); 
-    
+    setPhoneStep('input');
+
     setShowLoginPassword(false);
     setShowSignupPassword(false);
     setShowConfirmPassword(false);
@@ -352,8 +358,8 @@ export function AuthForm() {
       clearTimeout(signupConfirmPasswordTimerRef.current);
       signupConfirmPasswordTimerRef.current = null;
     }
-    
-    resetRecaptcha(); 
+
+    resetRecaptcha();
   };
 
   const togglePasswordVisibility = (
@@ -362,15 +368,15 @@ export function AuthForm() {
     setVisibility: React.Dispatch<React.SetStateAction<boolean>>,
     timerRef: React.MutableRefObject<NodeJS.Timeout | null>
   ) => {
-    if (currentVisibility) { // If currently showing, then hide
+    if (currentVisibility) {
       setVisibility(false);
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
-    } else { // If currently hidden, then show
+    } else {
       setVisibility(true);
-      if (timerRef.current) { // Clear any old timer
+      if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
       timerRef.current = setTimeout(() => {
@@ -381,7 +387,7 @@ export function AuthForm() {
   };
 
 
-  if (authLoading && !user) { 
+  if (authLoading && !user) {
     return <p className="text-center text-muted-foreground py-8">Loading authentication status...</p>;
   }
 
@@ -418,7 +424,7 @@ export function AuthForm() {
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input id="login-password" type={showLoginPassword ? "text" : "password"} placeholder="••••••••" {...loginForm.register('password')} className="pl-10 pr-10" />
-                  <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" 
+                  <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
                           onClick={() => togglePasswordVisibility('login', showLoginPassword, setShowLoginPassword, loginPasswordTimerRef)}>
                     {showLoginPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     <span className="sr-only">{showLoginPassword ? "Hide password" : "Show password"}</span>
@@ -452,7 +458,7 @@ export function AuthForm() {
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input id="signup-password" type={showSignupPassword ? "text" : "password"} placeholder="Create a password" {...signupForm.register('password')} className="pl-10 pr-10" />
-                   <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" 
+                   <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
                            onClick={() => togglePasswordVisibility('signup', showSignupPassword, setShowSignupPassword, signupPasswordTimerRef)}>
                     {showSignupPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     <span className="sr-only">{showSignupPassword ? "Hide password" : "Show password"}</span>
@@ -465,7 +471,7 @@ export function AuthForm() {
                 <div className="relative">
                   <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input id="signup-confirm-password" type={showConfirmPassword ? "text" : "password"} placeholder="Confirm your password" {...signupForm.register('confirmPassword')} className="pl-10 pr-10" />
-                   <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" 
+                   <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
                            onClick={() => togglePasswordVisibility('confirm', showConfirmPassword, setShowConfirmPassword, signupConfirmPasswordTimerRef)}>
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     <span className="sr-only">{showConfirmPassword ? "Hide confirm password" : "Show confirm password"}</span>

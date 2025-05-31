@@ -35,11 +35,11 @@ export default function AssessmentFormsPage() {
       console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 1: Auth/Profile/Claims loading state:", { authLoading, profileLoading, claimsLoading });
       if (!authLoading && !profileLoading && !claimsLoading) {
         console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 2: Auth/Profile/Claims loaded. User, Profile, Claims data:", { user, userProfileEmail: userProfile?.email, userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission, customClaims });
-        
+
         let specificError = "Cannot fetch your assignments. ";
         if (!user) specificError += "You must be logged in. ";
         else if (!user.email) specificError += "User email is not available. ";
-        
+
         if (!userProfile) specificError += "User profile is not loaded. ";
         else if (!userProfile.account || userProfile.account.trim() === '') {
           specificError += "User account information is not available or is invalid. Please check your user profile settings. ";
@@ -49,15 +49,15 @@ export default function AssessmentFormsPage() {
           setMyAssignmentsError(specificError.trim());
           console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL due to missing user/profile data. Error set to:", specificError.trim());
           setIsLoadingMyAssignments(false);
-          setMyAssignments([]); 
+          setMyAssignments([]);
           return;
         }
-        
+
         console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks PROCEEDING TO API CALL for /tome endpoint. Account:", userProfile.account, "Email:", user.email);
         try {
-          setIsLoadingMyAssignments(true); 
+          setIsLoadingMyAssignments(true);
           setMyAssignmentsError(null);
-          
+
           const tomeAssignmentsData = await getMyAssignments(userProfile.account, user.email!);
           console.log("SUCCESSFULLY FETCHED FROM /tome endpoint. Raw data:", JSON.stringify(tomeAssignmentsData, null, 2));
           setMyAssignments(tomeAssignmentsData || []);
@@ -76,13 +76,13 @@ export default function AssessmentFormsPage() {
           } else {
             setMyAssignmentsError(`Error from /tome: ${errorMessage}`);
           }
-          setMyAssignments([]); 
+          setMyAssignments([]);
         } finally {
-          setIsLoadingMyAssignments(false); 
+          setIsLoadingMyAssignments(false);
         }
       } else {
         console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL because auth/profile/claims is still loading.");
-        setIsLoadingMyAssignments(true); 
+        setIsLoadingMyAssignments(true);
       }
     }
 
@@ -93,10 +93,10 @@ export default function AssessmentFormsPage() {
   useEffect(() => {
     async function fetchAllAccountTasks() {
       console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 1: isAdmin, Auth/Profile/Claims loading state:", { isAdmin, authLoading, profileLoading, claimsLoading });
-      if (isAdmin && !authLoading && !profileLoading && !claimsLoading) { 
+      if (isAdmin && !authLoading && !profileLoading && !claimsLoading) {
         console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 2: Admin, Auth/Profile/Claims loaded. Profile data:", { userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission, customClaims });
         let specificAdminError = "Admin view: Cannot fetch all account assignments. ";
-        if (!userProfile) specificAdminError += "User profile is not loaded. "; 
+        if (!userProfile) specificAdminError += "User profile is not loaded. ";
         else if (!userProfile.account || userProfile.account.trim() === '') {
             specificAdminError += "User account information is not available or is invalid. ";
         }
@@ -129,26 +129,26 @@ export default function AssessmentFormsPage() {
         } finally {
           setIsLoadingAllAccountAssignments(false);
         }
-      } else if (!authLoading && !profileLoading && !claimsLoading && !isAdmin) { 
+      } else if (!authLoading && !profileLoading && !claimsLoading && !isAdmin) {
         console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because isAdmin is false (profile/claims loaded).");
         setIsLoadingAllAccountAssignments(false);
         setAllAccountAssignments([]);
-        setAllAccountAssignmentsError(null); 
-      } else { 
+        setAllAccountAssignmentsError(null);
+      } else {
         console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because auth/profile/claims is still loading.");
-        setIsLoadingAllAccountAssignments(true); 
+        setIsLoadingAllAccountAssignments(true);
         setAllAccountAssignments([]);
       }
     }
-    
+
     fetchAllAccountTasks();
 
-  }, [isAdmin, userProfile, customClaims, authLoading, profileLoading, claimsLoading]); 
+  }, [isAdmin, userProfile, customClaims, authLoading, profileLoading, claimsLoading]);
 
 
   const overallLoadingMyAssignments = authLoading || profileLoading || claimsLoading || isLoadingMyAssignments;
   const overallLoadingAllAccountAssignments = authLoading || profileLoading || claimsLoading || isLoadingAllAccountAssignments;
-  
+
   console.log("[TEMP DEBUG AssessmentFormsPage] Filter Check for My Assignments: myAssignments length:", myAssignments.length);
   if (myAssignments.length > 0 ) {
     console.log("[TEMP DEBUG AssessmentFormsPage] First item in myAssignments (if any):", myAssignments[0]);
@@ -209,7 +209,7 @@ export default function AssessmentFormsPage() {
                 {myAssignmentsError}
                 {!user && (
                    <Button asChild className="mt-2">
-                    <Link href="/auth">Login</Link>
+                    <Link href={`/auth?redirect=${encodeURIComponent("/assessment-forms")}`}>Login</Link>
                   </Button>
                 )}
               </AlertDescription>
@@ -232,7 +232,7 @@ export default function AssessmentFormsPage() {
                                       : (assignment.id && typeof assignment.id === 'string' && assignment.id.trim() !== '')
                                         ? assignment.id
                                         : null;
-                
+
                  const keyForListItem = uniqueIdForLink || assignment.assessmentName || `my-assignment-${index}`;
 
                  return (
@@ -248,7 +248,7 @@ export default function AssessmentFormsPage() {
                         {uniqueIdForLink ? (
                            <Link href={`/assignments/${uniqueIdForLink}/complete`}>Complete Task</Link>
                         ) : (
-                           <span>Complete Task</span> 
+                           <span>Complete Task</span>
                         )}
                      </Button>
                    </li>

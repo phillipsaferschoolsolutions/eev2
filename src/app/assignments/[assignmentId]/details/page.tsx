@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, usePathname } from "next/navigation"; // Added usePathname
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Edit3, AlertTriangle, ArrowLeft, ListChecks, CheckSquare, MessageSquare, Paperclip, FileText, CalendarDays, User, Tag, Info } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 
 const parseOptions = (options: string | string[] | undefined): string[] => {
   if (!options) return [];
@@ -35,7 +36,7 @@ const formatDisplayDate = (dateString?: string) => {
       year: 'numeric', month: 'long', day: 'numeric'
     });
   } catch (e) {
-    return dateString; // fallback to original string if parsing fails
+    return dateString;
   }
 };
 
@@ -43,8 +44,10 @@ const formatDisplayDate = (dateString?: string) => {
 export default function AssignmentDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname(); // Get current pathname
   const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
-  
+  const { toast } = useToast();
+
   const assignmentId = typeof params.assignmentId === 'string' ? params.assignmentId : '';
 
   const [assignment, setAssignment] = useState<AssignmentWithPermissions | null>(null);
@@ -64,16 +67,27 @@ export default function AssignmentDetailsPage() {
       setIsLoading(true);
       return;
     }
+     // Check if user is logged in first
+    if (!user) {
+      setError("You must be logged in to view assignment details.");
+      toast({ variant: "destructive", title: "Not Authenticated", description: "Please log in to view details."});
+      setIsLoading(false);
+      router.push(`/auth?redirect=${encodeURIComponent(pathname)}`); // Redirect to login
+      return;
+    }
+
 
     if (!userProfile?.account) {
       setError("User account information is missing. Cannot load assignment details.");
       setIsLoading(false);
       return;
     }
-    
+
     if (!isAdmin) {
         setError("You do not have permission to view these details.");
         setIsLoading(false);
+        // Optionally, redirect non-admins or show a more permanent unauthorized message
+        // router.push('/'); // Example: redirect to dashboard
         return;
     }
 
@@ -97,7 +111,7 @@ export default function AssignmentDetailsPage() {
     }
 
     fetchAssignmentDetails();
-  }, [assignmentId, userProfile, authLoading, profileLoading, isAdmin, router]);
+  }, [assignmentId, user, userProfile, authLoading, profileLoading, isAdmin, router, pathname, toast]); // Added pathname and toast
 
   if (isLoading) {
     return (
@@ -121,7 +135,21 @@ export default function AssignmentDetailsPage() {
     );
   }
 
-  if (error) {
+  if (error && (!user || !isAdmin)) { // Only show error if redirect/auth logic hasn't kicked in or if it's an access error
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <Button variant="outline" onClick={() => router.back()} className="mb-4">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+        </Button>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Access Denied or Error</AlertTitle>
+          <AlertDescription>{error} {(!user || !isAdmin) && "Redirecting..."}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+   if (error) {
     return (
       <div className="container mx-auto py-8 px-4">
         <Button variant="outline" onClick={() => router.back()} className="mb-4">
@@ -135,6 +163,7 @@ export default function AssignmentDetailsPage() {
       </div>
     );
   }
+
 
   if (!assignment) {
     return (
@@ -271,6 +300,3 @@ export default function AssignmentDetailsPage() {
     </div>
   );
 }
-    
-
-    

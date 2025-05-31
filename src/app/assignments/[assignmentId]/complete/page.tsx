@@ -2,12 +2,12 @@
 "use client";
 
 import { useEffect, useState, ChangeEvent } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, usePathname } from "next/navigation"; // Added usePathname
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; 
-import { storage } from "@/lib/firebase"; 
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { storage } from "@/lib/firebase";
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress"; 
+import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
@@ -38,6 +38,7 @@ interface UploadedFileDetail {
 export default function CompleteAssignmentPage() {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname(); // Get current pathname
   const { toast } = useToast();
   const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
 
@@ -70,11 +71,12 @@ export default function CompleteAssignmentPage() {
         setIsLoading(true);
         return;
     }
-    
+
     if (!user) {
       setError("You must be logged in to complete an assignment.");
       toast({ variant: "destructive", title: "Not Authenticated", description: "Please log in."});
       setIsLoading(false);
+      router.push(`/auth?redirect=${encodeURIComponent(pathname)}`); // Redirect with current path
       return;
     }
     if (!userProfile?.account) {
@@ -92,13 +94,12 @@ export default function CompleteAssignmentPage() {
           setAssignment(fetchedAssignment);
           const defaultVals: FieldValues = {};
           fetchedAssignment.questions.forEach(q => {
-            // TODO: Handle pre-filled values if editing a draft in the future
             if (q.component === 'checkbox' && q.options && Array.isArray(parseOptions(q.options))) {
               parseOptions(q.options).forEach(opt => {
-                defaultVals[`${q.id}.${opt}`] = false; 
+                defaultVals[`${q.id}.${opt}`] = false;
               });
             } else if (q.component === 'range') {
-                let defaultRangeVal = 50; // Default fallback for range
+                let defaultRangeVal = 50;
                 if (typeof q.options === 'string') {
                     const defaultOpt = q.options.split(';').find(opt => opt.startsWith('default='));
                     if (defaultOpt) {
@@ -108,16 +109,16 @@ export default function CompleteAssignmentPage() {
                          const minOpt = q.options.split(';').find(opt => opt.startsWith('min='));
                          if (minOpt) {
                             const val = parseInt(minOpt.split('=')[1]);
-                            if (!isNaN(val)) defaultRangeVal = val; // Default to min if no explicit default
+                            if (!isNaN(val)) defaultRangeVal = val;
                          }
                     }
                 }
                 defaultVals[q.id] = defaultRangeVal;
-            } else if (q.component === 'checkbox' && !q.options) { // Single checkbox
+            } else if (q.component === 'checkbox' && !q.options) {
                 defaultVals[q.id] = false;
             }
             else {
-              defaultVals[q.id] = ''; 
+              defaultVals[q.id] = '';
             }
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
           });
@@ -137,14 +138,14 @@ export default function CompleteAssignmentPage() {
     }
 
     fetchAssignment();
-  }, [assignmentId, user, userProfile, authLoading, profileLoading, reset, toast, router]);
+  }, [assignmentId, user, userProfile, authLoading, profileLoading, reset, toast, router, pathname]); // Added pathname
 
   const handleFileUpload = async (questionId: string, file: File) => {
     if (!user || !assignment) {
       setUploadErrors(prev => ({ ...prev, [questionId]: "User or assignment data missing." }));
       return;
     }
-    if (file.size > 5 * 1024 * 1024) { 
+    if (file.size > 5 * 1024 * 1024) {
         setUploadErrors(prev => ({ ...prev, [questionId]: "File exceeds 5MB limit." }));
         toast({ variant: "destructive", title: "Upload Error", description: "File exceeds 5MB limit."});
         return;
@@ -177,31 +178,31 @@ export default function CompleteAssignmentPage() {
         setUploadErrors(prev => ({ ...prev, [questionId]: error.message }));
         toast({ variant: "destructive", title: "Upload Failed", description: `Could not upload ${file.name}: ${error.message}` });
         setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
-        setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); // Clear preview on error
+        setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
       },
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
           setUploadedFileDetails(prev => ({ ...prev, [questionId]: { name: file.name, url: downloadURL } }));
           toast({ title: "Upload Successful", description: `${file.name} uploaded.` });
-          setUploadProgress(prev => ({ ...prev, [questionId]: 100 })); 
+          setUploadProgress(prev => ({ ...prev, [questionId]: 100 }));
         } catch (err) {
             console.error("Failed to get download URL for " + questionId + ":", err);
             const errorMessage = err instanceof Error ? err.message : "Unknown error getting URL.";
             setUploadErrors(prev => ({ ...prev, [questionId]: "Failed to get file URL: " + errorMessage }));
-            setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); // Clear preview on error
+            setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
         }
       }
     );
   };
-  
+
   const removeUploadedFile = (questionId: string) => {
     setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
     setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
     setUploadErrors(prev => ({ ...prev, [questionId]: null }));
     setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
     const fileInput = document.getElementById(`${questionId}_file`) as HTMLInputElement;
-    if (fileInput) fileInput.value = ""; 
+    if (fileInput) fileInput.value = "";
   };
 
 
@@ -226,7 +227,7 @@ export default function CompleteAssignmentPage() {
             });
             questionAnswer = selectedOptions;
         } else {
-            questionAnswer = data[question.id] ?? ""; 
+            questionAnswer = data[question.id] ?? "";
         }
 
         answersObject[question.id] = {
@@ -236,7 +237,7 @@ export default function CompleteAssignmentPage() {
         if (question.comment && data[`${question.id}_comment`]) {
             answersObject[question.id].comment = data[`${question.id}_comment`];
         }
-        
+
         if (question.photoUpload && uploadedFileDetails[question.id]) {
             answersObject[question.id].file = {
                 name: uploadedFileDetails[question.id]!.name,
@@ -256,7 +257,7 @@ export default function CompleteAssignmentPage() {
     try {
       await submitCompletedAssignment(assignment.id, formData, userProfile.account);
       toast({ title: "Success", description: "Assignment submitted successfully." });
-      router.push("/assessment-forms"); 
+      router.push("/assessment-forms");
     } catch (err) {
       console.error("Failed to submit assignment:", err);
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
@@ -297,6 +298,17 @@ export default function CompleteAssignmentPage() {
     );
   }
 
+  if (error && !user) { // Only show error if user is not logged in (redirect will handle)
+    return (
+       <div className="p-4 text-center">
+         <Alert variant="destructive" className="m-4">
+           <AlertTriangle className="h-4 w-4" />
+           <AlertTitle>Authentication Required</AlertTitle>
+           <AlertDescription>{error} Redirecting to login...</AlertDescription>
+         </Alert>
+       </div>
+    );
+  }
   if (error) {
     return (
       <Alert variant="destructive" className="m-4">
@@ -306,6 +318,7 @@ export default function CompleteAssignmentPage() {
       </Alert>
     );
   }
+
 
   if (!assignment) {
     return <p className="p-4 text-center">Assignment data is not available.</p>;
@@ -366,7 +379,7 @@ export default function CompleteAssignmentPage() {
                       )}
                     />
                   )}
-                  
+
                   {question.component === 'select' && (
                      <Controller
                         name={question.id}
@@ -387,11 +400,11 @@ export default function CompleteAssignmentPage() {
                     />
                   )}
 
-                  {question.component === 'checkbox' && !question.options && ( 
+                  {question.component === 'checkbox' && !question.options && (
                      <Controller
                         name={question.id}
                         control={control}
-                        defaultValue={false} // Explicitly set default for single checkbox
+                        defaultValue={false}
                         render={({ field }) => (
                             <div className="flex items-center space-x-2 bg-background p-2 rounded-md">
                                 <Checkbox
@@ -404,15 +417,15 @@ export default function CompleteAssignmentPage() {
                         )}
                     />
                   )}
-                  
+
                   {question.component === 'checkbox' && question.options && (
                     <div className="space-y-2 bg-background p-2 rounded-md">
                         {parseOptions(question.options).map(opt => (
                             <Controller
                                 key={opt}
-                                name={`${question.id}.${opt}`} 
+                                name={`${question.id}.${opt}`}
                                 control={control}
-                                defaultValue={false} // Default for each option in a group
+                                defaultValue={false}
                                 render={({ field }) => (
                                     <div className="flex items-center space-x-2">
                                         <Checkbox
@@ -447,9 +460,9 @@ export default function CompleteAssignmentPage() {
                             });
                         }
                         if (typeof currentVal !== 'number' || isNaN(currentVal)) {
-                           currentVal = value || min; // Use RHF value if number, else min
+                           currentVal = value || min;
                         }
-                        currentVal = Math.max(min, Math.min(max, currentVal)); // Ensure within bounds
+                        currentVal = Math.max(min, Math.min(max, currentVal));
 
 
                         return (
@@ -459,8 +472,8 @@ export default function CompleteAssignmentPage() {
                               min={min}
                               max={max}
                               step={step}
-                              value={[currentVal]} 
-                              onValueChange={(vals) => onChange(vals[0])} 
+                              value={[currentVal]}
+                              onValueChange={(vals) => onChange(vals[0])}
                               className="w-[95%] mx-auto pt-2"
                             />
                             <p className="text-sm text-center text-muted-foreground pt-1">Value: {currentVal}</p>
@@ -529,7 +542,7 @@ export default function CompleteAssignmentPage() {
                         <Alert variant="destructive" className="text-xs p-2">
                            <XCircle className="h-4 w-4" />
                           <AlertDescription>{uploadErrors[question.id]}</AlertDescription>
-                           <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs mt-1" 
+                           <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs mt-1"
                                 onClick={() => {
                                     const fileInput = document.getElementById(`${question.id}_file`) as HTMLInputElement;
                                     if (fileInput && fileInput.files && fileInput.files[0]) {
@@ -546,7 +559,7 @@ export default function CompleteAssignmentPage() {
                             <CheckCircle2 className="h-4 w-4"/>
                             {imagePreviewUrls[question.id] ? (
                                 <Image
-                                    src={uploadedFileDetails[question.id]!.url} 
+                                    src={uploadedFileDetails[question.id]!.url}
                                     alt={uploadedFileDetails[question.id]!.name}
                                     width={32}
                                     height={32}
