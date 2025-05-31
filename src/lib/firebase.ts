@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, type Auth, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore'; // Added
 import { getFunctions, type Functions } from 'firebase/functions';
 import { getStorage, type FirebaseStorage } from 'firebase/storage'; // Added
@@ -31,6 +31,13 @@ auth = getAuth(app);
 firestore = getFirestore(app);
 functions = getFunctions(app);
 storage = getStorage(app); // Initialized
+
+// Set persistence
+auth.setPersistence(browserLocalPersistence).then(() => {
+  // The problematic line that caused the error has been removed.
+  // If Firebase Auth debugging is needed, it's typically done through
+  // browser network inspection and console logs from the SDK itself.
+});
 
 // Check if all required environment variables are set
 // This is more of a developer-time check; consider more robust checks for production
