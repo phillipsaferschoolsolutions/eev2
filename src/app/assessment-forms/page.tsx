@@ -77,6 +77,11 @@ export default function AssessmentFormsPage() {
 
   const overallLoading = authLoading || profileLoading || isLoadingAssignments;
 
+  // Filter assignments to ensure they have a valid 'id' for the key prop
+  const displayableAssignments = assignments.filter(
+    assignment => assignment && typeof assignment.id === 'string' && assignment.id.trim() !== ''
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -142,9 +147,9 @@ export default function AssessmentFormsPage() {
               </p>
             </div>
           )}
-          {!overallLoading && !error && assignments.length > 0 && (
+          {!overallLoading && !error && displayableAssignments.length > 0 && (
             <ul className="space-y-3">
-              {assignments.map((assignment) => (
+              {displayableAssignments.map((assignment) => (
                 <li key={assignment.id} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
                   <div>
                     <p className="font-medium">{assignment.assessmentName}</p>
@@ -158,6 +163,16 @@ export default function AssessmentFormsPage() {
                 </li>
               ))}
             </ul>
+          )}
+          {/* This condition shows if the original assignments list was not empty, but all items were filtered out due to invalid IDs */}
+          {!overallLoading && !error && assignments.length > 0 && displayableAssignments.length === 0 && (
+             <div className="border rounded-lg p-6 text-center bg-muted/20">
+                <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Issue Loading Tasks</h3>
+                <p className="text-muted-foreground mb-4">
+                  Some assigned tasks could not be displayed due to missing or invalid identifiers. Please contact support if this issue persists.
+                </p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -194,5 +209,3 @@ export default function AssessmentFormsPage() {
     </div>
   );
 }
-
-    
