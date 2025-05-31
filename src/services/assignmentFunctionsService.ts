@@ -153,7 +153,9 @@ export interface PostPendingResponse {
 }
 
 
-const BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/assignmentsv2';
+const BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/assignments';
+const ASSIGNMENTS_V2_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/assignmentsv2';
+
 
 // --- Helper to get ID Token ---
 async function getIdToken(): Promise<string | null> {
@@ -171,7 +173,7 @@ async function getIdToken(): Promise<string | null> {
 
 // --- Generic Fetch Wrapper ---
 async function authedFetch<T>(
-  endpoint: string,
+  fullUrl: string, // Changed to accept fullUrl directly
   options: RequestInit = {},
   accountName?: string
 ): Promise<T> {
@@ -181,7 +183,7 @@ async function authedFetch<T>(
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   } else {
-    console.warn(`authedFetch: No token available for endpoint: ${endpoint}`);
+    console.warn(`authedFetch: No token available for endpoint: ${fullUrl}`);
   }
 
   const trimmedAccountName = accountName?.trim();
@@ -196,15 +198,14 @@ async function authedFetch<T>(
 
   let response;
   try {
-    response = await fetch(`${BASE_URL}${endpoint}`, {
+    response = await fetch(fullUrl, { // Use fullUrl directly
       ...options,
       headers,
     });
   } catch (networkError: any) {
-    // Catch "Failed to fetch" and other network-level errors
-    console.error(`Network error for ${endpoint}:`, networkError);
+    console.error(`Network error for ${fullUrl}:`, networkError);
     let errorMessage = `Network Error: Could not connect to the server (${networkError.message || 'Failed to fetch'}). `;
-    errorMessage += `Please check your internet connection. If the issue persists, it might be a CORS configuration problem on the server or the server endpoint (${BASE_URL}${endpoint}) might be down or incorrect.`;
+    errorMessage += `Please check your internet connection. If the issue persists, it might be a CORS configuration problem on the server or the server endpoint (${fullUrl}) might be down or incorrect.`;
     throw new Error(errorMessage);
   }
 
@@ -216,7 +217,7 @@ async function authedFetch<T>(
     } catch (e) {
       errorData = { message: response.statusText || `HTTP error ${response.status}` };
     }
-    console.error(`API Error ${response.status} for ${endpoint}:`, errorData);
+    console.error(`API Error ${response.status} for ${fullUrl}:`, errorData);
     throw new Error(
       `API Error: ${response.status} ${errorData?.message || response.statusText}`
     );
@@ -237,7 +238,7 @@ async function authedFetch<T>(
           return JSON.parse(textResponse) as T;
         }
       } catch (e) {
-         console.error(`authedFetch: Failed to parse non-JSON text response from ${endpoint} as JSON despite structure match. Error: ${e}`);
+         console.error(`authedFetch: Failed to parse non-JSON text response from ${fullUrl} as JSON despite structure match. Error: ${e}`);
       }
       return textResponse as any as T;
     }
@@ -257,7 +258,7 @@ export async function getAllAssignmentsWithContent(accountName: string): Promise
   if (!trimmedAccountName) {
      throw new Error('Account name is required and cannot be empty to fetch assignments.');
   }
-  const result = await authedFetch<FullAssignment[] | undefined>('/', {}, trimmedAccountName);
+  const result = await authedFetch<FullAssignment[] | undefined>(`${BASE_URL}/`, {}, trimmedAccountName);
   return result || [];
 }
 
@@ -271,7 +272,7 @@ export async function getAssignmentListMetadata(accountName: string): Promise<As
   if (!trimmedAccountName) {
      throw new Error('Account name is required and cannot be empty for getAssignmentListMetadata.');
   }
-  const result = await authedFetch<AssignmentMetadata[] | undefined>('/assignmentlist', {}, trimmedAccountName);
+  const result = await authedFetch<AssignmentMetadata[] | undefined>(`${BASE_URL}/assignmentlist`, {}, trimmedAccountName);
   return result || [];
 }
 
@@ -282,7 +283,7 @@ export async function getAssignmentListMetadata(accountName: string): Promise<As
  */
 export async function getAssignmentById(id: string, accountName?: string): Promise<AssignmentWithPermissions | null> {
   if (!id) throw new Error('Assignment ID is required.');
-  const result = await authedFetch<AssignmentWithPermissions | undefined>(`/${id}`, {}, accountName);
+  const result = await authedFetch<AssignmentWithPermissions | undefined>(`${BASE_URL}/${id}`, {}, accountName);
   return result || null;
 }
 
@@ -292,7 +293,7 @@ export async function getAssignmentById(id: string, accountName?: string): Promi
  * Account name ('account' header) might be needed.
  */
 export async function createAssignment(payload: CreateAssignmentPayload, accountName?: string): Promise<FullAssignment> {
-  return authedFetch<FullAssignment>('/createassignment', {
+  return authedFetch<FullAssignment>(`${BASE_URL}/createassignment`, {
     method: 'POST',
     body: JSON.stringify(payload),
   }, accountName);
@@ -305,7 +306,7 @@ export async function createAssignment(payload: CreateAssignmentPayload, account
  */
 export async function updateAssignment(id: string, payload: Partial<UpdateAssignmentPayload>, accountName?: string): Promise<void> {
   if (!id) throw new Error('Assignment ID is required.');
-  await authedFetch<void>(`/${id}`, {
+  await authedFetch<void>(`${BASE_URL}/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   }, accountName);
@@ -318,21 +319,20 @@ export async function updateAssignment(id: string, payload: Partial<UpdateAssign
  */
 export async function deleteAssignment(id: string, accountName?: string): Promise<void> {
   if (!id) throw new Error('Assignment ID is required.');
-  await authedFetch<void>(`/${id}`, {
+  await authedFetch<void>(`${BASE_URL}/${id}`, {
     method: 'DELETE',
   }, accountName);
 }
 
 /**
- * NEW: 17. PUT /completednew/:id (multipart form-data, but answers JSON contains file URLs)
+ * NEW: /completednew/:id (multipart form-data, but answers JSON contains file URLs)
+ * This uses the ASSIGNMENTS_V2_BASE_URL
  * Uploads a completed assignment.
  * Account name ('account' header) might be needed.
  */
 export async function submitCompletedAssignment(id: string, formData: FormData, accountName?: string): Promise<CompletedAssignmentResponse> {
   if (!id) throw new Error('Assignment ID is required.');
-  // Note: The 'id' here is the assignmentId for which the completion is being submitted.
-  // The endpoint path itself contains this ID.
-  return authedFetch<CompletedAssignmentResponse>(`/completednew/${id}`, {
+  return authedFetch<CompletedAssignmentResponse>(`${ASSIGNMENTS_V2_BASE_URL}/completednew/${id}`, {
     method: 'PUT',
     body: formData, // Content-Type will be set by browser for FormData
   }, accountName);
@@ -352,7 +352,7 @@ export async function getMyAssignments(accountName: string, userEmail?: string):
       throw new Error('User email is required for getMyAssignments.');
   }
   const endpoint = `/tome/${encodeURIComponent(userEmail)}`;
-  const result = await authedFetch<AssignmentMetadata[] | undefined>(endpoint, {}, trimmedAccountName);
+  const result = await authedFetch<AssignmentMetadata[] | undefined>(`${BASE_URL}${endpoint}`, {}, trimmedAccountName);
   return result || [];
 }
 
@@ -366,7 +366,7 @@ export async function getAssignmentsByLocation(payload: ByLocationPayload, accou
     if (!trimmedAccountName) {
      throw new Error('Account name is required and cannot be empty for getAssignmentsByLocation.');
     }
-    const result = await authedFetch<FullAssignment[] | undefined>('/bylocation', {
+    const result = await authedFetch<FullAssignment[] | undefined>(`${BASE_URL}/bylocation`, {
         method: 'POST',
         body: JSON.stringify(payload),
     }, trimmedAccountName);
@@ -380,7 +380,7 @@ export async function getAssignmentsByLocation(payload: ByLocationPayload, accou
  * Account header may or may not be needed depending on backend.
  */
 export async function getWeatherAndLocation(lat: number, lng: number, accountName?: string): Promise<WeatherLocationData | null> {
-    const result = await authedFetch<WeatherLocationData | undefined>(`/header/${lat}/${lng}`, {}, accountName);
+    const result = await authedFetch<WeatherLocationData | undefined>(`${BASE_URL}/header/${lat}/${lng}`, {}, accountName);
     return result || null;
 }
 
@@ -390,7 +390,7 @@ export async function getWeatherAndLocation(lat: number, lng: number, accountNam
  * Account header may or may not be needed depending on backend.
  */
 export async function getAssignmentTypes(accountName?: string): Promise<string[]> {
-  const result = await authedFetch<string[] | undefined>('/types', {}, accountName);
+  const result = await authedFetch<string[] | undefined>(`${BASE_URL}/types`, {}, accountName);
   return result || [];
 }
 
@@ -404,7 +404,7 @@ export async function getQuestionsBySchool(assignmentId: string, period: string,
      throw new Error('Account name is required and cannot be empty for getQuestionsBySchool.');
   }
   if (!assignmentId || !period) throw new Error('Assignment ID and period are required.');
-  const result = await authedFetch<QuestionsBySchoolResponse | undefined>(`/questionsbyschool/${assignmentId}/${period}`, {}, trimmedAccountName);
+  const result = await authedFetch<QuestionsBySchoolResponse | undefined>(`${BASE_URL}/questionsbyschool/${assignmentId}/${period}`, {}, trimmedAccountName);
   return result || null;
 }
 
@@ -418,7 +418,7 @@ export async function getSchoolsWithQuestions(assignmentId: string, period: stri
      throw new Error('Account name is required and cannot be empty for getSchoolsWithQuestions.');
   }
   if (!assignmentId || !period) throw new Error('Assignment ID and period are required.');
-  const result = await authedFetch<SchoolsWithQuestionsResponse | undefined>(`/schoolswithquestions/${assignmentId}/${period}`, {}, trimmedAccountName);
+  const result = await authedFetch<SchoolsWithQuestionsResponse | undefined>(`${BASE_URL}/schoolswithquestions/${assignmentId}/${period}`, {}, trimmedAccountName);
   return result || null;
 }
 
@@ -431,7 +431,7 @@ export async function getDailySnapshot(accountName: string): Promise<DailySnapsh
   if (!trimmedAccountName) {
      throw new Error('Account name is required and cannot be empty for getDailySnapshot.');
   }
-  const result = await authedFetch<DailySnapshotResponse | undefined>('/dailysnapshot', {}, trimmedAccountName);
+  const result = await authedFetch<DailySnapshotResponse | undefined>(`${BASE_URL}/dailysnapshot`, {}, trimmedAccountName);
   return result || null;
 }
 
@@ -445,7 +445,7 @@ export async function getDailySiteSnapshotForUser(userEmail: string, accountName
      throw new Error('Account name is required and cannot be empty for getDailySiteSnapshotForUser.');
   }
   if (!userEmail) throw new Error('User email is required.');
-  const result = await authedFetch<AssignmentMetadata | undefined>(`/dailysitesnapshot/tome/${encodeURIComponent(userEmail)}`, {}, trimmedAccountName);
+  const result = await authedFetch<AssignmentMetadata | undefined>(`${BASE_URL}/dailysitesnapshot/tome/${encodeURIComponent(userEmail)}`, {}, trimmedAccountName);
   return result || null;
 }
 
@@ -459,7 +459,7 @@ export async function getDailySnapshotByIdAndPeriod(id: string, period: string, 
      throw new Error('Account name is required and cannot be empty for getDailySnapshotByIdAndPeriod.');
   }
   if (!id || !period) throw new Error('Assignment ID and period are required.');
-  const result = await authedFetch<DailySnapshotResponse | undefined>(`/dailysnapshot/${id}/${period}`, {}, trimmedAccountName);
+  const result = await authedFetch<DailySnapshotResponse | undefined>(`${BASE_URL}/dailysnapshot/${id}/${period}`, {}, trimmedAccountName);
   return result || null;
 }
 
@@ -473,7 +473,7 @@ export async function getAssignedToUser(userEmail: string, accountName: string):
      throw new Error('Account name is required and cannot be empty for getAssignedToUser.');
   }
   if (!userEmail) throw new Error('User email is required.');
-  const result = await authedFetch<AssignedToUserResponse | undefined>(`/assignedTo/${encodeURIComponent(userEmail)}`, {}, trimmedAccountName);
+  const result = await authedFetch<AssignedToUserResponse | undefined>(`${BASE_URL}/assignedTo/${encodeURIComponent(userEmail)}`, {}, trimmedAccountName);
   return result || [];
 }
 
@@ -487,7 +487,7 @@ export async function getAssignmentsByAuthor(userId: string, accountName: string
      throw new Error('Account name is required and cannot be empty for getAssignmentsByAuthor.');
   }
   if (!userId) throw new Error('User ID is required.');
-  const result = await authedFetch<AssignmentMetadata[] | undefined>(`/author/${userId}`, {}, trimmedAccountName);
+  const result = await authedFetch<AssignmentMetadata[] | undefined>(`${BASE_URL}/author/${userId}`, {}, trimmedAccountName);
   return result || [];
 }
 
@@ -500,7 +500,7 @@ export async function getAssignmentsCompletedByMe(accountName: string): Promise<
   if (!trimmedAccountName) {
      throw new Error('Account name is required and cannot be empty for getAssignmentsCompletedByMe.');
   }
-  const result = await authedFetch<CompletedByMeResponse | undefined>('/completedByMe', {}, trimmedAccountName);
+  const result = await authedFetch<CompletedByMeResponse | undefined>(`${BASE_URL}/completedByMe`, {}, trimmedAccountName);
   return result || null;
 }
 
@@ -513,7 +513,7 @@ export async function getWidgetTrends(accountName: string): Promise<TrendsRespon
   if (!trimmedAccountName) {
      throw new Error('Account name is required and cannot be empty for getWidgetTrends.');
   }
-  const result = await authedFetch<TrendsResponse | undefined>('/widgets/trends', {}, trimmedAccountName);
+  const result = await authedFetch<TrendsResponse | undefined>(`${BASE_URL}/widgets/trends`, {}, trimmedAccountName);
   return result || null;
 }
 
@@ -523,7 +523,7 @@ export async function getWidgetTrends(accountName: string): Promise<TrendsRespon
  */
 export async function saveDataCsv(id: string, csvFormData: FormData, accountName?: string): Promise<SaveDataResponse> {
   if (!id) throw new Error('ID is required.');
-  return authedFetch<SaveDataResponse>(`/save_data/${id}`, {
+  return authedFetch<SaveDataResponse>(`${BASE_URL}/save_data/${id}`, {
     method: 'POST',
     body: csvFormData,
   }, accountName);
@@ -539,7 +539,7 @@ export async function getPendingSubmissions(id: string, accountName: string): Pr
      throw new Error('Account name is required and cannot be empty for getPendingSubmissions.');
   }
   if (!id) throw new Error('ID is required for pending submissions.');
-  const result = await authedFetch<PendingAssignmentsResponse | undefined>(`/pending/${id}`, {}, trimmedAccountName);
+  const result = await authedFetch<PendingAssignmentsResponse | undefined>(`${BASE_URL}/pending/${id}`, {}, trimmedAccountName);
   return result || [];
 }
 
@@ -553,7 +553,7 @@ export async function savePendingSubmission(assignmentId: string, payload: Draft
      throw new Error('Account name is required and cannot be empty for savePendingSubmission.');
   }
   if (!assignmentId) throw new Error('Assignment ID is required.');
-  return authedFetch<PostPendingResponse>(`/pending/${assignmentId}`, {
+  return authedFetch<PostPendingResponse>(`${BASE_URL}/pending/${assignmentId}`, {
     method: 'POST',
     body: JSON.stringify(payload),
   }, trimmedAccountName);
