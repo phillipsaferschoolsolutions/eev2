@@ -1,4 +1,3 @@
-
 // src/services/userService.ts
 import { doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
@@ -22,10 +21,11 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
       const data = userDocSnap.data();
       // Construct the UserProfile object, ensuring all expected fields are mapped
       const profile: UserProfile = {
-        id: userDocSnap.id,
-        account: data.account || '', 
-        displayName: data.displayName || '',
-        email: data.email || '',
+        id: userDocSnap.id, // This is the email if userId is email
+        uid: data.uid, // Assuming 'uid' field exists in your Firestore user document
+        account: data.account || '',
+        displayName: data.displayName || data.first || data.email || '', // Fallback for display name
+        email: data.email || userId, // userId is email here
         emailVerified: data.emailVerified === true,
         first: data.first,
         last: data.last,
@@ -34,8 +34,11 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
         born: data.born,
         dailySiteSnapshotId: data.dailySiteSnapshotId,
         messageToken: data.messageToken,
-        permission: data.permission, // Ensure this line correctly maps the 'permission' field
+        permission: data.permission,
       };
+      if (!profile.uid) {
+        console.warn(`UserProfile for ${userId} is missing UID. Messaging will not work correctly for this user.`);
+      }
       return profile;
     } else {
       console.warn(`No user profile document found for userId: ${userId}`);

@@ -23,6 +23,7 @@ import {
   FilePieChart,
   Palette,
   Settings,
+  MessageSquare, // Added for Messaging
   LogOut as LogOutIcon,
   PanelLeftClose, 
   PanelLeftOpen,  
@@ -40,6 +41,7 @@ const navItems = [
   { href: "/photo-analysis", label: "Photo Analysis", icon: Camera },
   { href: "/policy-analysis", label: "Policy Analysis", icon: FileCheck2 },
   { href: "/reports", label: "Report Studio", icon: FilePieChart },
+  { href: "/messaging", label: "Messaging", icon: MessageSquare }, // Added Messaging
   { href: "/theming", label: "Theming", icon: Palette },
 ];
 
