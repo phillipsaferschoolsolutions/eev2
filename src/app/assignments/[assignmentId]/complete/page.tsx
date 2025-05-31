@@ -6,8 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; // Firebase Storage
-import { storage } from "@/lib/firebase"; // Firebase Storage instance
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage"; 
+import { storage } from "@/lib/firebase"; 
+import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,13 +20,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress"; // For upload progress
+import { Progress } from "@/components/ui/progress"; 
+import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, submitCompletedAssignment, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
-import { AlertTriangle, FileUp, MessageSquare, Send, Paperclip, XCircle, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2 } from "lucide-react";
 
-// Define a base schema for dynamic form generation
 const formSchema = z.record(z.any());
 type FormDataSchema = z.infer<typeof formSchema>;
 
@@ -47,10 +48,10 @@ export default function CompleteAssignmentPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // State for file uploads
   const [uploadProgress, setUploadProgress] = useState<{ [questionId: string]: number }>({});
   const [uploadedFileDetails, setUploadedFileDetails] = useState<{ [questionId: string]: UploadedFileDetail | null }>({});
   const [uploadErrors, setUploadErrors] = useState<{ [questionId: string]: string | null }>({});
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<{ [questionId: string]: string | null }>({});
 
 
   const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, setValue } = useForm<FormDataSchema>({
@@ -74,7 +75,6 @@ export default function CompleteAssignmentPage() {
       setError("You must be logged in to complete an assignment.");
       toast({ variant: "destructive", title: "Not Authenticated", description: "Please log in."});
       setIsLoading(false);
-      // router.push('/auth'); // Optionally redirect
       return;
     }
     if (!userProfile?.account) {
@@ -92,7 +92,33 @@ export default function CompleteAssignmentPage() {
           setAssignment(fetchedAssignment);
           const defaultVals: FieldValues = {};
           fetchedAssignment.questions.forEach(q => {
-            defaultVals[q.id] = ''; 
+            // TODO: Handle pre-filled values if editing a draft in the future
+            if (q.component === 'checkbox' && q.options && Array.isArray(parseOptions(q.options))) {
+              parseOptions(q.options).forEach(opt => {
+                defaultVals[`${q.id}.${opt}`] = false; 
+              });
+            } else if (q.component === 'range') {
+                let defaultRangeVal = 50; // Default fallback for range
+                if (typeof q.options === 'string') {
+                    const defaultOpt = q.options.split(';').find(opt => opt.startsWith('default='));
+                    if (defaultOpt) {
+                        const val = parseInt(defaultOpt.split('=')[1]);
+                        if (!isNaN(val)) defaultRangeVal = val;
+                    } else {
+                         const minOpt = q.options.split(';').find(opt => opt.startsWith('min='));
+                         if (minOpt) {
+                            const val = parseInt(minOpt.split('=')[1]);
+                            if (!isNaN(val)) defaultRangeVal = val; // Default to min if no explicit default
+                         }
+                    }
+                }
+                defaultVals[q.id] = defaultRangeVal;
+            } else if (q.component === 'checkbox' && !q.options) { // Single checkbox
+                defaultVals[q.id] = false;
+            }
+            else {
+              defaultVals[q.id] = ''; 
+            }
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
           });
           reset(defaultVals);
@@ -118,17 +144,24 @@ export default function CompleteAssignmentPage() {
       setUploadErrors(prev => ({ ...prev, [questionId]: "User or assignment data missing." }));
       return;
     }
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit example
+    if (file.size > 5 * 1024 * 1024) { 
         setUploadErrors(prev => ({ ...prev, [questionId]: "File exceeds 5MB limit." }));
         toast({ variant: "destructive", title: "Upload Error", description: "File exceeds 5MB limit."});
         return;
     }
 
-
     setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
     setUploadErrors(prev => ({ ...prev, [questionId]: null }));
     setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
+    setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
 
+    if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImagePreviewUrls(prev => ({ ...prev, [questionId]: reader.result as string }));
+        };
+        reader.readAsDataURL(file);
+    }
 
     const storagePath = `assignment_uploads/${assignment.id}/${user.uid}/${questionId}/${Date.now()}_${file.name}`;
     const storageRef = ref(storage, storagePath);
@@ -144,29 +177,29 @@ export default function CompleteAssignmentPage() {
         setUploadErrors(prev => ({ ...prev, [questionId]: error.message }));
         toast({ variant: "destructive", title: "Upload Failed", description: `Could not upload ${file.name}: ${error.message}` });
         setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
+        setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); // Clear preview on error
       },
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
           setUploadedFileDetails(prev => ({ ...prev, [questionId]: { name: file.name, url: downloadURL } }));
           toast({ title: "Upload Successful", description: `${file.name} uploaded.` });
-          setUploadProgress(prev => ({ ...prev, [questionId]: 100 })); // Ensure progress shows complete
+          setUploadProgress(prev => ({ ...prev, [questionId]: 100 })); 
         } catch (err) {
             console.error("Failed to get download URL for " + questionId + ":", err);
             const errorMessage = err instanceof Error ? err.message : "Unknown error getting URL.";
             setUploadErrors(prev => ({ ...prev, [questionId]: "Failed to get file URL: " + errorMessage }));
+            setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); // Clear preview on error
         }
       }
     );
   };
   
   const removeUploadedFile = (questionId: string) => {
-    // Note: This only removes it from client state. Actual deletion from Firebase Storage is a separate, more complex operation.
-    // For now, this allows re-uploading.
     setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
     setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
     setUploadErrors(prev => ({ ...prev, [questionId]: null }));
-    // Clear the file input visually if possible (hard to do reliably cross-browser)
+    setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
     const fileInput = document.getElementById(`${questionId}_file`) as HTMLInputElement;
     if (fileInput) fileInput.value = ""; 
   };
@@ -183,13 +216,27 @@ export default function CompleteAssignmentPage() {
     const answersObject: Record<string, any> = {};
 
     assignment.questions.forEach(question => {
+        let questionAnswer: any;
+        if (question.component === 'checkbox' && question.options && Array.isArray(parseOptions(question.options))) {
+            const selectedOptions: string[] = [];
+            parseOptions(question.options).forEach(opt => {
+                if (data[`${question.id}.${opt}`]) {
+                    selectedOptions.push(opt);
+                }
+            });
+            questionAnswer = selectedOptions;
+        } else {
+            questionAnswer = data[question.id] ?? ""; 
+        }
+
         answersObject[question.id] = {
-            answer: data[question.id] || "" // Ensure answer is at least an empty string
+            answer: questionAnswer
         };
+
         if (question.comment && data[`${question.id}_comment`]) {
             answersObject[question.id].comment = data[`${question.id}_comment`];
         }
-        // Add uploaded file details (URL and name)
+        
         if (question.photoUpload && uploadedFileDetails[question.id]) {
             answersObject[question.id].file = {
                 name: uploadedFileDetails[question.id]!.name,
@@ -209,7 +256,7 @@ export default function CompleteAssignmentPage() {
     try {
       await submitCompletedAssignment(assignment.id, formData, userProfile.account);
       toast({ title: "Success", description: "Assignment submitted successfully." });
-      router.push("/assessment-forms"); // Redirect to assignments list or a thank you page
+      router.push("/assessment-forms"); 
     } catch (err) {
       console.error("Failed to submit assignment:", err);
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
@@ -223,7 +270,6 @@ export default function CompleteAssignmentPage() {
     if (!options) return [];
     if (Array.isArray(options)) return options;
     try {
-      // First try to parse as JSON array of strings
       const parsed = JSON.parse(options);
       if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
         return parsed;
@@ -345,6 +391,7 @@ export default function CompleteAssignmentPage() {
                      <Controller
                         name={question.id}
                         control={control}
+                        defaultValue={false} // Explicitly set default for single checkbox
                         render={({ field }) => (
                             <div className="flex items-center space-x-2 bg-background p-2 rounded-md">
                                 <Checkbox
@@ -365,6 +412,7 @@ export default function CompleteAssignmentPage() {
                                 key={opt}
                                 name={`${question.id}.${opt}`} 
                                 control={control}
+                                defaultValue={false} // Default for each option in a group
                                 render={({ field }) => (
                                     <div className="flex items-center space-x-2">
                                         <Checkbox
@@ -379,6 +427,49 @@ export default function CompleteAssignmentPage() {
                         ))}
                     </div>
                   )}
+
+                  {question.component === 'range' && (
+                    <Controller
+                      name={question.id}
+                      control={control}
+                      rules={{ required: question.required }}
+                      render={({ field: { onChange, value } }) => {
+                        let min = 0, max = 100, step = 1, currentVal = value;
+                        if (typeof question.options === 'string') {
+                            question.options.split(';').forEach(optStr => {
+                                const [key, valStr] = optStr.split('=');
+                                const valNum = parseInt(valStr);
+                                if (!isNaN(valNum)) {
+                                    if (key === 'min') min = valNum;
+                                    else if (key === 'max') max = valNum;
+                                    else if (key === 'step') step = valNum;
+                                }
+                            });
+                        }
+                        if (typeof currentVal !== 'number' || isNaN(currentVal)) {
+                           currentVal = value || min; // Use RHF value if number, else min
+                        }
+                        currentVal = Math.max(min, Math.min(max, currentVal)); // Ensure within bounds
+
+
+                        return (
+                          <div className="space-y-2 bg-background p-3 rounded-md">
+                            <Slider
+                              id={question.id}
+                              min={min}
+                              max={max}
+                              step={step}
+                              value={[currentVal]} 
+                              onValueChange={(vals) => onChange(vals[0])} 
+                              className="w-[95%] mx-auto pt-2"
+                            />
+                            <p className="text-sm text-center text-muted-foreground pt-1">Value: {currentVal}</p>
+                          </div>
+                        );
+                      }}
+                    />
+                  )}
+
 
                   {formErrors[question.id] && <p className="text-sm text-destructive">{formErrors[question.id]?.message as string}</p>}
 
@@ -400,12 +491,13 @@ export default function CompleteAssignmentPage() {
                   {question.photoUpload && (
                     <div className="mt-4 space-y-2">
                       <Label htmlFor={`${question.id}_file`} className="text-sm text-muted-foreground flex items-center">
-                        <FileUp className="h-4 w-4 mr-1"/> Upload File (Optional, Max 5MB)
+                        <Paperclip className="h-4 w-4 mr-1"/> Upload File (Optional, Max 5MB)
                       </Label>
                       {!uploadedFileDetails[question.id] && !uploadProgress[question.id] && (
                         <Input
                           id={`${question.id}_file`}
                           type="file"
+                          accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
                           className="mt-1 bg-background/80"
                           onChange={(e: ChangeEvent<HTMLInputElement>) => {
                             if (e.target.files && e.target.files[0]) {
@@ -421,18 +513,48 @@ export default function CompleteAssignmentPage() {
                            <p className="text-xs text-muted-foreground text-center">Uploading: {Math.round(uploadProgress[question.id] || 0)}%</p>
                         </div>
                       )}
+                       {imagePreviewUrls[question.id] && !uploadErrors[question.id] && !uploadedFileDetails[question.id] && (
+                        <div className="mt-2 border rounded-md p-2 bg-muted/20 w-fit shadow">
+                            <Image
+                                src={imagePreviewUrls[question.id]!}
+                                alt="Upload preview"
+                                width={150}
+                                height={150}
+                                className="object-contain rounded max-h-[150px]"
+                                data-ai-hint="upload preview"
+                            />
+                        </div>
+                      )}
                       {uploadErrors[question.id] && (
                         <Alert variant="destructive" className="text-xs p-2">
                            <XCircle className="h-4 w-4" />
                           <AlertDescription>{uploadErrors[question.id]}</AlertDescription>
-                           <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs mt-1" onClick={() => handleFileUpload(question.id, (document.getElementById(`${question.id}_file`) as HTMLInputElement)?.files?.[0]!)}>Retry</Button>
+                           <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs mt-1" 
+                                onClick={() => {
+                                    const fileInput = document.getElementById(`${question.id}_file`) as HTMLInputElement;
+                                    if (fileInput && fileInput.files && fileInput.files[0]) {
+                                        handleFileUpload(question.id, fileInput.files[0]);
+                                    } else {
+                                        toast({variant: "destructive", title:"Retry Failed", description: "No file selected to retry."})
+                                    }
+                                }}>Retry</Button>
                         </Alert>
                       )}
                       {uploadedFileDetails[question.id] && (
                         <div className="flex items-center justify-between p-2 border rounded-md bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
                           <div className="flex items-center gap-2 text-green-700 dark:text-green-400 text-sm">
                             <CheckCircle2 className="h-4 w-4"/>
-                            <a href={uploadedFileDetails[question.id]?.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">
+                            {imagePreviewUrls[question.id] ? (
+                                <Image
+                                    src={uploadedFileDetails[question.id]!.url} 
+                                    alt={uploadedFileDetails[question.id]!.name}
+                                    width={32}
+                                    height={32}
+                                    className="object-cover rounded h-8 w-8"
+                                    data-ai-hint="file thumbnail"
+                                />
+                            ): <Paperclip className="h-4 w-4" /> }
+                            <a href={uploadedFileDetails[question.id]?.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-[200px] sm:max-w-xs md:max-w-sm">
                               {uploadedFileDetails[question.id]?.name}
                             </a>
                           </div>
@@ -459,3 +581,4 @@ export default function CompleteAssignmentPage() {
     </div>
   );
 }
+
