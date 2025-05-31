@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle, UserCircle, FolderKanban, ServerIcon } from "lucide-react";
 import type { AssignmentMetadata } from "@/services/assignmentFunctionsService";
-// Temporarily use getAssignmentListMetadata for My Assigned Tasks for testing
 import { getMyAssignments, getAssignmentListMetadata } from "@/services/assignmentFunctionsService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -33,9 +32,9 @@ export default function AssessmentFormsPage() {
 
   useEffect(() => {
     async function fetchMyTasks() {
-      console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 1: Auth/Profile loading state:", { authLoading, profileLoading });
+      // console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 1: Auth/Profile loading state:", { authLoading, profileLoading });
       if (!authLoading && !profileLoading) {
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 2: Auth/Profile loaded. User, Profile data:", { user, userProfileEmail: userProfile?.email, userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission });
+        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 2: Auth/Profile loaded. User, Profile data:", { user, userProfileEmail: userProfile?.email, userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission });
         
         let specificError = "Cannot fetch your tasks. ";
         if (!user) specificError += "You must be logged in. ";
@@ -48,20 +47,20 @@ export default function AssessmentFormsPage() {
 
         if (!user || !user.email || !userProfile || !userProfile.account || userProfile.account.trim() === '') {
           setMyAssignmentsError(specificError.trim());
-          console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL due to missing user/profile data. Error set to:", specificError.trim());
+          // console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL due to missing user/profile data. Error set to:", specificError.trim());
           setIsLoadingMyAssignments(false);
           setMyAssignments([]);
           return;
         }
         
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks PROCEEDING TO API CALL for account:", userProfile.account, "email:", user.email);
+        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks PROCEEDING TO API CALL for account:", userProfile.account, "email:", user.email);
         try {
           setIsLoadingMyAssignments(true);
           setMyAssignmentsError(null);
           // TEMPORARY: Use getAssignmentListMetadata for testing API call
-          // const fetchedAssignmentsData = await getMyAssignments(userProfile.account, user.email);
-          const fetchedAssignmentsData = await getAssignmentListMetadata(userProfile.account);
-          console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks API CALL SUCCEEDED (using getAssignmentListMetadata for test). Data:", fetchedAssignmentsData);
+          const fetchedAssignmentsData = await getAssignmentListMetadata(userProfile.account); // Temporarily using this for testing
+          // const fetchedAssignmentsData = await getMyAssignments(userProfile.account, user.email); // Original intended call
+          // console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks API CALL SUCCEEDED (using getAssignmentListMetadata for test). Data:", fetchedAssignmentsData);
           setMyAssignments(fetchedAssignmentsData || []);
         } catch (err) {
           console.error("Error fetching my assignments (or all account assignments for test):", err);
@@ -82,7 +81,7 @@ export default function AssessmentFormsPage() {
           setIsLoadingMyAssignments(false);
         }
       } else {
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL because auth/profile is still loading.");
+        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL because auth/profile is still loading.");
         setIsLoadingMyAssignments(true); // Keep loading true until checks pass
         setMyAssignments([]);
       }
@@ -94,9 +93,9 @@ export default function AssessmentFormsPage() {
 
   useEffect(() => {
     async function fetchAllAccountTasks() {
-      console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 1: isAdmin, Auth/Profile loading state:", { isAdmin, authLoading, profileLoading });
+      // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 1: isAdmin, Auth/Profile loading state:", { isAdmin, authLoading, profileLoading });
       if (isAdmin && !authLoading && !profileLoading) { // isAdmin already incorporates profileLoading check
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 2: Admin, Auth/Profile loaded. Profile data:", { userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission });
+        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 2: Admin, Auth/Profile loaded. Profile data:", { userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission });
         let specificAdminError = "Admin view: Cannot fetch all account assignments. ";
         if (!userProfile) specificAdminError += "User profile is not loaded. "; // Should be caught by isAdmin but good failsafe
         else if (!userProfile.account || userProfile.account.trim() === '') {
@@ -105,17 +104,17 @@ export default function AssessmentFormsPage() {
 
         if (!userProfile || !userProfile.account || userProfile.account.trim() === '') {
            setAllAccountAssignmentsError(specificAdminError.trim());
-           console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL due to missing profile data. Error set to:", specificAdminError.trim());
+           // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL due to missing profile data. Error set to:", specificAdminError.trim());
            setIsLoadingAllAccountAssignments(false);
            setAllAccountAssignments([]);
            return;
         }
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks PROCEEDING TO ADMIN API CALL for account:", userProfile.account);
+        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks PROCEEDING TO ADMIN API CALL for account:", userProfile.account);
         try {
           setIsLoadingAllAccountAssignments(true);
           setAllAccountAssignmentsError(null);
           const fetchedData = await getAssignmentListMetadata(userProfile.account);
-           console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks ADMIN API CALL SUCCEEDED. Data:", fetchedData);
+           // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks ADMIN API CALL SUCCEEDED. Data:", fetchedData);
           setAllAccountAssignments(fetchedData || []);
         } catch (err) {
           console.error("Error fetching all account assignments:", err);
@@ -132,12 +131,12 @@ export default function AssessmentFormsPage() {
           setIsLoadingAllAccountAssignments(false);
         }
       } else if (!authLoading && !profileLoading && !isAdmin) { // Not admin, but auth/profile is loaded
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because isAdmin is false (profile loaded).");
+        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because isAdmin is false (profile loaded).");
         setIsLoadingAllAccountAssignments(false);
         setAllAccountAssignments([]);
         setAllAccountAssignmentsError(null); 
       } else { // Auth or profile still loading
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because auth/profile is still loading.");
+        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because auth/profile is still loading.");
         setIsLoadingAllAccountAssignments(true); 
         setAllAccountAssignments([]);
       }
@@ -163,7 +162,7 @@ export default function AssessmentFormsPage() {
     assignment => assignment && typeof assignment.id === 'string' && assignment.id.trim() !== ''
   );
 
-  console.log("[TEMP DEBUG AssessmentFormsPage] RENDERING with isAdmin:", isAdmin, "profileLoading:", profileLoading, "userProfile loaded:", !!userProfile, "permission:", userProfile?.permission);
+  // console.log("[TEMP DEBUG AssessmentFormsPage] RENDERING with isAdmin:", isAdmin, "profileLoading:", profileLoading, "userProfile loaded:", !!userProfile, "permission:", userProfile?.permission);
 
   return (
     <div className="space-y-8">
@@ -310,7 +309,9 @@ export default function AssessmentFormsPage() {
                         {assignment.description || `ID: ${assignment.id}`}
                       </p>
                     </div>
-                    <Button variant="outline" size="sm" disabled>View Details</Button> {/* Placeholder action */}
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/assignments/${assignment.id}/details`}>View Details</Link>
+                    </Button>
                   </li>
                 ))}
               </ul>
