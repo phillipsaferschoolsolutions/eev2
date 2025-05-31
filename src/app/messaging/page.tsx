@@ -6,7 +6,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type FormEvent } from 'r
 import { useAuth } from '@/context/auth-context';
 import type { ChatUser, ChatMessage } from '@/types/Message';
 import { getUsersForAccount, getDirectChatThreadId, sendMessage, getMessages } from '@/services/messagingService';
-import { updateUserLastSeen } from '@/services/userService'; // Import updateUserLastSeen
+import { updateUserLastSeen } from '@/services/userService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,6 +21,7 @@ import Image from 'next/image';
 import { Users, MessageCircle, Send, Paperclip, XCircle, AlertCircle as AlertIcon } from 'lucide-react';
 import type { Timestamp } from 'firebase/firestore';
 import { formatDistanceToNowStrict } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 // Helper to check if a user is "online" based on lastSeen
 const isUserOnline = (lastSeen?: Timestamp): boolean => {
@@ -47,14 +48,14 @@ export default function MessagingPage() {
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [error, setError] = useState<string | null>(null); 
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null); 
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
 
@@ -62,15 +63,14 @@ export default function MessagingPage() {
     if (!authLoading && !profileLoading && user && userProfile?.account && user.uid && user.email) {
       setIsLoadingUsers(true);
       setError(null);
-      getUsersForAccount(userProfile.account, user.uid)
+      getUsersForAccount(userProfile.account, user.uid) // Pass currentUserUid
         .then(setUsers)
         .catch(err => {
           console.error("Failed to fetch users:", err);
           setError("Could not load users for chat.");
         })
         .finally(() => setIsLoadingUsers(false));
-      
-      // Update current user's lastSeen when messaging page is active
+
       updateUserLastSeen(user.email);
 
     } else if (!authLoading && !profileLoading && (!user || !userProfile?.account)) {
@@ -101,13 +101,20 @@ export default function MessagingPage() {
       setError("Current user information is missing.");
       return;
     }
+    if (chatPartner.uid === user.uid) { // Prevent selecting self
+        // Optionally clear selectedUser if self is "clicked", or just do nothing
+        // setSelectedUser(null); 
+        // setCurrentThreadId(null);
+        return; 
+    }
     if (selectedUser?.uid === chatPartner.uid) return;
+
 
     setSelectedUser(chatPartner);
     const threadId = getDirectChatThreadId(user.uid, chatPartner.uid);
     setCurrentThreadId(threadId);
     setMessages([]);
-    removeSelectedImage(); 
+    removeSelectedImage();
   };
 
   const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
@@ -140,10 +147,10 @@ export default function MessagingPage() {
 
   const handleImageUploadAndSend = async (e: FormEvent) => {
     e.preventDefault();
-    setError(null); 
+    setError(null);
 
     if (!selectedFile && !newMessage.trim()) {
-      return; 
+      return;
     }
     if (!currentThreadId || !user || !user.uid || !user.email || !selectedUser) {
         setError("Cannot send message: Critical user or session information missing.");
@@ -192,8 +199,8 @@ export default function MessagingPage() {
           );
         });
       } catch (uploadProcessError) {
-        setIsUploading(false); 
-        return; 
+        setIsUploading(false);
+        return;
       }
     }
 
@@ -209,10 +216,10 @@ export default function MessagingPage() {
           finalImageName
         );
         setNewMessage('');
-        if (user.email) { // Update lastSeen on successful send
+        if (user.email) {
             updateUserLastSeen(user.email);
         }
-        removeSelectedImage(); 
+        removeSelectedImage();
       } catch (err) {
         console.error('Failed to send message:', err);
         setError('Failed to send message. Please try again.');
@@ -220,7 +227,7 @@ export default function MessagingPage() {
     } else if (selectedFile && !finalImageUrl && !uploadError) {
         setUploadError("Image processing failed after upload. Message not sent.");
     }
-    setIsUploading(false); 
+    setIsUploading(false);
   };
 
 
@@ -240,7 +247,7 @@ export default function MessagingPage() {
     );
   }
 
-  if (error && !isLoadingUsers) { 
+  if (error && !isLoadingUsers) {
     return (
       <Alert variant="destructive" className="m-4">
         <AlertIcon className="h-4 w-4" />
@@ -249,7 +256,7 @@ export default function MessagingPage() {
       </Alert>
     );
   }
-  
+
   if (!user || !userProfile?.account) {
      return (
       <Alert variant="destructive" className="m-4">
@@ -278,16 +285,34 @@ export default function MessagingPage() {
               ))}
             </div>
           ) : users.length > 0 ? (
-            users.map((u) => (
-              <Button key={u.uid} variant={selectedUser?.uid === u.uid ? 'secondary' : 'ghost'} className="w-full justify-start h-auto p-3 mb-1" onClick={() => handleSelectUser(u)}>
-                <div className="relative mr-3">
-                    <Avatar className="h-9 w-9"><AvatarImage src={`https://placehold.co/40x40.png?text=${u.displayName?.[0]?.toUpperCase()}`} data-ai-hint="avatar profile" /><AvatarFallback>{u.displayName?.[0]?.toUpperCase() || u.email[0].toUpperCase()}</AvatarFallback></Avatar>
-                    <span className={`absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-card ${isUserOnline(u.lastSeen) ? 'bg-green-500' : 'bg-gray-400'}`} />
-                </div>
-                <div><div className="font-medium text-sm truncate">{u.displayName}</div><div className="text-xs text-muted-foreground truncate">{u.email}</div></div>
-              </Button>
-            ))
-          ) : ( <p className="p-4 text-sm text-muted-foreground text-center">No other users found.</p> )}
+            users.map((u) => {
+              const isCurrentUser = u.uid === user.uid;
+              return (
+                <Button
+                  key={u.uid}
+                  variant={!isCurrentUser && selectedUser?.uid === u.uid ? 'secondary' : 'ghost'}
+                  className={cn(
+                    "w-full justify-start h-auto p-3 mb-1",
+                    isCurrentUser && "opacity-70 cursor-default hover:bg-transparent" // Style for current user
+                  )}
+                  onClick={() => !isCurrentUser && handleSelectUser(u)} // Prevent selecting self
+                  disabled={isCurrentUser} // Disable button for current user
+                >
+                  <div className="relative mr-3">
+                      <Avatar className="h-9 w-9"><AvatarImage src={`https://placehold.co/40x40.png?text=${u.displayName?.[0]?.toUpperCase()}`} data-ai-hint="avatar profile" /><AvatarFallback>{u.displayName?.[0]?.toUpperCase() || u.email[0].toUpperCase()}</AvatarFallback></Avatar>
+                      <span className={`absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full ring-2 ring-card ${isUserOnline(u.lastSeen) ? 'bg-green-500' : 'bg-gray-400'}`} />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm truncate">
+                        {u.displayName}
+                        {isCurrentUser && <span className="text-xs text-muted-foreground ml-1">(You)</span>}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">{u.email}</div>
+                  </div>
+                </Button>
+              );
+            })
+          ) : ( <p className="p-4 text-sm text-muted-foreground text-center">No users found in this account.</p> )}
         </ScrollArea>
       </div>
 
@@ -304,7 +329,7 @@ export default function MessagingPage() {
                     <CardDescription className="text-xs">{formatLastSeen(selectedUser.lastSeen)}</CardDescription>
                 </div>
             </CardHeader>
-            
+
             <ScrollArea className="flex-grow p-4 space-y-4 bg-background/30">
               {isLoadingMessages ? (
                  <div className="space-y-3 p-2"><Skeleton className="h-10 w-3/5 rounded-lg p-2" /><Skeleton className="h-10 w-1/2 rounded-lg p-2 self-end ml-auto" /><Skeleton className="h-16 w-3/4 rounded-lg p-2" /></div>
@@ -338,7 +363,7 @@ export default function MessagingPage() {
                 {uploadProgress !== null && uploadProgress >= 0 && uploadProgress < 100 && !uploadError &&(
                   <Progress value={uploadProgress} className="w-full h-1 mt-1" />
                 )}
-                 {isUploading && uploadProgress === null && <Progress value={0} className="w-full h-1 mt-1 animate-pulse" />} 
+                 {isUploading && uploadProgress === null && <Progress value={0} className="w-full h-1 mt-1 animate-pulse" />}
               </div>
             )}
             {uploadError && (
@@ -366,3 +391,4 @@ export default function MessagingPage() {
     </div>
   );
 }
+

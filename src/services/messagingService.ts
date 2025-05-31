@@ -21,7 +21,7 @@ import {
 } from 'firebase/firestore';
 
 /**
- * Fetches users belonging to a specific account, excluding the current user.
+ * Fetches users belonging to a specific account.
  * Assumes user documents in Firestore 'users' collection have an 'account' and 'uid' field.
  */
 export async function getUsersForAccount(accountId: string, currentUserUid: string): Promise<ChatUser[]> {
@@ -29,34 +29,32 @@ export async function getUsersForAccount(accountId: string, currentUserUid: stri
     console.error('getUsersForAccount: accountId is required.');
     return [];
   }
-  if (!currentUserUid) {
-    console.error('getUsersForAccount: currentUserUid is required.');
-    return [];
-  }
+  // currentUserUid is still passed for potential future use or logging, but not for filtering here.
 
   try {
     const usersRef = collection(firestore, 'users');
-    // Ensure you have a composite index for account == accountId and orderBy lastSeen
-    // Or, fetch without ordering by lastSeen initially if indexing is an issue, and sort client-side.
-    // For simplicity here, I'm removing orderBy lastSeen from the query directly.
-    // You might re-add it if you create the Firestore index.
     const q = query(usersRef, where('account', '==', accountId));
     const querySnapshot = await getDocs(q);
 
     const users: ChatUser[] = [];
     querySnapshot.forEach((doc) => {
-      const data = doc.data() as UserProfile; // UserProfile now includes lastSeen
-      if (data.uid && data.uid !== currentUserUid) {
+      const data = doc.data() as UserProfile;
+      if (data.uid) { // Include all users with a UID from the account
         users.push({
           uid: data.uid,
           displayName: data.displayName || data.email || 'Unnamed User',
           email: data.email,
-          lastSeen: data.lastSeen as Timestamp | undefined, // Add lastSeen
+          lastSeen: data.lastSeen as Timestamp | undefined,
         });
       }
     });
-    // Optional: Sort users client-side, e.g., by displayName or by online status then displayName
-    users.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
+    // Sort users client-side, e.g., by displayName.
+    // If the current user is in the list, you might want to sort them to the top or handle their position specifically.
+    users.sort((a, b) => {
+        if (a.uid === currentUserUid) return -1; // Current user comes first
+        if (b.uid === currentUserUid) return 1;
+        return (a.displayName || '').localeCompare(b.displayName || '');
+    });
     return users;
   } catch (error) {
     console.error('Error fetching users for account:', error);
@@ -82,8 +80,8 @@ export async function sendMessage(
   senderDisplayName: string,
   senderEmail: string,
   text: string,
-  imageUrl?: string | null, 
-  imageName?: string | null  
+  imageUrl?: string | null,
+  imageName?: string | null
 ): Promise<void> {
   if (!threadId || !senderUid || (!text.trim() && !imageUrl)) {
     console.error('sendMessage: Missing required parameters (threadId, senderUid, text/imageUrl).');
@@ -118,7 +116,7 @@ export async function sendMessage(
     await addDoc(messagesRef, messageData);
   } catch (error) {
     console.error('Error sending message:', error);
-    throw error; 
+    throw error;
   }
 }
 
@@ -135,7 +133,7 @@ export function getMessages(
   }
 
   const messagesRef = collection(firestore, 'chatThreads', threadId, 'messages');
-  const q = query(messagesRef, orderBy('timestamp', 'asc'), limit(100)); 
+  const q = query(messagesRef, orderBy('timestamp', 'asc'), limit(100));
 
   const unsubscribe = onSnapshot(
     q,
@@ -150,8 +148,8 @@ export function getMessages(
           senderEmail: data.senderEmail,
           text: data.text,
           timestamp: data.timestamp as Timestamp,
-          imageUrl: data.imageUrl, 
-          imageName: data.imageName, 
+          imageUrl: data.imageUrl,
+          imageName: data.imageName,
         });
       });
       callback(messages);
