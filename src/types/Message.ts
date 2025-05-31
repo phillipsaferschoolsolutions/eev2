@@ -7,6 +7,7 @@ export interface ChatUser {
   uid: string;
   displayName: string;
   email: string;
+  lastSeen?: Timestamp; // When the user was last active
 }
 
 // Structure for a chat message

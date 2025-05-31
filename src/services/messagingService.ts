@@ -36,20 +36,27 @@ export async function getUsersForAccount(accountId: string, currentUserUid: stri
 
   try {
     const usersRef = collection(firestore, 'users');
+    // Ensure you have a composite index for account == accountId and orderBy lastSeen
+    // Or, fetch without ordering by lastSeen initially if indexing is an issue, and sort client-side.
+    // For simplicity here, I'm removing orderBy lastSeen from the query directly.
+    // You might re-add it if you create the Firestore index.
     const q = query(usersRef, where('account', '==', accountId));
     const querySnapshot = await getDocs(q);
 
     const users: ChatUser[] = [];
     querySnapshot.forEach((doc) => {
-      const data = doc.data() as UserProfile;
+      const data = doc.data() as UserProfile; // UserProfile now includes lastSeen
       if (data.uid && data.uid !== currentUserUid) {
         users.push({
           uid: data.uid,
           displayName: data.displayName || data.email || 'Unnamed User',
           email: data.email,
+          lastSeen: data.lastSeen as Timestamp | undefined, // Add lastSeen
         });
       }
     });
+    // Optional: Sort users client-side, e.g., by displayName or by online status then displayName
+    users.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
     return users;
   } catch (error) {
     console.error('Error fetching users for account:', error);
@@ -75,8 +82,8 @@ export async function sendMessage(
   senderDisplayName: string,
   senderEmail: string,
   text: string,
-  imageUrl?: string | null, // Optional image URL
-  imageName?: string | null  // Optional image name
+  imageUrl?: string | null, 
+  imageName?: string | null  
 ): Promise<void> {
   if (!threadId || !senderUid || (!text.trim() && !imageUrl)) {
     console.error('sendMessage: Missing required parameters (threadId, senderUid, text/imageUrl).');
@@ -143,8 +150,8 @@ export function getMessages(
           senderEmail: data.senderEmail,
           text: data.text,
           timestamp: data.timestamp as Timestamp,
-          imageUrl: data.imageUrl, // Add imageUrl
-          imageName: data.imageName, // Add imageName
+          imageUrl: data.imageUrl, 
+          imageName: data.imageName, 
         });
       });
       callback(messages);
@@ -157,4 +164,3 @@ export function getMessages(
 
   return unsubscribe;
 }
-

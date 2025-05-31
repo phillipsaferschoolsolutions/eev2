@@ -1,5 +1,6 @@
+
 // src/services/userService.ts
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
 import type { UserProfile } from '@/types/User';
 
@@ -35,6 +36,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
         dailySiteSnapshotId: data.dailySiteSnapshotId,
         messageToken: data.messageToken,
         permission: data.permission,
+        lastSeen: data.lastSeen, // Fetch lastSeen
       };
       if (!profile.uid) {
         console.warn(`UserProfile for ${userId} is missing UID. Messaging will not work correctly for this user.`);
@@ -47,5 +49,25 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   } catch (error) {
     console.error('Error fetching user profile:', error);
     throw new Error(`Failed to fetch user profile: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Updates the lastSeen timestamp for a user.
+ * @param userEmail The email (document ID) of the user in the 'users' collection.
+ */
+export async function updateUserLastSeen(userEmail: string): Promise<void> {
+  if (!userEmail) {
+    console.warn("updateUserLastSeen called with no userEmail");
+    return;
+  }
+  try {
+    const userDocRef = doc(firestore, 'users', userEmail);
+    await updateDoc(userDocRef, {
+      lastSeen: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error(`Error updating lastSeen for user ${userEmail}:`, error);
+    // Optionally re-throw or handle if critical for UI
   }
 }
