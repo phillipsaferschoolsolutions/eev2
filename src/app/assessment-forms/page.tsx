@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle, UserCircle, FolderKanban, ServerIcon } from "lucide-react";
-import type { AssignmentMetadata } from "@/services/assignmentFunctionsService"; // Renamed FetchedAssignment
+import type { AssignmentMetadata } from "@/services/assignmentFunctionsService";
 import { getMyAssignments, getAssignmentListMetadata } from "@/services/assignmentFunctionsService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -54,7 +54,9 @@ export default function AssessmentFormsPage() {
       } catch (err) {
         console.error("Error fetching my assignments:", err);
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while fetching your assignments.";
-        if (errorMessage.includes("403")) {
+        if (errorMessage.includes("Network Error") || errorMessage.includes("Failed to fetch")) {
+            setMyAssignmentsError(`Network Error: Could not retrieve your tasks. Please check your internet connection. If the issue persists, the server might be unavailable or there could be a CORS issue. Contact support if this continues.`);
+        } else if (errorMessage.includes("403")) {
           setMyAssignmentsError(`API Error: 403 Forbidden. The Cloud Function denied access for your tasks. This could be due to CORS settings, incorrect 'account' or 'Authorization' headers, or the function's internal authorization logic. Please check your Cloud Function logs and configuration.`);
         } else if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("unauthorized")) {
           setMyAssignmentsError(errorMessage + " This might be due to Firestore security rules or the Cloud Function requiring specific permissions for your tasks.");
@@ -97,7 +99,11 @@ export default function AssessmentFormsPage() {
       } catch (err) {
         console.error("Error fetching all account assignments:", err);
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while fetching all account assignments.";
-        setAllAccountAssignmentsError(errorMessage);
+        if (errorMessage.includes("Network Error") || errorMessage.includes("Failed to fetch")) {
+            setAllAccountAssignmentsError(`Network Error: Could not retrieve all account assignments. Please check your internet connection. If the issue persists, the server might be unavailable or there could be a CORS issue. Contact support if this continues.`);
+        } else {
+            setAllAccountAssignmentsError(errorMessage);
+        }
         setAllAccountAssignments([]);
       } finally {
         setIsLoadingAllAccountAssignments(false);
@@ -322,5 +328,3 @@ export default function AssessmentFormsPage() {
     </div>
   );
 }
-
-    

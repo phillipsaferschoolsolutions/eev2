@@ -186,7 +186,7 @@ async function authedFetch<T>(
 
   const trimmedAccountName = accountName?.trim();
   if (trimmedAccountName) {
-    headers.set('account', trimmedAccountName); 
+    headers.set('account', trimmedAccountName);
   }
 
 
@@ -194,10 +194,20 @@ async function authedFetch<T>(
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let response;
+  try {
+    response = await fetch(`${BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch (networkError: any) {
+    // Catch "Failed to fetch" and other network-level errors
+    console.error(`Network error for ${endpoint}:`, networkError);
+    let errorMessage = `Network Error: Could not connect to the server (${networkError.message || 'Failed to fetch'}). `;
+    errorMessage += `Please check your internet connection. If the issue persists, it might be a CORS configuration problem on the server or the server endpoint (${BASE_URL}${endpoint}) might be down or incorrect.`;
+    throw new Error(errorMessage);
+  }
+
 
   if (!response.ok) {
     let errorData;
@@ -213,8 +223,8 @@ async function authedFetch<T>(
   }
 
   const contentType = response.headers.get("content-type");
-  if (response.status === 204) { 
-    return undefined as any as T; 
+  if (response.status === 204) {
+    return undefined as any as T;
   }
 
   if (contentType && contentType.indexOf("application/json") !== -1) {
@@ -222,7 +232,6 @@ async function authedFetch<T>(
   } else {
     const textResponse = await response.text();
     if (textResponse) {
-      // console.warn(`authedFetch: Response from ${endpoint} was text/plain but JSON might be expected by caller. Body: "${textResponse.substring(0,100)}..."`);
       try {
         if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
           return JSON.parse(textResponse) as T;
@@ -230,9 +239,9 @@ async function authedFetch<T>(
       } catch (e) {
          console.error(`authedFetch: Failed to parse non-JSON text response from ${endpoint} as JSON despite structure match. Error: ${e}`);
       }
-      return textResponse as any as T; 
+      return textResponse as any as T;
     }
-    return undefined as any as T; 
+    return undefined as any as T;
   }
 }
 
@@ -316,7 +325,7 @@ export async function deleteAssignment(id: string, accountName?: string): Promis
 
 /**
  * NEW: 17. PUT /completednew/:id (multipart form-data, but answers JSON contains file URLs)
- * Uploads a completed assignment. 
+ * Uploads a completed assignment.
  * Account name ('account' header) might be needed.
  */
 export async function submitCompletedAssignment(id: string, formData: FormData, accountName?: string): Promise<CompletedAssignmentResponse> {
@@ -339,7 +348,10 @@ export async function getMyAssignments(accountName: string, userEmail?: string):
    if (!trimmedAccountName) {
      throw new Error('Account name is required and cannot be empty for getMyAssignments.');
   }
-  const endpoint = userEmail ? `/tome/${encodeURIComponent(userEmail)}` : '/tome';
+  if (!userEmail) {
+      throw new Error('User email is required for getMyAssignments.');
+  }
+  const endpoint = `/tome/${encodeURIComponent(userEmail)}`;
   const result = await authedFetch<AssignmentMetadata[] | undefined>(endpoint, {}, trimmedAccountName);
   return result || [];
 }
@@ -513,7 +525,7 @@ export async function saveDataCsv(id: string, csvFormData: FormData, accountName
   if (!id) throw new Error('ID is required.');
   return authedFetch<SaveDataResponse>(`/save_data/${id}`, {
     method: 'POST',
-    body: csvFormData, 
+    body: csvFormData,
   }, accountName);
 }
 
