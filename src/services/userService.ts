@@ -1,3 +1,4 @@
+
 // src/services/userService.ts
 import { doc, getDoc } from 'firebase/firestore';
 import { firestore } from '@/lib/firebase';
@@ -14,17 +15,15 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     return null;
   }
   try {
-    // Assuming user documents are stored in a 'users' collection
-    // and the document ID is the user's email (as per the screenshot context)
     const userDocRef = doc(firestore, 'users', userId);
     const userDocSnap = await getDoc(userDocRef);
 
     if (userDocSnap.exists()) {
       const data = userDocSnap.data();
       // Construct the UserProfile object, ensuring all expected fields are mapped
-      return {
+      const profile: UserProfile = {
         id: userDocSnap.id,
-        account: data.account || '', // Ensure account is always a string
+        account: data.account || '', 
         displayName: data.displayName || '',
         email: data.email || '',
         emailVerified: data.emailVerified === true,
@@ -35,14 +34,15 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
         born: data.born,
         dailySiteSnapshotId: data.dailySiteSnapshotId,
         messageToken: data.messageToken,
-      } as UserProfile;
+        permission: data.permission, // Ensure this line correctly maps the 'permission' field
+      };
+      return profile;
     } else {
       console.warn(`No user profile document found for userId: ${userId}`);
       return null;
     }
   } catch (error) {
     console.error('Error fetching user profile:', error);
-    // It's often better to let the caller handle the error or rethrow a custom error
     throw new Error(`Failed to fetch user profile: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

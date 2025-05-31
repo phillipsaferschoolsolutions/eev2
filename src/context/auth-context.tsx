@@ -6,23 +6,22 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { type User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import type { UserProfile } from '@/types/User'; // Import UserProfile
-import { getUserProfile } from '@/services/userService'; // Import userService
+import type { UserProfile } from '@/types/User'; 
+import { getUserProfile } from '@/services/userService'; 
 
 interface CustomClaims {
   admin?: boolean;
   superAdmin?: boolean;
-  // Add other custom claims as needed
   [key: string]: any;
 }
 
 interface AuthContextType {
   user: FirebaseUser | null;
   userProfile: UserProfile | null;
-  customClaims: CustomClaims | null; // Add customClaims
-  loading: boolean; // Overall loading (auth state)
-  profileLoading: boolean; // Specific loading for profile
-  claimsLoading: boolean; // Specific loading for claims
+  customClaims: CustomClaims | null; 
+  loading: boolean; 
+  profileLoading: boolean; 
+  claimsLoading: boolean; 
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,7 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      setLoading(false); // Auth state determined
+      setLoading(false); 
 
       if (currentUser) {
         // Fetch Profile
@@ -47,8 +46,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           if (currentUser.email) {
             const profile = await getUserProfile(currentUser.email);
+            console.log("[TEMP DEBUG AuthProvider] Fetched profile from userService:", JSON.stringify(profile, null, 2)); // ADDED THIS LOG
             setUserProfile(profile);
           } else {
+            console.warn("[TEMP DEBUG AuthProvider] No currentUser.email to fetch profile.");
             setUserProfile(null);
           }
         } catch (error) {
@@ -61,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Fetch Custom Claims
         setClaimsLoading(true);
         try {
-          const idTokenResult = await currentUser.getIdTokenResult(true); // Force refresh to get latest claims
+          const idTokenResult = await currentUser.getIdTokenResult(true); 
           setCustomClaims(idTokenResult.claims as CustomClaims);
         } catch (error) {
           console.error("Failed to load user custom claims in AuthContext", error);
@@ -77,7 +78,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
