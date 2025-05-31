@@ -32,9 +32,9 @@ export default function AssessmentFormsPage() {
 
   useEffect(() => {
     async function fetchMyTasks() {
-      // console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 1: Auth/Profile loading state:", { authLoading, profileLoading });
+      console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 1: Auth/Profile loading state:", { authLoading, profileLoading });
       if (!authLoading && !profileLoading) {
-        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 2: Auth/Profile loaded. User, Profile data:", { user, userProfileEmail: userProfile?.email, userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission });
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 2: Auth/Profile loaded. User, Profile data:", { user, userProfileEmail: userProfile?.email, userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission });
         
         let specificError = "Cannot fetch your tasks. ";
         if (!user) specificError += "You must be logged in. ";
@@ -47,43 +47,47 @@ export default function AssessmentFormsPage() {
 
         if (!user || !user.email || !userProfile || !userProfile.account || userProfile.account.trim() === '') {
           setMyAssignmentsError(specificError.trim());
-          // console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL due to missing user/profile data. Error set to:", specificError.trim());
+          console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL due to missing user/profile data. Error set to:", specificError.trim());
           setIsLoadingMyAssignments(false);
-          setMyAssignments([]);
+          setMyAssignments([]); // Keep current state, don't try to use /tome data yet
           return;
         }
         
-        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks PROCEEDING TO API CALL for account:", userProfile.account, "email:", user.email);
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks PROCEEDING TO API CALL for /tome endpoint. Account:", userProfile.account, "Email:", user.email);
         try {
-          setIsLoadingMyAssignments(true);
+          setIsLoadingMyAssignments(true); // Still set loading for the attempt
           setMyAssignmentsError(null);
-          // TEMPORARY: Use getAssignmentListMetadata for testing API call
-          const fetchedAssignmentsData = await getAssignmentListMetadata(userProfile.account); // Temporarily using this for testing
-          // const fetchedAssignmentsData = await getMyAssignments(userProfile.account, user.email); // Original intended call
-          // console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks API CALL SUCCEEDED (using getAssignmentListMetadata for test). Data:", fetchedAssignmentsData);
-          setMyAssignments(fetchedAssignmentsData || []);
+          
+          // --- FOCUS OF THIS CHANGE: Call getMyAssignments and log ---
+          const tomeAssignmentsData = await getMyAssignments(userProfile.account, user.email);
+          console.log("SUCCESSFULLY FETCHED FROM /tome endpoint. Raw data:", JSON.stringify(tomeAssignmentsData, null, 2));
+          // For now, we are NOT setting this to myAssignments state to isolate the fetch.
+          // To re-enable using this data:
+          // setMyAssignments(tomeAssignmentsData || []);
+          // --- END FOCUS ---
+
         } catch (err) {
-          console.error("Error fetching my assignments (or all account assignments for test):", err);
-          const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while fetching your assignments.";
+          console.error("ERROR FETCHING FROM /tome endpoint:", err);
+          const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while fetching your assignments from /tome.";
           if (errorMessage.includes("Network Error") || errorMessage.includes("Failed to fetch")) {
-              setMyAssignmentsError(`Network Error: Could not retrieve your tasks. Please check your internet connection. If the issue persists, the server might be unavailable or there could be a CORS issue. Contact support if this continues.`);
+              setMyAssignmentsError(`Network Error: Could not retrieve your tasks from /tome. Please check your internet connection. If the issue persists, the server might be unavailable or there could be a CORS issue. Contact support if this continues.`);
           } else if (errorMessage.includes("403")) {
-            setMyAssignmentsError(`API Error: 403 Forbidden. The Cloud Function denied access for your tasks. This could be due to CORS settings, incorrect 'account' or 'Authorization' headers, or the function's internal authorization logic. Please check your Cloud Function logs and configuration.`);
+            setMyAssignmentsError(`API Error (from /tome): 403 Forbidden. The Cloud Function denied access for your tasks. This could be due to CORS settings, incorrect 'account' or 'Authorization' headers, or the function's internal authorization logic. Please check your Cloud Function logs and configuration.`);
           } else if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("unauthorized")) {
-            setMyAssignmentsError(errorMessage + " This might be due to Firestore security rules or the Cloud Function requiring specific permissions for your tasks.");
+            setMyAssignmentsError(errorMessage + " This might be due to Firestore security rules or the Cloud Function requiring specific permissions for your tasks from /tome.");
           } else if (errorMessage.includes("Account name is required and cannot be empty") || errorMessage.includes("User email is required")) {
-             setMyAssignmentsError("User account or email information is not available or is invalid. Cannot fetch your tasks. Please check your user profile settings.");
+             setMyAssignmentsError("User account or email information is not available or is invalid. Cannot fetch your tasks from /tome. Please check your user profile settings.");
           } else {
-            setMyAssignmentsError(errorMessage);
+            setMyAssignmentsError(`Error from /tome: ${errorMessage}`);
           }
-          setMyAssignments([]);
+          // setMyAssignments([]); // Keep current state, don't try to use /tome data yet
         } finally {
-          setIsLoadingMyAssignments(false);
+          setIsLoadingMyAssignments(false); // Fetch attempt is complete
         }
       } else {
-        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL because auth/profile is still loading.");
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL because auth/profile is still loading.");
         setIsLoadingMyAssignments(true); // Keep loading true until checks pass
-        setMyAssignments([]);
+        // setMyAssignments([]); // Keep current state
       }
     }
 
@@ -93,28 +97,28 @@ export default function AssessmentFormsPage() {
 
   useEffect(() => {
     async function fetchAllAccountTasks() {
-      // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 1: isAdmin, Auth/Profile loading state:", { isAdmin, authLoading, profileLoading });
-      if (isAdmin && !authLoading && !profileLoading) { // isAdmin already incorporates profileLoading check
-        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 2: Admin, Auth/Profile loaded. Profile data:", { userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission });
+      console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 1: isAdmin, Auth/Profile loading state:", { isAdmin, authLoading, profileLoading });
+      if (isAdmin && !authLoading && !profileLoading) { 
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 2: Admin, Auth/Profile loaded. Profile data:", { userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission });
         let specificAdminError = "Admin view: Cannot fetch all account assignments. ";
-        if (!userProfile) specificAdminError += "User profile is not loaded. "; // Should be caught by isAdmin but good failsafe
+        if (!userProfile) specificAdminError += "User profile is not loaded. "; 
         else if (!userProfile.account || userProfile.account.trim() === '') {
             specificAdminError += "User account information is not available or is invalid. ";
         }
 
         if (!userProfile || !userProfile.account || userProfile.account.trim() === '') {
            setAllAccountAssignmentsError(specificAdminError.trim());
-           // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL due to missing profile data. Error set to:", specificAdminError.trim());
+           console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL due to missing profile data. Error set to:", specificAdminError.trim());
            setIsLoadingAllAccountAssignments(false);
            setAllAccountAssignments([]);
            return;
         }
-        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks PROCEEDING TO ADMIN API CALL for account:", userProfile.account);
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks PROCEEDING TO ADMIN API CALL for account:", userProfile.account);
         try {
           setIsLoadingAllAccountAssignments(true);
           setAllAccountAssignmentsError(null);
           const fetchedData = await getAssignmentListMetadata(userProfile.account);
-           // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks ADMIN API CALL SUCCEEDED. Data:", fetchedData);
+           console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks ADMIN API CALL SUCCEEDED. Data:", fetchedData);
           setAllAccountAssignments(fetchedData || []);
         } catch (err) {
           console.error("Error fetching all account assignments:", err);
@@ -130,13 +134,13 @@ export default function AssessmentFormsPage() {
         } finally {
           setIsLoadingAllAccountAssignments(false);
         }
-      } else if (!authLoading && !profileLoading && !isAdmin) { // Not admin, but auth/profile is loaded
-        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because isAdmin is false (profile loaded).");
+      } else if (!authLoading && !profileLoading && !isAdmin) { 
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because isAdmin is false (profile loaded).");
         setIsLoadingAllAccountAssignments(false);
         setAllAccountAssignments([]);
         setAllAccountAssignmentsError(null); 
-      } else { // Auth or profile still loading
-        // console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because auth/profile is still loading.");
+      } else { 
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because auth/profile is still loading.");
         setIsLoadingAllAccountAssignments(true); 
         setAllAccountAssignments([]);
       }
@@ -151,7 +155,10 @@ export default function AssessmentFormsPage() {
   const overallLoadingAllAccountAssignments = authLoading || profileLoading || isLoadingAllAccountAssignments;
 
 
-  const displayableMyAssignments = myAssignments.filter(
+  // The UI rendering for "My Assigned Tasks" will currently be based on whatever 'myAssignments'
+  // held previously, or be empty if it was never successfully populated.
+  // This is intentional for this debugging step to isolate the /tome call.
+  const displayableMyAssignments = myAssignments.filter( 
     assignment => {
         const uniqueId = assignment.assignmentId || assignment.id;
         return uniqueId && typeof uniqueId === 'string' && uniqueId.trim() !== '';
@@ -162,7 +169,7 @@ export default function AssessmentFormsPage() {
     assignment => assignment && typeof assignment.id === 'string' && assignment.id.trim() !== ''
   );
 
-  // console.log("[TEMP DEBUG AssessmentFormsPage] RENDERING with isAdmin:", isAdmin, "profileLoading:", profileLoading, "userProfile loaded:", !!userProfile, "permission:", userProfile?.permission);
+  console.log("[TEMP DEBUG AssessmentFormsPage] RENDERING with isAdmin:", isAdmin, "profileLoading:", profileLoading, "userProfile loaded:", !!userProfile, "permission:", userProfile?.permission);
 
   return (
     <div className="space-y-8">
@@ -185,10 +192,11 @@ export default function AssessmentFormsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserCircle className="h-6 w-6 text-primary" />
-            My Assigned Tasks (Currently showing all account tasks for testing)
+            My Assigned Tasks (Attempting to fetch from /tome - check console)
           </CardTitle>
           <CardDescription>
-            Tasks relevant to you for account: {userProfile?.account || "your current account"}.
+            Tasks assigned to you for account: {userProfile?.account || "your current account"}.
+            Console will show raw /tome data or errors. UI below may not reflect this yet.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -208,7 +216,7 @@ export default function AssessmentFormsPage() {
           {myAssignmentsError && !overallLoadingMyAssignments && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Error Fetching Your Tasks</AlertTitle>
+              <AlertTitle>Error During /tome Fetch Attempt</AlertTitle>
               <AlertDescription>
                 {myAssignmentsError}
                 {!user && (
@@ -219,41 +227,43 @@ export default function AssessmentFormsPage() {
               </AlertDescription>
             </Alert>
           )}
-          {!overallLoadingMyAssignments && !myAssignmentsError && myAssignments.length === 0 && (
+          {!overallLoadingMyAssignments && !myAssignmentsError && displayableMyAssignments.length === 0 && (
             <div className="border rounded-lg p-6 text-center bg-muted/20">
               <ListOrdered className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Tasks Found</h3>
+              <h3 className="text-xl font-semibold mb-2">No Tasks Currently Displayed</h3>
               <p className="text-muted-foreground mb-4">
-                No tasks found for account '{userProfile?.account || "current account"}'.
+                Check console for /tome fetch results. UI is not yet updated with this data.
+                Existing tasks for account '{userProfile?.account || "current account"}' might be shown if previously loaded.
               </p>
             </div>
           )}
-          {!overallLoadingMyAssignments && !myAssignmentsError && displayableMyAssignments.length > 0 && (
-            <ul className="space-y-3">
-              {displayableMyAssignments.map((assignment) => {
-                const uniqueId = assignment.assignmentId || assignment.id;
-                return (
-                  <li key={uniqueId} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
-                    <div>
-                      <p className="font-medium">{assignment.assessmentName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {assignment.description || `Due: ${assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}`}
-                      </p>
-                    </div>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={`/assignments/${uniqueId}/complete`}>Complete Task</Link>
-                    </Button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+           {!overallLoadingMyAssignments && !myAssignmentsError && displayableMyAssignments.length > 0 && (
+             <ul className="space-y-3">
+               {displayableMyAssignments.map((assignment) => {
+                 const uniqueId = assignment.assignmentId || assignment.id;
+                 return (
+                   <li key={uniqueId} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
+                     <div>
+                       <p className="font-medium">{assignment.assessmentName}</p>
+                       <p className="text-xs text-muted-foreground">
+                         {assignment.description || `Due: ${assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}`}
+                       </p>
+                     </div>
+                     <Button asChild variant="outline" size="sm">
+                       <Link href={`/assignments/${uniqueId}/complete`}>Complete Task</Link>
+                     </Button>
+                   </li>
+                 );
+               })}
+             </ul>
+           )}
+          {/* Message for data integrity issues if /tome data was processed but had issues */}
           {!overallLoadingMyAssignments && !myAssignmentsError && myAssignments.length > 0 && displayableMyAssignments.length === 0 && (
              <div className="border rounded-lg p-6 text-center bg-muted/20">
                 <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Issue Loading Your Tasks</h3>
+                <h3 className="text-xl font-semibold mb-2">Issue Loading Your Tasks (if /tome data were used)</h3>
                 <p className="text-muted-foreground mb-4">
-                  Some tasks could not be displayed due to missing or invalid identifiers. Please contact support if this issue persists.
+                  Some tasks could not be displayed due to missing or invalid identifiers if /tome data was used. Please contact support if this issue persists.
                 </p>
             </div>
           )}
@@ -290,7 +300,7 @@ export default function AssessmentFormsPage() {
                 <AlertDescription>{allAccountAssignmentsError}</AlertDescription>
               </Alert>
             )}
-            {!overallLoadingAllAccountAssignments && !allAccountAssignmentsError && allAccountAssignments.length === 0 && (
+            {!overallLoadingAllAccountAssignments && !allAccountAssignmentsError && displayableAllAccountAssignments.length === 0 && (
               <div className="border rounded-lg p-6 text-center bg-muted/20">
                 <FolderKanban className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-xl font-semibold mb-2">No Assignments Found For Account</h3>
@@ -362,5 +372,3 @@ export default function AssessmentFormsPage() {
     </div>
   );
 }
-
-    
