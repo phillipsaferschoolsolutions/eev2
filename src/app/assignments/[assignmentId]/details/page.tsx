@@ -71,11 +71,9 @@ export default function AssignmentDetailsPage() {
       return;
     }
     
-    // Basic admin check - enhance if direct access to this page needs stricter control
     if (!isAdmin) {
         setError("You do not have permission to view these details.");
         setIsLoading(false);
-        // Consider redirecting: router.push('/assessment-forms');
         return;
     }
 
@@ -158,7 +156,7 @@ export default function AssignmentDetailsPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <h1 className="text-3xl font-bold tracking-tight">{assignment.assessmentName || "Assignment Details"}</h1>
           <Button asChild size="lg">
-            <Link href={`/assignments/${assignment.id}/edit`}> {/* Assuming edit page uses Firestore doc ID */}
+            <Link href={`/assignments/${assignment.id}/edit`}>
               <Edit3 className="mr-2 h-5 w-5" /> Edit Assignment
             </Link>
           </Button>
@@ -256,8 +254,10 @@ export default function AssignmentDetailsPage() {
                   </div>
                   {question.conditional && (
                      <div className="mt-2 p-2 bg-muted/50 rounded-md text-xs">
-                        <p className="font-medium">Conditional Logic:</p>
-                        <p>Show if question ID <Badge variant="outline" size="sm">{question.conditional.field}</Badge> has value(s): <Badge variant="outline" size="sm">{Array.isArray(question.conditional.value) ? question.conditional.value.join(', ') : question.conditional.value}</Badge></p>
+                        <div className="font-medium">Conditional Logic:</div>
+                        <div>
+                           Show if question ID <Badge variant="outline" size="sm">{question.conditional.field}</Badge> has value(s): <Badge variant="outline" size="sm">{Array.isArray(question.conditional.value) ? question.conditional.value.join(', ') : question.conditional.value}</Badge>
+                        </div>
                      </div>
                   )}
                 </li>
@@ -271,5 +271,6 @@ export default function AssignmentDetailsPage() {
     </div>
   );
 }
+    
 
     
