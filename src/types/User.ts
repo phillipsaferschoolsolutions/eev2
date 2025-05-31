@@ -12,5 +12,6 @@ export interface UserProfile {
   born?: string;
   dailySiteSnapshotId?: string;
   messageToken?: string;
+  permission?: string; // Added permission field
   // Add any other relevant fields from your user documents in Firestore
 }

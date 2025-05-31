@@ -20,7 +20,7 @@ const sampleTemplates = [
 ];
 
 export default function AssessmentFormsPage() {
-  const { user, userProfile, customClaims, loading: authLoading, profileLoading, claimsLoading } = useAuth();
+  const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
   const [myAssignments, setMyAssignments] = useState<AssignmentMetadata[]>([]);
   const [isLoadingMyAssignments, setIsLoadingMyAssignments] = useState(true);
   const [myAssignmentsError, setMyAssignmentsError] = useState<string | null>(null);
@@ -29,13 +29,13 @@ export default function AssessmentFormsPage() {
   const [isLoadingAllAccountAssignments, setIsLoadingAllAccountAssignments] = useState(false);
   const [allAccountAssignmentsError, setAllAccountAssignmentsError] = useState<string | null>(null);
 
-  const isAdmin = !claimsLoading && (customClaims?.admin === true || customClaims?.superAdmin === true);
+  const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
 
   useEffect(() => {
     async function fetchMyTasks() {
-      console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 1: Auth/Profile/Claims loading state:", { authLoading, profileLoading, claimsLoading });
-      if (!authLoading && !profileLoading && !claimsLoading) {
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 2: Auth/Profile/Claims loaded. User, Profile, Claims data:", { user, userProfileEmail: userProfile?.email, userProfileAccount: userProfile?.account, customClaims });
+      console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 1: Auth/Profile loading state:", { authLoading, profileLoading });
+      if (!authLoading && !profileLoading) {
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 2: Auth/Profile loaded. User, Profile data:", { user, userProfileEmail: userProfile?.email, userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission });
         
         let specificError = "Cannot fetch your tasks. ";
         if (!user) specificError += "You must be logged in. ";
@@ -82,23 +82,23 @@ export default function AssessmentFormsPage() {
           setIsLoadingMyAssignments(false);
         }
       } else {
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL because auth/profile/claims is still loading.");
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL because auth/profile is still loading.");
         setIsLoadingMyAssignments(true); // Keep loading true until checks pass
         setMyAssignments([]);
       }
     }
 
     fetchMyTasks();
-  }, [user, userProfile, customClaims, authLoading, profileLoading, claimsLoading]);
+  }, [user, userProfile, authLoading, profileLoading]);
 
 
   useEffect(() => {
     async function fetchAllAccountTasks() {
-      console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 1: isAdmin, Auth/Profile/Claims loading state:", { isAdmin, authLoading, profileLoading, claimsLoading });
-      if (isAdmin && !authLoading && !profileLoading && !claimsLoading) {
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 2: Admin, Auth/Profile/Claims loaded. Profile data:", { userProfileAccount: userProfile?.account, customClaims });
+      console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 1: isAdmin, Auth/Profile loading state:", { isAdmin, authLoading, profileLoading });
+      if (isAdmin && !authLoading && !profileLoading) { // isAdmin already incorporates profileLoading check
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 2: Admin, Auth/Profile loaded. Profile data:", { userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission });
         let specificAdminError = "Admin view: Cannot fetch all account assignments. ";
-        if (!userProfile) specificAdminError += "User profile is not loaded. ";
+        if (!userProfile) specificAdminError += "User profile is not loaded. "; // Should be caught by isAdmin but good failsafe
         else if (!userProfile.account || userProfile.account.trim() === '') {
             specificAdminError += "User account information is not available or is invalid. ";
         }
@@ -131,39 +131,30 @@ export default function AssessmentFormsPage() {
         } finally {
           setIsLoadingAllAccountAssignments(false);
         }
-      } else if (isAdmin) { // isAdmin might be true but claims still loading
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because auth/profile/claims is still loading (but isAdmin could be true if claims were loaded).");
-        setIsLoadingAllAccountAssignments(true); // Keep loading true
-        setAllAccountAssignments([]);
-      } else { // Not admin or claims not loaded yet to determine admin status
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because isAdmin is false or claims are loading.");
+      } else if (!authLoading && !profileLoading && !isAdmin) { // Not admin, but auth/profile is loaded
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because isAdmin is false (profile loaded).");
         setIsLoadingAllAccountAssignments(false);
         setAllAccountAssignments([]);
-        setAllAccountAssignmentsError(null); // Clear any previous admin errors if user is not admin
+        setAllAccountAssignmentsError(null); 
+      } else { // Auth or profile still loading
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because auth/profile is still loading.");
+        setIsLoadingAllAccountAssignments(true); 
+        setAllAccountAssignments([]);
       }
     }
     
-    // Only run if not auth/profile/claims loading. Admin check happens inside.
-    if (!authLoading && !profileLoading && !claimsLoading) {
-      fetchAllAccountTasks();
-    } else {
-      // Set initial loading states if we haven't started yet
-      if (isAdmin) setIsLoadingAllAccountAssignments(true); 
-      else setIsLoadingAllAccountAssignments(false);
-      setAllAccountAssignments([]);
-    }
+    fetchAllAccountTasks();
 
-  }, [isAdmin, userProfile, customClaims, authLoading, profileLoading, claimsLoading]);
+  }, [isAdmin, userProfile, authLoading, profileLoading]); // isAdmin is derived, so userProfile & profileLoading are dependencies
 
 
-  const overallLoadingMyAssignments = authLoading || profileLoading || claimsLoading || isLoadingMyAssignments;
-  const overallLoadingAllAccountAssignments = authLoading || profileLoading || claimsLoading || isLoadingAllAccountAssignments;
+  const overallLoadingMyAssignments = authLoading || profileLoading || isLoadingMyAssignments;
+  const overallLoadingAllAccountAssignments = authLoading || profileLoading || isLoadingAllAccountAssignments;
 
 
   const displayableMyAssignments = myAssignments.filter(
     assignment => {
-        // For this temporary test, getAssignmentListMetadata returns 'id'
-        const uniqueId = assignment.id || assignment.assignmentId;
+        const uniqueId = assignment.assignmentId || assignment.id;
         return uniqueId && typeof uniqueId === 'string' && uniqueId.trim() !== '';
     }
   );
@@ -196,7 +187,7 @@ export default function AssessmentFormsPage() {
             My Assigned Tasks (Currently showing all account tasks for testing)
           </CardTitle>
           <CardDescription>
-            Tasks specifically assigned to you for account: {userProfile?.account || "your current account"}.
+            Tasks relevant to you for account: {userProfile?.account || "your current account"}.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -216,7 +207,7 @@ export default function AssessmentFormsPage() {
           {myAssignmentsError && !overallLoadingMyAssignments && (
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Error Fetching Your Assigned Tasks</AlertTitle>
+              <AlertTitle>Error Fetching Your Tasks</AlertTitle>
               <AlertDescription>
                 {myAssignmentsError}
                 {!user && (
@@ -239,8 +230,7 @@ export default function AssessmentFormsPage() {
           {!overallLoadingMyAssignments && !myAssignmentsError && displayableMyAssignments.length > 0 && (
             <ul className="space-y-3">
               {displayableMyAssignments.map((assignment) => {
-                // For this temporary test, getAssignmentListMetadata returns 'id'
-                const uniqueId = assignment.id || assignment.assignmentId;
+                const uniqueId = assignment.assignmentId || assignment.id;
                 return (
                   <li key={uniqueId} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
                     <div>
@@ -260,7 +250,7 @@ export default function AssessmentFormsPage() {
           {!overallLoadingMyAssignments && !myAssignmentsError && myAssignments.length > 0 && displayableMyAssignments.length === 0 && (
              <div className="border rounded-lg p-6 text-center bg-muted/20">
                 <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Issue Loading Tasks</h3>
+                <h3 className="text-xl font-semibold mb-2">Issue Loading Your Tasks</h3>
                 <p className="text-muted-foreground mb-4">
                   Some tasks could not be displayed due to missing or invalid identifiers. Please contact support if this issue persists.
                 </p>
