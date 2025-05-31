@@ -33,88 +33,118 @@ export default function AssessmentFormsPage() {
 
   useEffect(() => {
     async function fetchMyTasks() {
-      if (!user || !user.email || !userProfile || !userProfile.account || userProfile.account.trim() === '') {
-        if (!authLoading && !profileLoading) {
-          let specificError = "Cannot fetch your tasks. ";
-          if (!user) specificError += "You must be logged in.";
-          else if (!user.email) specificError += "User email is not available.";
-          else if (!userProfile?.account || userProfile.account.trim() === '') specificError += "User account information is not available or is invalid. Please check your user profile settings.";
+      console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 1: Auth/Profile loading state:", { authLoading, profileLoading });
+      if (!authLoading && !profileLoading) {
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 2: Auth/Profile loaded. User and Profile data:", { user, userProfileEmail: userProfile?.email, userProfileAccount: userProfile?.account });
+        let specificError = "Cannot fetch your tasks. ";
+        if (!user) {
+          specificError += "You must be logged in.";
+        } else if (!user.email) {
+          specificError += "User email is not available.";
+        } else if (!userProfile) {
+          specificError += "User profile is not loaded.";
+        } else if (!userProfile.account || userProfile.account.trim() === '') {
+          specificError += "User account information is not available or is invalid. Please check your user profile settings.";
+        }
+
+        if (!user || !user.email || !userProfile || !userProfile.account || userProfile.account.trim() === '') {
           setMyAssignmentsError(specificError);
+          console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL due to missing user/profile data. Error set to:", specificError);
           setIsLoadingMyAssignments(false);
           setMyAssignments([]);
+          return;
         }
-        return;
-      }
-
-      try {
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks PROCEEDING TO API CALL for account:", userProfile.account, "email:", user.email);
+        try {
+          setIsLoadingMyAssignments(true);
+          setMyAssignmentsError(null);
+          const fetchedAssignmentsData = await getMyAssignments(userProfile.account, user.email);
+          setMyAssignments(fetchedAssignmentsData || []);
+        } catch (err) {
+          console.error("Error fetching my assignments:", err);
+          const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while fetching your assignments.";
+          if (errorMessage.includes("Network Error") || errorMessage.includes("Failed to fetch")) {
+              setMyAssignmentsError(`Network Error: Could not retrieve your tasks. Please check your internet connection. If the issue persists, the server might be unavailable or there could be a CORS issue. Contact support if this continues.`);
+          } else if (errorMessage.includes("403")) {
+            setMyAssignmentsError(`API Error: 403 Forbidden. The Cloud Function denied access for your tasks. This could be due to CORS settings, incorrect 'account' or 'Authorization' headers, or the function's internal authorization logic. Please check your Cloud Function logs and configuration.`);
+          } else if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("unauthorized")) {
+            setMyAssignmentsError(errorMessage + " This might be due to Firestore security rules or the Cloud Function requiring specific permissions for your tasks.");
+          } else if (errorMessage.includes("Account name is required and cannot be empty") || errorMessage.includes("User email is required")) {
+             setMyAssignmentsError("User account or email information is not available or is invalid. Cannot fetch your tasks. Please check your user profile settings.");
+          } else {
+            setMyAssignmentsError(errorMessage);
+          }
+          setMyAssignments([]);
+        } finally {
+          setIsLoadingMyAssignments(false);
+        }
+      } else {
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks SKIPPING API CALL because auth/profile is still loading.");
         setIsLoadingMyAssignments(true);
-        setMyAssignmentsError(null);
-        const fetchedAssignmentsData = await getMyAssignments(userProfile.account, user.email);
-        setMyAssignments(fetchedAssignmentsData || []); // Ensure it's an array
-      } catch (err) {
-        console.error("Error fetching my assignments:", err);
-        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while fetching your assignments.";
-        if (errorMessage.includes("Network Error") || errorMessage.includes("Failed to fetch")) {
-            setMyAssignmentsError(`Network Error: Could not retrieve your tasks. Please check your internet connection. If the issue persists, the server might be unavailable or there could be a CORS issue. Contact support if this continues.`);
-        } else if (errorMessage.includes("403")) {
-          setMyAssignmentsError(`API Error: 403 Forbidden. The Cloud Function denied access for your tasks. This could be due to CORS settings, incorrect 'account' or 'Authorization' headers, or the function's internal authorization logic. Please check your Cloud Function logs and configuration.`);
-        } else if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("unauthorized")) {
-          setMyAssignmentsError(errorMessage + " This might be due to Firestore security rules or the Cloud Function requiring specific permissions for your tasks.");
-        } else if (errorMessage.includes("Account name is required and cannot be empty") || errorMessage.includes("User email is required")) {
-           setMyAssignmentsError("User account or email information is not available or is invalid. Cannot fetch your tasks. Please check your user profile settings.");
-        } else {
-          setMyAssignmentsError(errorMessage);
-        }
         setMyAssignments([]);
-      } finally {
-        setIsLoadingMyAssignments(false);
       }
     }
 
-    if (!authLoading && !profileLoading) {
-      fetchMyTasks();
-    } else {
-      setIsLoadingMyAssignments(true); // Set loading if auth/profile is still loading
-      setMyAssignments([]); // Clear assignments while auth/profile is loading
-    }
+    fetchMyTasks();
   }, [user, userProfile, authLoading, profileLoading]);
 
 
   useEffect(() => {
     async function fetchAllAccountTasks() {
-      if (!isAdmin || !userProfile || !userProfile.account || userProfile.account.trim() === '') {
-        if (isAdmin && (!userProfile?.account || userProfile.account.trim() === '')) {
-             setAllAccountAssignmentsError("Admin view: User account information is not available or is invalid. Cannot fetch all account assignments.");
+      console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 1: isAdmin, Auth/Profile loading state:", { isAdmin, authLoading, profileLoading });
+      if (isAdmin && !authLoading && !profileLoading) {
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 2: Admin, Auth/Profile loaded. Profile data:", { userProfileAccount: userProfile?.account });
+        let specificAdminError = "Admin view: Cannot fetch all account assignments. ";
+        if (!userProfile) {
+            specificAdminError += "User profile is not loaded.";
+        } else if (!userProfile.account || userProfile.account.trim() === '') {
+            specificAdminError += "User account information is not available or is invalid.";
         }
-        setIsLoadingAllAccountAssignments(false);
-        setAllAccountAssignments([]);
-        return;
-      }
 
-      try {
-        setIsLoadingAllAccountAssignments(true);
-        setAllAccountAssignmentsError(null);
-        const fetchedData = await getAssignmentListMetadata(userProfile.account);
-        setAllAccountAssignments(fetchedData || []); // Ensure it's an array
-      } catch (err) {
-        console.error("Error fetching all account assignments:", err);
-        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while fetching all account assignments.";
-        if (errorMessage.includes("Network Error") || errorMessage.includes("Failed to fetch")) {
-            setAllAccountAssignmentsError(`Network Error: Could not retrieve all account assignments. Please check your internet connection. If the issue persists, the server might be unavailable or there could be a CORS issue. Contact support if this continues.`);
-        } else {
-            setAllAccountAssignmentsError(errorMessage);
+        if (!userProfile || !userProfile.account || userProfile.account.trim() === '') {
+           setAllAccountAssignmentsError(specificAdminError);
+           console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL due to missing profile data. Error set to:", specificAdminError);
+           setIsLoadingAllAccountAssignments(false);
+           setAllAccountAssignments([]);
+           return;
         }
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks PROCEEDING TO ADMIN API CALL for account:", userProfile.account);
+        try {
+          setIsLoadingAllAccountAssignments(true);
+          setAllAccountAssignmentsError(null);
+          const fetchedData = await getAssignmentListMetadata(userProfile.account);
+          setAllAccountAssignments(fetchedData || []);
+        } catch (err) {
+          console.error("Error fetching all account assignments:", err);
+          const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while fetching all account assignments.";
+          if (errorMessage.includes("Network Error") || errorMessage.includes("Failed to fetch")) {
+              setAllAccountAssignmentsError(`Network Error: Could not retrieve all account assignments. Please check your internet connection. If the issue persists, the server might be unavailable or there could be a CORS issue. Contact support if this continues.`);
+          } else if (errorMessage.includes("Account name is required and cannot be empty")) {
+             setAllAccountAssignmentsError("Admin view: User account information is not available or is invalid. Cannot fetch all account assignments.");
+          }
+          else {
+              setAllAccountAssignmentsError(errorMessage);
+          }
+          setAllAccountAssignments([]);
+        } finally {
+          setIsLoadingAllAccountAssignments(false);
+        }
+      } else if (isAdmin) {
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because auth/profile is still loading (but isAdmin is true).");
+        setIsLoadingAllAccountAssignments(true);
         setAllAccountAssignments([]);
-      } finally {
+      } else {
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks SKIPPING ADMIN API CALL because isAdmin is false.");
         setIsLoadingAllAccountAssignments(false);
+        setAllAccountAssignments([]);
       }
     }
-
-    if (isAdmin && !authLoading && !profileLoading) {
-      fetchAllAccountTasks();
-    } else if (isAdmin) { // If admin but auth/profile is loading
-      setIsLoadingAllAccountAssignments(true);
-      setAllAccountAssignments([]);
+    if (isAdmin) { // Only run if isAdmin is true from the start or becomes true
+        fetchAllAccountTasks();
+    } else { // If not admin, ensure loading is false and list is empty
+        setIsLoadingAllAccountAssignments(false);
+        setAllAccountAssignments([]);
+        setAllAccountAssignmentsError(null); // Clear any previous admin errors
     }
   }, [isAdmin, userProfile, authLoading, profileLoading]);
 
@@ -163,7 +193,7 @@ export default function AssessmentFormsPage() {
           {overallLoadingMyAssignments && (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-md border">
+                <div key={`my-skeleton-${i}`} className="flex items-center justify-between p-3 rounded-md border">
                   <div>
                     <Skeleton className="h-5 w-48 mb-1" />
                     <Skeleton className="h-3 w-32" />
@@ -199,7 +229,7 @@ export default function AssessmentFormsPage() {
           {!overallLoadingMyAssignments && !myAssignmentsError && displayableMyAssignments.length > 0 && (
             <ul className="space-y-3">
               {displayableMyAssignments.map((assignment) => {
-                const uniqueId = assignment.assignmentId || assignment.id;
+                const uniqueId = assignment.assignmentId || assignment.id; // Prioritize assignmentId
                 return (
                   <li key={uniqueId} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
                     <div>
@@ -269,7 +299,7 @@ export default function AssessmentFormsPage() {
             )}
             {!(authLoading || profileLoading || isLoadingAllAccountAssignments) && !allAccountAssignmentsError && displayableAllAccountAssignments.length > 0 && (
               <ul className="space-y-3">
-                {displayableAllAccountAssignments.map((assignment) => (
+                {displayableAllAccountAssignments.map((assignment) => ( // Should use assignment.id from /assignmentlist
                   <li key={`admin-${assignment.id}`} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
                     <div>
                       <p className="font-medium">{assignment.assessmentName}</p>
@@ -328,3 +358,5 @@ export default function AssessmentFormsPage() {
     </div>
   );
 }
+
+    
