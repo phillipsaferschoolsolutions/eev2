@@ -28,7 +28,7 @@ export default function AssessmentFormsPage() {
   const [isLoadingAllAccountAssignments, setIsLoadingAllAccountAssignments] = useState(true);
   const [allAccountAssignmentsError, setAllAccountAssignmentsError] = useState<string | null>(null);
 
-  const isAdmin = !profileLoading && !claimsLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
+  const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
 
   useEffect(() => {
     async function fetchMyTasks() {
@@ -58,7 +58,7 @@ export default function AssessmentFormsPage() {
           setIsLoadingMyAssignments(true); 
           setMyAssignmentsError(null);
           
-          const tomeAssignmentsData = await getMyAssignments(userProfile.account, user.email);
+          const tomeAssignmentsData = await getMyAssignments(userProfile.account, user.email!);
           console.log("SUCCESSFULLY FETCHED FROM /tome endpoint. Raw data:", JSON.stringify(tomeAssignmentsData, null, 2));
           setMyAssignments(tomeAssignmentsData || []);
 
@@ -148,25 +148,17 @@ export default function AssessmentFormsPage() {
 
   const overallLoadingMyAssignments = authLoading || profileLoading || claimsLoading || isLoadingMyAssignments;
   const overallLoadingAllAccountAssignments = authLoading || profileLoading || claimsLoading || isLoadingAllAccountAssignments;
-
-  const displayableMyAssignments = myAssignments.filter( 
-    assignment => {
-        const uniqueId = assignment.assignmentId || assignment.id;
-        return uniqueId && typeof uniqueId === 'string' && uniqueId.trim() !== '';
-    }
-  );
   
-  console.log("[TEMP DEBUG AssessmentFormsPage] Filter Check for My Assignments: myAssignments length:", myAssignments.length, "displayableMyAssignments length:", displayableMyAssignments.length);
-  if (myAssignments.length > 0 && displayableMyAssignments.length === 0) {
+  console.log("[TEMP DEBUG AssessmentFormsPage] Filter Check for My Assignments: myAssignments length:", myAssignments.length);
+  if (myAssignments.length > 0 ) {
     console.log("[TEMP DEBUG AssessmentFormsPage] First item in myAssignments (if any):", myAssignments[0]);
   }
-
 
   const displayableAllAccountAssignments = allAccountAssignments.filter(
     assignment => assignment && typeof assignment.id === 'string' && assignment.id.trim() !== ''
   );
 
-  console.log("[TEMP DEBUG AssessmentFormsPage] RENDERING with isAdmin:", isAdmin, "profileLoading:", profileLoading, "userProfile loaded:", !!userProfile, "permission:", userProfile?.permission, "claimsLoading:", claimsLoading, "customClaims:", customClaims);
+  console.log("[TEMP DEBUG AssessmentFormsPage] RENDERING with isAdmin:", isAdmin, "profileLoading:", profileLoading, "userProfile loaded:", !!userProfile, "permission:", userProfile?.permission, "customClaims:", customClaims);
 
   return (
     <div className="space-y-8">
@@ -223,7 +215,7 @@ export default function AssessmentFormsPage() {
               </AlertDescription>
             </Alert>
           )}
-          {!overallLoadingMyAssignments && !myAssignmentsError && displayableMyAssignments.length === 0 && (
+          {!overallLoadingMyAssignments && !myAssignmentsError && myAssignments.length === 0 && (
             <div className="border rounded-lg p-6 text-center bg-muted/20">
               <ListOrdered className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-xl font-semibold mb-2">No Assignments Displayed</h3>
@@ -232,36 +224,38 @@ export default function AssessmentFormsPage() {
               </p>
             </div>
           )}
-           {!overallLoadingMyAssignments && !myAssignmentsError && displayableMyAssignments.length > 0 && (
+           {!overallLoadingMyAssignments && !myAssignmentsError && myAssignments.length > 0 && (
              <ul className="space-y-3">
-               {displayableMyAssignments.map((assignment) => {
-                 const uniqueId = assignment.assignmentId || assignment.id; // Prioritize assignmentId
+               {myAssignments.map((assignment, index) => {
+                 const uniqueIdForLink = (assignment.assignmentId && typeof assignment.assignmentId === 'string' && assignment.assignmentId.trim() !== '')
+                                      ? assignment.assignmentId
+                                      : (assignment.id && typeof assignment.id === 'string' && assignment.id.trim() !== '')
+                                        ? assignment.id
+                                        : null;
+                
+                 const keyForListItem = uniqueIdForLink || assignment.assessmentName || `my-assignment-${index}`;
+
                  return (
-                   <li key={uniqueId} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
+                   <li key={keyForListItem} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
                      <div>
-                       <p className="font-medium">{assignment.assessmentName}</p>
+                       <p className="font-medium">{assignment.assessmentName || assignment.description || 'Unnamed Assignment'}</p>
                        <p className="text-xs text-muted-foreground">
-                         {assignment.description || `Due: ${assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}`}
+                         {assignment.description ? (assignment.assessmentName ? `Desc: ${assignment.description}` : assignment.description) : `Due: ${assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}`}
+                         {!uniqueIdForLink && <span className="ml-2 text-destructive">(ID missing)</span>}
                        </p>
                      </div>
-                     <Button asChild variant="outline" size="sm">
-                       <Link href={`/assignments/${uniqueId}/complete`}>Complete Task</Link>
+                     <Button asChild variant="outline" size="sm" disabled={!uniqueIdForLink}>
+                        {uniqueIdForLink ? (
+                           <Link href={`/assignments/${uniqueIdForLink}/complete`}>Complete Task</Link>
+                        ) : (
+                           <span>Complete Task</span> 
+                        )}
                      </Button>
                    </li>
                  );
                })}
              </ul>
            )}
-          {/* Message for data integrity issues if data was fetched but had issues */}
-          {!overallLoadingMyAssignments && !myAssignmentsError && myAssignments.length > 0 && displayableMyAssignments.length === 0 && (
-             <div className="border rounded-lg p-6 text-center bg-muted/20">
-                <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Issue Loading Your Assignments</h3>
-                <p className="text-muted-foreground mb-4">
-                  Some assignments could not be displayed due to missing or invalid identifiers. Please contact support if this issue persists.
-                </p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
