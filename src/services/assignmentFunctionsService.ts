@@ -180,7 +180,7 @@ async function getIdToken(): Promise<string | null> {
 
 // --- Generic Fetch Wrapper ---
 async function authedFetch<T>(
-  fullUrl: string, // Changed to accept fullUrl directly
+  fullUrl: string,
   options: RequestInit = {},
   accountName?: string
 ): Promise<T> {
@@ -196,6 +196,9 @@ async function authedFetch<T>(
   const trimmedAccountName = accountName?.trim();
   if (trimmedAccountName) {
     headers.set('account', trimmedAccountName);
+    console.log(`[authedFetch DEBUG] Set 'account' header to: ${trimmedAccountName} for URL: ${fullUrl}`); // Diagnostic log
+  } else {
+    console.warn(`[authedFetch DEBUG] 'account' header NOT SET for URL: ${fullUrl} because accountName was:`, accountName); // Diagnostic log
   }
 
 
@@ -203,9 +206,11 @@ async function authedFetch<T>(
     headers.set('Content-Type', 'application/json');
   }
 
+  console.log(`[authedFetch DEBUG] Making API call to ${fullUrl} with headers:`, Object.fromEntries(headers.entries())); // Diagnostic log
+
   let response;
   try {
-    response = await fetch(fullUrl, { // Use fullUrl directly
+    response = await fetch(fullUrl, { 
       ...options,
       headers,
     });
@@ -565,7 +570,5 @@ export async function savePendingSubmission(assignmentId: string, payload: Draft
     body: JSON.stringify(payload),
   }, trimmedAccountName);
 }
-
-    
 
     

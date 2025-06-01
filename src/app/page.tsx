@@ -70,6 +70,7 @@ export default function DashboardPage() {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           try {
+            console.log("[DashboardPage] Attempting to fetch weather. User profile account:", userProfile?.account); // Diagnostic log
             if (userProfile?.account) {
               const data = await getWeatherAndLocation(
                 position.coords.latitude,
@@ -78,7 +79,7 @@ export default function DashboardPage() {
               );
               setWeatherData(data);
             } else {
-              setWeatherError("User account information not available for weather.");
+              setWeatherError("User account information not available for weather. Cannot set 'account' header.");
             }
           } catch (err) {
             setWeatherError(err instanceof Error ? err.message : "Failed to fetch weather data.");
@@ -115,17 +116,19 @@ export default function DashboardPage() {
       }
     };
 
-    fetchWeather();
+    if (userProfile !== undefined) { // Ensures userProfile state from AuthContext is initialized
+        fetchWeather();
+    }
     fetchNews();
 
-  }, [userProfile?.account]);
+  }, [userProfile]); // Re-run if userProfile changes (e.g., after login)
 
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome to EagleEyED<sup>TM</sup></h1>
+          <h1 className="text-3xl font-bold tracking-tight">Welcome to EagleEyED™</h1>
           <p className="text-muted-foreground">Your central hub for campus safety management.</p>
         </div>
         <div className="flex gap-2">
@@ -234,9 +237,9 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
                   <CloudSun className="h-12 w-12 text-primary" /> {/* Consider dynamic icon based on weatherData.weather[0].icon */}
                   <div>
-                    <p className="text-2xl font-bold">{Math.round(weatherData.current?.temp)}°F, {weatherData.current?.weather?.[0]?.description}</p>
+                    <p className="text-2xl font-bold">{Math.round(weatherData.current?.temp ?? 0)}°F, {weatherData.current?.weather?.[0]?.description ?? 'N/A'}</p>
                     <p className="text-sm text-muted-foreground">
-                      Wind: {Math.round(weatherData.current?.wind_speed)}mph, Humidity: {weatherData.current?.humidity}%
+                      Wind: {Math.round(weatherData.current?.wind_speed ?? 0)}mph, Humidity: {weatherData.current?.humidity ?? 0}%
                     </p>
                   </div>
                 </div>
@@ -263,30 +266,32 @@ export default function DashboardPage() {
                                 <li key={item.guid} className="hover:bg-muted/50 p-2 rounded-md transition-colors">
                                     <Dialog>
                                         <DialogTrigger asChild>
-                                            <button className="text-left w-full">
+                                            <button className="text-left w-full" onClick={() => setSelectedNewsItem(item)}>
                                                 <span className="font-medium text-primary hover:underline block truncate">{item.title}</span>
                                                 <span className="text-xs text-muted-foreground">{new Date(item.pubDate).toLocaleDateString()}</span>
                                             </button>
                                         </DialogTrigger>
+                                        {selectedNewsItem?.guid === item.guid && (
                                         <DialogContent className="sm:max-w-[625px]">
                                             <DialogHeader>
-                                                <DialogTitle>{item.title}</DialogTitle>
+                                                <DialogTitle>{selectedNewsItem.title}</DialogTitle>
                                                 <DialogDescription>
-                                                    Published: {new Date(item.pubDate).toLocaleString()}
+                                                    Published: {new Date(selectedNewsItem.pubDate).toLocaleString()}
                                                 </DialogDescription>
                                             </DialogHeader>
                                             <ScrollArea className="max-h-[50vh] pr-4">
                                                 <div className="text-sm text-muted-foreground py-4 whitespace-pre-wrap break-words"
-                                                     dangerouslySetInnerHTML={{ __html: sanitizeHTML(item.content || item.description || "No content available.") }} />
+                                                     dangerouslySetInnerHTML={{ __html: sanitizeHTML(selectedNewsItem.content || selectedNewsItem.description || "No content available.") }} />
                                             </ScrollArea>
                                             <DialogFooter>
                                                 <Button variant="outline" asChild>
-                                                    <a href={item.link} target="_blank" rel="noopener noreferrer">
+                                                    <a href={selectedNewsItem.link} target="_blank" rel="noopener noreferrer">
                                                         Read Full Article <ExternalLink className="ml-2 h-4 w-4" />
                                                     </a>
                                                 </Button>
                                             </DialogFooter>
                                         </DialogContent>
+                                        )}
                                     </Dialog>
                                 </li>
                             ))}
@@ -306,3 +311,5 @@ export default function DashboardPage() {
       </div>
     </div>
   );
+
+    
