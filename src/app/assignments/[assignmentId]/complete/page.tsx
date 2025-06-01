@@ -30,7 +30,7 @@ import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, submitCompletedAssignment, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon } from "lucide-react";
+import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock } from "lucide-react";
 
 const formSchema = z.record(z.any());
 type FormDataSchema = z.infer<typeof formSchema>;
@@ -63,8 +63,11 @@ export default function CompleteAssignmentPage() {
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
+  const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+  const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
 
-  const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, setValue } = useForm<FormDataSchema>({
+
+  const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, setValue, getValues } = useForm<FormDataSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {},
   });
@@ -127,6 +130,8 @@ export default function CompleteAssignmentPage() {
                 defaultVals[q.id] = defaultRangeVal;
             } else if (q.component === 'checkbox' && !q.options) { 
                 defaultVals[q.id] = false;
+            } else if (q.component === 'time' || q.component === 'completionTime') {
+                defaultVals[q.id] = "00:00"; // Default to "00:00" or handle existing value
             }
             else { 
               defaultVals[q.id] = (q.component === 'date' || q.component === 'completionDate') ? undefined : ''; // For DatePicker, undefined is better for placeholder
@@ -264,6 +269,8 @@ export default function CompleteAssignmentPage() {
             questionAnswer = data[question.id] || false;
         } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
             questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
+        } else if ((question.component === 'time' || question.component === 'completionTime') && typeof data[question.id] === 'string' && data[question.id].includes(':')) {
+            questionAnswer = data[question.id];
         }
         else {
             questionAnswer = data[question.id] ?? "";
@@ -321,8 +328,10 @@ export default function CompleteAssignmentPage() {
   const getComponentType = (componentName: string | undefined): string => {
     switch (componentName?.toLowerCase()) {
       case 'telephone': return 'tel';
-      case 'time': return 'time';
-      case 'completiontime': return 'time';
+      // case 'time': return 'time'; // Handled by custom hour/minute selects
+      // case 'completiontime': return 'time'; // Handled by custom hour/minute selects
+      // case 'date': return 'date'; // Handled by DatePicker
+      // case 'completiondate': return 'date'; // Handled by DatePicker
       case 'datetime': return 'datetime-local';
       case 'text': return 'text';
       case 'number': return 'number';
@@ -434,7 +443,7 @@ export default function CompleteAssignmentPage() {
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </Label>
 
-                  {['text', 'number', 'email', 'url', 'time', 'telephone', 'datetime', 'completionTime'].includes(question.component) ? (
+                  {['text', 'number', 'email', 'url', 'telephone', 'datetime'].includes(question.component) ? (
                     <Input
                       id={question.id}
                       type={getComponentType(question.component)}
@@ -474,6 +483,50 @@ export default function CompleteAssignmentPage() {
                       )}
                     />
                   )}
+                  
+                  {(question.component === 'time' || question.component === 'completionTime') && (
+                    <Controller
+                      name={question.id}
+                      control={control}
+                      rules={{ required: question.required }}
+                      render={({ field }) => {
+                        const [currentHour = "00", currentMinute = "00"] = (field.value || "00:00").split(':');
+                        return (
+                          <div className="flex items-center gap-2 bg-background p-2 rounded-md border">
+                            <Clock className="h-5 w-5 text-muted-foreground mr-1" />
+                            <Select
+                              value={currentHour}
+                              onValueChange={(hour) => {
+                                field.onChange(`${hour}:${currentMinute}`);
+                              }}
+                            >
+                              <SelectTrigger className="w-[80px]">
+                                <SelectValue placeholder="HH" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {hours.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <span className="font-semibold">:</span>
+                            <Select
+                              value={currentMinute}
+                              onValueChange={(minute) => {
+                                field.onChange(`${currentHour}:${minute}`);
+                              }}
+                            >
+                              <SelectTrigger className="w-[80px]">
+                                <SelectValue placeholder="MM" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {minutes.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        );
+                      }}
+                    />
+                  )}
+
 
                   {question.component === 'textarea' && (
                     <Textarea
@@ -563,7 +616,7 @@ export default function CompleteAssignmentPage() {
                                         <SelectContent>
                                             {locations.length > 0 ? (
                                                 locations.map(loc => (
-                                                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                                                    <SelectItem key={loc.id} value={loc.locationName}>{loc.locationName}</SelectItem>
                                                 ))
                                             ) : (
                                                 <div className="p-2 text-sm text-muted-foreground text-center">No locations found.</div>
@@ -813,4 +866,3 @@ export default function CompleteAssignmentPage() {
     </div>
   );
 }
-
