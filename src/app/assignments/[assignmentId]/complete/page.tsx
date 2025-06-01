@@ -536,7 +536,10 @@ export default function CompleteAssignmentPage() {
           {/* Filter Controls */}
           <Card className="mb-6 p-4 bg-muted/30">
             <CardHeader className="p-2 pb-3">
-              <CardTitle className="text-xl flex items-center gap-2"><Filter className="h-5 w-5 text-primary"/>Filter Questions</CardTitle>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Filter className="h-5 w-5 text-primary shrink-0"/>
+                <span className="min-w-0">Filter Questions</span>
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-2 space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
               <div>
@@ -1036,5 +1039,7 @@ export default function CompleteAssignmentPage() {
   );
 }
 
+
+    
 
     
