@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, ChangeEvent } from "react";
-import { useParams, useRouter, usePathname } from "next/navigation"; // Added usePathname
+import { useParams, useRouter, usePathname } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -25,7 +25,8 @@ import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, submitCompletedAssignment, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
-import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2 } from "lucide-react";
+import { getLocationsForLookup, type Location } from "@/services/locationService";
+import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building } from "lucide-react";
 
 const formSchema = z.record(z.any());
 type FormDataSchema = z.infer<typeof formSchema>;
@@ -38,7 +39,7 @@ interface UploadedFileDetail {
 export default function CompleteAssignmentPage() {
   const params = useParams();
   const router = useRouter();
-  const pathname = usePathname(); // Get current pathname
+  const pathname = usePathname();
   const { toast } = useToast();
   const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
 
@@ -54,11 +55,17 @@ export default function CompleteAssignmentPage() {
   const [uploadErrors, setUploadErrors] = useState<{ [questionId: string]: string | null }>({});
   const [imagePreviewUrls, setImagePreviewUrls] = useState<{ [questionId: string]: string | null }>({});
 
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [locationsError, setLocationsError] = useState<string | null>(null);
+
 
   const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, setValue } = useForm<FormDataSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {},
   });
+
+  const allWatchedValues = watch(); // Watch all fields for conditional logic
 
   useEffect(() => {
     if (!assignmentId) {
@@ -76,7 +83,7 @@ export default function CompleteAssignmentPage() {
       setError("You must be logged in to complete an assignment.");
       toast({ variant: "destructive", title: "Not Authenticated", description: "Please log in."});
       setIsLoading(false);
-      router.push(`/auth?redirect=${encodeURIComponent(pathname)}`); // Redirect with current path
+      router.push(`/auth?redirect=${encodeURIComponent(pathname)}`);
       return;
     }
     if (!userProfile?.account) {
@@ -96,7 +103,7 @@ export default function CompleteAssignmentPage() {
           fetchedAssignment.questions.forEach(q => {
             if (q.component === 'checkbox' && q.options && Array.isArray(parseOptions(q.options))) {
               parseOptions(q.options).forEach(opt => {
-                defaultVals[`${q.id}.${opt}`] = false;
+                defaultVals[`${q.id}.${opt}`] = false; // For checkbox groups, default to false
               });
             } else if (q.component === 'range') {
                 let defaultRangeVal = 50;
@@ -114,10 +121,10 @@ export default function CompleteAssignmentPage() {
                     }
                 }
                 defaultVals[q.id] = defaultRangeVal;
-            } else if (q.component === 'checkbox' && !q.options) {
+            } else if (q.component === 'checkbox' && !q.options) { // Single checkbox
                 defaultVals[q.id] = false;
             }
-            else {
+            else { // For text, select, radio, etc.
               defaultVals[q.id] = '';
             }
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
@@ -138,14 +145,33 @@ export default function CompleteAssignmentPage() {
     }
 
     fetchAssignment();
-  }, [assignmentId, user, userProfile, authLoading, profileLoading, reset, toast, router, pathname]); // Added pathname
+  }, [assignmentId, user, userProfile, authLoading, profileLoading, reset, toast, router, pathname]);
+
+  useEffect(() => {
+    const hasSchoolSelector = assignment?.questions.some(q => q.component === 'schoolSelector');
+    if (hasSchoolSelector && userProfile?.account && !isLoading) { // Ensure assignment is loaded before checking
+      setIsLoadingLocations(true);
+      setLocationsError(null);
+      getLocationsForLookup(userProfile.account)
+        .then(fetchedLocations => {
+          setLocations(fetchedLocations);
+        })
+        .catch(err => {
+          console.error("Failed to fetch locations for schoolSelector:", err);
+          setLocationsError(err.message || "Could not load locations.");
+          toast({ variant: "destructive", title: "Error Loading Locations", description: err.message });
+        })
+        .finally(() => setIsLoadingLocations(false));
+    }
+  }, [assignment, userProfile?.account, toast, isLoading]);
+
 
   const handleFileUpload = async (questionId: string, file: File) => {
     if (!user || !assignment) {
       setUploadErrors(prev => ({ ...prev, [questionId]: "User or assignment data missing." }));
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
         setUploadErrors(prev => ({ ...prev, [questionId]: "File exceeds 5MB limit." }));
         toast({ variant: "destructive", title: "Upload Error", description: "File exceeds 5MB limit."});
         return;
@@ -221,12 +247,15 @@ export default function CompleteAssignmentPage() {
         if (question.component === 'checkbox' && question.options && Array.isArray(parseOptions(question.options))) {
             const selectedOptions: string[] = [];
             parseOptions(question.options).forEach(opt => {
-                if (data[`${question.id}.${opt}`]) {
+                if (data[`${question.id}.${opt}`]) { // Check the form data directly
                     selectedOptions.push(opt);
                 }
             });
             questionAnswer = selectedOptions;
-        } else {
+        } else if (question.component === 'checkbox' && !question.options) { // Single checkbox
+            questionAnswer = data[question.id] || false;
+        }
+        else {
             questionAnswer = data[question.id] ?? "";
         }
 
@@ -275,10 +304,59 @@ export default function CompleteAssignmentPage() {
       if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
         return parsed;
       }
-    } catch (e) {
-      // If not JSON, fall back to semicolon split
-    }
+    } catch (e) { /* Fall through */ }
     return options.split(';').map(opt => opt.trim()).filter(opt => opt);
+  };
+
+  const getComponentType = (componentName: string): string => {
+    switch (componentName?.toLowerCase()) {
+      case 'telephone': return 'tel';
+      case 'datetime': return 'datetime-local';
+      default: return componentName;
+    }
+  };
+  
+  const shouldBeVisible = (conditionalConfig: AssignmentQuestion['conditional'] | undefined, currentQuestionId: string): boolean => {
+    if (!conditionalConfig) {
+      return true; 
+    }
+  
+    const triggerFieldId = conditionalConfig.field;
+    const conditionValues = Array.isArray(conditionalConfig.value) ? conditionalConfig.value.map(String) : [String(conditionalConfig.value)];
+  
+    if (triggerFieldId === currentQuestionId) {
+      console.warn(`Conditional logic loop detected for question ${currentQuestionId}`);
+      return false; 
+    }
+    
+    const triggerQuestion = assignment?.questions.find(q => q.id === triggerFieldId);
+    if (!triggerQuestion) {
+      console.warn(`Conditional logic trigger field ${triggerFieldId} not found for question ${currentQuestionId}`);
+      return false; 
+    }
+  
+    const watchedValue = allWatchedValues[triggerFieldId];
+  
+    if (triggerQuestion.component === 'checkbox') {
+      if (triggerQuestion.options) { 
+        // Checkbox group: conditionValues are the option *texts* that must be checked
+        for (const expectedOptionText of conditionValues) {
+          if (allWatchedValues[`${triggerFieldId}.${expectedOptionText}`] === true) {
+            return true; 
+          }
+        }
+        return false;
+      } else { // Single checkbox
+        // watchedValue will be true or false.
+        // conditionValues should contain "true" or "false" (as strings from config)
+        return conditionValues.some(cv => cv.toLowerCase() === String(watchedValue).toLowerCase());
+      }
+    } else { // Radio, select, text, number etc.
+      if (watchedValue === undefined || watchedValue === null || watchedValue === "") {
+        return false; 
+      }
+      return conditionValues.includes(String(watchedValue));
+    }
   };
 
 
@@ -298,7 +376,7 @@ export default function CompleteAssignmentPage() {
     );
   }
 
-  if (error && !user) { // Only show error if user is not logged in (redirect will handle)
+  if (error && !user) {
     return (
        <div className="p-4 text-center">
          <Alert variant="destructive" className="m-4">
@@ -324,6 +402,8 @@ export default function CompleteAssignmentPage() {
     return <p className="p-4 text-center">Assignment data is not available.</p>;
   }
 
+  const visibleQuestions = assignment.questions?.filter(q => shouldBeVisible(q.conditional, q.id)) || [];
+
   return (
     <div className="container mx-auto py-8 px-4">
       <Card className="shadow-xl">
@@ -333,7 +413,7 @@ export default function CompleteAssignmentPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {assignment.questions?.map((question, index) => (
+            {visibleQuestions.map((question, index) => (
               <Card key={question.id || index} className="p-6 bg-card/50">
                 <fieldset className="space-y-3">
                   <Label htmlFor={question.id} className="text-lg font-semibold text-foreground">
@@ -341,14 +421,15 @@ export default function CompleteAssignmentPage() {
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </Label>
 
-                  {['text', 'number', 'email', 'url', 'tel', 'date', 'time', 'datetime-local'].includes(question.component) && (
+                  {['text', 'number', 'email', 'url', 'date', 'time'].includes(question.component) || question.component === 'telephone' || question.component === 'datetime' ? (
                     <Input
                       id={question.id}
-                      type={question.component === 'tel' ? 'tel' : question.component}
+                      type={getComponentType(question.component)}
                       {...register(question.id, { required: question.required })}
                       className="bg-background"
                     />
-                  )}
+                  ) : null}
+
 
                   {question.component === 'textarea' && (
                     <Textarea
@@ -358,7 +439,7 @@ export default function CompleteAssignmentPage() {
                     />
                   )}
 
-                  {question.component === 'radio' && (
+                  {question.component === 'options' && ( // Maps to radio
                     <Controller
                       name={question.id}
                       control={control}
@@ -379,6 +460,29 @@ export default function CompleteAssignmentPage() {
                       )}
                     />
                   )}
+                  
+                  {question.component === 'buttonSelect' && ( // Also maps to radio for now
+                    <Controller
+                      name={question.id}
+                      control={control}
+                      rules={{ required: question.required }}
+                      render={({ field }) => (
+                        // Basic RadioGroup, can be styled later
+                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-wrap gap-2 bg-background p-2 rounded-md">
+                           {parseOptions(question.options).map(option => (
+                                <div key={option} className="flex items-center">
+                                    <RadioGroupItem value={option} id={`${question.id}-${option}`} className="sr-only peer" />
+                                    <Label htmlFor={`${question.id}-${option}`}
+                                        className="px-3 py-2 border rounded-md cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground hover:bg-muted/50">
+                                        {option}
+                                    </Label>
+                                </div>
+                            ))}
+                        </RadioGroup>
+                      )}
+                    />
+                  )}
+
 
                   {question.component === 'select' && (
                      <Controller
@@ -386,7 +490,7 @@ export default function CompleteAssignmentPage() {
                         control={control}
                         rules={{ required: question.required }}
                         render={({ field }) => (
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value || ""}>
                                 <SelectTrigger id={question.id} className="w-full bg-background">
                                     <SelectValue placeholder={`Select an option for "${question.label}"`} />
                                 </SelectTrigger>
@@ -399,8 +503,38 @@ export default function CompleteAssignmentPage() {
                         )}
                     />
                   )}
+                  
+                  {question.component === 'schoolSelector' && (
+                    <Controller
+                        name={question.id}
+                        control={control}
+                        rules={{ required: question.required }}
+                        render={({ field }) => (
+                            <div className="space-y-1">
+                                {isLoadingLocations && <Skeleton className="h-10 w-full" />}
+                                {locationsError && <Alert variant="destructive"><AlertDescription>{locationsError}</AlertDescription></Alert>}
+                                {!isLoadingLocations && !locationsError && (
+                                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                                        <SelectTrigger id={question.id} className="w-full bg-background">
+                                            <SelectValue placeholder="Select a school/site..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {locations.length > 0 ? (
+                                                locations.map(loc => (
+                                                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                                                ))
+                                            ) : (
+                                                <div className="p-2 text-sm text-muted-foreground text-center">No locations found.</div>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            </div>
+                        )}
+                    />
+                  )}
 
-                  {question.component === 'checkbox' && !question.options && (
+                  {question.component === 'checkbox' && !question.options && ( // Single checkbox
                      <Controller
                         name={question.id}
                         control={control}
@@ -418,12 +552,12 @@ export default function CompleteAssignmentPage() {
                     />
                   )}
 
-                  {question.component === 'checkbox' && question.options && (
+                  {question.component === 'checkbox' && question.options && ( // Checkbox group
                     <div className="space-y-2 bg-background p-2 rounded-md">
                         {parseOptions(question.options).map(opt => (
                             <Controller
                                 key={opt}
-                                name={`${question.id}.${opt}`}
+                                name={`${question.id}.${opt}`} // Unique name for each checkbox in the group
                                 control={control}
                                 defaultValue={false}
                                 render={({ field }) => (
@@ -440,6 +574,27 @@ export default function CompleteAssignmentPage() {
                         ))}
                     </div>
                   )}
+                  
+                  {(question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && ( // Treat as checkbox group for now
+                    <div className="space-y-2 bg-background p-2 rounded-md">
+                        <Label className="text-sm text-muted-foreground block mb-1">Select one or more:</Label>
+                        {parseOptions(question.options).map(opt => (
+                            <Controller
+                                key={opt}
+                                name={`${question.id}.${opt}`}
+                                control={control}
+                                defaultValue={false}
+                                render={({ field }) => (
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox id={`${question.id}-${opt}`} checked={!!field.value} onCheckedChange={field.onChange} />
+                                        <Label htmlFor={`${question.id}-${opt}`} className="font-normal">{opt}</Label>
+                                    </div>
+                                )}
+                            />
+                        ))}
+                    </div>
+                  )}
+
 
                   {question.component === 'range' && (
                     <Controller
@@ -460,10 +615,9 @@ export default function CompleteAssignmentPage() {
                             });
                         }
                         if (typeof currentVal !== 'number' || isNaN(currentVal)) {
-                           currentVal = value || min;
+                           currentVal = (value as number) ?? min; // Ensure value is treated as number for slider
                         }
                         currentVal = Math.max(min, Math.min(max, currentVal));
-
 
                         return (
                           <div className="space-y-2 bg-background p-3 rounded-md">
@@ -482,9 +636,23 @@ export default function CompleteAssignmentPage() {
                       }}
                     />
                   )}
+                  
+                  {question.component === 'dynamicQuestion' && (
+                    <Alert variant="default" className="bg-blue-50 border-blue-200">
+                        <Building className="h-4 w-4 text-blue-600"/>
+                        <AlertTitle className="text-blue-700">Dynamic Content</AlertTitle>
+                        <AlertDescription className="text-blue-600">This section may render additional questions based on logic. (Full support coming soon)</AlertDescription>
+                    </Alert>
+                  )}
+
+                  { (question.component === 'completionTime' || question.component === 'completionDate') && (
+                      <p className="text-xs text-muted-foreground italic p-2 bg-muted/30 rounded-md">({question.label} will be recorded automatically upon submission.)</p>
+                  )}
 
 
                   {formErrors[question.id] && <p className="text-sm text-destructive">{formErrors[question.id]?.message as string}</p>}
+                  {/* For checkbox groups, error display might need adjustment if errors are per-option */}
+
 
                   {question.comment && (
                     <div className="mt-3">
@@ -581,6 +749,14 @@ export default function CompleteAssignmentPage() {
                 </fieldset>
               </Card>
             ))}
+
+            {visibleQuestions.length === 0 && !isLoading && (
+                 <div className="text-center py-10">
+                    <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-lg text-muted-foreground">No questions are currently visible for this assignment.</p>
+                    <p className="text-sm text-muted-foreground">This might be due to conditional logic or an empty assignment.</p>
+                </div>
+            )}
 
             <div className="flex justify-end pt-6">
               <Button type="submit" size="lg" disabled={isSubmitting || Object.values(uploadProgress).some(p => p > 0 && p < 100)}>
