@@ -44,12 +44,12 @@ interface UploadedFileDetail {
 
 interface AudioNoteDetail {
   blob?: Blob;
-  url?: string; // This can be a blob URL or a Firebase Storage downloadURL
+  url?: string; 
   name?: string;
   isUploading?: boolean;
   uploadProgress?: number;
   uploadError?: string | null;
-  downloadURL?: string; // Specifically for Firebase Storage URL after upload
+  downloadURL?: string; 
 }
 
 interface AudioPlayerState {
@@ -60,7 +60,7 @@ interface AudioPlayerState {
 
 
 const UNASSIGNED_FILTER_VALUE = "n/a";
-const MAX_AUDIO_RECORDING_MS = 20000; // 20 seconds
+const MAX_AUDIO_RECORDING_MS = 20000; 
 
 const pillGradientClasses = [
   "bg-gradient-to-r from-primary to-accent text-primary-foreground",
@@ -382,7 +382,6 @@ export default function CompleteAssignmentPage() {
 
 
   useEffect(() => {
-    // Cleanup for audio notes and media recorder
     return () => {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
         mediaRecorderRef.current.stop();
@@ -390,20 +389,19 @@ export default function CompleteAssignmentPage() {
       if (maxRecordingTimerRef.current) {
         clearTimeout(maxRecordingTimerRef.current);
       }
-      Object.values(audioNotes).forEach(note => {
+      Object.entries(audioNotes).forEach(([questionId, note]) => {
         if (note?.url && note.url.startsWith('blob:')) {
           URL.revokeObjectURL(note.url);
         }
-      });
-      Object.values(audioRefs.current).forEach(audioEl => {
+        const audioEl = audioRefs.current[questionId];
         if (audioEl) {
           audioEl.pause();
-          audioEl.removeAttribute('src'); // More robust cleanup
-          audioEl.load(); // Reset internal state
+          audioEl.removeAttribute('src'); 
+          audioEl.load(); 
         }
       });
     };
-  }, [audioNotes]); // Rerun if audioNotes change to handle revocations for removed notes
+  }, []); 
 
   const requestMicPermission = async () => {
     if (hasMicPermission) return true;
@@ -427,7 +425,7 @@ export default function CompleteAssignmentPage() {
     try {
         const audioFile = type === 'start' ? '/audio/start-chime.mp3' : '/audio/stop-chime.mp3';
         const chime = new Audio(audioFile);
-        chime.play().catch(e => console.warn(`Chime play error: ${e.message}`));
+        chime.play().catch(e => console.warn(`Chime play error: ${(e as Error).message}`));
     } catch (e) {
         console.warn(`Could not play chime: ${e}`);
     }
@@ -437,8 +435,8 @@ export default function CompleteAssignmentPage() {
     const permissionGranted = await requestMicPermission();
     if (!permissionGranted) return;
 
-    if (isRecordingQuestionId) { // Stop any ongoing recording
-      handleStopRecording(isRecordingQuestionId, false); // Don't play stop chime if immediately starting new one
+    if (isRecordingQuestionId) { 
+      handleStopRecording(isRecordingQuestionId, false); 
     }
 
     setIsRecordingQuestionId(questionId);
@@ -462,6 +460,11 @@ export default function CompleteAssignmentPage() {
       };
 
       mediaRecorderRef.current.onstop = () => {
+        const oldNote = audioNotes[questionId];
+        if (oldNote?.url && oldNote.url.startsWith('blob:')) {
+          URL.revokeObjectURL(oldNote.url);
+        }
+
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const audioUrl = URL.createObjectURL(audioBlob);
         const audioName = `audio_note_${questionId}_${Date.now()}.webm`;
@@ -474,7 +477,6 @@ export default function CompleteAssignmentPage() {
           }
         }));
         
-        // Only change isRecordingQuestionId if this stop was for the currently active recording question
         if (isRecordingQuestionId === questionId) {
            setIsRecordingQuestionId(null);
         }
@@ -484,11 +486,6 @@ export default function CompleteAssignmentPage() {
           clearTimeout(maxRecordingTimerRef.current);
           maxRecordingTimerRef.current = null;
         }
-        // Play stop chime here only if this onstop was triggered by natural end or explicit stop,
-        // not if it was stopped because another recording started.
-        // This might need a flag if handleStopRecording passes one.
-        // For simplicity, always play if stop is called, unless an argument says otherwise.
-        // This is now handled in handleStopRecording
       };
 
       mediaRecorderRef.current.onerror = (event) => {
@@ -502,7 +499,7 @@ export default function CompleteAssignmentPage() {
       mediaRecorderRef.current.start();
       maxRecordingTimerRef.current = setTimeout(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording" && isRecordingQuestionId === questionId) {
-          handleStopRecording(questionId, true); // Play chime on timeout stop
+          handleStopRecording(questionId, true); 
           toast({ title: "Recording Limit Reached", description: `Recording stopped after ${MAX_AUDIO_RECORDING_MS / 1000} seconds.`});
         }
       }, MAX_AUDIO_RECORDING_MS);
@@ -517,7 +514,7 @@ export default function CompleteAssignmentPage() {
 
   const handleStopRecording = (questionId: string, playStopChime: boolean = true) => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop(); // This will trigger onstop
+      mediaRecorderRef.current.stop(); 
       if (playStopChime) {
         playChime('stop');
       }
@@ -538,25 +535,72 @@ export default function CompleteAssignmentPage() {
     }
     setAudioNotes(prev => ({ ...prev, [questionId]: null }));
     setAudioPlayerStates(prev => ({ ...prev, [questionId]: { isPlaying: false, currentTime: 0, duration: 0 } }));
-    if (audioRefs.current[questionId]) {
-        audioRefs.current[questionId]!.pause();
-        audioRefs.current[questionId]!.removeAttribute('src');
-        audioRefs.current[questionId]!.load();
-        audioRefs.current[questionId] = null;
+    const audioEl = audioRefs.current[questionId];
+    if (audioEl) {
+        audioEl.pause();
+        audioEl.removeAttribute('src');
+        audioEl.load(); // Reset internal state
     }
   };
 
-  const togglePlayPause = (questionId: string) => {
+  const togglePlayPause = async (questionId: string) => {
     const audio = audioRefs.current[questionId];
-    if (!audio || !audioNotes[questionId]?.url) return; // Ensure URL exists
-
-    if (audio.paused) {
-      audio.play().catch(e => console.error("Error playing audio:", e));
-    } else {
-      audio.pause();
+    const note = audioNotes[questionId];
+    const noteUrl = note?.url;
+  
+    if (!audio || !noteUrl) {
+      console.error("Audio element or note URL missing for playback:", questionId, noteUrl);
+      return;
+    }
+  
+    try {
+      if (audio.paused) {
+        // If src is not set or different, set it and load
+        if (audio.currentSrc !== noteUrl) {
+          console.log(`[togglePlayPause] Setting src for ${questionId} to ${noteUrl}. Current: ${audio.currentSrc}`);
+          audio.src = noteUrl;
+          audio.load(); // Important: tell the browser to load the new source
+          
+          // Wait for 'canplay' before attempting to play
+          await new Promise<void>((resolve, reject) => {
+            const canPlayHandler = () => {
+              audio.removeEventListener('canplay', canPlayHandler);
+              audio.removeEventListener('error', errorHandler);
+              console.log(`[togglePlayPause] 'canplay' event for ${questionId}. Ready to play.`);
+              resolve();
+            };
+            const errorHandler = (e: Event) => {
+              audio.removeEventListener('canplay', canPlayHandler);
+              audio.removeEventListener('error', errorHandler);
+              const mediaError = (e.target as HTMLAudioElement).error;
+              console.error(`[togglePlayPause] MediaError during load for ${questionId}:`, mediaError);
+              reject(new Error(`Error loading audio: ${mediaError?.message || 'Unknown error'}`));
+            };
+            audio.addEventListener('canplay', canPlayHandler, { once: true });
+            audio.addEventListener('error', errorHandler, { once: true });
+          });
+        }
+        // Now attempt to play
+        console.log(`[togglePlayPause] Attempting to play ${questionId}`);
+        await audio.play(); // play() returns a Promise
+        // onPlay event listener on <audio> tag will update isPlaying state
+      } else {
+        console.log(`[togglePlayPause] Attempting to pause ${questionId}`);
+        audio.pause();
+        // onPause event listener on <audio> tag will update isPlaying state
+      }
+    } catch (error: any) {
+      console.error(`[togglePlayPause] Error for ${questionId}: ${error.name} - ${error.message}`);
+      // Ensure UI state is consistent if play() was interrupted or failed
+      if (audio.paused && audioPlayerStates[questionId]?.isPlaying) {
+        setAudioPlayerStates(prev => ({
+          ...prev,
+          [questionId]: { ...prev[questionId]!, isPlaying: false }
+        }));
+      }
     }
   };
-
+  
   const handleAudioTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement, Event>, questionId: string) => {
     const audio = e.currentTarget;
     setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, currentTime: audio.currentTime } }));
@@ -646,7 +690,7 @@ export default function CompleteAssignmentPage() {
     setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
     setUploadErrors(prev => ({ ...prev, [questionId]: null }));
     setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
-    const fileInput = document.getElementById(`${question.id}_file`) as HTMLInputElement;
+    const fileInput = document.getElementById(`${questionId}_file`) as HTMLInputElement;
     if (fileInput) fileInput.value = "";
   };
 
@@ -705,7 +749,7 @@ export default function CompleteAssignmentPage() {
         await Promise.all(audioUploadPromises);
         Object.keys(audioNotes).forEach(qId => {
             const note = audioNotes[qId];
-            if (note && note.downloadURL) {
+            if (note && note.downloadURL) { 
                 finalAudioNotesForSubmission[qId] = { name: note.name, url: note.downloadURL };
             }
         });
@@ -1320,18 +1364,17 @@ export default function CompleteAssignmentPage() {
                      <Label className="text-xs text-muted-foreground block mb-1">Audio Note (Optional, Max {MAX_AUDIO_RECORDING_MS / 1000}s)</Label>
                       {micPermissionError && <Alert variant="destructive" className="text-xs p-2"><XCircle className="h-4 w-4" /><AlertDescription>{micPermissionError}</AlertDescription></Alert>}
                       
-                      {audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading && !audioNotes[question.id]?.uploadError ? (
+                      {audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading && !audioNotes[question.id]?.uploadError && (
                         <div className="p-3 border rounded-lg bg-muted/50">
-                           {/* Hidden Audio Element for Playback Control */}
-                            {audioNotes[question.id]?.url && (
+                            { /* Conditionally render audio tag. Src is managed by togglePlayPause */ }
+                            {audioNotes[question.id]?.url && ( 
                                 <audio
                                     ref={(el) => (audioRefs.current[question.id] = el)}
-                                    src={audioNotes[question.id]?.url}
                                     onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, question.id)}
                                     onTimeUpdate={(e) => handleAudioTimeUpdate(e, question.id)}
                                     onEnded={() => handleAudioEnded(question.id)}
-                                    onPlay={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...(prev[question.id] || {currentTime:0, duration:0}), isPlaying: true}}))}
-                                    onPause={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...(prev[question.id] || {currentTime:0, duration:0}), isPlaying: false}}))}
+                                    onPlay={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...(prev[question.id] || {currentTime:0, duration:0, isPlaying: false}), isPlaying: true}}))}
+                                    onPause={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...(prev[question.id] || {currentTime:0, duration:0, isPlaying: true}), isPlaying: false}}))}
                                     className="hidden"
                                 />
                             )}
@@ -1349,7 +1392,7 @@ export default function CompleteAssignmentPage() {
                                 <div className="flex-grow space-y-1">
                                     <Slider
                                         value={[audioPlayerStates[question.id]?.currentTime || 0]}
-                                        max={audioPlayerStates[question.id]?.duration || 1}
+                                        max={audioPlayerStates[question.id]?.duration || 1} 
                                         step={0.1}
                                         className="w-full h-2 [&>span]:h-2 [&_[role=slider]]:h-4 [&_[role=slider]]:w-4 [&_[role=slider]]:border-2"
                                         disabled={!audioNotes[question.id]?.url || audioNotes[question.id]?.isUploading}
@@ -1364,26 +1407,29 @@ export default function CompleteAssignmentPage() {
                                 </Button>
                             </div>
                         </div>
-                      ) : audioNotes[question.id]?.isUploading ? (
+                      )}
+                      {audioNotes[question.id]?.isUploading && (
                         <div className="space-y-1 p-2 border rounded-md bg-muted/30">
                             <ShadProgress value={audioNotes[question.id]?.uploadProgress || 0} className="w-full h-2" />
                             <p className="text-xs text-muted-foreground text-center">Uploading Audio: {Math.round(audioNotes[question.id]?.uploadProgress || 0)}%</p>
                         </div>
-                      ) : audioNotes[question.id]?.uploadError ? (
+                      )}
+                      {audioNotes[question.id]?.uploadError && (
                          <Alert variant="destructive" className="text-xs p-2">
                             <XCircle className="h-4 w-4" />
                             <AlertDescription>{audioNotes[question.id]?.uploadError}</AlertDescription>
                             <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive" onClick={() => removeAudioNote(question.id)}>Clear & Retry</Button>
                         </Alert>
-                      ) : (
+                      )}
+                      {!audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading && !audioNotes[question.id]?.uploadError && (
                         <Button
                           type="button"
                           variant={isRecordingQuestionId === question.id ? "destructive" : "outline"}
                           size="sm"
                           onMouseDown={() => handleStartRecording(question.id)}
-                          onMouseUp={() => handleStopRecording(question.id)}
-                          onTouchStart={(e) => { e.preventDefault(); handleStartRecording(question.id);}} // Prevent default for touch
-                          onTouchEnd={(e) => { e.preventDefault(); handleStopRecording(question.id);}}   // Prevent default for touch
+                          onMouseUp={() => handleStopRecording(question.id, true)}
+                          onTouchStart={(e) => { e.preventDefault(); handleStartRecording(question.id);}} 
+                          onTouchEnd={(e) => { e.preventDefault(); handleStopRecording(question.id, true);}}   
                           disabled={isSubmitting || (!!isRecordingQuestionId && isRecordingQuestionId !== question.id)}
                           className="w-full"
                         >
@@ -1443,3 +1489,4 @@ export default function CompleteAssignmentPage() {
   );
 }
 
+    
