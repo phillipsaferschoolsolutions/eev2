@@ -44,17 +44,17 @@ interface UploadedFileDetail {
 
 interface AudioNoteDetail {
   blob?: Blob;
-  url?: string; // For local preview
+  url?: string; 
   name?: string;
   isUploading?: boolean;
   uploadProgress?: number;
   uploadError?: string | null;
-  downloadURL?: string; // URL from Firebase Storage after upload
+  downloadURL?: string; 
 }
 
 
 const UNASSIGNED_FILTER_VALUE = "n/a";
-const MAX_AUDIO_RECORDING_MS = 20000; // 20 seconds
+const MAX_AUDIO_RECORDING_MS = 20000; 
 
 export default function CompleteAssignmentPage() {
   const params = useParams();
@@ -86,7 +86,7 @@ export default function CompleteAssignmentPage() {
   const [selectedSubSection, setSelectedSubSection] = useState<string>("all");
   const [answeredStatusFilter, setAnsweredStatusFilter] = useState<'all' | 'answered' | 'unanswered'>('all');
 
-  // Audio Recording State
+  
   const [audioNotes, setAudioNotes] = useState<{ [questionId: string]: AudioNoteDetail | null }>({});
   const [isRecordingQuestionId, setIsRecordingQuestionId] = useState<string | null>(null);
   const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
@@ -111,7 +111,7 @@ export default function CompleteAssignmentPage() {
       if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
         return parsed;
       }
-    } catch (e) { /* Fall through */ }
+    } catch (e) {  }
     return options.split(';').map(opt => opt.trim()).filter(opt => opt);
   };
 
@@ -137,15 +137,15 @@ export default function CompleteAssignmentPage() {
     const watchedValue = allWatchedValues[triggerFieldId];
 
     if (triggerQuestion.component === 'checkbox') {
-      if (triggerQuestion.options) { // Checkbox group
+      if (triggerQuestion.options) { 
         const options = parseOptions(triggerQuestion.options);
         return options.some(opt =>
           conditionValues.includes(opt) && allWatchedValues[`${triggerFieldId}.${opt}`] === true
         );
-      } else { // Single checkbox
+      } else { 
         return conditionValues.some(cv => cv.toLowerCase() === String(watchedValue).toLowerCase());
       }
-    } else { // Radio, select, text, etc.
+    } else { 
       if (watchedValue === undefined || watchedValue === null || String(watchedValue).trim() === "") {
         return false;
       }
@@ -343,9 +343,9 @@ export default function CompleteAssignmentPage() {
     setSelectedSubSection("all");
   }, [selectedSection]);
 
-  // Microphone Permission Effect
+  
   useEffect(() => {
-    return () => { // Cleanup ref
+    return () => { 
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
         mediaRecorderRef.current.stop();
       }
@@ -399,7 +399,7 @@ export default function CompleteAssignmentPage() {
           [questionId]: { blob: audioBlob, url: audioUrl, name: audioName }
         }));
         setIsRecordingQuestionId(null);
-        stream.getTracks().forEach(track => track.stop()); // Release microphone
+        stream.getTracks().forEach(track => track.stop()); 
         if (maxRecordingTimerRef.current) {
           clearTimeout(maxRecordingTimerRef.current);
           maxRecordingTimerRef.current = null;
@@ -440,7 +440,7 @@ export default function CompleteAssignmentPage() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
     }
-    // onstop handler will set setIsRecordingQuestionId(null) and clear timer
+    
   };
 
   const removeAudioNote = (questionId: string) => {
@@ -527,10 +527,10 @@ export default function CompleteAssignmentPage() {
     const formDataForSubmission = new FormData();
     const answersObject: Record<string, any> = {};
 
-    // Upload audio notes first
+    
     for (const questionId in audioNotes) {
       const note = audioNotes[questionId];
-      if (note && note.blob && !note.downloadURL) { // Only upload if not already uploaded and blob exists
+      if (note && note.blob && !note.downloadURL) { 
         setAudioNotes(prev => ({
           ...prev,
           [questionId]: { ...prev[questionId]!, isUploading: true, uploadProgress: 0, uploadError: null }
@@ -564,9 +564,9 @@ export default function CompleteAssignmentPage() {
         } catch (error) {
           toast({ variant: "destructive", title: "Audio Upload Failed", description: `Could not upload audio for question ${questionId}.` });
           setIsSubmitting(false);
-          return; // Stop submission if audio upload fails
+          return; 
         }
-      } else if (note && note.downloadURL) { // Already uploaded in a previous attempt or edit
+      } else if (note && note.downloadURL) { 
          if (!answersObject[questionId]) answersObject[questionId] = {};
          answersObject[questionId].audioNote = { name: note.name, url: note.downloadURL };
       }
@@ -583,7 +583,7 @@ export default function CompleteAssignmentPage() {
                 }
             });
             questionAnswer = selectedOptions;
-        } else if (question.component === 'checkbox' && !question.options) { 
+        } else if (question.component === 'checkbox' && !q.options) { 
             questionAnswer = data[question.id] || false;
         } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
             questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
@@ -758,13 +758,15 @@ export default function CompleteAssignmentPage() {
                     {questionsToRender.length > 0 ? `${questionsToRender.indexOf(question) + 1}` : index + 1}. {question.label}
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </Label>
-                   <div className="text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 mb-2">
-                    <span>
-                      Section: <Badge variant="outline" className="text-xs">{question.section || "N/A"}</Badge>
-                    </span>
-                    <span>
-                      Sub-Section: <Badge variant="outline" className="text-xs">{question.subSection || "N/A"}</Badge>
-                    </span>
+                  <div className="text-xs text-muted-foreground space-y-1 mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium">Section:</span>
+                      <Badge variant="outline" size="sm">{String(question.section || "N/A")}</Badge>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium">Sub-Section:</span>
+                      <Badge variant="outline" size="sm">{String(question.subSection || "N/A")}</Badge>
+                    </div>
                   </div>
 
 
@@ -1183,8 +1185,8 @@ export default function CompleteAssignmentPage() {
                           size="sm"
                           onMouseDown={() => handleStartRecording(question.id)}
                           onMouseUp={() => handleStopRecording(question.id)}
-                          onTouchStart={() => handleStartRecording(question.id)} // For touch devices
-                          onTouchEnd={() => handleStopRecording(question.id)}   // For touch devices
+                          onTouchStart={() => handleStartRecording(question.id)} 
+                          onTouchEnd={() => handleStopRecording(question.id)}   
                           disabled={isSubmitting || (!!isRecordingQuestionId && isRecordingQuestionId !== question.id)}
                           className="w-full"
                         >
