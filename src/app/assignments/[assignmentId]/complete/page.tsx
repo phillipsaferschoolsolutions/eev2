@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, ChangeEvent, useMemo, useRef } from "react";
@@ -420,7 +421,7 @@ export default function CompleteAssignmentPage() {
 
         setAudioNotes(prev => ({
           ...prev,
-          [questionId]: { blob: audioBlob, url: audioUrl, name: audioName }
+          [questionId]: { ...prev[questionId], blob: audioBlob, url: audioUrl, name: audioName, isUploading: false, uploadProgress: undefined, uploadError: null }
         }));
         setIsRecordingQuestionId(null);
         stream.getTracks().forEach(track => track.stop());
@@ -468,10 +469,15 @@ export default function CompleteAssignmentPage() {
   };
 
   const removeAudioNote = (questionId: string) => {
-    if (audioNotes[questionId]?.url) {
-      URL.revokeObjectURL(audioNotes[questionId]!.url!);
+    const note = audioNotes[questionId];
+    if (note?.url) {
+      URL.revokeObjectURL(note.url);
     }
-    setAudioNotes(prev => ({ ...prev, [questionId]: null }));
+    // Reset all properties for the specific audio note
+    setAudioNotes(prev => ({
+      ...prev,
+      [questionId]: null
+    }));
   };
 
 
@@ -548,13 +554,16 @@ export default function CompleteAssignmentPage() {
     }
     setIsSubmitting(true);
 
+    // Finalize audio notes before constructing form data
+    const finalAudioNotesForSubmission: Record<string, { name?: string; url?: string }> = {};
     const audioUploadPromises: Promise<void>[] = [];
+
     for (const questionId in audioNotes) {
       const note = audioNotes[questionId];
-      if (note && note.blob && !note.downloadURL) {
+      if (note && note.blob && !note.downloadURL && !note.isUploading) { // Only process if not already uploaded/uploading
         setAudioNotes(prev => ({
           ...prev,
-          [questionId]: { ...prev[questionId]!, isUploading: true, uploadProgress: 0, uploadError: null }
+          [questionId]: { ...note, isUploading: true, uploadProgress: 0, uploadError: null }
         }));
         const audioFileName = note.name || `audio_note_${questionId}_${Date.now()}.webm`;
         const audioStoragePath = `assignment_audio_notes/${assignment.id}/${user.uid}/${questionId}/${audioFileName}`;
@@ -575,7 +584,9 @@ export default function CompleteAssignmentPage() {
             async () => {
               try {
                 const url = await getDownloadURL(audioUploadTask.snapshot.ref);
+                // This state update is critical and must complete before building finalAudioNotesForSubmission
                 setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, downloadURL: url, name: audioFileName, isUploading: false, uploadProgress: 100 }}));
+                finalAudioNotesForSubmission[questionId] = { name: audioFileName, url: url };
                 resolve();
               } catch (getUrlError){
                 console.error(`Failed to get audio download URL for ${questionId}:`, getUrlError);
@@ -586,11 +597,22 @@ export default function CompleteAssignmentPage() {
           );
         });
         audioUploadPromises.push(promise);
+      } else if (note && note.downloadURL) { // Already uploaded in a previous attempt (e.g. draft save)
+        finalAudioNotesForSubmission[questionId] = { name: note.name, url: note.downloadURL };
       }
     }
 
     try {
       await Promise.all(audioUploadPromises);
+      // After all uploads complete, ensure finalAudioNotesForSubmission is correctly populated
+      // This might involve re-iterating audioNotes if state updates from promises aren't immediate enough
+      for (const qId in audioNotes) {
+        const note = audioNotes[qId];
+        if (note && note.downloadURL && !finalAudioNotesForSubmission[qId]) {
+            finalAudioNotesForSubmission[qId] = { name: note.name, url: note.downloadURL };
+        }
+      }
+
     } catch (error) {
       toast({ variant: "destructive", title: "Audio Upload Failed", description: `One or more audio notes could not be uploaded. Please review any errors and try again.` });
       setIsSubmitting(false);
@@ -601,7 +623,6 @@ export default function CompleteAssignmentPage() {
     const answersObject: Record<string, any> = {};
     const photoLinksForSync: Record<string, string> = {};
     const commentsForSubmission: Record<string, string> = {};
-    const audioNotesForSubmission: Record<string, { name?: string, url?: string }> = {};
 
 
     (assignment.questions).forEach(question => {
@@ -627,20 +648,12 @@ export default function CompleteAssignmentPage() {
         }
         answersObject[question.id] = questionAnswer;
 
-        if (question.comment && data[`${question.id}_comment`]) {
-            commentsForSubmission[question.id] = data[`${question.id}_comment`];
+        if (question.comment && typeof data[`${question.id}_comment`] === 'string' && data[`${question.id}_comment`].trim() !== '') {
+            commentsForSubmission[question.id] = data[`${question.id}_comment`].trim();
         }
 
         if (question.photoUpload && uploadedFileDetails[question.id]?.url) {
             photoLinksForSync[question.id] = uploadedFileDetails[question.id]!.url;
-        }
-
-        const finalAudioNote = audioNotes[question.id];
-        if (finalAudioNote && finalAudioNote.downloadURL) {
-             audioNotesForSubmission[question.id] = {
-                name: finalAudioNote.name,
-                url: finalAudioNote.downloadURL,
-            };
         }
     });
 
@@ -652,8 +665,11 @@ export default function CompleteAssignmentPage() {
     if (Object.keys(commentsForSubmission).length > 0) {
       formDataForSubmission.append("commentsData", JSON.stringify(commentsForSubmission));
     }
-    if (Object.keys(audioNotesForSubmission).length > 0) {
-      formDataForSubmission.append("audioNotesData", JSON.stringify(audioNotesForSubmission));
+    if (Object.keys(finalAudioNotesForSubmission).length > 0) {
+      formDataForSubmission.append("audioNotesData", JSON.stringify(finalAudioNotesForSubmission));
+    } else {
+      // Ensure audioNotesData is at least an empty object if no notes, to avoid backend treating it as null
+      formDataForSubmission.append("audioNotesData", JSON.stringify({}));
     }
     
     formDataForSubmission.append("assessmentName", assignment.assessmentName || "Unnamed Assignment");
@@ -662,6 +678,18 @@ export default function CompleteAssignmentPage() {
     formDataForSubmission.append("completedTime", new Date().toISOString());
     formDataForSubmission.append("status", "completed");
     formDataForSubmission.append("submittedOnPlatform", "web");
+
+    // Append individual files to FormData, named by their question ID (or a unique key if not question-specific)
+    // This matches how the backend (submitCompletedV2Endpoint.js) expects to iterate `files` object by fieldName.
+    for (const questionId in uploadedFileDetails) {
+      const details = uploadedFileDetails[questionId];
+      // This part is a bit tricky. The file itself is not stored in uploadedFileDetails, only its URL after upload.
+      // The actual file needs to be re-fetched from the input if it wasn't already sent.
+      // However, the current flow uploads files *before* this final submission.
+      // The `photoLinksForSync` already contains the URLs. The backend's `files` object will be from `form.parse(req)`.
+      // So, we don't re-append files here. The backend gets them from the multipart request directly.
+    }
+
 
     try {
       await submitCompletedAssignment(assignment.id, formDataForSubmission, userProfile.account);
@@ -1215,7 +1243,7 @@ export default function CompleteAssignmentPage() {
                      <Label className="text-xs text-muted-foreground block mb-1">Audio Note (Optional, Max 20s)</Label>
                       {micPermissionError && <Alert variant="destructive" className="text-xs p-2"><XCircle className="h-4 w-4" /><AlertDescription>{micPermissionError}</AlertDescription></Alert>}
 
-                      {audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading ? (
+                      {audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading && !audioNotes[question.id]?.uploadError ? (
                         <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
                            <audio controls src={audioNotes[question.id]?.url} className="w-full h-10"></audio>
                            <Button type="button" variant="ghost" size="icon" className="text-destructive hover:text-destructive/80" onClick={() => removeAudioNote(question.id)}>
@@ -1226,8 +1254,13 @@ export default function CompleteAssignmentPage() {
                         <div className="space-y-1 p-2 border rounded-md bg-muted/30">
                             <Progress value={audioNotes[question.id]?.uploadProgress || 0} className="w-full h-2" />
                             <p className="text-xs text-muted-foreground text-center">Uploading Audio: {Math.round(audioNotes[question.id]?.uploadProgress || 0)}%</p>
-                            {audioNotes[question.id]?.uploadError && <Alert variant="destructive" className="text-xs p-1 mt-1"><AlertDescription>{audioNotes[question.id]?.uploadError}</AlertDescription></Alert>}
                         </div>
+                      ) : audioNotes[question.id]?.uploadError ? (
+                         <Alert variant="destructive" className="text-xs p-2">
+                            <XCircle className="h-4 w-4" />
+                            <AlertDescription>{audioNotes[question.id]?.uploadError}</AlertDescription>
+                            <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive" onClick={() => removeAudioNote(question.id)}>Clear & Retry</Button>
+                        </Alert>
                       ) : (
                         <Button
                           type="button"
@@ -1295,4 +1328,5 @@ export default function CompleteAssignmentPage() {
     </div>
   );
 }
+
 

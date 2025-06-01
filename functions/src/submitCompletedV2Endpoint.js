@@ -130,8 +130,8 @@ module.exports = (assignmentsv2App) => {
         const finalAssignmentData = {
             date: fields.date || todayForRecord, // prefer client date if sent, else today
             account: fields.account || account,
-            audioNotesData: parseJsonField('audioNotesData', null),
-            commentsData: parseJsonField('commentsData', null),
+            audioNotesData: parseJsonField('audioNotesData', {}), // Default to empty object
+            commentsData: parseJsonField('commentsData', {}), // Default to empty object
             completedBy: fields.completedBy || userEmail,
             completedTime: fields.completedTime || new Date().toISOString(),
             content: parseJsonField('content', {}),
@@ -143,7 +143,7 @@ module.exports = (assignmentsv2App) => {
             selectedSchool: "",
             completionDate: fields.date || todayForRecord,
             completionTime: null,
-            uploadedPhotos: {}
+            uploadedPhotos: {} // Initialize as empty object
         };
 
         // Derive selectedSchool, completionDate, completionTime from content if IDs are present in schema
@@ -170,22 +170,23 @@ module.exports = (assignmentsv2App) => {
         }
 
         // 5. Process File Uploads
-        const uploadedFileLinks = {};
+        const uploadedFileLinks = {}; // This will store newly uploaded files for this submission
         const fileProcessingPromises = [];
 
-        for (const fieldName in files) {
+        for (const fieldName in files) { // fieldName is the 'name' attribute of the file input
             const fileOrFiles = files[fieldName];
-            // Ensure we are working with an array of files, even if only one was uploaded for the fieldName
             const fileArray = Array.isArray(fileOrFiles) ? fileOrFiles : (fileOrFiles ? [fileOrFiles] : []);
 
             for (const file of fileArray) {
                 if (file && file.size > 0) {
-                    // fieldName is the name of the input field from the form, e.g., 'questionId_photoUpload'
+                    // The questionId is part of the fieldName if sent like 'questionId_photoUpload' or it's the fieldName itself
+                    // The frontend sends unique input names for each file, e.g., `question.id`
                     const questionIdForFile = fieldName; 
 
                     fileProcessingPromises.push(
                         uploadImageAsPromise(file, account, assignmentId)
                             .then(link => {
+                                // Store new uploads with their original field name (questionId)
                                 // @ts-ignore
                                 uploadedFileLinks[questionIdForFile] = {
                                     date: todayForRecord,
@@ -196,7 +197,6 @@ module.exports = (assignmentsv2App) => {
                             })
                             .catch(uploadError => {
                                 functions.logger.error(`Error uploading file for field ${questionIdForFile} in /completed/:id:`, uploadError);
-                                // Optionally, you could add error info to a response or skip the file
                             })
                     );
                 }
@@ -204,25 +204,22 @@ module.exports = (assignmentsv2App) => {
         }
         await Promise.all(fileProcessingPromises);
 
-        // Merge with pre-existing syncPhotoLinks if any (from drafts)
-        const syncedPhotos = parseJsonField('syncPhotoLinks', {});
-        if (syncedPhotos) {
-            for (const qId in syncedPhotos) {
-                // @ts-ignore
-                if (!uploadedFileLinks[qId] && syncedPhotos[qId]) { // Only add if not overwritten and has a value
-                     // @ts-ignore
-                    uploadedFileLinks[qId] = {
-                        date: todayForRecord,
-                        link: typeof syncedPhotos[qId] === 'object' ? syncedPhotos[qId].url : syncedPhotos[qId], // Handle if syncPhotoLinks stores objects or just URLs
-                        submittedBy: finalAssignmentData.completedBy,
-                        originalName: typeof syncedPhotos[qId] === 'object' ? syncedPhotos[qId].name : 'synced_photo'
-                    };
-                }
-            }
+        // Merge with pre-existing syncPhotoLinks from drafts
+        // `syncPhotoLinks` comes from a form field, so it's in `fields`
+        const syncedPhotosFromDraft = parseJsonField('syncPhotoLinks', {}); // Default to empty object
+
+        // Start with photos from the draft
+        let combinedPhotos = { ...syncedPhotosFromDraft };
+
+        // Overwrite/add any newly uploaded photos for this submission
+        // `uploadedFileLinks` contains `questionId` as keys.
+        for (const qId in uploadedFileLinks) {
+            // @ts-ignore
+            combinedPhotos[qId] = uploadedFileLinks[qId];
         }
-        // @ts-ignore
-        if (Object.keys(uploadedFileLinks).length > 0) {
-            finalAssignmentData.uploadedPhotos = uploadedFileLinks;
+        
+        if (Object.keys(combinedPhotos).length > 0) {
+            finalAssignmentData.uploadedPhotos = combinedPhotos;
         }
 
 
