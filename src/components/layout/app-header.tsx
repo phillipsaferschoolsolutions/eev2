@@ -12,7 +12,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuGroup,
-  DropdownMenuTrigger,
+  DropdownMenuTrigger, 
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check } from "lucide-react";
@@ -40,29 +40,44 @@ const AccountSwitcher: React.FC = () => {
   const isSuperAdmin = userProfile?.permission === 'superAdmin' || customClaims?.superAdmin === true;
 
   useEffect(() => {
-    if (isSuperAdmin && userProfile?.account) { // Ensure userProfile.account is available
+    if (isSuperAdmin && userProfile?.account) {
       setIsLoadingDistricts(true);
-      getDistrictsForSuperAdmin(userProfile.account) // Pass current account
-        .then(setDistricts)
+      getDistrictsForSuperAdmin(userProfile.account)
+        .then(fetchedDistricts => {
+          // Ensure fetchedDistricts is an array, default to empty if not
+          setDistricts(Array.isArray(fetchedDistricts) ? fetchedDistricts : []);
+        })
         .catch(err => {
           console.error("Failed to fetch districts:", err);
           toast({ variant: "destructive", title: "Error Loading Districts", description: "Could not load districts for account switching. " + (err.message || '') });
+          setDistricts([]); // Set to empty array on error
         })
         .finally(() => setIsLoadingDistricts(false));
     } else if (isSuperAdmin && !userProfile?.account) {
         console.warn("SuperAdmin detected, but userProfile.account is not yet available for fetching districts.");
-        setIsLoadingDistricts(false); // Avoid infinite loading
-        toast({ variant: "destructive", title: "Account Info Missing", description: "Cannot load districts without current account context." });
+        setIsLoadingDistricts(false);
+        setDistricts([]);
+    } else {
+        setIsLoadingDistricts(false);
+        setDistricts([]);
     }
   }, [isSuperAdmin, userProfile?.account, toast]);
 
-  const handleAccountSwitch = async (newAccountName: string) => {
-    if (!userProfile || !userProfile.account || !newAccountName || newAccountName === userProfile.account) {
+  const handleAccountSwitch = async (selectedDistrictId: string) => {
+    if (!userProfile || !userProfile.account || !selectedDistrictId ) {
       return;
     }
+
+    const selectedDistrictObject = districts.find(d => d.id === selectedDistrictId);
+    if (!selectedDistrictObject || selectedDistrictObject.accountName === userProfile.account) {
+        // If district not found or already selected, do nothing
+        return;
+    }
+    
+    const newAccountName = selectedDistrictObject.accountName;
+
     setIsSwitchingAccount(true);
     try {
-      // Pass current account to switchUserAccount for the header
       await switchUserAccount(newAccountName, userProfile.account); 
       updateCurrentAccountInProfile(newAccountName); 
       toast({ title: "Account Switched", description: `Successfully switched to ${newAccountName}. Reloading...` });
@@ -78,6 +93,9 @@ const AccountSwitcher: React.FC = () => {
 
   if (!isSuperAdmin) return null;
 
+  // Determine the ID of the currently active account for the DropdownMenuRadioGroup's value
+  const currentSelectedValue = districts.find(d => d.accountName === userProfile?.account)?.id || "";
+
   return (
     <DropdownMenuGroup>
       <DropdownMenuLabel className="flex items-center gap-2">
@@ -87,26 +105,29 @@ const AccountSwitcher: React.FC = () => {
       <DropdownMenuSeparator />
       {isLoadingDistricts ? (
         <div className="px-2 py-1.5">
-          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-full my-1" />
+           <Skeleton className="h-6 w-full my-1" />
         </div>
-      ) : (
+      ) : districts.length > 0 ? (
         <DropdownMenuRadioGroup 
-          value={userProfile?.account || ""} 
+          value={currentSelectedValue} 
           onValueChange={handleAccountSwitch}
           disabled={isSwitchingAccount}
         >
           {districts.map((district) => (
             <DropdownMenuRadioItem 
-              key={district.id || district.name} 
-              value={district.name}
+              key={district.id} 
+              value={district.id} // Value for selection logic is the district ID
               className="cursor-pointer"
-              disabled={isSwitchingAccount || district.name === userProfile?.account}
+              disabled={isSwitchingAccount || district.accountName === userProfile?.account}
             >
-              {district.name}
-              {district.name === userProfile?.account && <Check className="ml-auto h-4 w-4" />}
+              {district.id} {/* Display district.id as per user request */}
+              {district.accountName === userProfile?.account && <Check className="ml-auto h-4 w-4" />}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
+      ) : (
+         <DropdownMenuItem disabled>No other accounts available.</DropdownMenuItem>
       )}
       {isSwitchingAccount && <DropdownMenuItem disabled>Switching...</DropdownMenuItem>}
     </DropdownMenuGroup>
