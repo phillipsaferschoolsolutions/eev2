@@ -169,7 +169,7 @@ async function getIdToken(): Promise<string | null> {
   const currentUser: User | null = auth.currentUser;
   if (currentUser) {
     try {
-      return await currentUser.getIdToken();
+      return await currentUser.getIdToken(true); // Force refresh
     } catch (error) {
       console.error("Error getting ID token:", error);
       return null;
@@ -196,9 +196,9 @@ async function authedFetch<T>(
   const trimmedAccountName = accountName?.trim();
   if (trimmedAccountName) {
     headers.set('account', trimmedAccountName);
-    console.log(`[authedFetch DEBUG] Set 'account' header to: ${trimmedAccountName} for URL: ${fullUrl}`); // Diagnostic log
+    console.log(`[authedFetch DEBUG] Set 'account' header to: ${trimmedAccountName} for URL: ${fullUrl}`);
   } else {
-    console.warn(`[authedFetch DEBUG] 'account' header NOT SET for URL: ${fullUrl} because accountName was:`, accountName); // Diagnostic log
+    console.warn(`[authedFetch DEBUG] 'account' header NOT SET for URL: ${fullUrl} because accountName was:`, accountName);
   }
 
 
@@ -206,11 +206,11 @@ async function authedFetch<T>(
     headers.set('Content-Type', 'application/json');
   }
 
-  console.log(`[authedFetch DEBUG] Making API call to ${fullUrl} with headers:`, Object.fromEntries(headers.entries())); // Diagnostic log
+  console.log(`[authedFetch DEBUG] Making API call to ${fullUrl} with headers:`, Object.fromEntries(headers.entries()));
 
   let response;
   try {
-    response = await fetch(fullUrl, { 
+    response = await fetch(fullUrl, {
       ...options,
       headers,
     });
