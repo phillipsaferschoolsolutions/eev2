@@ -91,6 +91,12 @@ export interface ByLocationPayload { location: string }
 
 export interface WeatherLocationData {
     name: string;
+    current?: {
+      temp: number;
+      weather?: { description: string; icon?: string }[];
+      wind_speed: number;
+      humidity: number;
+    };
     [key: string]: any;
 }
 
@@ -560,3 +566,4 @@ export async function savePendingSubmission(assignmentId: string, payload: Draft
   }, trimmedAccountName);
 }
 
+    
