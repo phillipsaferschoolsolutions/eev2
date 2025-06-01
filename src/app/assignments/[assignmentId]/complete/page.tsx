@@ -758,15 +758,13 @@ export default function CompleteAssignmentPage() {
                     {questionsToRender.length > 0 ? `${questionsToRender.indexOf(question) + 1}` : index + 1}. {question.label}
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </Label>
-                  <div className="text-xs text-muted-foreground space-y-1 mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-medium">Section:</span>
-                      <Badge variant="outline" size="sm">{String(question.section || "N/A")}</Badge>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-medium">Sub-Section:</span>
-                      <Badge variant="outline" size="sm">{String(question.subSection || "N/A")}</Badge>
-                    </div>
+                  <div className="text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 mb-2">
+                    <span>
+                      Section: <Badge variant="outline" size="sm">{String(question.section || "N/A")}</Badge>
+                    </span>
+                    <span>
+                      Sub-Section: <Badge variant="outline" size="sm">{String(question.subSection || "N/A")}</Badge>
+                    </span>
                   </div>
 
 
