@@ -53,7 +53,7 @@ body {
     --sidebar-accent: 233 45% 48%; 
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 235 40% 30%; 
-    --sidebar-ring: 233 45% 56%; 
+    --sidebar-ring: 233 45% 56%;
   }
 
   .dark {
@@ -418,43 +418,211 @@ body {
     --sidebar-border: 0 0% 15%;
   }
 
-  /* New Photo-Heavy Theme: Nature's Embrace */
+  /* --- Photo-Heavy Themes --- */
   html.theme-nature-embrace {
-    --theme-nature-embrace-background-image: linear-gradient(to right, #a8e063, #56ab2f); /* Fallback gradient */
+    --theme-nature-embrace-background-image: linear-gradient(to right, #a8e063cc, #56ab2fcc); /* Fallback gradient with opacity */
     
-    --background: 120 30% 15%; /* Dark green, translucent overlay */
-    --foreground: 120 60% 95%; /* Light, slightly green-tinted white */
+    --background: 120 30% 15%; 
+    --foreground: 100 50% 95%; 
     
-    --card: 120 25% 20% / 0.8; /* Dark, semi-transparent green for cards */
-    --card-foreground: 120 50% 90%;
+    --card: 120 25% 20% / 0.75; 
+    --card-foreground: 100 50% 92%;
     
-    --popover: 120 20% 18% / 0.9; /* Darker, more opaque popover */
-    --popover-foreground: 120 55% 92%;
+    --popover: 120 20% 18% / 0.85; 
+    --popover-foreground: 100 50% 94%;
     
-    --border: 120 40% 35% / 0.7; /* Translucent border */
-    --input: 120 30% 22% / 0.7;  /* Translucent input background */
+    --border: 110 40% 35% / 0.6; 
+    --input: 110 30% 22% / 0.65; 
     
-    --primary: 100 60% 65%; /* Brighter, leafy green */
-    --primary-foreground: 100 20% 10%;
+    --primary: 90 65% 60%; 
+    --primary-foreground: 90 20% 8%;
     
-    --secondary: 110 40% 55%; /* Muted green */
-    --secondary-foreground: 110 60% 90%;
+    --secondary: 110 45% 50%; 
+    --secondary-foreground: 110 60% 88%;
     
-    --accent: 80 60% 60%; /* Earthy yellow-green */
-    --accent-foreground: 80 20% 15%;
+    --accent: 75 65% 55%; 
+    --accent-foreground: 75 20% 12%;
     
-    --muted: 120 20% 25% / 0.6;
-    --muted-foreground: 120 40% 75%;
+    --muted: 120 20% 25% / 0.5;
+    --muted-foreground: 120 40% 80%;
 
-    --ring: 100 60% 65%;
+    --ring: 90 65% 60%;
 
-    --sidebar-background: 120 35% 12% / 0.85; /* Darker, semi-transparent sidebar */
-    --sidebar-foreground: 120 50% 88%;
-    --sidebar-primary: 100 55% 70%;
-    --sidebar-primary-foreground: 100 15% 8%;
-    --sidebar-accent: 80 50% 65%;
-    --sidebar-accent-foreground: 80 18% 12%;
-    --sidebar-border: 120 30% 28% / 0.7;
+    --sidebar-background: 120 35% 12% / 0.8; 
+    --sidebar-foreground: 100 50% 90%;
+    --sidebar-primary: 90 60% 68%;
+    --sidebar-primary-foreground: 90 15% 6%;
+    --sidebar-accent: 75 55% 60%;
+    --sidebar-accent-foreground: 75 18% 10%;
+    --sidebar-border: 110 30% 28% / 0.6;
+  }
+
+  html.theme-guardian-shield {
+    --theme-guardian-shield-background-image: linear-gradient(to bottom right, #4a5568cc, #2c3e50cc);
+    --background: 210 20% 18%;
+    --foreground: 210 80% 95%;
+    --card: 210 25% 22% / 0.75;
+    --card-foreground: 210 75% 92%;
+    --popover: 210 20% 20% / 0.85;
+    --popover-foreground: 210 80% 94%;
+    --border: 220 20% 35% / 0.6;
+    --input: 220 20% 25% / 0.65;
+    --primary: 200 70% 60%; /* Strong blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 40%;
+    --secondary-foreground: 210 70% 88%;
+    --accent: 0 80% 60%; /* Alert red */
+    --accent-foreground: 0 0% 100%;
+    --muted: 210 15% 28% / 0.5;
+    --muted-foreground: 210 50% 80%;
+    --ring: 200 70% 60%;
+    --sidebar-background: 210 25% 15% / 0.8;
+    --sidebar-foreground: 210 70% 90%;
+    --sidebar-primary: 200 65% 65%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 75% 65%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 220 15% 30% / 0.6;
+  }
+
+  html.theme-tranquil-library {
+    --theme-tranquil-library-background-image: linear-gradient(to bottom, #d3c1a5cc, #8c7851cc);
+    --background: 35 25% 25%;
+    --foreground: 35 60% 92%;
+    --card: 35 30% 30% / 0.75;
+    --card-foreground: 35 55% 90%;
+    --popover: 35 20% 28% / 0.85;
+    --popover-foreground: 35 60% 94%;
+    --border: 40 20% 40% / 0.6;
+    --input: 40 20% 32% / 0.65;
+    --primary: 45 40% 60%; /* Soft gold */
+    --primary-foreground: 45 10% 10%;
+    --secondary: 30 20% 45%;
+    --secondary-foreground: 35 50% 85%;
+    --accent: 120 25% 55%; /* Muted green */
+    --accent-foreground: 120 10% 95%;
+    --muted: 35 15% 35% / 0.5;
+    --muted-foreground: 35 40% 80%;
+    --ring: 45 40% 60%;
+    --sidebar-background: 35 30% 20% / 0.8;
+    --sidebar-foreground: 35 50% 88%;
+    --sidebar-primary: 45 35% 65%;
+    --sidebar-primary-foreground: 45 8% 8%;
+    --sidebar-accent: 120 20% 60%;
+    --sidebar-accent-foreground: 120 8% 92%;
+    --sidebar-border: 40 15% 35% / 0.6;
+  }
+  
+  html.theme-innovation-hub {
+    --theme-innovation-hub-background-image: linear-gradient(to right, #e0e6edcc, #b8c6dbcc);
+    --background: 220 20% 15%;
+    --foreground: 210 70% 95%;
+    --card: 220 25% 20% / 0.7;
+    --card-foreground: 210 65% 92%;
+    --popover: 220 18% 18% / 0.8;
+    --popover-foreground: 210 70% 94%;
+    --border: 230 15% 30% / 0.5;
+    --input: 230 15% 22% / 0.6;
+    --primary: 190 90% 55%; /* Bright cyan */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 30% 45%; /* Cool blue */
+    --secondary-foreground: 210 60% 88%;
+    --accent: 50 100% 60%; /* Vibrant yellow */
+    --accent-foreground: 50 20% 10%;
+    --muted: 220 10% 25% / 0.4;
+    --muted-foreground: 210 40% 78%;
+    --ring: 190 90% 55%;
+    --sidebar-background: 220 25% 12% / 0.75;
+    --sidebar-foreground: 210 60% 90%;
+    --sidebar-primary: 190 85% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 50 90% 65%;
+    --sidebar-accent-foreground: 50 15% 8%;
+    --sidebar-border: 230 10% 25% / 0.5;
+  }
+
+  html.theme-campus-serenity {
+    --theme-campus-serenity-background-image: linear-gradient(to bottom, #a1c4fdcc, #c2e9fbcc);
+    --background: 140 30% 20%;
+    --foreground: 120 50% 95%;
+    --card: 130 35% 25% / 0.75;
+    --card-foreground: 120 45% 92%;
+    --popover: 130 25% 22% / 0.85;
+    --popover-foreground: 120 50% 94%;
+    --border: 150 25% 35% / 0.6;
+    --input: 150 25% 28% / 0.65;
+    --primary: 90 55% 60%; /* Fresh green */
+    --primary-foreground: 90 15% 10%;
+    --secondary: 200 50% 65%; /* Sky blue */
+    --secondary-foreground: 200 15% 95%;
+    --accent: 40 70% 65%; /* Sunny yellow */
+    --accent-foreground: 40 20% 15%;
+    --muted: 140 20% 30% / 0.5;
+    --muted-foreground: 120 35% 80%;
+    --ring: 90 55% 60%;
+    --sidebar-background: 140 35% 15% / 0.8;
+    --sidebar-foreground: 120 40% 90%;
+    --sidebar-primary: 90 50% 65%;
+    --sidebar-primary-foreground: 90 12% 8%;
+    --sidebar-accent: 200 45% 70%;
+    --sidebar-accent-foreground: 200 10% 92%;
+    --sidebar-border: 150 20% 30% / 0.6;
+  }
+
+  html.theme-fortress-stone {
+    --theme-fortress-stone-background-image: linear-gradient(to bottom right, #838a98cc, #4a5568cc);
+    --background: 220 10% 20%;
+    --foreground: 220 30% 88%;
+    --card: 220 12% 25% / 0.75;
+    --card-foreground: 220 25% 85%;
+    --popover: 220 8% 22% / 0.85;
+    --popover-foreground: 220 30% 90%;
+    --border: 210 10% 35% / 0.6;
+    --input: 210 10% 28% / 0.65;
+    --primary: 30 30% 55%; /* Stone brown */
+    --primary-foreground: 30 10% 95%;
+    --secondary: 0 0% 45%; /* Dark grey */
+    --secondary-foreground: 0 0% 80%;
+    --accent: 200 30% 60%; /* Weathered blue */
+    --accent-foreground: 200 10% 98%;
+    --muted: 220 5% 30% / 0.5;
+    --muted-foreground: 220 20% 75%;
+    --ring: 30 30% 55%;
+    --sidebar-background: 220 12% 15% / 0.8;
+    --sidebar-foreground: 220 25% 82%;
+    --sidebar-primary: 30 25% 60%;
+    --sidebar-primary-foreground: 30 8% 92%;
+    --sidebar-accent: 200 25% 65%;
+    --sidebar-accent-foreground: 200 5% 95%;
+    --sidebar-border: 210 5% 30% / 0.6;
+  }
+
+  html.theme-digital-citadel {
+    --theme-digital-citadel-background-image: linear-gradient(to bottom left, #0f2027cc, #203a43cc, #2c5364cc);
+    --background: 200 30% 10%;
+    --foreground: 190 80% 90%;
+    --card: 200 35% 15% / 0.75;
+    --card-foreground: 190 75% 88%;
+    --popover: 200 25% 12% / 0.85;
+    --popover-foreground: 190 80% 92%;
+    --border: 210 25% 25% / 0.6;
+    --input: 210 25% 18% / 0.65;
+    --primary: 180 90% 55%; /* Glowing cyan */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 50% 30%; /* Deep tech blue */
+    --secondary-foreground: 190 70% 85%;
+    --accent: 280 80% 65%; /* Electric purple */
+    --accent-foreground: 0 0% 100%;
+    --muted: 200 20% 20% / 0.5;
+    --muted-foreground: 190 50% 75%;
+    --ring: 180 90% 55%;
+    --sidebar-background: 200 35% 8% / 0.8;
+    --sidebar-foreground: 190 70% 82%;
+    --sidebar-primary: 180 85% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 280 75% 70%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 210 20% 20% / 0.6;
   }
 
 }
@@ -465,37 +633,67 @@ body {
   }
   body {
     @apply bg-background text-foreground;
-    /* Default body transition for background */
     transition: background-color 0.3s ease-in-out, background-image 0.5s ease-in-out;
   }
 
-  /* Apply dynamic background for Nature's Embrace theme */
-  html.theme-nature-embrace body {
-    background-image: var(--theme-nature-embrace-background-image);
+  /* Apply dynamic background for Photo-Heavy themes */
+  html.theme-nature-embrace body,
+  html.theme-guardian-shield body,
+  html.theme-tranquil-library body,
+  html.theme-innovation-hub body,
+  html.theme-campus-serenity body,
+  html.theme-fortress-stone body,
+  html.theme-digital-citadel body {
     background-size: cover;
     background-position: center center;
     background-attachment: fixed;
-    /* Ensure text remains readable over varied backgrounds */
     color: hsl(var(--foreground)); 
   }
+  html.theme-nature-embrace body { background-image: var(--theme-nature-embrace-background-image); }
+  html.theme-guardian-shield body { background-image: var(--theme-guardian-shield-background-image); }
+  html.theme-tranquil-library body { background-image: var(--theme-tranquil-library-background-image); }
+  html.theme-innovation-hub body { background-image: var(--theme-innovation-hub-background-image); }
+  html.theme-campus-serenity body { background-image: var(--theme-campus-serenity-background-image); }
+  html.theme-fortress-stone body { background-image: var(--theme-fortress-stone-background-image); }
+  html.theme-digital-citadel body { background-image: var(--theme-digital-citadel-background-image); }
+
 
   /* Ensure cards and other elements have a background when body has an image */
-  html.theme-nature-embrace .bg-card {
-    background-color: hsl(var(--card)); /* Uses the theme's card color with opacity */
+  html.theme-nature-embrace .bg-card,
+  html.theme-guardian-shield .bg-card,
+  html.theme-tranquil-library .bg-card,
+  html.theme-innovation-hub .bg-card,
+  html.theme-campus-serenity .bg-card,
+  html.theme-fortress-stone .bg-card,
+  html.theme-digital-citadel .bg-card {
+    background-color: hsl(var(--card)); 
   }
-   html.theme-nature-embrace .bg-popover {
+  html.theme-nature-embrace .bg-popover,
+  html.theme-guardian-shield .bg-popover,
+  html.theme-tranquil-library .bg-popover,
+  html.theme-innovation-hub .bg-popover,
+  html.theme-campus-serenity .bg-popover,
+  html.theme-fortress-stone .bg-popover,
+  html.theme-digital-citadel .bg-popover {
     background-color: hsl(var(--popover));
   }
-  html.theme-nature-embrace .bg-background {
-    /* For elements that should explicitly use the theme's "solid" background color */
-    /* On body, this means no image. On other elements, it's the theme's background color. */
-    /* We want body to have image, but other elements might need solid background for contrast */
-     background-color: hsl(var(--background)) !important; /* Use !important carefully, only if necessary */
-  }
-  html.theme-nature-embrace [data-sidebar="sidebar"] {
+  html.theme-nature-embrace [data-sidebar="sidebar"],
+  html.theme-guardian-shield [data-sidebar="sidebar"],
+  html.theme-tranquil-library [data-sidebar="sidebar"],
+  html.theme-innovation-hub [data-sidebar="sidebar"],
+  html.theme-campus-serenity [data-sidebar="sidebar"],
+  html.theme-fortress-stone [data-sidebar="sidebar"],
+  html.theme-digital-citadel [data-sidebar="sidebar"] {
      background-color: hsl(var(--sidebar-background));
   }
-  html.theme-nature-embrace .bg-muted {
+  html.theme-nature-embrace .bg-muted,
+  html.theme-guardian-shield .bg-muted,
+  html.theme-tranquil-library .bg-muted,
+  html.theme-innovation-hub .bg-muted,
+  html.theme-campus-serenity .bg-muted,
+  html.theme-fortress-stone .bg-muted,
+  html.theme-digital-citadel .bg-muted {
     background-color: hsl(var(--muted));
   }
 }
+

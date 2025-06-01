@@ -5,12 +5,12 @@ import "./globals.css";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
-import { ThemeProvider } from "next-themes"; // Only ThemeProvider is needed here
+import { ThemeProvider } from "next-themes"; 
 import { AuthProvider } from "@/context/auth-context";
 import { LayoutProvider } from "@/context/layout-context";
 import { PageShell } from "@/components/layout/PageShell";
 import React from "react";
-import { ThemeBackgroundSetter } from "@/components/layout/ThemeBackgroundSetter"; // Import the new component
+import { ThemeBackgroundSetter } from "@/components/layout/ThemeBackgroundSetter"; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,11 +37,10 @@ const THEME_IDS = [
   'urban-jungle-light', 'urban-jungle-dark', 'vintage-paper-light', 'vintage-paper-dark',
   'digital-dreams-light', 'digital-dreams-dark', 'crystal-frost-light', 'crystal-frost-dark',
   'ethereal-veil-light', 'ethereal-veil-dark', 'chromatic-glaze-light', 'chromatic-glaze-dark',
-  'theme-nature-embrace',
+  'theme-nature-embrace', 'theme-guardian-shield', 'theme-tranquil-library', 
+  'theme-innovation-hub', 'theme-campus-serenity', 'theme-fortress-stone', 'theme-digital-citadel'
 ];
 
-// The inline ThemeSpecificBackgroundSetterWrapper function definition has been removed.
-// It's now imported as ThemeBackgroundSetter from its own file.
 
 export default function RootLayout({
   children,
@@ -66,7 +65,7 @@ export default function RootLayout({
           >
             <LayoutProvider>
               <SidebarProvider>
-                <ThemeBackgroundSetter /> {/* Use the imported component */}
+                <ThemeBackgroundSetter /> 
                 <PageShell>{children}</PageShell>
                 <Toaster />
               </SidebarProvider>
@@ -77,3 +76,4 @@ export default function RootLayout({
     </html>
   );
 }
+

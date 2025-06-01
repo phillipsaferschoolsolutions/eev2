@@ -3,14 +3,22 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Palette, Sun, Moon, Contrast, Terminal, Waves, Leaf, Sunset, Building, Flame, Sparkles, Trees, Cpu, Snowflake, Mountain, Fish, Scroll, Edit3, Binary, Wand2, CircuitBoard, Zap, Gem, Layers } from "lucide-react";
+import { Palette, Sun, Moon, Contrast, Terminal, Waves, Leaf, Sunset, Building, Flame, Sparkles, Trees, Cpu, Snowflake, Mountain, Fish, Scroll, Edit3, Binary, Wand2, CircuitBoard, Zap, Gem, Layers, Shield, BookOpen, Network } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 
 const appThemes = [
   { id: "light", name: "Default Light", description: "The standard clean and professional theme.", icon: Sun, isDark: false, gradient: "bg-gradient-to-br from-blue-100 to-indigo-100" },
   { id: "dark", name: "Default Dark", description: "For low-light conditions, reduces eye strain.", icon: Moon, isDark: true, gradient: "bg-gradient-to-br from-slate-800 to-slate-900" },
-  { id: "theme-nature-embrace", name: "Nature's Embrace", description: "Photo-heavy theme with a dynamic nature background.", icon: Trees, isDark: true, gradient: "bg-gradient-to-br from-green-500 to-emerald-700" }, // New theme
+  
+  { id: "theme-nature-embrace", name: "Nature's Embrace", description: "Dynamic nature background. Serene & organic.", icon: Trees, isDark: true, gradient: "bg-gradient-to-br from-green-500 to-emerald-700" },
+  { id: "theme-guardian-shield", name: "Guardian Shield", description: "Metallic & blue hues. Sense of security.", icon: Shield, isDark: true, gradient: "bg-gradient-to-br from-slate-600 to-blue-700" },
+  { id: "theme-tranquil-library", name: "Tranquil Library", description: "Warm woods & soft light. Calm & focused.", icon: BookOpen, isDark: true, gradient: "bg-gradient-to-br from-yellow-700 to-orange-800" },
+  { id: "theme-innovation-hub", name: "Innovation Hub", description: "Bright, clean, with tech accents. Modern & sleek.", icon: Zap, isDark: true, gradient: "bg-gradient-to-br from-sky-600 to-indigo-700" },
+  { id: "theme-campus-serenity", name: "Campus Serenity", description: "Sunny campus greens & sky blues. Peaceful.", icon: Sun, isDark: true, gradient: "bg-gradient-to-br from-green-400 to-blue-500" },
+  { id: "theme-fortress-stone", name: "Fortress Stone", description: "Solid greys & browns. Strong & dependable.", icon: Layers, isDark: true, gradient: "bg-gradient-to-br from-gray-500 to-slate-600" },
+  { id: "theme-digital-citadel", name: "Digital Citadel", description: "Cyber blues & teals. Secure & advanced.", icon: Network, isDark: true, gradient: "bg-gradient-to-br from-cyan-600 to-blue-800" },
+  
   { id: "corporate-blue", name: "Corporate Blue", description: "A light theme with a focus on professional blue tones.", icon: Building, isDark: false, gradient: "bg-gradient-to-br from-sky-100 to-blue-200" },
   { id: "matrix", name: "Matrix", description: "Dark theme with green text on a black background.", icon: Terminal, isDark: true, gradient: "bg-gradient-to-br from-green-900 to-black" },
   { id: "desert-light", name: "Desert Oasis", description: "Light theme with warm, sandy, and terracotta tones.", icon: Sunset, isDark: false, gradient: "bg-gradient-to-br from-yellow-100 to-orange-200" },
@@ -81,9 +89,9 @@ export default function ThemingPage() {
       <p className="text-lg text-muted-foreground">
         Personalize the application's appearance to suit your preferences or conform with corporate branding.
       </p>
-      <div className="text-sm p-3 rounded-md bg-yellow-100 border border-yellow-300 text-yellow-800">
-        <strong>Security Note:</strong> The "Nature's Embrace" theme demonstrates fetching images from Pexels using an API key directly on the client-side. 
-        This is for prototyping purposes only and is insecure for production. API keys should always be protected by a backend.
+      <div className="text-sm p-3 rounded-md bg-yellow-100 border border-yellow-300 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700/50 dark:text-yellow-300">
+        <strong>Security Note:</strong> Photo-heavy themes use the Pexels API. The API key is stored as `NEXT_PUBLIC_PEXEL_API_KEY` in your environment variables. 
+        While using a `NEXT_PUBLIC_` prefix makes it available on the client, for production, consider routing API calls through a backend proxy to better protect your key.
       </div>
 
       <Card>
@@ -99,7 +107,7 @@ export default function ThemingPage() {
                   className={`h-32 w-full flex items-center justify-center ${themeOption.gradient}`}
                   data-ai-hint="theme color palette"
                 >
-                  <themeOption.icon className={`h-12 w-12 ${themeOption.isDark ? 'text-white' : 'text-neutral-900' }`} />
+                  <themeOption.icon className={`h-12 w-12 ${themeOption.isDark ? 'text-white/90' : 'text-neutral-900/90' }`} />
                 </div>
               </CardHeader>
               <CardContent className="p-4 flex-grow flex flex-col">
@@ -124,10 +132,11 @@ export default function ThemingPage() {
         </CardHeader>
         <CardContent>
             <p className="text-muted-foreground">
-                The "Nature's Embrace" theme uses a dynamic background image fetched from Pexels. Other themes primarily adjust color schemes. True glassmorphism with blurred backgrounds on components like cards typically requires `backdrop-filter` and semi-transparent backgrounds, which are more advanced styling changes.
+                Photo-heavy themes use a dynamic background image fetched from Pexels. Other themes primarily adjust color schemes. True glassmorphism with blurred backgrounds on components like cards typically requires `backdrop-filter` and semi-transparent backgrounds, which are more advanced styling changes.
             </p>
         </CardContent>
       </Card>
     </div>
   );
 }
+
