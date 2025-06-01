@@ -22,10 +22,16 @@ export interface AssignmentQuestion {
     field: string; // ID of the question this one depends on
     value: string | string[]; // Value(s) of the dependent question that trigger this one
   };
-  deficiency?: string; // Value that constitutes a deficiency
-  deficiencyLabel?: string; // Label for reporting deficiency
+  deficiencyLabel?: string; // Description of what a deficiency means for this question
+  deficiencyValues?: string[]; // For closed-ended: specific option values that are deficiencies
+  aiDeficiencyCheck?: boolean; // For open-ended: flag to use AI to check for deficiency
   criticality?: 'low' | 'medium' | 'high';
-  // Add any other fields from NewItem that are part of the question definition
+  // Placeholder for future per-question assignment
+  assignedTo?: { 
+    users?: string[]; // User IDs or emails
+    sites?: string[]; // Site IDs or names
+    jobTitles?: string[]; 
+  };
 }
 
 
@@ -42,6 +48,7 @@ interface AssignmentField {
   frequency?: string;
   communityShare?: boolean;
   schoolSelectorId?: string | boolean;
+  createdDate?: string; // Added based on details page
 }
 
 interface AssignmentContentItem { // This was an earlier, simpler version. We'll use AssignmentQuestion.
@@ -53,7 +60,7 @@ interface AssignmentContentItem { // This was an earlier, simpler version. We'll
 }
 
 export interface FullAssignment extends AssignmentField {
-  content: AssignmentQuestion[]; // Changed to AssignmentQuestion
+  questions: AssignmentQuestion[]; // Standardized to 'questions'
 }
 
 export interface AssignmentMetadata extends AssignmentField {
@@ -72,17 +79,14 @@ interface CreateAssignmentPayload {
   assessmentName: string;
   assignmentType?: string;
   description?: string;
-  content: AssignmentQuestion[];
+  questions: AssignmentQuestion[]; // Standardized to 'questions'
   accountSubmittedFor?: string;
   schoolSelectorId?: string; // Added to link the assignment to a location
 }
 
-interface UpdateAssignmentPayload {
-  assessmentName?: string;
-  assignmentType?: string;
-  description?: string;
-  dueDate?: string;
-}
+// This payload will now accept a partial FullAssignment, allowing questions to be updated.
+export type UpdateAssignmentPayload = Partial<FullAssignment>;
+
 
 export interface CompletedAssignmentResponse {
   assignmentId: string;
@@ -159,7 +163,7 @@ export type PendingAssignmentsResponse = PendingAssignment[];
 
 export interface DraftAssignmentPayload {
   assessmentName?: string;
-  content?: AssignmentQuestion[]; // Changed to AssignmentQuestion
+  questions?: AssignmentQuestion[]; // Standardized to 'questions'
   [key: string]: any;
 }
 export interface PostPendingResponse {
@@ -271,6 +275,7 @@ async function authedFetch<T>(
  * 1. GET /
  * Returns full assignment content for a given account.
  * Account name is passed in the 'account' header.
+ * Note: Changed `content` to `questions` in FullAssignment for consistency. Backend might still use `content`.
  */
 export async function getAllAssignmentsWithContent(accountName: string): Promise<FullAssignment[]> {
   const trimmedAccountName = accountName?.trim();
@@ -308,7 +313,7 @@ export async function getAssignmentById(id: string, accountName?: string): Promi
 
 /**
  * 18. POST /createassignment
- * Body: Full assignment object + content array
+ * Body: Full assignment object + questions array
  * Account name ('account' header) might be needed.
  */
 export async function createAssignment(payload: CreateAssignmentPayload, accountName?: string): Promise<FullAssignment> {
@@ -320,14 +325,14 @@ export async function createAssignment(payload: CreateAssignmentPayload, account
 
 /**
  * 22. PUT /:id
- * Updates metadata of an existing assignment. Body: Partial assignment object. Returns 200 OK.
+ * Updates an existing assignment. Body: Partial FullAssignment object (can include questions). Returns 200 OK.
  * Account name ('account' header) might be needed.
  */
-export async function updateAssignment(id: string, payload: Partial<UpdateAssignmentPayload>, accountName?: string): Promise<void> {
+export async function updateAssignment(id: string, payload: UpdateAssignmentPayload, accountName?: string): Promise<void> {
   if (!id) throw new Error('Assignment ID is required.');
   await authedFetch<void>(`${BASE_URL}/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(payload), // Send the updated questions array here
   }, accountName);
 }
 
@@ -587,5 +592,3 @@ export async function savePendingSubmission(assignmentId: string, payload: Draft
     body: JSON.stringify(payload),
   }, trimmedAccountName);
 }
-
-    
