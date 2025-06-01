@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
+import { usePathname } from "next/navigation"; // Ensure usePathname is imported if used for redirect
 
 const sampleTemplates = [
   { id: "env1", name: "Environmental Safety Checklist", description: "General campus environment assessment.", icon: CheckSquare },
@@ -27,6 +28,8 @@ export default function AssessmentFormsPage() {
   const [allAccountAssignments, setAllAccountAssignments] = useState<AssignmentMetadata[]>([]);
   const [isLoadingAllAccountAssignments, setIsLoadingAllAccountAssignments] = useState(true);
   const [allAccountAssignmentsError, setAllAccountAssignmentsError] = useState<string | null>(null);
+
+  const pathname = usePathname(); // For redirect
 
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
 
@@ -61,6 +64,9 @@ export default function AssessmentFormsPage() {
           const tomeAssignmentsData = await getMyAssignments(userProfile.account, user.email!);
           console.log("SUCCESSFULLY FETCHED FROM /tome endpoint. Raw data:", JSON.stringify(tomeAssignmentsData, null, 2));
           setMyAssignments(tomeAssignmentsData || []);
+          if (tomeAssignmentsData && tomeAssignmentsData.length > 0) {
+            console.log("[TEMP DEBUG AssessmentFormsPage] First item in myAssignments (if any):", tomeAssignmentsData[0]);
+          }
 
         } catch (err) {
           console.error("ERROR FETCHING FROM /tome endpoint:", err);
@@ -149,11 +155,6 @@ export default function AssessmentFormsPage() {
   const overallLoadingMyAssignments = authLoading || profileLoading || claimsLoading || isLoadingMyAssignments;
   const overallLoadingAllAccountAssignments = authLoading || profileLoading || claimsLoading || isLoadingAllAccountAssignments;
 
-  console.log("[TEMP DEBUG AssessmentFormsPage] Filter Check for My Assignments: myAssignments length:", myAssignments.length);
-  if (myAssignments.length > 0 ) {
-    console.log("[TEMP DEBUG AssessmentFormsPage] First item in myAssignments (if any):", myAssignments[0]);
-  }
-
   const displayableAllAccountAssignments = allAccountAssignments.filter(
     assignment => assignment && typeof assignment.id === 'string' && assignment.id.trim() !== ''
   );
@@ -209,7 +210,7 @@ export default function AssessmentFormsPage() {
                 {myAssignmentsError}
                 {!user && (
                    <Button asChild className="mt-2">
-                    <Link href={`/auth?redirect=${encodeURIComponent("/assessment-forms")}`}>Login</Link>
+                    <Link href={`/auth?redirect=${encodeURIComponent(pathname)}`}>Login</Link>
                   </Button>
                 )}
               </AlertDescription>
@@ -244,13 +245,17 @@ export default function AssessmentFormsPage() {
                          {!uniqueIdForLink && <span className="ml-2 text-destructive">(ID missing)</span>}
                        </p>
                      </div>
-                     <Button asChild variant="outline" size="sm" disabled={!uniqueIdForLink}>
-                        {uniqueIdForLink ? (
-                           <Link href={`/assignments/${uniqueIdForLink}/complete`}>Complete Task</Link>
-                        ) : (
-                           <span>Complete Task</span>
-                        )}
-                     </Button>
+                     {uniqueIdForLink ? (
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/assignments/${uniqueIdForLink}/complete`}>
+                            Complete Assignment
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm" disabled>
+                          Complete Assignment (ID Missing)
+                        </Button>
+                      )}
                    </li>
                  );
                })}
@@ -362,3 +367,5 @@ export default function AssessmentFormsPage() {
   );
 }
 
+
+    
