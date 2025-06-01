@@ -102,10 +102,10 @@ export default function DashboardPage() {
 
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const [heroImageLoading, setHeroImageLoading] = useState(false);
-  const [isClientMounted, setIsClientMounted] = useState(false); // For hydration fix
+  const [isClientMounted, setIsClientMounted] = useState(false);
 
   useEffect(() => {
-    setIsClientMounted(true); // Component has mounted on client
+    setIsClientMounted(true);
   }, []);
 
 

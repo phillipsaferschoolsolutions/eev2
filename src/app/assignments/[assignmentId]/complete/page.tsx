@@ -110,7 +110,6 @@ export default function CompleteAssignmentPage() {
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
-  const hours24 = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
   const hours12 = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
   const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
   const amPm = ["AM", "PM"];
@@ -219,12 +218,8 @@ export default function CompleteAssignmentPage() {
         return value instanceof Date;
       case 'time':
       case 'completionTime':
-        // For 12-hour format, it might be an object or string
         if (typeof value === 'object' && value !== null && value.hour && value.minute && value.period) {
-             return true; // Assumes valid object structure for 12hr time
-        }
-        if (typeof value === 'string' && value.includes(':') && value !== "00:00") { // Fallback for 24hr string
-            return true;
+             return true;
         }
         return false;
       case 'checkbox':
@@ -318,22 +313,19 @@ export default function CompleteAssignmentPage() {
           const defaultVals: FieldValues = {};
           const initialAudioPlayerStates: Record<string, AudioPlayerState> = {};
           const now = new Date();
-          const currentHour24 = String(now.getHours()).padStart(2, '0');
-          const currentMinute = String(now.getMinutes()).padStart(2, '0');
-
+          
           fetchedAssignment.questions.forEach(q => {
             if (q.component === 'date' || q.component === 'completionDate') {
-              defaultVals[q.id] = new Date(); // Default to current date
+              defaultVals[q.id] = new Date(); 
             } else if (q.component === 'time' || q.component === 'completionTime') {
-               // For 12-hour time component (object value)
                 let currentHour12 = now.getHours();
                 const currentPeriod = currentHour12 >= 12 ? "PM" : "AM";
                 currentHour12 = currentHour12 % 12;
-                currentHour12 = currentHour12 ? currentHour12 : 12; // Handle midnight (0 becomes 12)
+                currentHour12 = currentHour12 ? currentHour12 : 12; 
 
                 defaultVals[q.id] = {
                     hour: String(currentHour12),
-                    minute: currentMinute,
+                    minute: String(now.getMinutes()).padStart(2, '0'),
                     period: currentPeriod
                 };
             } else if (q.component === 'checkbox' && q.options && Array.isArray(parseOptions(q.options))) {
@@ -543,7 +535,6 @@ export default function CompleteAssignmentPage() {
   const handleStopRecording = (questionId: string, playTheStopChime: boolean = true) => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
-      // onstop will play the chime
     }
     if (isRecordingQuestionId === questionId) {
       setIsRecordingQuestionId(null);
@@ -582,10 +573,11 @@ export default function CompleteAssignmentPage() {
 
     try {
       if (audio.paused) {
-        if (audio.currentSrc !== noteUrl) {
+        // Only set src and load if it's different or not set (e.g., after removeAudioNote)
+        if (!audio.currentSrc || audio.currentSrc !== noteUrl) {
           console.log(`[togglePlayPause] Setting src for ${questionId} to ${noteUrl}. Current: ${audio.currentSrc}`);
           audio.src = noteUrl;
-          audio.load(); // Tell the browser to load the new source
+          audio.load(); // Crucial to load the new source
 
           // Wait for 'canplay' before attempting to play
           await new Promise<void>((resolve, reject) => {
@@ -615,6 +607,7 @@ export default function CompleteAssignmentPage() {
     } catch (error: any) {
       console.error(`[togglePlayPause] Error for ${questionId}: ${error.name} - ${error.message}`);
       toast({ variant: "destructive", title: "Playback Error", description: error.message });
+      // Ensure UI reflects paused state if play() failed
       if (audio.paused && audioPlayerStates[questionId]?.isPlaying) {
         setAudioPlayerStates(prev => ({
           ...prev,
@@ -755,7 +748,7 @@ export default function CompleteAssignmentPage() {
                 try {
                     const url = await getDownloadURL(audioUploadTask.snapshot.ref);
                     setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, downloadURL: url, name: audioFileName, isUploading: false, uploadProgress: 100 }}));
-                    finalAudioNotesForSubmission[questionId] = { name: audioFileName, url: url }; // Populate here
+                    finalAudioNotesForSubmission[questionId] = { name: audioFileName, url: url };
                     resolve();
                 } catch (getUrlError){
                     console.error(`Failed to get audio download URL for ${questionId}:`, getUrlError);
@@ -766,15 +759,13 @@ export default function CompleteAssignmentPage() {
             );
             });
             audioUploadPromises.push(promise);
-        } else if (note && note.downloadURL) { // If already uploaded (e.g. from a draft)
+        } else if (note && note.downloadURL) { 
             finalAudioNotesForSubmission[questionId] = { name: note.name, url: note.downloadURL };
         }
     });
 
     try {
         await Promise.all(audioUploadPromises);
-        // finalAudioNotesForSubmission is now populated correctly inside the promises or if already uploaded
-
     } catch (error) {
       toast({ variant: "destructive", title: "Audio Upload Failed", description: `One or more audio notes could not be uploaded. Please review any errors and try again.` });
       setIsSubmitting(false);
@@ -801,16 +792,14 @@ export default function CompleteAssignmentPage() {
         } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
             questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
         } else if ((question.component === 'time' || question.component === 'completionTime')) {
-            const timeValue = data[question.id];
+            const timeValue = data[question.id] as { hour: string, minute: string, period: "AM" | "PM" };
             if (typeof timeValue === 'object' && timeValue !== null && timeValue.hour && timeValue.minute && timeValue.period) {
                 let hour = parseInt(timeValue.hour, 10);
                 if (timeValue.period === 'PM' && hour !== 12) hour += 12;
-                if (timeValue.period === 'AM' && hour === 12) hour = 0; // Midnight case
+                if (timeValue.period === 'AM' && hour === 12) hour = 0; 
                 questionAnswer = `${String(hour).padStart(2, '0')}:${String(timeValue.minute).padStart(2, '0')}`;
-            } else if (typeof timeValue === 'string' && timeValue.includes(':')) { // Fallback for direct string input
-                 questionAnswer = timeValue;
             } else {
-                questionAnswer = "00:00"; // Default or invalid
+                questionAnswer = "00:00"; 
             }
         } else if (question.component === 'range') {
              questionAnswer = data[question.id] ?? 0;
@@ -840,7 +829,7 @@ export default function CompleteAssignmentPage() {
     formDataForSubmission.append("assessmentName", assignment.assessmentName || "Unnamed Assignment");
     formDataForSubmission.append("account", userProfile.account);
     formDataForSubmission.append("completedBy", user.email);
-    formDataForSubmission.append("completedTime", new Date().toISOString()); // The overall server submission time
+    formDataForSubmission.append("completedTime", new Date().toISOString()); 
     formDataForSubmission.append("status", "completed");
     formDataForSubmission.append("submittedOnPlatform", "web");
     formDataForSubmission.append("locationName", userProfile?.locationName || "Location Missing");
@@ -1050,7 +1039,6 @@ export default function CompleteAssignmentPage() {
                         control={control}
                         rules={{ required: question.required }}
                         render={({ field }) => {
-                            // Value is expected to be { hour: string, minute: string, period: "AM" | "PM" }
                             const timeValue = field.value as { hour: string, minute: string, period: "AM" | "PM" } || { hour: '12', minute: '00', period: 'PM' };
                             return (
                                 <div className="flex items-center gap-2 bg-background p-2 rounded-md border">
@@ -1396,12 +1384,12 @@ export default function CompleteAssignmentPage() {
 
                       {audioNotes[question.id]?.url && (
                         <audio
-                            ref={(el) => (audioRefs.current[questionId] = el)}
-                            onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, questionId)}
-                            onTimeUpdate={(e) => handleAudioTimeUpdate(e, questionId)}
-                            onEnded={() => handleAudioEnded(questionId)}
-                            onPlay={() => setAudioPlayerStates(prev => ({...prev, [questionId]: {...(prev[questionId] || {currentTime:0, duration:0, isPlaying: false}), isPlaying: true}}))}
-                            onPause={() => setAudioPlayerStates(prev => ({...prev, [questionId]: {...(prev[questionId] || {currentTime:0, duration:0, isPlaying: true}), isPlaying: false}}))}
+                            ref={(el) => {audioRefs.current[question.id] = el}}
+                            onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, question.id)}
+                            onTimeUpdate={(e) => handleAudioTimeUpdate(e, question.id)}
+                            onEnded={() => handleAudioEnded(question.id)}
+                            onPlay={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...(prev[question.id] || {currentTime:0, duration:0, isPlaying: false}), isPlaying: true}}))}
+                            onPause={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...(prev[question.id] || {currentTime:0, duration:0, isPlaying: true}), isPlaying: false}}))}
                             className="hidden"
                          />
                       )}
