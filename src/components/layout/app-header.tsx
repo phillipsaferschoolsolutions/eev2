@@ -9,13 +9,13 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuGroup,
+  DropdownMenuTrigger, // Added DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, ChevronsUpDown, Check } from "lucide-react"; // Added Building, ChevronsUpDown, Check
+import { Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check } from "lucide-react"; // Removed ChevronsUpDown as it's not used
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -58,13 +58,9 @@ const AccountSwitcher: React.FC = () => {
     }
     setIsSwitchingAccount(true);
     try {
-      // The backend needs to know which user is making the request (via ID token)
-      // and what their current account context is, if it's relevant for the switch logic.
       await switchUserAccount(newAccountName, userProfile.account);
-      updateCurrentAccountInProfile(newAccountName); // Update local context
+      updateCurrentAccountInProfile(newAccountName); 
       toast({ title: "Account Switched", description: `Successfully switched to ${newAccountName}. Reloading...` });
-      // Reload the page to apply the new account context everywhere
-      // Timeout to allow toast to be seen
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -116,7 +112,7 @@ const AccountSwitcher: React.FC = () => {
 export function AppHeader() {
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const { user, userProfile, customClaims, loading: authLoading } = useAuth(); // Added userProfile and customClaims
+  const { user, userProfile, customClaims, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -192,7 +188,7 @@ export function AppHeader() {
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64"> {/* Increased width for account switcher */}
+          <DropdownMenuContent align="end" className="w-64">
             {user ? (
               <>
                 <DropdownMenuLabel>
