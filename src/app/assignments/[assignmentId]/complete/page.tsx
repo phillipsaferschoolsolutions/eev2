@@ -389,16 +389,15 @@ export default function CompleteAssignmentPage() {
       if (maxRecordingTimerRef.current) {
         clearTimeout(maxRecordingTimerRef.current);
       }
-      // Cleanup audio object URLs
       Object.values(audioNotes).forEach(note => {
         if (note?.url && note.url.startsWith('blob:')) {
           URL.revokeObjectURL(note.url);
         }
       });
-      // Stop any playing audio
       Object.values(audioRefs.current).forEach(audioEl => {
         if (audioEl) {
           audioEl.pause();
+          audioEl.src = ''; // Detach source
         }
       });
     };
@@ -427,12 +426,15 @@ export default function CompleteAssignmentPage() {
     const permissionGranted = await requestMicPermission();
     if (!permissionGranted) return;
 
+    if (isRecordingQuestionId) { // Stop any ongoing recording
+      handleStopRecording(isRecordingQuestionId);
+    }
+
     setIsRecordingQuestionId(questionId);
     audioChunksRef.current = [];
-    setAudioNotes(prev => ({
+     setAudioNotes(prev => ({ // Reset existing note details fully
       ...prev,
       [questionId]: { 
-        ...prev[questionId], 
         blob: undefined, 
         url: undefined, 
         name: undefined, 
@@ -460,7 +462,7 @@ export default function CompleteAssignmentPage() {
 
         setAudioNotes(prev => ({
           ...prev,
-          [questionId]: { ...prev[questionId], blob: audioBlob, url: audioUrl, name: audioName, isUploading: false, uploadProgress: undefined, uploadError: null, downloadURL: undefined }
+          [questionId]: { ...prev[questionId], blob: audioBlob, url: audioUrl, name: audioName, isUploading: false, uploadProgress: 0, uploadError: null }
         }));
         setIsRecordingQuestionId(null);
         stream.getTracks().forEach(track => track.stop());
@@ -504,6 +506,9 @@ export default function CompleteAssignmentPage() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
     }
+     if (isRecordingQuestionId === questionId) {
+      setIsRecordingQuestionId(null); // Also ensure button state resets
+    }
   };
 
   const removeAudioNote = (questionId: string) => {
@@ -511,13 +516,15 @@ export default function CompleteAssignmentPage() {
     if (note?.url && note.url.startsWith('blob:')) {
       URL.revokeObjectURL(note.url);
     }
-    setAudioNotes(prev => ({
+    setAudioNotes(prev => ({ // Fully clear the note for this questionId
       ...prev,
       [questionId]: null
     }));
-     setAudioPlayerStates(prev => ({ ...prev, [questionId]: { isPlaying: false, currentTime: 0, duration: 0 } }));
+    setAudioPlayerStates(prev => ({ ...prev, [questionId]: { isPlaying: false, currentTime: 0, duration: 0 } }));
     if (audioRefs.current[questionId]) {
-        audioRefs.current[questionId] = null; // Clear ref if needed, though mostly for state reset
+        audioRefs.current[questionId]!.pause();
+        audioRefs.current[questionId]!.src = '';
+        audioRefs.current[questionId] = null;
     }
   };
 
@@ -527,11 +534,10 @@ export default function CompleteAssignmentPage() {
 
     if (audio.paused) {
       audio.play().catch(e => console.error("Error playing audio:", e));
-      setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, isPlaying: true } }));
     } else {
       audio.pause();
-      setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, isPlaying: false } }));
     }
+    // isPlaying state is updated by onPlay/onPause handlers of the audio element
   };
 
   const handleAudioTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement, Event>, questionId: string) => {
@@ -541,17 +547,21 @@ export default function CompleteAssignmentPage() {
 
   const handleAudioLoadedMetadata = (e: React.SyntheticEvent<HTMLAudioElement, Event>, questionId: string) => {
     const audio = e.currentTarget;
-    setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, duration: audio.duration } }));
+    const newDuration = (audio.duration && Number.isFinite(audio.duration)) ? audio.duration : 0;
+    setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, duration: newDuration } }));
   };
 
   const handleAudioEnded = (questionId: string) => {
      setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, isPlaying: false, currentTime: 0 } }));
       if (audioRefs.current[questionId]) {
-        audioRefs.current[questionId]!.currentTime = 0; // Reset time on end
+        audioRefs.current[questionId]!.currentTime = 0;
       }
   };
 
   const formatAudioTime = (timeInSeconds: number) => {
+    if (isNaN(timeInSeconds) || !isFinite(timeInSeconds) || timeInSeconds < 0) {
+        return "0:00";
+    }
     const minutes = Math.floor(timeInSeconds / 60);
     const seconds = Math.floor(timeInSeconds % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
@@ -671,20 +681,18 @@ export default function CompleteAssignmentPage() {
           );
         });
         audioUploadPromises.push(promise);
-      } else if (note && note.downloadURL) {
-        // This was already uploaded, or is being re-submitted without re-recording
-        finalAudioNotesForSubmission[questionId] = { name: note.name, url: note.downloadURL };
       }
     }
-
+    
     try {
-      await Promise.all(audioUploadPromises);
-      for (const qId in audioNotes) {
-        const note = audioNotes[qId];
-        if (note && note.downloadURL && !finalAudioNotesForSubmission[qId]) {
-            finalAudioNotesForSubmission[qId] = { name: note.name, url: note.downloadURL };
+        await Promise.all(audioUploadPromises);
+        // After all uploads complete, build finalAudioNotesForSubmission from the updated audioNotes state
+        for (const qId in audioNotes) {
+            const note = audioNotes[qId];
+            if (note && note.downloadURL) { // Check for downloadURL which indicates successful upload
+                finalAudioNotesForSubmission[qId] = { name: note.name, url: note.downloadURL };
+            }
         }
-      }
     } catch (error) {
       toast({ variant: "destructive", title: "Audio Upload Failed", description: `One or more audio notes could not be uploaded. Please review any errors and try again.` });
       setIsSubmitting(false);
@@ -1297,7 +1305,7 @@ export default function CompleteAssignmentPage() {
 
                       {audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading && !audioNotes[question.id]?.uploadError ? (
                         <div className="p-3 border rounded-lg bg-muted/50">
-                            <audio
+                           <audio
                                 ref={(el) => (audioRefs.current[question.id] = el)}
                                 src={audioNotes[question.id]?.url}
                                 onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, question.id)}
@@ -1307,28 +1315,30 @@ export default function CompleteAssignmentPage() {
                                 onPause={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...prev[question.id]!, isPlaying: false}}))}
                                 className="hidden" // Hide default controls
                             />
-                            <div className="flex items-center gap-3">
+                           <div className="flex items-center gap-3">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="icon"
                                     onClick={() => togglePlayPause(question.id)}
-                                    className="h-10 w-10 shrink-0"
+                                    className="h-10 w-10 shrink-0 rounded-full"
                                 >
                                     {audioPlayerStates[question.id]?.isPlaying ? <PauseIcon className="h-5 w-5" /> : <PlayIcon className="h-5 w-5" />}
                                 </Button>
                                 <div className="flex-grow space-y-1">
-                                    <progress
-                                        value={audioPlayerStates[question.id]?.currentTime || 0}
+                                    <Slider
+                                        value={[audioPlayerStates[question.id]?.currentTime || 0]}
                                         max={audioPlayerStates[question.id]?.duration || 1} // Use 1 to prevent division by zero if duration is 0
-                                        className="w-full h-2 rounded-full overflow-hidden appearance-none [&::-webkit-progress-bar]:bg-slate-300 [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
-                                    ></progress>
+                                        step={0.1}
+                                        className="w-full h-2 [&>span]:h-2 [&_[role=slider]]:h-4 [&_[role=slider]]:w-4 [&_[role=slider]]:border-2"
+                                        disabled // Make slider non-interactive for now
+                                    />
                                     <div className="flex justify-between text-xs text-muted-foreground">
                                         <span>{formatAudioTime(audioPlayerStates[question.id]?.currentTime || 0)}</span>
                                         <span>{formatAudioTime(audioPlayerStates[question.id]?.duration || 0)}</span>
                                     </div>
                                 </div>
-                                <Button type="button" variant="ghost" size="icon" className="text-destructive hover:text-destructive/80 shrink-0" onClick={() => removeAudioNote(question.id)}>
+                                <Button type="button" variant="ghost" size="icon" className="text-destructive hover:text-destructive/80 shrink-0 h-8 w-8" onClick={() => removeAudioNote(question.id)}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
