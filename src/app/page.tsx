@@ -8,7 +8,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import { getWeatherAndLocation, type WeatherLocationData } from "@/services/assignmentFunctionsService";
-import { fetchPexelsImageURL } from "@/services/pexelsService"; 
+import { fetchPexelsImageURL } from "@/services/pexelsService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
@@ -20,8 +20,8 @@ interface NewsItem {
   title: string;
   link: string;
   pubDate: string;
-  content: string; 
-  description: string; 
+  content: string;
+  description: string;
   guid: string;
   thumbnail?: string;
 }
@@ -90,7 +90,7 @@ const heroTextVariants = {
 
 export default function DashboardPage() {
   const { userProfile } = useAuth();
-  const { resolvedTheme } = useTheme(); 
+  const { resolvedTheme } = useTheme();
   const [weatherData, setWeatherData] = useState<WeatherLocationData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
@@ -102,6 +102,12 @@ export default function DashboardPage() {
 
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const [heroImageLoading, setHeroImageLoading] = useState(false);
+  const [isClientMounted, setIsClientMounted] = useState(false); // For hydration fix
+
+  useEffect(() => {
+    setIsClientMounted(true); // Component has mounted on client
+  }, []);
+
 
   useEffect(() => {
     const fetchWeatherData = () => {
@@ -110,7 +116,7 @@ export default function DashboardPage() {
         setWeatherLoading(false);
         return;
       }
-      if (userProfile === undefined) return; // Profile still loading
+      if (userProfile === undefined) return; 
 
       if (!userProfile?.account) {
         if (userProfile !== null) {
@@ -166,7 +172,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (resolvedTheme === 'theme-innovation-hub') {
+    if (isClientMounted && resolvedTheme === 'theme-innovation-hub') {
       setHeroImageLoading(true);
       fetchPexelsImageURL("abstract technology future dark blue", "landscape")
         .then(url => {
@@ -178,9 +184,9 @@ export default function DashboardPage() {
           setHeroImageLoading(false);
         });
     } else {
-      setHeroImageUrl(null); // Clear hero image if not the target theme
+      setHeroImageUrl(null); 
     }
-  }, [resolvedTheme]);
+  }, [resolvedTheme, isClientMounted]);
 
   const dashboardCards = [
     { id: "tasks", title: "Critical Tasks", description: "High-priority items needing immediate attention.", icon: AlertTriangle, color: "text-destructive", content: <ul className="space-y-3"> <li className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors"><span>Inspect broken fence near West Gate</span><Button variant="ghost" size="sm">Details</Button></li> <li className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors"><span>Review fire drill report</span><Button variant="ghost" size="sm">Details</Button></li> <li className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors"><span>Restock first-aid kit - Gym</span><Button variant="ghost" size="sm">Details</Button></li> </ul>, footer: <Button variant="outline" className="w-full">View All Critical Tasks</Button> },
@@ -191,7 +197,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {resolvedTheme === 'theme-innovation-hub' && (
+      {isClientMounted && resolvedTheme === 'theme-innovation-hub' && (
         <motion.div
           variants={heroContainerVariants}
           initial="hidden"
@@ -199,14 +205,14 @@ export default function DashboardPage() {
           className="mb-8 rounded-xl overflow-hidden shadow-2xl"
         >
           {heroImageLoading ? (
-            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 md:h-80 w-full" />
           ) : heroImageUrl ? (
             <div className="relative h-64 md:h-80 w-full group">
-              <Image 
-                src={heroImageUrl} 
-                layout="fill" 
-                objectFit="cover" 
-                alt="Innovation Hub Hero Background" 
+              <Image
+                src={heroImageUrl}
+                layout="fill"
+                objectFit="cover"
+                alt="Innovation Hub Hero Background"
                 className="transition-transform duration-500 group-hover:scale-105"
                 data-ai-hint="technology innovation abstract"
               />

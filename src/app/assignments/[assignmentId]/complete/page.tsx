@@ -44,12 +44,12 @@ interface UploadedFileDetail {
 
 interface AudioNoteDetail {
   blob?: Blob;
-  url?: string; 
+  url?: string;
   name?: string;
   isUploading?: boolean;
   uploadProgress?: number;
   uploadError?: string | null;
-  downloadURL?: string; 
+  downloadURL?: string;
 }
 
 interface AudioPlayerState {
@@ -60,7 +60,7 @@ interface AudioPlayerState {
 
 
 const UNASSIGNED_FILTER_VALUE = "n/a";
-const MAX_AUDIO_RECORDING_MS = 20000; 
+const MAX_AUDIO_RECORDING_MS = 20000;
 
 const pillGradientClasses = [
   "bg-gradient-to-r from-primary to-accent text-primary-foreground",
@@ -110,8 +110,11 @@ export default function CompleteAssignmentPage() {
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
-  const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+  const hours24 = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+  const hours12 = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
   const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
+  const amPm = ["AM", "PM"];
+
 
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [selectedSubSection, setSelectedSubSection] = useState<string>("all");
@@ -216,7 +219,14 @@ export default function CompleteAssignmentPage() {
         return value instanceof Date;
       case 'time':
       case 'completionTime':
-        return typeof value === 'string' && value.includes(':') && value !== "00:00";
+        // For 12-hour format, it might be an object or string
+        if (typeof value === 'object' && value !== null && value.hour && value.minute && value.period) {
+             return true; // Assumes valid object structure for 12hr time
+        }
+        if (typeof value === 'string' && value.includes(':') && value !== "00:00") { // Fallback for 24hr string
+            return true;
+        }
+        return false;
       case 'checkbox':
         if (question.options) {
           const options = parseOptions(question.options);
@@ -302,13 +312,31 @@ export default function CompleteAssignmentPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const fetchedAssignment = await getAssignmentById(assignmentId, userProfile.account);
+        const fetchedAssignment = await getAssignmentById(assignmentId, userProfile!.account);
         if (fetchedAssignment) {
           setAssignment(fetchedAssignment);
           const defaultVals: FieldValues = {};
           const initialAudioPlayerStates: Record<string, AudioPlayerState> = {};
+          const now = new Date();
+          const currentHour24 = String(now.getHours()).padStart(2, '0');
+          const currentMinute = String(now.getMinutes()).padStart(2, '0');
+
           fetchedAssignment.questions.forEach(q => {
-            if (q.component === 'checkbox' && q.options && Array.isArray(parseOptions(q.options))) {
+            if (q.component === 'date' || q.component === 'completionDate') {
+              defaultVals[q.id] = new Date(); // Default to current date
+            } else if (q.component === 'time' || q.component === 'completionTime') {
+               // For 12-hour time component (object value)
+                let currentHour12 = now.getHours();
+                const currentPeriod = currentHour12 >= 12 ? "PM" : "AM";
+                currentHour12 = currentHour12 % 12;
+                currentHour12 = currentHour12 ? currentHour12 : 12; // Handle midnight (0 becomes 12)
+
+                defaultVals[q.id] = {
+                    hour: String(currentHour12),
+                    minute: currentMinute,
+                    period: currentPeriod
+                };
+            } else if (q.component === 'checkbox' && q.options && Array.isArray(parseOptions(q.options))) {
               parseOptions(q.options).forEach(opt => {
                 defaultVals[`${q.id}.${opt}`] = false;
               });
@@ -330,11 +358,9 @@ export default function CompleteAssignmentPage() {
                 defaultVals[q.id] = defaultRangeVal;
             } else if (q.component === 'checkbox' && !q.options) {
                 defaultVals[q.id] = false;
-            } else if (q.component === 'time' || q.component === 'completionTime') {
-                defaultVals[q.id] = "00:00";
             }
             else {
-              defaultVals[q.id] = (q.component === 'date' || q.component === 'completionDate') ? undefined : '';
+              defaultVals[q.id] = '';
             }
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
             initialAudioPlayerStates[q.id] = { isPlaying: false, currentTime: 0, duration: 0 };
@@ -389,19 +415,20 @@ export default function CompleteAssignmentPage() {
       if (maxRecordingTimerRef.current) {
         clearTimeout(maxRecordingTimerRef.current);
       }
-      Object.entries(audioNotes).forEach(([questionId, note]) => {
+      Object.values(audioRefs.current).forEach(audioEl => {
+        if (audioEl) {
+          audioEl.pause();
+          audioEl.removeAttribute('src');
+          audioEl.load();
+        }
+      });
+      Object.values(audioNotes).forEach(note => {
         if (note?.url && note.url.startsWith('blob:')) {
           URL.revokeObjectURL(note.url);
         }
-        const audioEl = audioRefs.current[questionId];
-        if (audioEl) {
-          audioEl.pause();
-          audioEl.removeAttribute('src'); 
-          audioEl.load(); 
-        }
       });
     };
-  }, []); 
+  }, []);
 
   const requestMicPermission = async () => {
     if (hasMicPermission) return true;
@@ -435,17 +462,17 @@ export default function CompleteAssignmentPage() {
     const permissionGranted = await requestMicPermission();
     if (!permissionGranted) return;
 
-    if (isRecordingQuestionId) { 
-      handleStopRecording(isRecordingQuestionId, false); 
+    if (isRecordingQuestionId) {
+      handleStopRecording(isRecordingQuestionId, false);
     }
 
     setIsRecordingQuestionId(questionId);
     audioChunksRef.current = [];
-     setAudioNotes(prev => ({ 
+     setAudioNotes(prev => ({
       ...prev,
-      [questionId]: { 
-        blob: undefined, url: undefined, name: undefined, 
-        isUploading: false, uploadProgress: 0, uploadError: null, downloadURL: undefined 
+      [questionId]: {
+        blob: undefined, url: undefined, name: undefined,
+        isUploading: false, uploadProgress: 0, uploadError: null, downloadURL: undefined
       }
     }));
     setAudioPlayerStates(prev => ({ ...prev, [questionId]: { isPlaying: false, currentTime: 0, duration: 0 } }));
@@ -471,12 +498,13 @@ export default function CompleteAssignmentPage() {
 
         setAudioNotes(prev => ({
           ...prev,
-          [questionId]: { 
-            blob: audioBlob, url: audioUrl, name: audioName, 
+          [questionId]: {
+            blob: audioBlob, url: audioUrl, name: audioName,
             isUploading: false, uploadProgress: 0, uploadError: null, downloadURL: undefined
           }
         }));
-        
+        playChime('stop');
+
         if (isRecordingQuestionId === questionId) {
            setIsRecordingQuestionId(null);
         }
@@ -499,7 +527,7 @@ export default function CompleteAssignmentPage() {
       mediaRecorderRef.current.start();
       maxRecordingTimerRef.current = setTimeout(() => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording" && isRecordingQuestionId === questionId) {
-          handleStopRecording(questionId, true); 
+          handleStopRecording(questionId, true);
           toast({ title: "Recording Limit Reached", description: `Recording stopped after ${MAX_AUDIO_RECORDING_MS / 1000} seconds.`});
         }
       }, MAX_AUDIO_RECORDING_MS);
@@ -512,12 +540,10 @@ export default function CompleteAssignmentPage() {
     }
   };
 
-  const handleStopRecording = (questionId: string, playStopChime: boolean = true) => {
+  const handleStopRecording = (questionId: string, playTheStopChime: boolean = true) => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop(); 
-      if (playStopChime) {
-        playChime('stop');
-      }
+      mediaRecorderRef.current.stop();
+      // onstop will play the chime
     }
     if (isRecordingQuestionId === questionId) {
       setIsRecordingQuestionId(null);
@@ -539,28 +565,28 @@ export default function CompleteAssignmentPage() {
     if (audioEl) {
         audioEl.pause();
         audioEl.removeAttribute('src');
-        audioEl.load(); // Reset internal state
+        audioEl.load();
     }
   };
 
-  const togglePlayPause = async (questionId: string) => {
+ const togglePlayPause = async (questionId: string) => {
     const audio = audioRefs.current[questionId];
     const note = audioNotes[questionId];
     const noteUrl = note?.url;
-  
+
     if (!audio || !noteUrl) {
       console.error("Audio element or note URL missing for playback:", questionId, noteUrl);
+      toast({variant: "destructive", title: "Playback Error", description: "Audio source missing."})
       return;
     }
-  
+
     try {
       if (audio.paused) {
-        // If src is not set or different, set it and load
         if (audio.currentSrc !== noteUrl) {
           console.log(`[togglePlayPause] Setting src for ${questionId} to ${noteUrl}. Current: ${audio.currentSrc}`);
           audio.src = noteUrl;
-          audio.load(); // Important: tell the browser to load the new source
-          
+          audio.load(); // Tell the browser to load the new source
+
           // Wait for 'canplay' before attempting to play
           await new Promise<void>((resolve, reject) => {
             const canPlayHandler = () => {
@@ -580,18 +606,15 @@ export default function CompleteAssignmentPage() {
             audio.addEventListener('error', errorHandler, { once: true });
           });
         }
-        // Now attempt to play
         console.log(`[togglePlayPause] Attempting to play ${questionId}`);
-        await audio.play(); // play() returns a Promise
-        // onPlay event listener on <audio> tag will update isPlaying state
+        await audio.play();
       } else {
         console.log(`[togglePlayPause] Attempting to pause ${questionId}`);
         audio.pause();
-        // onPause event listener on <audio> tag will update isPlaying state
       }
     } catch (error: any) {
       console.error(`[togglePlayPause] Error for ${questionId}: ${error.name} - ${error.message}`);
-      // Ensure UI state is consistent if play() was interrupted or failed
+      toast({ variant: "destructive", title: "Playback Error", description: error.message });
       if (audio.paused && audioPlayerStates[questionId]?.isPlaying) {
         setAudioPlayerStates(prev => ({
           ...prev,
@@ -600,7 +623,7 @@ export default function CompleteAssignmentPage() {
       }
     }
   };
-  
+
   const handleAudioTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement, Event>, questionId: string) => {
     const audio = e.currentTarget;
     setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, currentTime: audio.currentTime } }));
@@ -608,8 +631,8 @@ export default function CompleteAssignmentPage() {
 
   const handleAudioLoadedMetadata = (e: React.SyntheticEvent<HTMLAudioElement, Event>, questionId: string) => {
     const audio = e.currentTarget;
-    const newDuration = (audio.duration && Number.isFinite(audio.duration)) ? audio.duration : 0;
-    setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, duration: newDuration } }));
+    const newDuration = (audio.duration && Number.isFinite(audio.duration) && audio.duration > 0) ? audio.duration : 0;
+    setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, duration: newDuration, currentTime: 0 } }));
   };
 
   const handleAudioEnded = (questionId: string) => {
@@ -732,6 +755,7 @@ export default function CompleteAssignmentPage() {
                 try {
                     const url = await getDownloadURL(audioUploadTask.snapshot.ref);
                     setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, downloadURL: url, name: audioFileName, isUploading: false, uploadProgress: 100 }}));
+                    finalAudioNotesForSubmission[questionId] = { name: audioFileName, url: url }; // Populate here
                     resolve();
                 } catch (getUrlError){
                     console.error(`Failed to get audio download URL for ${questionId}:`, getUrlError);
@@ -742,23 +766,21 @@ export default function CompleteAssignmentPage() {
             );
             });
             audioUploadPromises.push(promise);
+        } else if (note && note.downloadURL) { // If already uploaded (e.g. from a draft)
+            finalAudioNotesForSubmission[questionId] = { name: note.name, url: note.downloadURL };
         }
     });
-    
+
     try {
         await Promise.all(audioUploadPromises);
-        Object.keys(audioNotes).forEach(qId => {
-            const note = audioNotes[qId];
-            if (note && note.downloadURL) { 
-                finalAudioNotesForSubmission[qId] = { name: note.name, url: note.downloadURL };
-            }
-        });
+        // finalAudioNotesForSubmission is now populated correctly inside the promises or if already uploaded
+
     } catch (error) {
       toast({ variant: "destructive", title: "Audio Upload Failed", description: `One or more audio notes could not be uploaded. Please review any errors and try again.` });
       setIsSubmitting(false);
       return;
     }
-    
+
     const formDataForSubmission = new FormData();
     const answersObject: Record<string, any> = {};
     const photoLinksForSync: Record<string, string> = {};
@@ -778,8 +800,18 @@ export default function CompleteAssignmentPage() {
             questionAnswer = data[question.id] || false;
         } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
             questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
-        } else if ((question.component === 'time' || question.component === 'completionTime') && typeof data[question.id] === 'string' && data[question.id].includes(':')) {
-            questionAnswer = data[question.id];
+        } else if ((question.component === 'time' || question.component === 'completionTime')) {
+            const timeValue = data[question.id];
+            if (typeof timeValue === 'object' && timeValue !== null && timeValue.hour && timeValue.minute && timeValue.period) {
+                let hour = parseInt(timeValue.hour, 10);
+                if (timeValue.period === 'PM' && hour !== 12) hour += 12;
+                if (timeValue.period === 'AM' && hour === 12) hour = 0; // Midnight case
+                questionAnswer = `${String(hour).padStart(2, '0')}:${String(timeValue.minute).padStart(2, '0')}`;
+            } else if (typeof timeValue === 'string' && timeValue.includes(':')) { // Fallback for direct string input
+                 questionAnswer = timeValue;
+            } else {
+                questionAnswer = "00:00"; // Default or invalid
+            }
         } else if (question.component === 'range') {
              questionAnswer = data[question.id] ?? 0;
         } else {
@@ -798,19 +830,21 @@ export default function CompleteAssignmentPage() {
     });
 
     formDataForSubmission.append("content", JSON.stringify(answersObject));
-    
+
     if (Object.keys(photoLinksForSync).length > 0) {
       formDataForSubmission.append("syncPhotoLinks", JSON.stringify(photoLinksForSync));
     }
     formDataForSubmission.append("commentsData", Object.keys(commentsForSubmission).length > 0 ? JSON.stringify(commentsForSubmission) : "{}");
     formDataForSubmission.append("audioNotesData", Object.keys(finalAudioNotesForSubmission).length > 0 ? JSON.stringify(finalAudioNotesForSubmission) : "{}");
-    
+
     formDataForSubmission.append("assessmentName", assignment.assessmentName || "Unnamed Assignment");
     formDataForSubmission.append("account", userProfile.account);
     formDataForSubmission.append("completedBy", user.email);
-    formDataForSubmission.append("completedTime", new Date().toISOString());
+    formDataForSubmission.append("completedTime", new Date().toISOString()); // The overall server submission time
     formDataForSubmission.append("status", "completed");
     formDataForSubmission.append("submittedOnPlatform", "web");
+    formDataForSubmission.append("locationName", userProfile?.locationName || "Location Missing");
+
 
     try {
       await submitCompletedAssignment(assignment.id, formDataForSubmission, userProfile.account);
@@ -1011,45 +1045,41 @@ export default function CompleteAssignmentPage() {
                   )}
 
                   {(question.component === 'time' || question.component === 'completionTime') && (
-                    <Controller
-                      name={question.id}
-                      control={control}
-                      rules={{ required: question.required }}
-                      render={({ field }) => {
-                        const [currentHour = "00", currentMinute = "00"] = (field.value || "00:00").split(':');
-                        return (
-                          <div className="flex items-center gap-2 bg-background p-2 rounded-md border">
-                            <Clock className="h-5 w-5 text-muted-foreground mr-1" />
-                            <Select
-                              value={currentHour}
-                              onValueChange={(hour) => {
-                                field.onChange(`${hour}:${currentMinute}`);
-                              }}
-                            >
-                              <SelectTrigger className="w-[80px]">
-                                <SelectValue placeholder="HH" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {hours.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                            <span className="font-semibold">:</span>
-                            <Select
-                              value={currentMinute}
-                              onValueChange={(minute) => {
-                                field.onChange(`${currentHour}:${minute}`);
-                              }}
-                            >
-                              <SelectTrigger className="w-[80px]">
-                                <SelectValue placeholder="MM" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {minutes.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        );
-                      }}
+                     <Controller
+                        name={question.id}
+                        control={control}
+                        rules={{ required: question.required }}
+                        render={({ field }) => {
+                            // Value is expected to be { hour: string, minute: string, period: "AM" | "PM" }
+                            const timeValue = field.value as { hour: string, minute: string, period: "AM" | "PM" } || { hour: '12', minute: '00', period: 'PM' };
+                            return (
+                                <div className="flex items-center gap-2 bg-background p-2 rounded-md border">
+                                <Clock className="h-5 w-5 text-muted-foreground mr-1" />
+                                <Select
+                                    value={timeValue.hour}
+                                    onValueChange={(hour) => field.onChange({ ...timeValue, hour })}
+                                >
+                                    <SelectTrigger className="w-[80px]"><SelectValue placeholder="HH" /></SelectTrigger>
+                                    <SelectContent>{hours12.map(h => <SelectItem key={`h-${h}`} value={h}>{h}</SelectItem>)}</SelectContent>
+                                </Select>
+                                <span className="font-semibold">:</span>
+                                <Select
+                                    value={timeValue.minute}
+                                    onValueChange={(minute) => field.onChange({ ...timeValue, minute })}
+                                >
+                                    <SelectTrigger className="w-[80px]"><SelectValue placeholder="MM" /></SelectTrigger>
+                                    <SelectContent>{minutes.map(m => <SelectItem key={`m-${m}`} value={m}>{m}</SelectItem>)}</SelectContent>
+                                </Select>
+                                <Select
+                                    value={timeValue.period}
+                                    onValueChange={(period: "AM" | "PM") => field.onChange({ ...timeValue, period })}
+                                >
+                                    <SelectTrigger className="w-[90px]"><SelectValue placeholder="AM/PM" /></SelectTrigger>
+                                    <SelectContent>{amPm.map(p => <SelectItem key={`p-${p}`} value={p}>{p}</SelectItem>)}</SelectContent>
+                                </Select>
+                                </div>
+                            );
+                        }}
                     />
                   )}
 
@@ -1363,21 +1393,21 @@ export default function CompleteAssignmentPage() {
                   <div className="mt-4 border-t pt-3 space-y-2">
                      <Label className="text-xs text-muted-foreground block mb-1">Audio Note (Optional, Max {MAX_AUDIO_RECORDING_MS / 1000}s)</Label>
                       {micPermissionError && <Alert variant="destructive" className="text-xs p-2"><XCircle className="h-4 w-4" /><AlertDescription>{micPermissionError}</AlertDescription></Alert>}
-                      
+
+                      {audioNotes[question.id]?.url && (
+                        <audio
+                            ref={(el) => (audioRefs.current[questionId] = el)}
+                            onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, questionId)}
+                            onTimeUpdate={(e) => handleAudioTimeUpdate(e, questionId)}
+                            onEnded={() => handleAudioEnded(questionId)}
+                            onPlay={() => setAudioPlayerStates(prev => ({...prev, [questionId]: {...(prev[questionId] || {currentTime:0, duration:0, isPlaying: false}), isPlaying: true}}))}
+                            onPause={() => setAudioPlayerStates(prev => ({...prev, [questionId]: {...(prev[questionId] || {currentTime:0, duration:0, isPlaying: true}), isPlaying: false}}))}
+                            className="hidden"
+                         />
+                      )}
+
                       {audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading && !audioNotes[question.id]?.uploadError && (
                         <div className="p-3 border rounded-lg bg-muted/50">
-                            { /* Conditionally render audio tag. Src is managed by togglePlayPause */ }
-                            {audioNotes[question.id]?.url && ( 
-                                <audio
-                                    ref={(el) => (audioRefs.current[question.id] = el)}
-                                    onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, question.id)}
-                                    onTimeUpdate={(e) => handleAudioTimeUpdate(e, question.id)}
-                                    onEnded={() => handleAudioEnded(question.id)}
-                                    onPlay={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...(prev[question.id] || {currentTime:0, duration:0, isPlaying: false}), isPlaying: true}}))}
-                                    onPause={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...(prev[question.id] || {currentTime:0, duration:0, isPlaying: true}), isPlaying: false}}))}
-                                    className="hidden"
-                                />
-                            )}
                            <div className="flex items-center gap-3">
                                 <Button
                                     type="button"
@@ -1392,9 +1422,9 @@ export default function CompleteAssignmentPage() {
                                 <div className="flex-grow space-y-1">
                                     <Slider
                                         value={[audioPlayerStates[question.id]?.currentTime || 0]}
-                                        max={audioPlayerStates[question.id]?.duration || 1} 
+                                        max={audioPlayerStates[question.id]?.duration || 1}
                                         step={0.1}
-                                        className="w-full h-2 [&>span]:h-2 [&_[role=slider]]:h-4 [&_[role=slider]]:w-4 [&_[role=slider]]:border-2"
+                                        className="w-full h-2 [&>span]:h-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[role=slider]]:border"
                                         disabled={!audioNotes[question.id]?.url || audioNotes[question.id]?.isUploading}
                                     />
                                     <div className="flex justify-between text-xs text-muted-foreground">
@@ -1428,8 +1458,8 @@ export default function CompleteAssignmentPage() {
                           size="sm"
                           onMouseDown={() => handleStartRecording(question.id)}
                           onMouseUp={() => handleStopRecording(question.id, true)}
-                          onTouchStart={(e) => { e.preventDefault(); handleStartRecording(question.id);}} 
-                          onTouchEnd={(e) => { e.preventDefault(); handleStopRecording(question.id, true);}}   
+                          onTouchStart={(e) => { e.preventDefault(); handleStartRecording(question.id);}}
+                          onTouchEnd={(e) => { e.preventDefault(); handleStopRecording(question.id, true);}}
                           disabled={isSubmitting || (!!isRecordingQuestionId && isRecordingQuestionId !== question.id)}
                           className="w-full"
                         >
@@ -1489,4 +1519,3 @@ export default function CompleteAssignmentPage() {
   );
 }
 
-    
