@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/context/auth-context";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
-import { createAssignment, type AssignmentQuestion } from "@/services/assignmentFunctionsService"; // For future use
+import { createAssignment, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -76,38 +76,32 @@ export default function NewAssignmentPage() {
       return;
     }
 
-    // For now, just log the data.
-    // In the future, this will call `createAssignment` from assignmentFunctionsService
-    console.log("New Assignment Data:", data);
-    
-    // Example of calling createAssignment (currently commented out)
-    // const payload = {
-    //   assessmentName: data.assessmentName,
-    //   description: data.description,
-    //   accountSubmittedFor: userProfile.account,
-    //   // schoolSelectorId: data.locationId, // Assuming locationId maps to schoolSelectorId
-    //   content: [], // Placeholder for actual questions
-    //   // assignmentType: "default", // Or derive from form
-    // };
-    // try {
-    //   await createAssignment(payload, userProfile.account);
-    //   toast({ title: "Success", description: "Assignment created (placeholder)." });
-    //   router.push("/assessment-forms");
-    // } catch (error: any) {
-    //   toast({ variant: "destructive", title: "Failed to create assignment", description: error.message });
-    // }
+    const payload = {
+      assessmentName: data.assessmentName,
+      description: data.description || "", // Ensure description is a string
+      accountSubmittedFor: userProfile.account,
+      schoolSelectorId: data.locationId,
+      content: [] as AssignmentQuestion[], // Empty array for questions for now
+      // assignmentType: "default", // Or derive from form if needed
+    };
 
-
-    // Simulating API call for now
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast({
-      title: "Assignment Submitted (Placeholder)",
-      description: `Name: ${data.assessmentName}, Location ID: ${data.locationId}`,
-    });
-    // reset(); // Optionally reset form
-    // router.push("/assessment-forms"); // Navigate back after submission
-    
-    setIsSubmitting(false);
+    try {
+      await createAssignment(payload, userProfile.account);
+      toast({ 
+        title: "Success", 
+        description: `Assignment "${data.assessmentName}" created successfully.` 
+      });
+      reset(); // Reset form after successful submission
+      router.push("/assessment-forms"); // Navigate back after submission
+    } catch (error: any) {
+      toast({ 
+        variant: "destructive", 
+        title: "Failed to create assignment", 
+        description: error.message || "An unknown error occurred." 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (authLoading || profileLoading) {
@@ -228,3 +222,4 @@ export default function NewAssignmentPage() {
     </div>
   );
 }
+

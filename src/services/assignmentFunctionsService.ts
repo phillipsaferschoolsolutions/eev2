@@ -52,7 +52,7 @@ interface AssignmentContentItem { // This was an earlier, simpler version. We'll
   deficiency?: string;
 }
 
-interface FullAssignment extends AssignmentField {
+export interface FullAssignment extends AssignmentField {
   content: AssignmentQuestion[]; // Changed to AssignmentQuestion
 }
 
@@ -69,8 +69,9 @@ interface CreateAssignmentPayload {
   assessmentName: string;
   assignmentType?: string;
   description?: string;
-  content: AssignmentQuestion[]; // Changed to AssignmentQuestion
+  content: AssignmentQuestion[];
   accountSubmittedFor?: string;
+  schoolSelectorId?: string; // Added to link the assignment to a location
 }
 
 interface UpdateAssignmentPayload {
