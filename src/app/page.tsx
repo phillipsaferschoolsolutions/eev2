@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, CalendarDays, CloudSun, Newspaper, ShieldAlert, ListChecks, Edit3, FileText, ExternalLink, Info } from "lucide-react";
+import { AlertTriangle, CalendarDays, CloudSun, Newspaper, ShieldAlert, ListChecks, Edit3, FileText, ExternalLink, Info, Thermometer, Sunrise, Sunset } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
@@ -41,6 +41,11 @@ const sanitizeHTML = (htmlString: string): string => {
   }
   // Fallback for server-side or environments without DOMParser
   return htmlString.replace(/<[^>]+>/g, '');
+};
+
+const formatTime = (unixTimestamp?: number): string => {
+  if (!unixTimestamp) return 'N/A';
+  return new Date(unixTimestamp * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 };
 
 
@@ -128,7 +133,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome to EagleEyED™</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Welcome to EagleEyED<sup>TM</sup></h1>
           <p className="text-muted-foreground">Your central hub for campus safety management.</p>
         </div>
         <div className="flex gap-2">
@@ -220,11 +225,19 @@ export default function DashboardPage() {
             <div>
               <h3 className="font-semibold mb-2">Weather: {weatherData?.name || "Loading..."}</h3>
               {weatherLoading ? (
-                <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                    <div>
-                        <Skeleton className="h-7 w-32 mb-1" />
-                        <Skeleton className="h-4 w-48" />
+                <div className="p-4 bg-muted/30 rounded-lg space-y-3">
+                    <div className="flex items-center gap-4">
+                        <Skeleton className="h-12 w-12 rounded-full" />
+                        <div>
+                            <Skeleton className="h-7 w-32 mb-1" />
+                            <Skeleton className="h-4 w-48" />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
                     </div>
                 </div>
               ) : weatherError ? (
@@ -233,18 +246,38 @@ export default function DashboardPage() {
                   <AlertTitle>Weather Error</AlertTitle>
                   <AlertDescription>{weatherError}</AlertDescription>
                 </Alert>
-              ) : weatherData ? (
-                <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
-                  <CloudSun className="h-12 w-12 text-primary" /> {/* Consider dynamic icon based on weatherData.weather[0].icon */}
-                  <div>
-                    <p className="text-2xl font-bold">{Math.round(weatherData.current?.temp ?? 0)}°F, {weatherData.current?.weather?.[0]?.description ?? 'N/A'}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Wind: {Math.round(weatherData.current?.wind_speed ?? 0)}mph, Humidity: {weatherData.current?.humidity ?? 0}%
-                    </p>
+              ) : weatherData && weatherData.current ? (
+                <div className="p-4 bg-muted/30 rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <CloudSun className="h-12 w-12 text-primary shrink-0" />
+                    <div>
+                      <p className="text-2xl font-bold">{Math.round(weatherData.current.temp ?? 0)}°F, {weatherData.current.weather?.[0]?.description ?? 'N/A'}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Wind: {Math.round(weatherData.current.wind_speed ?? 0)}mph, Humidity: {weatherData.current.humidity ?? 0}%
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <Thermometer className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>Feels like: <strong>{Math.round(weatherData.current.feels_like ?? 0)}°F</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Info className="h-4 w-4 text-muted-foreground shrink-0" /> {/* Using Info for UVI, Sun icon might be confusing */}
+                      <span>UV Index: <strong>{weatherData.current.uvi ?? 'N/A'}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Sunrise className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>Sunrise: <strong>{formatTime(weatherData.current.sunrise)}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Sunset className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>Sunset: <strong>{formatTime(weatherData.current.sunset)}</strong></span>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Weather data not available.</p>
+                <p className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg">Weather data not available or incomplete.</p>
               )}
             </div>
             <div>
@@ -313,3 +346,4 @@ export default function DashboardPage() {
   );
 
     
+}
