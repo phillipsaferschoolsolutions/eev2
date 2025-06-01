@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, CalendarDays, CloudSun, Newspaper, ShieldAlert, ListChecks, Edit3, FileText, ExternalLink, Info, Thermometer, Sunrise, Sunset } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react"; // Ensure React is imported if not already
 import { useAuth } from "@/context/auth-context";
 import { getWeatherAndLocation, type WeatherLocationData } from "@/services/assignmentFunctionsService";
 import { fetchPexelsImageURL } from "@/services/pexelsService";
