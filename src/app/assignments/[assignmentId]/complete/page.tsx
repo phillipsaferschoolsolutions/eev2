@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, ChangeEvent, useMemo, useRef } from "react";
@@ -30,7 +29,7 @@ import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, submitCompletedAssignment, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Trash2, Radio } from "lucide-react";
+import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Trash2, Radio, Badge } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 
@@ -549,7 +548,6 @@ export default function CompleteAssignmentPage() {
     }
     setIsSubmitting(true);
 
-    // Upload any pending audio notes first
     const audioUploadPromises: Promise<void>[] = [];
     for (const questionId in audioNotes) {
       const note = audioNotes[questionId];
@@ -580,6 +578,8 @@ export default function CompleteAssignmentPage() {
                 setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, downloadURL: url, name: audioFileName, isUploading: false, uploadProgress: 100 }}));
                 resolve();
               } catch (getUrlError){
+                console.error(`Failed to get audio download URL for ${questionId}:`, getUrlError);
+                setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, uploadError: (getUrlError as Error).message, isUploading: false }}));
                 reject(getUrlError);
               }
             }
@@ -592,14 +592,17 @@ export default function CompleteAssignmentPage() {
     try {
       await Promise.all(audioUploadPromises);
     } catch (error) {
-      toast({ variant: "destructive", title: "Audio Upload Failed", description: `One or more audio notes could not be uploaded. Please try again.` });
+      toast({ variant: "destructive", title: "Audio Upload Failed", description: `One or more audio notes could not be uploaded. Please review any errors and try again.` });
       setIsSubmitting(false);
       return;
     }
-
-    // Now construct the FormData
+    
     const formDataForSubmission = new FormData();
     const answersObject: Record<string, any> = {};
+    const photoLinksForSync: Record<string, string> = {};
+    const commentsForSubmission: Record<string, string> = {};
+    const audioNotesForSubmission: Record<string, { name?: string, url?: string }> = {};
+
 
     (assignment.questions).forEach(question => {
         let questionAnswer: any;
@@ -622,41 +625,43 @@ export default function CompleteAssignmentPage() {
         } else {
             questionAnswer = data[question.id] ?? "";
         }
-
-        const answerEntry: any = { answer: questionAnswer };
+        answersObject[question.id] = questionAnswer;
 
         if (question.comment && data[`${question.id}_comment`]) {
-            answerEntry.comment = data[`${question.id}_comment`];
+            commentsForSubmission[question.id] = data[`${question.id}_comment`];
         }
 
-        if (question.photoUpload && uploadedFileDetails[question.id]) {
-            answerEntry.file = {
-                name: uploadedFileDetails[question.id]!.name,
-                url: uploadedFileDetails[question.id]!.url,
-            };
+        if (question.photoUpload && uploadedFileDetails[question.id]?.url) {
+            photoLinksForSync[question.id] = uploadedFileDetails[question.id]!.url;
         }
 
-        const finalAudioNote = audioNotes[question.id]; // Use the potentially updated audioNotes state
+        const finalAudioNote = audioNotes[question.id];
         if (finalAudioNote && finalAudioNote.downloadURL) {
-             answerEntry.audioNote = {
+             audioNotesForSubmission[question.id] = {
                 name: finalAudioNote.name,
                 url: finalAudioNote.downloadURL,
             };
         }
-        answersObject[question.id] = answerEntry;
     });
 
     formDataForSubmission.append("content", JSON.stringify(answersObject));
+    
+    if (Object.keys(photoLinksForSync).length > 0) {
+      formDataForSubmission.append("syncPhotoLinks", JSON.stringify(photoLinksForSync));
+    }
+    if (Object.keys(commentsForSubmission).length > 0) {
+      formDataForSubmission.append("commentsData", JSON.stringify(commentsForSubmission));
+    }
+    if (Object.keys(audioNotesForSubmission).length > 0) {
+      formDataForSubmission.append("audioNotesData", JSON.stringify(audioNotesForSubmission));
+    }
+    
     formDataForSubmission.append("assessmentName", assignment.assessmentName || "Unnamed Assignment");
-    formDataForSubmission.append("account", userProfile.account); // Backend expects 'account'
-    formDataForSubmission.append("completedBy", user.email); // Send email as 'completedBy'
+    formDataForSubmission.append("account", userProfile.account);
+    formDataForSubmission.append("completedBy", user.email);
     formDataForSubmission.append("completedTime", new Date().toISOString());
     formDataForSubmission.append("status", "completed");
     formDataForSubmission.append("submittedOnPlatform", "web");
-    // assignment.id is the document ID to be used in the URL path
-    // No need to append assignmentId to FormData body if it's in the URL,
-    // unless the backend specifically requires it in both places.
-    // The backend code uses req.params.id for the document.
 
     try {
       await submitCompletedAssignment(assignment.id, formDataForSubmission, userProfile.account);
@@ -1290,3 +1295,4 @@ export default function CompleteAssignmentPage() {
     </div>
   );
 }
+
