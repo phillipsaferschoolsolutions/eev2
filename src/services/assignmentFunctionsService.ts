@@ -347,6 +347,7 @@ export async function deleteAssignment(id: string, accountName?: string): Promis
  * SUBMIT COMPLETED: PUT /completed/:id (multipart form-data)
  * Uploads a completed assignment.
  * Account name ('account' header) is needed.
+ * Uses ASSIGNMENTS_V2_BASE_URL for this specific endpoint.
  */
 export async function submitCompletedAssignment(
   assignmentDocId: string,
@@ -358,7 +359,8 @@ export async function submitCompletedAssignment(
   if (!trimmedAccountName) {
     throw new Error('Account name is required and cannot be empty for submitting an assignment.');
   }
-  return authedFetch<CompletedAssignmentResponse>(`${BASE_URL}/completed/${assignmentDocId}`, {
+  // Uses the new V2 base URL
+  return authedFetch<CompletedAssignmentResponse>(`${ASSIGNMENTS_V2_BASE_URL}/completed/${assignmentDocId}`, {
     method: 'PUT',
     body: formDataPayload, // Content-Type will be set by browser for FormData
   }, trimmedAccountName);
@@ -585,3 +587,5 @@ export async function savePendingSubmission(assignmentId: string, payload: Draft
     body: JSON.stringify(payload),
   }, trimmedAccountName);
 }
+
+    
