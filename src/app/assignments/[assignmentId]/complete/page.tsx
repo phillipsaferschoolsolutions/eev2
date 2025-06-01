@@ -56,6 +56,31 @@ interface AudioNoteDetail {
 const UNASSIGNED_FILTER_VALUE = "n/a";
 const MAX_AUDIO_RECORDING_MS = 20000; 
 
+const pillGradientClasses = [
+  "bg-gradient-to-r from-primary to-accent text-primary-foreground",
+  "bg-gradient-to-r from-sky-500 to-indigo-600 text-white",
+  "bg-gradient-to-r from-emerald-500 to-teal-600 text-white",
+  "bg-gradient-to-r from-rose-500 to-pink-600 text-white",
+  "bg-gradient-to-r from-violet-500 to-purple-600 text-white",
+  "bg-gradient-to-r from-cyan-500 to-blue-600 text-white",
+  "bg-gradient-to-r from-lime-500 to-green-600 text-white",
+  "bg-gradient-to-r from-amber-500 to-yellow-600 text-black", // Note: uses black text
+];
+
+function getGradientClassForText(text?: string): string {
+  const inputText = text || "default"; // Use a default key if text is undefined/empty
+  if (!inputText) return pillGradientClasses[0];
+  let hash = 0;
+  for (let i = 0; i < inputText.length; i++) {
+    const char = inputText.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0; // Convert to 32bit integer
+  }
+  const index = Math.abs(hash) % pillGradientClasses.length;
+  return pillGradientClasses[index];
+}
+
+
 export default function CompleteAssignmentPage() {
   const params = useParams();
   const router = useRouter();
@@ -761,13 +786,13 @@ export default function CompleteAssignmentPage() {
                   <div className="text-xs text-muted-foreground space-y-1 mb-2">
                     <div className="flex items-center">
                       <span className="font-medium mr-1.5">Section:</span>
-                      <span className="inline-block px-2 py-0.5 border border-border rounded-full bg-background text-xs">
+                      <span className={`inline-block px-2 py-0.5 border-transparent rounded-full text-xs ${getGradientClassForText(question.section)}`}>
                         {String(question.section || "N/A")}
                       </span>
                     </div>
                     <div className="flex items-center">
                       <span className="font-medium mr-1.5">Sub-Section:</span>
-                      <span className="inline-block px-2 py-0.5 border border-border rounded-full bg-background text-xs">
+                      <span className={`inline-block px-2 py-0.5 border-transparent rounded-full text-xs ${getGradientClassForText(question.subSection)}`}>
                         {String(question.subSection || "N/A")}
                       </span>
                     </div>
@@ -1250,3 +1275,5 @@ export default function CompleteAssignmentPage() {
   );
 }
 
+
+    
