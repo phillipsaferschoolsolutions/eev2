@@ -21,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
+import { Progress as ShadProgress } from "@/components/ui/progress"; // Renamed to avoid conflict
 import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -30,7 +30,7 @@ import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, submitCompletedAssignment, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Trash2, Radio, Badge } from "lucide-react";
+import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Trash2, Radio, Badge, PlayIcon, PauseIcon, TimerIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 
@@ -50,6 +50,12 @@ interface AudioNoteDetail {
   uploadProgress?: number;
   uploadError?: string | null;
   downloadURL?: string;
+}
+
+interface AudioPlayerState {
+  isPlaying: boolean;
+  currentTime: number;
+  duration: number;
 }
 
 
@@ -119,6 +125,9 @@ export default function CompleteAssignmentPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const maxRecordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [audioPlayerStates, setAudioPlayerStates] = useState<Record<string, AudioPlayerState>>({});
+  const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
 
 
   const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, setValue, getValues } = useForm<FormDataSchema>({
@@ -297,6 +306,7 @@ export default function CompleteAssignmentPage() {
         if (fetchedAssignment) {
           setAssignment(fetchedAssignment);
           const defaultVals: FieldValues = {};
+          const initialAudioPlayerStates: Record<string, AudioPlayerState> = {};
           fetchedAssignment.questions.forEach(q => {
             if (q.component === 'checkbox' && q.options && Array.isArray(parseOptions(q.options))) {
               parseOptions(q.options).forEach(opt => {
@@ -327,8 +337,10 @@ export default function CompleteAssignmentPage() {
               defaultVals[q.id] = (q.component === 'date' || q.component === 'completionDate') ? undefined : '';
             }
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
+            initialAudioPlayerStates[q.id] = { isPlaying: false, currentTime: 0, duration: 0 };
           });
           reset(defaultVals);
+          setAudioPlayerStates(initialAudioPlayerStates);
         } else {
           setError("Assignment not found or you do not have permission to access it.");
           toast({ variant: "destructive", title: "Error", description: "Assignment not found." });
@@ -377,8 +389,20 @@ export default function CompleteAssignmentPage() {
       if (maxRecordingTimerRef.current) {
         clearTimeout(maxRecordingTimerRef.current);
       }
+      // Cleanup audio object URLs
+      Object.values(audioNotes).forEach(note => {
+        if (note?.url && note.url.startsWith('blob:')) {
+          URL.revokeObjectURL(note.url);
+        }
+      });
+      // Stop any playing audio
+      Object.values(audioRefs.current).forEach(audioEl => {
+        if (audioEl) {
+          audioEl.pause();
+        }
+      });
     };
-  }, []);
+  }, [audioNotes]);
 
   const requestMicPermission = async () => {
     if (hasMicPermission) return true;
@@ -405,11 +429,20 @@ export default function CompleteAssignmentPage() {
 
     setIsRecordingQuestionId(questionId);
     audioChunksRef.current = [];
-    // Clear any previous errors or progress for this note specifically
     setAudioNotes(prev => ({
       ...prev,
-      [questionId]: { ...prev[questionId], isUploading: false, uploadProgress: undefined, uploadError: null }
+      [questionId]: { 
+        ...prev[questionId], 
+        blob: undefined, 
+        url: undefined, 
+        name: undefined, 
+        isUploading: false, 
+        uploadProgress: undefined, 
+        uploadError: null,
+        downloadURL: undefined 
+      }
     }));
+    setAudioPlayerStates(prev => ({ ...prev, [questionId]: { isPlaying: false, currentTime: 0, duration: 0 } }));
 
 
     try {
@@ -475,13 +508,53 @@ export default function CompleteAssignmentPage() {
 
   const removeAudioNote = (questionId: string) => {
     const note = audioNotes[questionId];
-    if (note?.url && !note.isUploading) { // Only revoke if not currently uploading
+    if (note?.url && note.url.startsWith('blob:')) {
       URL.revokeObjectURL(note.url);
     }
     setAudioNotes(prev => ({
       ...prev,
-      [questionId]: null // Fully clear the note details for this question
+      [questionId]: null
     }));
+     setAudioPlayerStates(prev => ({ ...prev, [questionId]: { isPlaying: false, currentTime: 0, duration: 0 } }));
+    if (audioRefs.current[questionId]) {
+        audioRefs.current[questionId] = null; // Clear ref if needed, though mostly for state reset
+    }
+  };
+
+  const togglePlayPause = (questionId: string) => {
+    const audio = audioRefs.current[questionId];
+    if (!audio) return;
+
+    if (audio.paused) {
+      audio.play().catch(e => console.error("Error playing audio:", e));
+      setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, isPlaying: true } }));
+    } else {
+      audio.pause();
+      setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, isPlaying: false } }));
+    }
+  };
+
+  const handleAudioTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement, Event>, questionId: string) => {
+    const audio = e.currentTarget;
+    setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, currentTime: audio.currentTime } }));
+  };
+
+  const handleAudioLoadedMetadata = (e: React.SyntheticEvent<HTMLAudioElement, Event>, questionId: string) => {
+    const audio = e.currentTarget;
+    setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, duration: audio.duration } }));
+  };
+
+  const handleAudioEnded = (questionId: string) => {
+     setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, isPlaying: false, currentTime: 0 } }));
+      if (audioRefs.current[questionId]) {
+        audioRefs.current[questionId]!.currentTime = 0; // Reset time on end
+      }
+  };
+
+  const formatAudioTime = (timeInSeconds: number) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
 
@@ -546,7 +619,7 @@ export default function CompleteAssignmentPage() {
     setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
     setUploadErrors(prev => ({ ...prev, [questionId]: null }));
     setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
-    const fileInput = document.getElementById(`${questionId}_file`) as HTMLInputElement;
+    const fileInput = document.getElementById(`${question.id}_file`) as HTMLInputElement;
     if (fileInput) fileInput.value = "";
   };
 
@@ -588,7 +661,6 @@ export default function CompleteAssignmentPage() {
               try {
                 const url = await getDownloadURL(audioUploadTask.snapshot.ref);
                 setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, downloadURL: url, name: audioFileName, isUploading: false, uploadProgress: 100 }}));
-                // finalAudioNotesForSubmission[questionId] = { name: audioFileName, url: url }; // Moved this to after Promise.all
                 resolve();
               } catch (getUrlError){
                 console.error(`Failed to get audio download URL for ${questionId}:`, getUrlError);
@@ -600,16 +672,16 @@ export default function CompleteAssignmentPage() {
         });
         audioUploadPromises.push(promise);
       } else if (note && note.downloadURL) {
+        // This was already uploaded, or is being re-submitted without re-recording
         finalAudioNotesForSubmission[questionId] = { name: note.name, url: note.downloadURL };
       }
     }
 
     try {
       await Promise.all(audioUploadPromises);
-      // After all uploads complete, ensure finalAudioNotesForSubmission is correctly populated from the latest state
       for (const qId in audioNotes) {
         const note = audioNotes[qId];
-        if (note && note.downloadURL && !finalAudioNotesForSubmission[qId]) { // Check if already added
+        if (note && note.downloadURL && !finalAudioNotesForSubmission[qId]) {
             finalAudioNotesForSubmission[qId] = { name: note.name, url: note.downloadURL };
         }
       }
@@ -624,13 +696,12 @@ export default function CompleteAssignmentPage() {
     const photoLinksForSync: Record<string, string> = {};
     const commentsForSubmission: Record<string, string> = {};
 
-    // Iterate over conditionallyVisibleQuestions to ensure only relevant data is submitted
     conditionallyVisibleQuestions.forEach(question => {
         let questionAnswer: any;
         if (question.component === 'checkbox' && question.options && Array.isArray(parseOptions(question.options))) {
             const selectedOptions: string[] = [];
             parseOptions(question.options).forEach(opt => {
-                if (data[`${question.id}.${opt}`]) { // data comes from react-hook-form's handleSubmit
+                if (data[`${question.id}.${opt}`]) {
                     selectedOptions.push(opt);
                 }
             });
@@ -648,12 +719,10 @@ export default function CompleteAssignmentPage() {
         }
         answersObject[question.id] = questionAnswer;
 
-        // Collect comments for visible questions
         if (question.comment && typeof data[`${question.id}_comment`] === 'string' && data[`${question.id}_comment`].trim() !== '') {
             commentsForSubmission[question.id] = data[`${question.id}_comment`].trim();
         }
 
-        // Collect photo links for visible questions
         if (question.photoUpload && uploadedFileDetails[question.id]?.url) {
             photoLinksForSync[question.id] = uploadedFileDetails[question.id]!.url;
         }
@@ -664,17 +733,8 @@ export default function CompleteAssignmentPage() {
     if (Object.keys(photoLinksForSync).length > 0) {
       formDataForSubmission.append("syncPhotoLinks", JSON.stringify(photoLinksForSync));
     }
-    if (Object.keys(commentsForSubmission).length > 0) {
-      formDataForSubmission.append("commentsData", JSON.stringify(commentsForSubmission));
-    } else {
-      formDataForSubmission.append("commentsData", JSON.stringify({})); // Ensure it's an empty object if no comments
-    }
-
-    if (Object.keys(finalAudioNotesForSubmission).length > 0) {
-      formDataForSubmission.append("audioNotesData", JSON.stringify(finalAudioNotesForSubmission));
-    } else {
-      formDataForSubmission.append("audioNotesData", JSON.stringify({})); // Ensure it's an empty object
-    }
+    formDataForSubmission.append("commentsData", Object.keys(commentsForSubmission).length > 0 ? JSON.stringify(commentsForSubmission) : JSON.stringify({}));
+    formDataForSubmission.append("audioNotesData", Object.keys(finalAudioNotesForSubmission).length > 0 ? JSON.stringify(finalAudioNotesForSubmission) : JSON.stringify({}));
     
     formDataForSubmission.append("assessmentName", assignment.assessmentName || "Unnamed Assignment");
     formDataForSubmission.append("account", userProfile.account);
@@ -1174,7 +1234,7 @@ export default function CompleteAssignmentPage() {
                       )}
                       {uploadProgress[question.id] > 0 && uploadProgress[question.id] < 100 && (
                         <div className="space-y-1">
-                           <Progress value={uploadProgress[question.id]} className="w-full h-2" />
+                           <ShadProgress value={uploadProgress[question.id]} className="w-full h-2" />
                            <p className="text-xs text-muted-foreground text-center">Uploading: {Math.round(uploadProgress[question.id] || 0)}%</p>
                         </div>
                       )}
@@ -1236,15 +1296,46 @@ export default function CompleteAssignmentPage() {
                       {micPermissionError && <Alert variant="destructive" className="text-xs p-2"><XCircle className="h-4 w-4" /><AlertDescription>{micPermissionError}</AlertDescription></Alert>}
 
                       {audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading && !audioNotes[question.id]?.uploadError ? (
-                        <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
-                           <audio controls src={audioNotes[question.id]?.url} className="w-full h-10"></audio>
-                           <Button type="button" variant="ghost" size="icon" className="text-destructive hover:text-destructive/80" onClick={() => removeAudioNote(question.id)}>
-                             <Trash2 className="h-4 w-4" />
-                           </Button>
+                        <div className="p-3 border rounded-lg bg-muted/50">
+                            <audio
+                                ref={(el) => (audioRefs.current[question.id] = el)}
+                                src={audioNotes[question.id]?.url}
+                                onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, question.id)}
+                                onTimeUpdate={(e) => handleAudioTimeUpdate(e, question.id)}
+                                onEnded={() => handleAudioEnded(question.id)}
+                                onPlay={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...prev[question.id]!, isPlaying: true}}))}
+                                onPause={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...prev[question.id]!, isPlaying: false}}))}
+                                className="hidden" // Hide default controls
+                            />
+                            <div className="flex items-center gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => togglePlayPause(question.id)}
+                                    className="h-10 w-10 shrink-0"
+                                >
+                                    {audioPlayerStates[question.id]?.isPlaying ? <PauseIcon className="h-5 w-5" /> : <PlayIcon className="h-5 w-5" />}
+                                </Button>
+                                <div className="flex-grow space-y-1">
+                                    <progress
+                                        value={audioPlayerStates[question.id]?.currentTime || 0}
+                                        max={audioPlayerStates[question.id]?.duration || 1} // Use 1 to prevent division by zero if duration is 0
+                                        className="w-full h-2 rounded-full overflow-hidden appearance-none [&::-webkit-progress-bar]:bg-slate-300 [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
+                                    ></progress>
+                                    <div className="flex justify-between text-xs text-muted-foreground">
+                                        <span>{formatAudioTime(audioPlayerStates[question.id]?.currentTime || 0)}</span>
+                                        <span>{formatAudioTime(audioPlayerStates[question.id]?.duration || 0)}</span>
+                                    </div>
+                                </div>
+                                <Button type="button" variant="ghost" size="icon" className="text-destructive hover:text-destructive/80 shrink-0" onClick={() => removeAudioNote(question.id)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
                       ) : audioNotes[question.id]?.isUploading ? (
                         <div className="space-y-1 p-2 border rounded-md bg-muted/30">
-                            <Progress value={audioNotes[question.id]?.uploadProgress || 0} className="w-full h-2" />
+                            <ShadProgress value={audioNotes[question.id]?.uploadProgress || 0} className="w-full h-2" />
                             <p className="text-xs text-muted-foreground text-center">Uploading Audio: {Math.round(audioNotes[question.id]?.uploadProgress || 0)}%</p>
                         </div>
                       ) : audioNotes[question.id]?.uploadError ? (
@@ -1321,4 +1412,3 @@ export default function CompleteAssignmentPage() {
   );
 }
 
-    
