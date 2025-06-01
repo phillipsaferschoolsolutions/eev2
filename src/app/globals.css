@@ -418,6 +418,45 @@ body {
     --sidebar-border: 0 0% 15%;
   }
 
+  /* New Photo-Heavy Theme: Nature's Embrace */
+  html.theme-nature-embrace {
+    --theme-nature-embrace-background-image: linear-gradient(to right, #a8e063, #56ab2f); /* Fallback gradient */
+    
+    --background: 120 30% 15%; /* Dark green, translucent overlay */
+    --foreground: 120 60% 95%; /* Light, slightly green-tinted white */
+    
+    --card: 120 25% 20% / 0.8; /* Dark, semi-transparent green for cards */
+    --card-foreground: 120 50% 90%;
+    
+    --popover: 120 20% 18% / 0.9; /* Darker, more opaque popover */
+    --popover-foreground: 120 55% 92%;
+    
+    --border: 120 40% 35% / 0.7; /* Translucent border */
+    --input: 120 30% 22% / 0.7;  /* Translucent input background */
+    
+    --primary: 100 60% 65%; /* Brighter, leafy green */
+    --primary-foreground: 100 20% 10%;
+    
+    --secondary: 110 40% 55%; /* Muted green */
+    --secondary-foreground: 110 60% 90%;
+    
+    --accent: 80 60% 60%; /* Earthy yellow-green */
+    --accent-foreground: 80 20% 15%;
+    
+    --muted: 120 20% 25% / 0.6;
+    --muted-foreground: 120 40% 75%;
+
+    --ring: 100 60% 65%;
+
+    --sidebar-background: 120 35% 12% / 0.85; /* Darker, semi-transparent sidebar */
+    --sidebar-foreground: 120 50% 88%;
+    --sidebar-primary: 100 55% 70%;
+    --sidebar-primary-foreground: 100 15% 8%;
+    --sidebar-accent: 80 50% 65%;
+    --sidebar-accent-foreground: 80 18% 12%;
+    --sidebar-border: 120 30% 28% / 0.7;
+  }
+
 }
 
 @layer base {
@@ -426,6 +465,37 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    /* Default body transition for background */
+    transition: background-color 0.3s ease-in-out, background-image 0.5s ease-in-out;
+  }
+
+  /* Apply dynamic background for Nature's Embrace theme */
+  html.theme-nature-embrace body {
+    background-image: var(--theme-nature-embrace-background-image);
+    background-size: cover;
+    background-position: center center;
+    background-attachment: fixed;
+    /* Ensure text remains readable over varied backgrounds */
+    color: hsl(var(--foreground)); 
+  }
+
+  /* Ensure cards and other elements have a background when body has an image */
+  html.theme-nature-embrace .bg-card {
+    background-color: hsl(var(--card)); /* Uses the theme's card color with opacity */
+  }
+   html.theme-nature-embrace .bg-popover {
+    background-color: hsl(var(--popover));
+  }
+  html.theme-nature-embrace .bg-background {
+    /* For elements that should explicitly use the theme's "solid" background color */
+    /* On body, this means no image. On other elements, it's the theme's background color. */
+    /* We want body to have image, but other elements might need solid background for contrast */
+     background-color: hsl(var(--background)) !important; /* Use !important carefully, only if necessary */
+  }
+  html.theme-nature-embrace [data-sidebar="sidebar"] {
+     background-color: hsl(var(--sidebar-background));
+  }
+  html.theme-nature-embrace .bg-muted {
+    background-color: hsl(var(--muted));
   }
 }
-

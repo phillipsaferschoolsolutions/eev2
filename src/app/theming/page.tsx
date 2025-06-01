@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 const appThemes = [
   { id: "light", name: "Default Light", description: "The standard clean and professional theme.", icon: Sun, isDark: false, gradient: "bg-gradient-to-br from-blue-100 to-indigo-100" },
   { id: "dark", name: "Default Dark", description: "For low-light conditions, reduces eye strain.", icon: Moon, isDark: true, gradient: "bg-gradient-to-br from-slate-800 to-slate-900" },
+  { id: "theme-nature-embrace", name: "Nature's Embrace", description: "Photo-heavy theme with a dynamic nature background.", icon: Trees, isDark: true, gradient: "bg-gradient-to-br from-green-500 to-emerald-700" }, // New theme
   { id: "corporate-blue", name: "Corporate Blue", description: "A light theme with a focus on professional blue tones.", icon: Building, isDark: false, gradient: "bg-gradient-to-br from-sky-100 to-blue-200" },
   { id: "matrix", name: "Matrix", description: "Dark theme with green text on a black background.", icon: Terminal, isDark: true, gradient: "bg-gradient-to-br from-green-900 to-black" },
   { id: "desert-light", name: "Desert Oasis", description: "Light theme with warm, sandy, and terracotta tones.", icon: Sunset, isDark: false, gradient: "bg-gradient-to-br from-yellow-100 to-orange-200" },
@@ -80,6 +81,10 @@ export default function ThemingPage() {
       <p className="text-lg text-muted-foreground">
         Personalize the application's appearance to suit your preferences or conform with corporate branding.
       </p>
+      <div className="text-sm p-3 rounded-md bg-yellow-100 border border-yellow-300 text-yellow-800">
+        <strong>Security Note:</strong> The "Nature's Embrace" theme demonstrates fetching images from Pexels using an API key directly on the client-side. 
+        This is for prototyping purposes only and is insecure for production. API keys should always be protected by a backend.
+      </div>
 
       <Card>
         <CardHeader>
@@ -119,11 +124,10 @@ export default function ThemingPage() {
         </CardHeader>
         <CardContent>
             <p className="text-muted-foreground">
-                The application uses CSS variables for theming. True glassmorphism with blurred backgrounds on components like cards typically requires `backdrop-filter` and semi-transparent backgrounds, which are more advanced styling changes beyond simple color variable swaps. These themes aim to evoke a glass-like feel through color and light effects.
+                The "Nature's Embrace" theme uses a dynamic background image fetched from Pexels. Other themes primarily adjust color schemes. True glassmorphism with blurred backgrounds on components like cards typically requires `backdrop-filter` and semi-transparent backgrounds, which are more advanced styling changes.
             </p>
         </CardContent>
       </Card>
     </div>
   );
 }
-
