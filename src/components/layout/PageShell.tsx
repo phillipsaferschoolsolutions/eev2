@@ -47,12 +47,9 @@ export function PageShell({ children }: { children: React.ReactNode }) {
     <div className="flex flex-1 min-h-screen">
       {showSidebar && <AppSidebar navItems={mainNavItems} />}
       <div className={cn(
-        "flex flex-col flex-1",
-        // Standard layout: sidebar width applies, respects collapsed state
-        layoutMode === "standard" && "md:ml-[var(--sidebar-width)] group-data-[state=collapsed]/sidebar-wrapper:md:ml-[var(--sidebar-width-icon)] transition-[margin-left] duration-200 ease-linear",
-        // Minimal Icon layout: icon-only sidebar width applies
-        layoutMode === "minimalIcon" && "md:ml-[var(--sidebar-width-icon)] transition-[margin-left] duration-200 ease-linear",
-        // Top Nav layout: takes full width, so no margin-left needed for desktop content
+        "flex flex-col flex-1"
+        // Explicit margin classes are removed.
+        // The Sidebar component's own placeholder div should handle the necessary spacing.
       )}>
         <AppHeader navItems={mainNavItems} />
         {/* SidebarInset is used by standard and minimalIcon layouts for main content padding */}
