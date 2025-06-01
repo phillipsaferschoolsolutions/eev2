@@ -281,12 +281,14 @@ const createAssignmentHandler = async (req, res) => {
 // module.exports = { createAssignmentHandler };
 
 // If it's part of an Express app (like original snippet implies with assignmentsApp.post):
-// assignmentsApp.post("/createassignment", createAssignmentHandler);
+// assignmentsApp.post("/createassignment", createAssignmentHandler); // Or your v2 route
 // Or for a Firebase HTTP function:
 // exports.createAssignmentV2 = functions.https.onRequest(createAssignmentHandler);
 
 // For the purpose of this example, I'll assume it's directly callable as createAssignmentHandler
 // And you would integrate it into your Firebase Functions export structure.
 module.exports = { createAssignmentHandler };
+
+    
 
     
