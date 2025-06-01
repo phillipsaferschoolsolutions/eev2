@@ -69,8 +69,10 @@ const AccountSwitcher: React.FC = () => {
     }
 
     const selectedDistrictObject = districts.find(d => d.id === selectedDistrictId);
-    if (!selectedDistrictObject) {
-        toast({ variant: "destructive", title: "Switch Error", description: "Selected district could not be found." });
+
+    if (!selectedDistrictObject || !selectedDistrictObject.accountName || selectedDistrictObject.accountName.trim() === "") {
+        toast({ variant: "destructive", title: "Switch Error", description: "Selected district data is incomplete. Cannot determine a valid account name." });
+        console.error("In handleAccountSwitch: Selected district object is problematic. ID:", selectedDistrictId, "Found Object:", selectedDistrictObject);
         return;
     }
     
@@ -80,8 +82,10 @@ const AccountSwitcher: React.FC = () => {
 
     setIsSwitchingAccount(true);
     try {
-      // Pass the selectedDistrictId to the service, it expects the ID for the payload
-      await switchUserAccount(selectedDistrictId, userProfile.account); 
+      // Pass the NAME of the selected district to the service for the payload.
+      // Pass the current userProfile.account for the 'account' header of the request.
+      await switchUserAccount(selectedDistrictObject.accountName, userProfile.account); 
+      
       // Update the local context with the account NAME for display and other frontend purposes
       updateCurrentAccountInProfile(selectedDistrictObject.accountName); 
       toast({ title: "Account Switched", description: `Successfully switched to ${selectedDistrictObject.accountName}. Reloading...` });
@@ -97,6 +101,7 @@ const AccountSwitcher: React.FC = () => {
 
   if (!isSuperAdmin) return null;
 
+  // Determine the ID of the district that matches the current userProfile.account (which stores accountName)
   const currentActiveDistrict = districts.find(d => d.accountName === userProfile?.account);
   const currentSelectedValue = currentActiveDistrict ? currentActiveDistrict.id : "";
 
@@ -121,11 +126,11 @@ const AccountSwitcher: React.FC = () => {
           {districts.map((district) => (
             <DropdownMenuRadioItem 
               key={district.id} 
-              value={district.id} 
+              value={district.id} // Value for selection is the district's ID
               className="cursor-pointer"
               disabled={isSwitchingAccount || district.accountName === userProfile?.account}
             >
-              {district.id} {/* Display district.id */}
+              {district.id} {/* Display district.id as requested */}
               {district.accountName === userProfile?.account && <Check className="ml-auto h-4 w-4" />}
             </DropdownMenuRadioItem>
           ))}
@@ -228,7 +233,6 @@ export function AppHeader() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {isSuperAdmin && <AccountSwitcher />} 
-                {/* Removed the extra separator here if AccountSwitcher adds its own */}
                 <DropdownMenuItem asChild><Link href="/settings">Profile</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />

@@ -118,7 +118,7 @@ export async function getDistrictsForSuperAdmin(currentAccountName: string): Pro
 }
 
 interface SwitchAccountPayload {
-  account: string; // The ID of the new account/district to switch to
+  account: string; // This is the account NAME to switch to
 }
 
 interface SwitchAccountResponse {
@@ -128,22 +128,20 @@ interface SwitchAccountResponse {
 
 /**
  * Sends a request to the backend to switch the user's active account.
- * @param newAccountId The ID of the district/account to switch to. This ID will be sent in the payload.
- * @param currentAccountName The user's current account (passed in the 'account' header for context/auth)
+ * @param newAccountName The NAME of the district/account to switch to. This name will be sent in the payload.
+ * @param currentAccountNameForHeader The user's current account (passed in the 'account' header for context/auth)
  */
-export async function switchUserAccount(newAccountId: string, currentAccountName: string): Promise<SwitchAccountResponse> {
-  if (!newAccountId || newAccountId.trim() === "") {
-    throw new Error('New account ID is required to switch accounts.');
+export async function switchUserAccount(newAccountName: string, currentAccountNameForHeader: string): Promise<SwitchAccountResponse> {
+  if (!newAccountName || newAccountName.trim() === "") {
+    throw new Error('New account NAME is required to switch accounts.');
   }
-  if (!currentAccountName || currentAccountName.trim() === "") {
-    throw new Error('Current account name is required for the switchUserAccount request header.');
+  if (!currentAccountNameForHeader || currentAccountNameForHeader.trim() === "") {
+    throw new Error('Current account name for request header is required for the switchUserAccount request.');
   }
-  const payload: SwitchAccountPayload = { account: newAccountId };
+  const payload: SwitchAccountPayload = { account: newAccountName };
 
-  // POST to /districts endpoint to switch account
-  return authedFetch<SwitchAccountResponse>(`${ADMIN_ACTIONS_BASE_URL}/districts`, {
+  return authedFetch<SwitchAccountResponse>(`${ADMIN_ACTIONS_BASE_URL}/districts`, { // POST to /districts endpoint
     method: 'POST',
     body: JSON.stringify(payload),
-  }, currentAccountName);
+  }, currentAccountNameForHeader);
 }
-
