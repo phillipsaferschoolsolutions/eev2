@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, ChangeEvent, useMemo } from "react";
+import { useEffect, useState, ChangeEvent, useMemo, useRef } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,7 +30,7 @@ import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, submitCompletedAssignment, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Badge } from "lucide-react";
+import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Badge, Trash2, Radio } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 
@@ -42,7 +42,19 @@ interface UploadedFileDetail {
   url: string;
 }
 
+interface AudioNoteDetail {
+  blob?: Blob;
+  url?: string; // For local preview
+  name?: string;
+  isUploading?: boolean;
+  uploadProgress?: number;
+  uploadError?: string | null;
+  downloadURL?: string; // URL from Firebase Storage after upload
+}
+
+
 const UNASSIGNED_FILTER_VALUE = "n/a";
+const MAX_AUDIO_RECORDING_MS = 20000; // 20 seconds
 
 export default function CompleteAssignmentPage() {
   const params = useParams();
@@ -73,6 +85,15 @@ export default function CompleteAssignmentPage() {
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [selectedSubSection, setSelectedSubSection] = useState<string>("all");
   const [answeredStatusFilter, setAnsweredStatusFilter] = useState<'all' | 'answered' | 'unanswered'>('all');
+
+  // Audio Recording State
+  const [audioNotes, setAudioNotes] = useState<{ [questionId: string]: AudioNoteDetail | null }>({});
+  const [isRecordingQuestionId, setIsRecordingQuestionId] = useState<string | null>(null);
+  const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
+  const [micPermissionError, setMicPermissionError] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const maxRecordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
 
   const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, setValue, getValues } = useForm<FormDataSchema>({
@@ -118,7 +139,6 @@ export default function CompleteAssignmentPage() {
     if (triggerQuestion.component === 'checkbox') {
       if (triggerQuestion.options) { // Checkbox group
         const options = parseOptions(triggerQuestion.options);
-         // For checkbox groups, at least one of the conditionValues (which are option texts) must be selected
         return options.some(opt =>
           conditionValues.includes(opt) && allWatchedValues[`${triggerFieldId}.${opt}`] === true
         );
@@ -148,10 +168,10 @@ export default function CompleteAssignmentPage() {
       case 'url':
       case 'telephone':
       case 'number':
-      case 'datetime': // datetime-local value is string 'YYYY-MM-DDTHH:MM'
+      case 'datetime': 
         return value !== undefined && value !== null && String(value).trim() !== '';
       case 'select':
-      case 'options': // radio
+      case 'options': 
       case 'buttonSelect':
       case 'schoolSelector':
         return value !== undefined && value !== null && String(value) !== '';
@@ -159,28 +179,26 @@ export default function CompleteAssignmentPage() {
         return value !== undefined && value !== null;
       case 'date':
       case 'completionDate':
-        return value instanceof Date; // react-hook-form stores it as Date object
+        return value instanceof Date; 
       case 'time':
       case 'completionTime':
-        return typeof value === 'string' && value.includes(':') && value !== "00:00"; // Consider "00:00" as unanswered if it's the default
+        return typeof value === 'string' && value.includes(':') && value !== "00:00"; 
       case 'checkbox':
-        if (question.options) { // Checkbox group
+        if (question.options) { 
           const options = parseOptions(question.options);
           return options.some(opt => formData[`${question.id}.${opt}`] === true);
-        } else { // Single checkbox
+        } else { 
           return value === true;
         }
-      case 'multiButtonSelect': // Treat as checkbox group for answered status
-      case 'multiSelect': // Treat as checkbox group for answered status
+      case 'multiButtonSelect': 
+      case 'multiSelect': 
         if (question.options) {
           const options = parseOptions(question.options);
           return options.some(opt => formData[`${question.id}.${opt}`] === true);
         }
-        return false; // Should have options
+        return false; 
       case 'photoUpload':
         return !!uploadedFileDetails[question.id];
-      // case 'dynamicQuestion': // This component type might not have a direct answer in formData[question.id]
-      //   return false; // Or implement specific logic if it does
       default:
         return false;
     }
@@ -260,13 +278,13 @@ export default function CompleteAssignmentPage() {
                 defaultVals[`${q.id}.${opt}`] = false;
               });
             } else if (q.component === 'range') {
-                let defaultRangeVal = 50; // Default for slider
+                let defaultRangeVal = 50; 
                 if (typeof q.options === 'string') {
                     const defaultOpt = q.options.split(';').find(opt => opt.startsWith('default='));
                     if (defaultOpt) {
                         const val = parseInt(defaultOpt.split('=')[1]);
                         if (!isNaN(val)) defaultRangeVal = val;
-                    } else { // if no default, try min
+                    } else { 
                          const minOpt = q.options.split(';').find(opt => opt.startsWith('min='));
                          if (minOpt) {
                             const val = parseInt(minOpt.split('=')[1]);
@@ -278,15 +296,14 @@ export default function CompleteAssignmentPage() {
             } else if (q.component === 'checkbox' && !q.options) {
                 defaultVals[q.id] = false;
             } else if (q.component === 'time' || q.component === 'completionTime') {
-                defaultVals[q.id] = "00:00"; // Default to "00:00"
+                defaultVals[q.id] = "00:00"; 
             }
-            else { // For date, datetime-local, text, select etc.
-              defaultVals[q.id] = (q.component === 'date' || q.component === 'completionDate') ? undefined : ''; // For DatePicker, undefined is better for placeholder
+            else { 
+              defaultVals[q.id] = (q.component === 'date' || q.component === 'completionDate') ? undefined : ''; 
             }
-            // Initialize comment field
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
           });
-          reset(defaultVals); // Reset form with new default values
+          reset(defaultVals); 
         } else {
           setError("Assignment not found or you do not have permission to access it.");
           toast({ variant: "destructive", title: "Error", description: "Assignment not found." });
@@ -306,10 +323,9 @@ export default function CompleteAssignmentPage() {
 
   useEffect(() => {
     const hasSchoolSelector = assignment?.questions.some(q => q.component === 'schoolSelector');
-    if (hasSchoolSelector && userProfile?.account && !isLoading) { // Ensure assignment is loaded before checking its questions
+    if (hasSchoolSelector && userProfile?.account && !isLoading) { 
       setIsLoadingLocations(true);
       setLocationsError(null);
-      console.log("[CompleteAssignmentPage] Fetching locations for account:", userProfile.account);
       getLocationsForLookup(userProfile.account)
         .then(fetchedLocations => {
           setLocations(fetchedLocations);
@@ -323,10 +339,116 @@ export default function CompleteAssignmentPage() {
     }
   }, [assignment, userProfile?.account, toast, isLoading]);
 
-  // Reset subsection filter when section filter changes
   useEffect(() => {
     setSelectedSubSection("all");
   }, [selectedSection]);
+
+  // Microphone Permission Effect
+  useEffect(() => {
+    return () => { // Cleanup ref
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+      if (maxRecordingTimerRef.current) {
+        clearTimeout(maxRecordingTimerRef.current);
+      }
+    };
+  }, []);
+
+  const requestMicPermission = async () => {
+    if (hasMicPermission) return true;
+    setMicPermissionError(null);
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      setHasMicPermission(true);
+      toast({ title: "Microphone Access Granted" });
+      return true;
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      const permErrorMsg = 'Microphone permission denied. Please enable it in your browser settings.';
+      setMicPermissionError(permErrorMsg);
+      setHasMicPermission(false);
+      toast({ variant: 'destructive', title: 'Microphone Access Denied', description: permErrorMsg });
+      return false;
+    }
+  };
+
+
+  const handleStartRecording = async (questionId: string) => {
+    const permissionGranted = await requestMicPermission();
+    if (!permissionGranted) return;
+
+    setIsRecordingQuestionId(questionId);
+    audioChunksRef.current = [];
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorderRef.current.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audioName = `audio_note_${questionId}_${Date.now()}.webm`;
+        
+        setAudioNotes(prev => ({
+          ...prev,
+          [questionId]: { blob: audioBlob, url: audioUrl, name: audioName }
+        }));
+        setIsRecordingQuestionId(null);
+        stream.getTracks().forEach(track => track.stop()); // Release microphone
+        if (maxRecordingTimerRef.current) {
+          clearTimeout(maxRecordingTimerRef.current);
+          maxRecordingTimerRef.current = null;
+        }
+      };
+      
+      mediaRecorderRef.current.onerror = (event) => {
+        console.error("MediaRecorder error:", event);
+        setMicPermissionError("An error occurred during recording.");
+        toast({ variant: "destructive", title: "Recording Error", description: "An unexpected error occurred." });
+        setIsRecordingQuestionId(null);
+        if (maxRecordingTimerRef.current) {
+          clearTimeout(maxRecordingTimerRef.current);
+          maxRecordingTimerRef.current = null;
+        }
+      };
+
+      mediaRecorderRef.current.start();
+      maxRecordingTimerRef.current = setTimeout(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+          mediaRecorderRef.current.stop();
+          toast({ title: "Recording Limit Reached", description: "Recording stopped after 20 seconds."});
+        }
+      }, MAX_AUDIO_RECORDING_MS);
+
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      setMicPermissionError('Failed to start recording.');
+      setIsRecordingQuestionId(null);
+       if (maxRecordingTimerRef.current) {
+          clearTimeout(maxRecordingTimerRef.current);
+          maxRecordingTimerRef.current = null;
+        }
+    }
+  };
+
+  const handleStopRecording = (questionId: string) => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    // onstop handler will set setIsRecordingQuestionId(null) and clear timer
+  };
+
+  const removeAudioNote = (questionId: string) => {
+    if (audioNotes[questionId]?.url) {
+      URL.revokeObjectURL(audioNotes[questionId]!.url!);
+    }
+    setAudioNotes(prev => ({ ...prev, [questionId]: null }));
+  };
 
 
   const handleFileUpload = async (questionId: string, file: File) => {
@@ -334,7 +456,7 @@ export default function CompleteAssignmentPage() {
       setUploadErrors(prev => ({ ...prev, [questionId]: "User or assignment data missing." }));
       return;
     }
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    if (file.size > 5 * 1024 * 1024) { 
         setUploadErrors(prev => ({ ...prev, [questionId]: "File exceeds 5MB limit." }));
         toast({ variant: "destructive", title: "Upload Error", description: "File exceeds 5MB limit."});
         return;
@@ -343,9 +465,8 @@ export default function CompleteAssignmentPage() {
     setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
     setUploadErrors(prev => ({ ...prev, [questionId]: null }));
     setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
-    setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); // Clear previous preview
+    setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); 
 
-    // Create a preview for image files
     if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -354,10 +475,9 @@ export default function CompleteAssignmentPage() {
         reader.readAsDataURL(file);
     }
 
-    // Upload logic
     const storagePath = `assignment_uploads/${assignment.id}/${user.uid}/${questionId}/${Date.now()}_${file.name}`;
-    const storageRef = ref(storage, storagePath);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    const storageRefInstance = ref(storage, storagePath);
+    const uploadTask = uploadBytesResumable(storageRefInstance, file);
 
     uploadTask.on('state_changed',
       (snapshot) => {
@@ -368,20 +488,20 @@ export default function CompleteAssignmentPage() {
         console.error("Upload failed for question " + questionId + ":", error);
         setUploadErrors(prev => ({ ...prev, [questionId]: error.message }));
         toast({ variant: "destructive", title: "Upload Failed", description: `Could not upload ${file.name}: ${error.message}` });
-        setUploadProgress(prev => ({ ...prev, [questionId]: 0 })); // Reset progress on error
-        setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); // Clear preview on error
+        setUploadProgress(prev => ({ ...prev, [questionId]: 0 })); 
+        setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); 
       },
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
           setUploadedFileDetails(prev => ({ ...prev, [questionId]: { name: file.name, url: downloadURL } }));
           toast({ title: "Upload Successful", description: `${file.name} uploaded.` });
-          setUploadProgress(prev => ({ ...prev, [questionId]: 100 })); // Mark as complete
+          setUploadProgress(prev => ({ ...prev, [questionId]: 100 })); 
         } catch (err) {
             console.error("Failed to get download URL for " + questionId + ":", err);
             const errorMessage = err instanceof Error ? err.message : "Unknown error getting URL.";
             setUploadErrors(prev => ({ ...prev, [questionId]: "Failed to get file URL: " + errorMessage }));
-            setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); // Clear preview if URL fails
+            setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); 
         }
       }
     );
@@ -389,10 +509,9 @@ export default function CompleteAssignmentPage() {
 
   const removeUploadedFile = (questionId: string) => {
     setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
-    setUploadProgress(prev => ({ ...prev, [questionId]: 0 })); // Reset progress
+    setUploadProgress(prev => ({ ...prev, [questionId]: 0 })); 
     setUploadErrors(prev => ({ ...prev, [questionId]: null }));
     setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
-    // Reset the file input field
     const fileInput = document.getElementById(`${questionId}_file`) as HTMLInputElement;
     if (fileInput) fileInput.value = "";
   };
@@ -405,42 +524,83 @@ export default function CompleteAssignmentPage() {
     }
     setIsSubmitting(true);
 
-    const formData = new FormData();
+    const formDataForSubmission = new FormData();
     const answersObject: Record<string, any> = {};
 
-    // Iterate over ALL original questions to capture answers for even non-visible ones IF they were answered before becoming non-visible
-    // or if backend expects all question IDs regardless of visibility at submission time.
+    // Upload audio notes first
+    for (const questionId in audioNotes) {
+      const note = audioNotes[questionId];
+      if (note && note.blob && !note.downloadURL) { // Only upload if not already uploaded and blob exists
+        setAudioNotes(prev => ({
+          ...prev,
+          [questionId]: { ...prev[questionId]!, isUploading: true, uploadProgress: 0, uploadError: null }
+        }));
+        try {
+          const audioFileName = note.name || `audio_note_${questionId}_${Date.now()}.webm`;
+          const audioStoragePath = `assignment_audio_notes/${assignment.id}/${user.uid}/${questionId}/${audioFileName}`;
+          const audioStorageRef = ref(storage, audioStoragePath);
+          const audioUploadTask = uploadBytesResumable(audioStorageRef, note.blob);
+
+          const downloadURL = await new Promise<string>((resolve, reject) => {
+            audioUploadTask.on('state_changed',
+              (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, uploadProgress: progress }}));
+              },
+              (error) => {
+                console.error(`Audio upload failed for ${questionId}:`, error);
+                setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, uploadError: error.message, isUploading: false }}));
+                reject(error);
+              },
+              async () => {
+                const url = await getDownloadURL(audioUploadTask.snapshot.ref);
+                setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, downloadURL: url, isUploading: false, uploadProgress: 100 }}));
+                resolve(url);
+              }
+            );
+          });
+          if (!answersObject[questionId]) answersObject[questionId] = {};
+          answersObject[questionId].audioNote = { name: audioFileName, url: downloadURL };
+        } catch (error) {
+          toast({ variant: "destructive", title: "Audio Upload Failed", description: `Could not upload audio for question ${questionId}.` });
+          setIsSubmitting(false);
+          return; // Stop submission if audio upload fails
+        }
+      } else if (note && note.downloadURL) { // Already uploaded in a previous attempt or edit
+         if (!answersObject[questionId]) answersObject[questionId] = {};
+         answersObject[questionId].audioNote = { name: note.name, url: note.downloadURL };
+      }
+    }
+
+
     (assignment.questions).forEach(question => {
         let questionAnswer: any;
         if (question.component === 'checkbox' && question.options && Array.isArray(parseOptions(question.options))) {
             const selectedOptions: string[] = [];
             parseOptions(question.options).forEach(opt => {
-                if (data[`${question.id}.${opt}`]) { // Data for checkbox group is { 'questionId.optionValue': true/false }
+                if (data[`${question.id}.${opt}`]) { 
                     selectedOptions.push(opt);
                 }
             });
             questionAnswer = selectedOptions;
-        } else if (question.component === 'checkbox' && !question.options) { // Single checkbox
+        } else if (question.component === 'checkbox' && !question.options) { 
             questionAnswer = data[question.id] || false;
         } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
             questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
         } else if ((question.component === 'time' || question.component === 'completionTime') && typeof data[question.id] === 'string' && data[question.id].includes(':')) {
             questionAnswer = data[question.id];
         }
-        else { // For text, select, radio, range, etc.
-            questionAnswer = data[question.id] ?? ""; // Default to empty string if undefined/null
+        else { 
+            questionAnswer = data[question.id] ?? ""; 
         }
 
-        answersObject[question.id] = {
-            answer: questionAnswer
-        };
+        if (!answersObject[question.id]) answersObject[question.id] = {};
+        answersObject[question.id].answer = questionAnswer;
 
-        // Add comment if present
         if (question.comment && data[`${question.id}_comment`]) {
             answersObject[question.id].comment = data[`${question.id}_comment`];
         }
 
-        // Add file details if uploaded
         if (question.photoUpload && uploadedFileDetails[question.id]) {
             answersObject[question.id].file = {
                 name: uploadedFileDetails[question.id]!.name,
@@ -449,16 +609,16 @@ export default function CompleteAssignmentPage() {
         }
     });
 
-    formData.append("answers", JSON.stringify(answersObject));
-    formData.append("assignmentId", assignment.id);
-    formData.append("assessmentName", assignment.assessmentName || "Unnamed Assignment");
-    formData.append("accountSubmittedFor", userProfile.account);
-    formData.append("userId", user.uid);
-    formData.append("userEmail", user.email || "");
+    formDataForSubmission.append("answers", JSON.stringify(answersObject));
+    formDataForSubmission.append("assignmentId", assignment.id);
+    formDataForSubmission.append("assessmentName", assignment.assessmentName || "Unnamed Assignment");
+    formDataForSubmission.append("accountSubmittedFor", userProfile.account);
+    formDataForSubmission.append("userId", user.uid);
+    formDataForSubmission.append("userEmail", user.email || "");
 
 
     try {
-      await submitCompletedAssignment(assignment.id, formData, userProfile.account);
+      await submitCompletedAssignment(assignment.id, formDataForSubmission, userProfile.account);
       toast({ title: "Success", description: "Assignment submitted successfully." });
       router.push("/assessment-forms");
     } catch (err) {
@@ -479,7 +639,7 @@ export default function CompleteAssignmentPage() {
       case 'number': return 'number';
       case 'email': return 'email';
       case 'url': return 'url';
-      default: return componentName || 'text'; // Fallback for any other types or if componentName is undefined
+      default: return componentName || 'text'; 
     }
   };
 
@@ -499,7 +659,7 @@ export default function CompleteAssignmentPage() {
     );
   }
 
-  if (error && !user) { // User not logged in, and there was an error (likely auth-related)
+  if (error && !user) { 
     return (
        <div className="p-4 text-center">
          <Alert variant="destructive" className="m-4">
@@ -510,7 +670,7 @@ export default function CompleteAssignmentPage() {
        </div>
     );
   }
-  if (error) { // Any other error after user is confirmed to be logged in
+  if (error) { 
     return (
       <Alert variant="destructive" className="m-4">
         <AlertTriangle className="h-4 w-4" />
@@ -533,7 +693,6 @@ export default function CompleteAssignmentPage() {
           {assignment.description && <CardDescription className="text-lg">{assignment.description}</CardDescription>}
         </CardHeader>
         <CardContent>
-          {/* Filter Controls */}
           <Card className="mb-6 p-4 bg-muted/30">
             <CardHeader className="p-2 pb-3">
               <CardTitle className="text-xl flex items-center gap-2">
@@ -996,12 +1155,46 @@ export default function CompleteAssignmentPage() {
                     </div>
                   )}
 
-                  <div className="mt-4 border-t pt-3">
-                     <Label className="text-xs text-muted-foreground block mb-1">Audio Note (Optional)</Label>
-                     <Button type="button" variant="outline" size="sm" disabled>
-                        <Mic className="h-4 w-4 mr-2" />
-                        Record Audio Note (20s) - Coming Soon
-                     </Button>
+                  <div className="mt-4 border-t pt-3 space-y-2">
+                     <Label className="text-xs text-muted-foreground block mb-1">Audio Note (Optional, Max 20s)</Label>
+                      {micPermissionError && <Alert variant="destructive" className="text-xs p-2"><XCircle className="h-4 w-4" /><AlertDescription>{micPermissionError}</AlertDescription></Alert>}
+                      
+                      {audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading ? (
+                        <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
+                           <audio controls src={audioNotes[question.id]?.url} className="w-full h-10"></audio>
+                           <Button type="button" variant="ghost" size="icon" className="text-destructive hover:text-destructive/80" onClick={() => removeAudioNote(question.id)}>
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                        </div>
+                      ) : audioNotes[question.id]?.isUploading ? (
+                        <div className="space-y-1 p-2 border rounded-md bg-muted/30">
+                            <Progress value={audioNotes[question.id]?.uploadProgress || 0} className="w-full h-2" />
+                            <p className="text-xs text-muted-foreground text-center">Uploading Audio: {Math.round(audioNotes[question.id]?.uploadProgress || 0)}%</p>
+                            {audioNotes[question.id]?.uploadError && <Alert variant="destructive" className="text-xs p-1 mt-1"><AlertDescription>{audioNotes[question.id]?.uploadError}</AlertDescription></Alert>}
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant={isRecordingQuestionId === question.id ? "destructive" : "outline"}
+                          size="sm"
+                          onMouseDown={() => handleStartRecording(question.id)}
+                          onMouseUp={() => handleStopRecording(question.id)}
+                          onTouchStart={() => handleStartRecording(question.id)} // For touch devices
+                          onTouchEnd={() => handleStopRecording(question.id)}   // For touch devices
+                          disabled={isSubmitting || (!!isRecordingQuestionId && isRecordingQuestionId !== question.id)}
+                          className="w-full"
+                        >
+                          {isRecordingQuestionId === question.id ? (
+                            <>
+                              <Radio className="h-4 w-4 mr-2 animate-pulse text-red-300" /> Recording... (Release to stop)
+                            </>
+                          ) : (
+                            <>
+                              <Mic className="h-4 w-4 mr-2" /> Hold to Record Audio
+                            </>
+                          )}
+                        </Button>
+                      )}
                   </div>
 
                 </fieldset>
@@ -1016,7 +1209,6 @@ export default function CompleteAssignmentPage() {
                 </div>
             )}
 
-            {/* This message shows if no questions are visible *even before* filtering (e.g. due to conditional logic or empty assignment) */}
             {conditionallyVisibleQuestions.length === 0 && !isLoading && (
                  <div className="text-center py-10">
                     <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
@@ -1027,7 +1219,16 @@ export default function CompleteAssignmentPage() {
 
 
             <div className="flex justify-end pt-6">
-              <Button type="submit" size="lg" disabled={isSubmitting || Object.values(uploadProgress).some(p => p > 0 && p < 100) || questionsToRender.length === 0}>
+              <Button 
+                type="submit" 
+                size="lg" 
+                disabled={
+                    isSubmitting || 
+                    Object.values(uploadProgress).some(p => p > 0 && p < 100) || 
+                    Object.values(audioNotes).some(note => note?.isUploading) ||
+                    questionsToRender.length === 0
+                }
+              >
                 <Send className="mr-2 h-5 w-5" />
                 {isSubmitting ? "Submitting..." : "Submit Assignment"}
               </Button>
@@ -1038,8 +1239,3 @@ export default function CompleteAssignmentPage() {
     </div>
   );
 }
-
-
-    
-
-    
