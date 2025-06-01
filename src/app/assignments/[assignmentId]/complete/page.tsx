@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, ChangeEvent } from "react";
+import { useEffect, useState, ChangeEvent, useMemo } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,7 +30,9 @@ import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, submitCompletedAssignment, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock } from "lucide-react";
+import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Badge } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+
 
 const formSchema = z.record(z.any());
 type FormDataSchema = z.infer<typeof formSchema>;
@@ -39,6 +41,8 @@ interface UploadedFileDetail {
   name: string;
   url: string;
 }
+
+const UNASSIGNED_FILTER_VALUE = "n/a";
 
 export default function CompleteAssignmentPage() {
   const params = useParams();
@@ -66,13 +70,156 @@ export default function CompleteAssignmentPage() {
   const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
   const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
 
+  const [selectedSection, setSelectedSection] = useState<string>("all");
+  const [selectedSubSection, setSelectedSubSection] = useState<string>("all");
+  const [answeredStatusFilter, setAnsweredStatusFilter] = useState<'all' | 'answered' | 'unanswered'>('all');
+
 
   const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, setValue, getValues } = useForm<FormDataSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {},
   });
 
-  const allWatchedValues = watch(); 
+  const allWatchedValues = watch();
+
+  const parseOptions = (options: string | string[] | undefined): string[] => {
+    if (!options) return [];
+    if (Array.isArray(options)) return options;
+    try {
+      const parsed = JSON.parse(options);
+      if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+        return parsed;
+      }
+    } catch (e) { /* Fall through */ }
+    return options.split(';').map(opt => opt.trim()).filter(opt => opt);
+  };
+
+  const shouldBeVisible = (conditionalConfig: AssignmentQuestion['conditional'] | undefined, currentQuestionId: string): boolean => {
+    if (!conditionalConfig) {
+      return true;
+    }
+
+    const triggerFieldId = conditionalConfig.field;
+    const conditionValues = Array.isArray(conditionalConfig.value) ? conditionalConfig.value.map(String) : [String(conditionalConfig.value)];
+
+    if (triggerFieldId === currentQuestionId) {
+      console.warn(`Conditional logic loop detected for question ${currentQuestionId}`);
+      return false;
+    }
+
+    const triggerQuestion = assignment?.questions.find(q => q.id === triggerFieldId);
+    if (!triggerQuestion) {
+      console.warn(`Conditional logic trigger field ${triggerFieldId} not found for question ${currentQuestionId}`);
+      return false;
+    }
+
+    const watchedValue = allWatchedValues[triggerFieldId];
+
+    if (triggerQuestion.component === 'checkbox') {
+      if (triggerQuestion.options) { // Checkbox group
+        const options = parseOptions(triggerQuestion.options);
+         // For checkbox groups, at least one of the conditionValues (which are option texts) must be selected
+        return options.some(opt =>
+          conditionValues.includes(opt) && allWatchedValues[`${triggerFieldId}.${opt}`] === true
+        );
+      } else { // Single checkbox
+        return conditionValues.some(cv => cv.toLowerCase() === String(watchedValue).toLowerCase());
+      }
+    } else { // Radio, select, text, etc.
+      if (watchedValue === undefined || watchedValue === null || String(watchedValue).trim() === "") {
+        return false;
+      }
+      return conditionValues.includes(String(watchedValue));
+    }
+  };
+
+  const conditionallyVisibleQuestions = useMemo(() => {
+    if (!assignment?.questions) return [];
+    return assignment.questions.filter(q => shouldBeVisible(q.conditional, q.id));
+  }, [assignment?.questions, allWatchedValues]);
+
+
+  const isQuestionAnswered = (question: AssignmentQuestion, formData: FieldValues): boolean => {
+    const value = formData[question.id];
+    switch (question.component) {
+      case 'text':
+      case 'textarea':
+      case 'email':
+      case 'url':
+      case 'telephone':
+      case 'number':
+      case 'datetime': // datetime-local value is string 'YYYY-MM-DDTHH:MM'
+        return value !== undefined && value !== null && String(value).trim() !== '';
+      case 'select':
+      case 'options': // radio
+      case 'buttonSelect':
+      case 'schoolSelector':
+        return value !== undefined && value !== null && String(value) !== '';
+      case 'range':
+        return value !== undefined && value !== null;
+      case 'date':
+      case 'completionDate':
+        return value instanceof Date; // react-hook-form stores it as Date object
+      case 'time':
+      case 'completionTime':
+        return typeof value === 'string' && value.includes(':') && value !== "00:00"; // Consider "00:00" as unanswered if it's the default
+      case 'checkbox':
+        if (question.options) { // Checkbox group
+          const options = parseOptions(question.options);
+          return options.some(opt => formData[`${question.id}.${opt}`] === true);
+        } else { // Single checkbox
+          return value === true;
+        }
+      case 'multiButtonSelect': // Treat as checkbox group for answered status
+      case 'multiSelect': // Treat as checkbox group for answered status
+        if (question.options) {
+          const options = parseOptions(question.options);
+          return options.some(opt => formData[`${question.id}.${opt}`] === true);
+        }
+        return false; // Should have options
+      case 'photoUpload':
+        return !!uploadedFileDetails[question.id];
+      // case 'dynamicQuestion': // This component type might not have a direct answer in formData[question.id]
+      //   return false; // Or implement specific logic if it does
+      default:
+        return false;
+    }
+  };
+
+  const availableSections = useMemo(() => {
+    const sections = new Set<string>();
+    conditionallyVisibleQuestions.forEach(q => {
+      sections.add(q.section || UNASSIGNED_FILTER_VALUE);
+    });
+    return Array.from(sections).sort((a,b) => a === UNASSIGNED_FILTER_VALUE ? 1 : b === UNASSIGNED_FILTER_VALUE ? -1 : a.localeCompare(b));
+  }, [conditionallyVisibleQuestions]);
+
+  const availableSubSections = useMemo(() => {
+    const subSections = new Set<string>();
+    conditionallyVisibleQuestions.forEach(q => {
+      const questionSection = q.section || UNASSIGNED_FILTER_VALUE;
+      if (selectedSection === "all" || questionSection === selectedSection) {
+        subSections.add(q.subSection || UNASSIGNED_FILTER_VALUE);
+      }
+    });
+    return Array.from(subSections).sort((a,b) => a === UNASSIGNED_FILTER_VALUE ? 1 : b === UNASSIGNED_FILTER_VALUE ? -1 : a.localeCompare(b));
+  }, [conditionallyVisibleQuestions, selectedSection]);
+
+  const questionsToRender = useMemo(() => {
+    return conditionallyVisibleQuestions.filter(q => {
+      const sectionMatch = selectedSection === "all" || (q.section || UNASSIGNED_FILTER_VALUE) === selectedSection;
+      const subSectionMatch = selectedSubSection === "all" || (q.subSection || UNASSIGNED_FILTER_VALUE) === selectedSubSection;
+
+      if (!sectionMatch || !subSectionMatch) return false;
+
+      if (answeredStatusFilter === 'all') {
+        return true;
+      }
+      const answered = isQuestionAnswered(q, allWatchedValues);
+      return answeredStatusFilter === 'answered' ? answered : !answered;
+    });
+  }, [conditionallyVisibleQuestions, selectedSection, selectedSubSection, answeredStatusFilter, allWatchedValues]);
+
 
   useEffect(() => {
     if (!assignmentId) {
@@ -110,16 +257,16 @@ export default function CompleteAssignmentPage() {
           fetchedAssignment.questions.forEach(q => {
             if (q.component === 'checkbox' && q.options && Array.isArray(parseOptions(q.options))) {
               parseOptions(q.options).forEach(opt => {
-                defaultVals[`${q.id}.${opt}`] = false; 
+                defaultVals[`${q.id}.${opt}`] = false;
               });
             } else if (q.component === 'range') {
-                let defaultRangeVal = 50;
+                let defaultRangeVal = 50; // Default for slider
                 if (typeof q.options === 'string') {
                     const defaultOpt = q.options.split(';').find(opt => opt.startsWith('default='));
                     if (defaultOpt) {
                         const val = parseInt(defaultOpt.split('=')[1]);
                         if (!isNaN(val)) defaultRangeVal = val;
-                    } else {
+                    } else { // if no default, try min
                          const minOpt = q.options.split(';').find(opt => opt.startsWith('min='));
                          if (minOpt) {
                             const val = parseInt(minOpt.split('=')[1]);
@@ -128,17 +275,18 @@ export default function CompleteAssignmentPage() {
                     }
                 }
                 defaultVals[q.id] = defaultRangeVal;
-            } else if (q.component === 'checkbox' && !q.options) { 
+            } else if (q.component === 'checkbox' && !q.options) {
                 defaultVals[q.id] = false;
             } else if (q.component === 'time' || q.component === 'completionTime') {
-                defaultVals[q.id] = "00:00"; // Default to "00:00" or handle existing value
+                defaultVals[q.id] = "00:00"; // Default to "00:00"
             }
-            else { 
+            else { // For date, datetime-local, text, select etc.
               defaultVals[q.id] = (q.component === 'date' || q.component === 'completionDate') ? undefined : ''; // For DatePicker, undefined is better for placeholder
             }
+            // Initialize comment field
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
           });
-          reset(defaultVals);
+          reset(defaultVals); // Reset form with new default values
         } else {
           setError("Assignment not found or you do not have permission to access it.");
           toast({ variant: "destructive", title: "Error", description: "Assignment not found." });
@@ -158,7 +306,7 @@ export default function CompleteAssignmentPage() {
 
   useEffect(() => {
     const hasSchoolSelector = assignment?.questions.some(q => q.component === 'schoolSelector');
-    if (hasSchoolSelector && userProfile?.account && !isLoading) { 
+    if (hasSchoolSelector && userProfile?.account && !isLoading) { // Ensure assignment is loaded before checking its questions
       setIsLoadingLocations(true);
       setLocationsError(null);
       console.log("[CompleteAssignmentPage] Fetching locations for account:", userProfile.account);
@@ -175,13 +323,18 @@ export default function CompleteAssignmentPage() {
     }
   }, [assignment, userProfile?.account, toast, isLoading]);
 
+  // Reset subsection filter when section filter changes
+  useEffect(() => {
+    setSelectedSubSection("all");
+  }, [selectedSection]);
+
 
   const handleFileUpload = async (questionId: string, file: File) => {
     if (!user || !assignment) {
       setUploadErrors(prev => ({ ...prev, [questionId]: "User or assignment data missing." }));
       return;
     }
-    if (file.size > 5 * 1024 * 1024) { 
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
         setUploadErrors(prev => ({ ...prev, [questionId]: "File exceeds 5MB limit." }));
         toast({ variant: "destructive", title: "Upload Error", description: "File exceeds 5MB limit."});
         return;
@@ -190,8 +343,9 @@ export default function CompleteAssignmentPage() {
     setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
     setUploadErrors(prev => ({ ...prev, [questionId]: null }));
     setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
-    setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
+    setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); // Clear previous preview
 
+    // Create a preview for image files
     if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -200,6 +354,7 @@ export default function CompleteAssignmentPage() {
         reader.readAsDataURL(file);
     }
 
+    // Upload logic
     const storagePath = `assignment_uploads/${assignment.id}/${user.uid}/${questionId}/${Date.now()}_${file.name}`;
     const storageRef = ref(storage, storagePath);
     const uploadTask = uploadBytesResumable(storageRef, file);
@@ -213,20 +368,20 @@ export default function CompleteAssignmentPage() {
         console.error("Upload failed for question " + questionId + ":", error);
         setUploadErrors(prev => ({ ...prev, [questionId]: error.message }));
         toast({ variant: "destructive", title: "Upload Failed", description: `Could not upload ${file.name}: ${error.message}` });
-        setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
-        setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
+        setUploadProgress(prev => ({ ...prev, [questionId]: 0 })); // Reset progress on error
+        setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); // Clear preview on error
       },
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
           setUploadedFileDetails(prev => ({ ...prev, [questionId]: { name: file.name, url: downloadURL } }));
           toast({ title: "Upload Successful", description: `${file.name} uploaded.` });
-          setUploadProgress(prev => ({ ...prev, [questionId]: 100 }));
+          setUploadProgress(prev => ({ ...prev, [questionId]: 100 })); // Mark as complete
         } catch (err) {
             console.error("Failed to get download URL for " + questionId + ":", err);
             const errorMessage = err instanceof Error ? err.message : "Unknown error getting URL.";
             setUploadErrors(prev => ({ ...prev, [questionId]: "Failed to get file URL: " + errorMessage }));
-            setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
+            setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); // Clear preview if URL fails
         }
       }
     );
@@ -234,9 +389,10 @@ export default function CompleteAssignmentPage() {
 
   const removeUploadedFile = (questionId: string) => {
     setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
-    setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
+    setUploadProgress(prev => ({ ...prev, [questionId]: 0 })); // Reset progress
     setUploadErrors(prev => ({ ...prev, [questionId]: null }));
     setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
+    // Reset the file input field
     const fileInput = document.getElementById(`${questionId}_file`) as HTMLInputElement;
     if (fileInput) fileInput.value = "";
   };
@@ -252,38 +408,39 @@ export default function CompleteAssignmentPage() {
     const formData = new FormData();
     const answersObject: Record<string, any> = {};
 
-    assignment.questions.forEach(question => {
-        if (!shouldBeVisible(question.conditional, question.id)) {
-            return; // Skip non-visible questions from submission data
-        }
+    // Iterate over ALL original questions to capture answers for even non-visible ones IF they were answered before becoming non-visible
+    // or if backend expects all question IDs regardless of visibility at submission time.
+    (assignment.questions).forEach(question => {
         let questionAnswer: any;
         if (question.component === 'checkbox' && question.options && Array.isArray(parseOptions(question.options))) {
             const selectedOptions: string[] = [];
             parseOptions(question.options).forEach(opt => {
-                if (data[`${question.id}.${opt}`]) { 
+                if (data[`${question.id}.${opt}`]) { // Data for checkbox group is { 'questionId.optionValue': true/false }
                     selectedOptions.push(opt);
                 }
             });
             questionAnswer = selectedOptions;
-        } else if (question.component === 'checkbox' && !question.options) { 
+        } else if (question.component === 'checkbox' && !question.options) { // Single checkbox
             questionAnswer = data[question.id] || false;
         } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
             questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
         } else if ((question.component === 'time' || question.component === 'completionTime') && typeof data[question.id] === 'string' && data[question.id].includes(':')) {
             questionAnswer = data[question.id];
         }
-        else {
-            questionAnswer = data[question.id] ?? "";
+        else { // For text, select, radio, range, etc.
+            questionAnswer = data[question.id] ?? ""; // Default to empty string if undefined/null
         }
 
         answersObject[question.id] = {
             answer: questionAnswer
         };
 
+        // Add comment if present
         if (question.comment && data[`${question.id}_comment`]) {
             answersObject[question.id].comment = data[`${question.id}_comment`];
         }
 
+        // Add file details if uploaded
         if (question.photoUpload && uploadedFileDetails[question.id]) {
             answersObject[question.id].file = {
                 name: uploadedFileDetails[question.id]!.name,
@@ -313,17 +470,6 @@ export default function CompleteAssignmentPage() {
     }
   };
 
-  const parseOptions = (options: string | string[] | undefined): string[] => {
-    if (!options) return [];
-    if (Array.isArray(options)) return options;
-    try {
-      const parsed = JSON.parse(options);
-      if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
-        return parsed;
-      }
-    } catch (e) { /* Fall through */ }
-    return options.split(';').map(opt => opt.trim()).filter(opt => opt);
-  };
 
   const getComponentType = (componentName: string | undefined): string => {
     switch (componentName?.toLowerCase()) {
@@ -337,50 +483,9 @@ export default function CompleteAssignmentPage() {
       case 'number': return 'number';
       case 'email': return 'email';
       case 'url': return 'url';
-      default: return componentName || 'text'; 
+      default: return componentName || 'text'; // Fallback for any other types or if componentName is undefined
     }
   };
-  
-  const shouldBeVisible = (conditionalConfig: AssignmentQuestion['conditional'] | undefined, currentQuestionId: string): boolean => {
-    if (!conditionalConfig) {
-      return true; 
-    }
-  
-    const triggerFieldId = conditionalConfig.field;
-    const conditionValues = Array.isArray(conditionalConfig.value) ? conditionalConfig.value.map(String) : [String(conditionalConfig.value)];
-  
-    if (triggerFieldId === currentQuestionId) {
-      console.warn(`Conditional logic loop detected for question ${currentQuestionId}`);
-      return false; 
-    }
-    
-    const triggerQuestion = assignment?.questions.find(q => q.id === triggerFieldId);
-    if (!triggerQuestion) {
-      console.warn(`Conditional logic trigger field ${triggerFieldId} not found for question ${currentQuestionId}`);
-      return false; 
-    }
-  
-    const watchedValue = allWatchedValues[triggerFieldId];
-  
-    if (triggerQuestion.component === 'checkbox') {
-      if (triggerQuestion.options) { 
-        for (const expectedOptionText of conditionValues) {
-          if (allWatchedValues[`${triggerFieldId}.${expectedOptionText}`] === true) {
-            return true; 
-          }
-        }
-        return false;
-      } else { 
-        return conditionValues.some(cv => cv.toLowerCase() === String(watchedValue).toLowerCase());
-      }
-    } else { 
-      if (watchedValue === undefined || watchedValue === null || watchedValue === "") {
-        return false; 
-      }
-      return conditionValues.includes(String(watchedValue));
-    }
-  };
-
 
   if (isLoading) {
     return (
@@ -398,7 +503,7 @@ export default function CompleteAssignmentPage() {
     );
   }
 
-  if (error && !user) {
+  if (error && !user) { // User not logged in, and there was an error (likely auth-related)
     return (
        <div className="p-4 text-center">
          <Alert variant="destructive" className="m-4">
@@ -409,7 +514,7 @@ export default function CompleteAssignmentPage() {
        </div>
     );
   }
-  if (error) {
+  if (error) { // Any other error after user is confirmed to be logged in
     return (
       <Alert variant="destructive" className="m-4">
         <AlertTriangle className="h-4 w-4" />
@@ -424,8 +529,6 @@ export default function CompleteAssignmentPage() {
     return <p className="p-4 text-center">Assignment data is not available.</p>;
   }
 
-  const visibleQuestions = assignment.questions?.filter(q => shouldBeVisible(q.conditional, q.id)) || [];
-
   return (
     <div className="container mx-auto py-8 px-4">
       <Card className="shadow-xl">
@@ -434,14 +537,74 @@ export default function CompleteAssignmentPage() {
           {assignment.description && <CardDescription className="text-lg">{assignment.description}</CardDescription>}
         </CardHeader>
         <CardContent>
+          {/* Filter Controls */}
+          <Card className="mb-6 p-4 bg-muted/30">
+            <CardHeader className="p-2 pb-3">
+              <CardTitle className="text-xl flex items-center gap-2"><Filter className="h-5 w-5 text-primary"/>Filter Questions</CardTitle>
+            </CardHeader>
+            <CardContent className="p-2 space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
+              <div>
+                <Label htmlFor="filter-section">Section</Label>
+                <Select value={selectedSection} onValueChange={(value) => { setSelectedSection(value); setSelectedSubSection("all"); }}>
+                  <SelectTrigger id="filter-section"><SelectValue placeholder="Filter by section..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sections</SelectItem>
+                    {availableSections.map(sec => (
+                      <SelectItem key={sec} value={sec}>{sec === UNASSIGNED_FILTER_VALUE ? "N/A" : sec}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="filter-subsection">Sub-Section</Label>
+                <Select value={selectedSubSection} onValueChange={setSelectedSubSection} disabled={selectedSection === "all" && availableSubSections.length <= 1 && availableSubSections.every(s => s === UNASSIGNED_FILTER_VALUE) }>
+                  <SelectTrigger id="filter-subsection"><SelectValue placeholder="Filter by sub-section..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sub-Sections</SelectItem>
+                    {availableSubSections.map(sub => (
+                      <SelectItem key={sub} value={sub}>{sub === UNASSIGNED_FILTER_VALUE ? "N/A" : sub}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <RadioGroup
+                  value={answeredStatusFilter}
+                  onValueChange={(value: 'all' | 'answered' | 'unanswered') => setAnsweredStatusFilter(value)}
+                  className="flex space-x-2 pt-2"
+                >
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="all" id="filter-all" />
+                    <Label htmlFor="filter-all" className="font-normal">All</Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="answered" id="filter-answered" />
+                    <Label htmlFor="filter-answered" className="font-normal">Answered</Label>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <RadioGroupItem value="unanswered" id="filter-unanswered" />
+                    <Label htmlFor="filter-unanswered" className="font-normal">Unanswered</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            </CardContent>
+          </Card>
+          <Separator className="my-6"/>
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {visibleQuestions.map((question, index) => (
+            {questionsToRender.map((question, index) => (
               <Card key={question.id || index} className="p-6 bg-card/50">
                 <fieldset className="space-y-3">
                   <Label htmlFor={question.id} className="text-lg font-semibold text-foreground">
-                    {index + 1}. {question.label}
+                    {questionsToRender.length > 0 ? `${questionsToRender.indexOf(question) + 1}` : index + 1}. {question.label}
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </Label>
+                  <div className="text-xs text-muted-foreground space-x-2 mb-2">
+                    {question.section && <span>Section: <Badge variant="outline" className="text-xs">{question.section}</Badge></span>}
+                    {question.subSection && <span>Sub-Section: <Badge variant="outline" className="text-xs">{question.subSection}</Badge></span>}
+                  </div>
+
 
                   {['text', 'number', 'email', 'url', 'telephone', 'datetime'].includes(question.component) ? (
                     <Input
@@ -483,7 +646,7 @@ export default function CompleteAssignmentPage() {
                       )}
                     />
                   )}
-                  
+
                   {(question.component === 'time' || question.component === 'completionTime') && (
                     <Controller
                       name={question.id}
@@ -536,7 +699,7 @@ export default function CompleteAssignmentPage() {
                     />
                   )}
 
-                  {question.component === 'options' && ( 
+                  {question.component === 'options' && (
                     <Controller
                       name={question.id}
                       control={control}
@@ -557,8 +720,8 @@ export default function CompleteAssignmentPage() {
                       )}
                     />
                   )}
-                  
-                  {question.component === 'buttonSelect' && ( 
+
+                  {question.component === 'buttonSelect' && (
                     <Controller
                       name={question.id}
                       control={control}
@@ -598,7 +761,7 @@ export default function CompleteAssignmentPage() {
                         )}
                     />
                   )}
-                  
+
                   {question.component === 'schoolSelector' && (
                     <Controller
                         name={question.id}
@@ -629,7 +792,7 @@ export default function CompleteAssignmentPage() {
                     />
                   )}
 
-                  {question.component === 'checkbox' && !question.options && ( 
+                  {question.component === 'checkbox' && !question.options && (
                      <Controller
                         name={question.id}
                         control={control}
@@ -647,12 +810,12 @@ export default function CompleteAssignmentPage() {
                     />
                   )}
 
-                  {question.component === 'checkbox' && question.options && ( 
+                  {question.component === 'checkbox' && question.options && (
                     <div className="space-y-2 bg-background p-2 rounded-md">
                         {parseOptions(question.options).map(opt => (
                             <Controller
                                 key={opt}
-                                name={`${question.id}.${opt}`} 
+                                name={`${question.id}.${opt}`}
                                 control={control}
                                 defaultValue={false}
                                 render={({ field }) => (
@@ -669,8 +832,8 @@ export default function CompleteAssignmentPage() {
                         ))}
                     </div>
                   )}
-                  
-                  {(question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && ( 
+
+                  {(question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && (
                     <div className="space-y-2 bg-background p-2 rounded-md">
                         <Label className="text-sm text-muted-foreground block mb-1">Select one or more:</Label>
                         {parseOptions(question.options).map(opt => (
@@ -709,7 +872,7 @@ export default function CompleteAssignmentPage() {
                             });
                         }
                         if (typeof currentVal !== 'number' || isNaN(currentVal)) {
-                           currentVal = (value as number) ?? min; 
+                           currentVal = (value as number) ?? min;
                         }
                         currentVal = Math.max(min, Math.min(max, currentVal));
 
@@ -730,7 +893,7 @@ export default function CompleteAssignmentPage() {
                       }}
                     />
                   )}
-                  
+
                   {question.component === 'dynamicQuestion' && (
                     <Alert variant="default" className="bg-blue-50 border-blue-200">
                         <Building className="h-4 w-4 text-blue-600"/>
@@ -740,7 +903,7 @@ export default function CompleteAssignmentPage() {
                   )}
 
                   {formErrors[question.id] && <p className="text-sm text-destructive">{formErrors[question.id]?.message as string}</p>}
-                  
+
                   {question.comment && (
                     <div className="mt-3">
                       <Label htmlFor={`${question.id}_comment`} className="text-sm text-muted-foreground flex items-center">
@@ -846,16 +1009,26 @@ export default function CompleteAssignmentPage() {
               </Card>
             ))}
 
-            {visibleQuestions.length === 0 && !isLoading && (
+            {questionsToRender.length === 0 && conditionallyVisibleQuestions.length > 0 && !isLoading && (
                  <div className="text-center py-10">
                     <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-lg text-muted-foreground">No questions are currently visible for this assignment.</p>
-                    <p className="text-sm text-muted-foreground">This might be due to conditional logic or an empty assignment.</p>
+                    <p className="text-lg text-muted-foreground">No questions match your current filters.</p>
+                    <p className="text-sm text-muted-foreground">Try adjusting the section, sub-section, or status filters.</p>
                 </div>
             )}
 
+            {/* This message shows if no questions are visible *even before* filtering (e.g. due to conditional logic or empty assignment) */}
+            {conditionallyVisibleQuestions.length === 0 && !isLoading && (
+                 <div className="text-center py-10">
+                    <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-lg text-muted-foreground">No questions are currently visible for this assignment.</p>
+                    <p className="text-sm text-muted-foreground">This might be due to conditional logic or an empty assignment. Try changing previous answers or adjusting filters if applicable.</p>
+                </div>
+            )}
+
+
             <div className="flex justify-end pt-6">
-              <Button type="submit" size="lg" disabled={isSubmitting || Object.values(uploadProgress).some(p => p > 0 && p < 100)}>
+              <Button type="submit" size="lg" disabled={isSubmitting || Object.values(uploadProgress).some(p => p > 0 && p < 100) || questionsToRender.length === 0}>
                 <Send className="mr-2 h-5 w-5" />
                 {isSubmitting ? "Submitting..." : "Submit Assignment"}
               </Button>
@@ -866,3 +1039,6 @@ export default function CompleteAssignmentPage() {
     </div>
   );
 }
+
+
+    
