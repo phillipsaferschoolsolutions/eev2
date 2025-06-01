@@ -264,6 +264,159 @@ body {
     --sidebar-background: 260 50% 7%; --sidebar-foreground: 280 80% 80%; --sidebar-primary: 270 95% 75%; --sidebar-primary-foreground: 250 20% 5%; --sidebar-accent: 320 100% 80%; --sidebar-accent-foreground: 250 20% 5%; --sidebar-border: 260 40% 12%; --sidebar-ring: 270 95% 75%;
   }
 
+  /* --- Glassmorphic Inspired Themes --- */
+  /* Crystal Frost Light */
+  html.crystal-frost-light {
+    --background: 200 100% 98%; /* Very light icy blue */
+    --foreground: 210 50% 25%; /* Deep cool grey */
+    --card: 0 0% 100%; /* White for card base to allow semi-transparent overlay */
+    --card-foreground: 210 50% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 50% 20%;
+    --border: 200 60% 90%; /* Light icy border */
+    --input: 200 70% 95%;
+    --primary: 190 85% 50%; /* Bright cyan */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 200 70% 80%; /* Lighter icy blue */
+    --secondary-foreground: 210 50% 25%;
+    --accent: 220 90% 60%; /* Clear blue */
+    --accent-foreground: 0 0% 100%;
+    --ring: 190 85% 50%;
+    --sidebar-background: 200 80% 92%; /* Slightly transparent feel */
+    --sidebar-foreground: 210 50% 30%;
+    --sidebar-primary: 190 80% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 85% 65%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 200 70% 85%;
+  }
+  /* Crystal Frost Dark */
+  html.crystal-frost-dark {
+    --background: 220 30% 8%; /* Deep, almost black blue */
+    --foreground: 200 60% 90%; /* Light icy text */
+    --card: 220 25% 12%; /* Dark glass base */
+    --card-foreground: 200 70% 92%;
+    --popover: 220 20% 10%;
+    --popover-foreground: 200 70% 92%;
+    --border: 210 30% 20%; /* Subtle dark border */
+    --input: 210 25% 18%;
+    --primary: 180 90% 60%; /* Bright glowing cyan */
+    --primary-foreground: 220 30% 5%;
+    --secondary: 210 30% 25%; /* Darker icy blue */
+    --secondary-foreground: 200 60% 88%;
+    --accent: 190 100% 70%; /* Electric cyan */
+    --accent-foreground: 220 30% 5%;
+    --ring: 180 90% 60%;
+    --sidebar-background: 220 20% 10%; /* Very dark transparent feel */
+    --sidebar-foreground: 200 60% 85%;
+    --sidebar-primary: 180 85% 65%;
+    --sidebar-primary-foreground: 220 25% 8%;
+    --sidebar-accent: 190 95% 75%;
+    --sidebar-accent-foreground: 220 25% 8%;
+    --sidebar-border: 210 20% 15%;
+  }
+
+  /* Ethereal Veil Light */
+  html.ethereal-veil-light {
+    --background: 260 100% 98%; /* Light lavender base */
+    --foreground: 270 40% 30%; /* Muted purple-grey */
+    --card: 0 0% 100%;
+    --card-foreground: 270 40% 25%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 270 40% 25%;
+    --border: 260 60% 92%; /* Very soft lavender border */
+    --input: 260 70% 96%;
+    --primary: 280 80% 65%; /* Soft orchid purple */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 270 70% 85%; /* Lighter lavender */
+    --secondary-foreground: 270 40% 30%;
+    --accent: 320 90% 70%; /* Gentle pink */
+    --accent-foreground: 0 0% 100%;
+    --ring: 280 80% 65%;
+    --sidebar-background: 270 80% 94%; 
+    --sidebar-foreground: 270 40% 35%;
+    --sidebar-primary: 280 75% 70%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 320 85% 75%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 270 70% 88%;
+  }
+  /* Ethereal Veil Dark */
+  html.ethereal-veil-dark {
+    --background: 270 30% 10%; /* Deep indigo */
+    --foreground: 260 70% 88%; /* Soft lavender text */
+    --card: 270 25% 14%; 
+    --card-foreground: 260 70% 90%;
+    --popover: 270 20% 11%;
+    --popover-foreground: 260 70% 90%;
+    --border: 280 25% 22%; /* Muted dark border */
+    --input: 280 20% 19%;
+    --primary: 290 80% 70%; /* Mystical purple */
+    --primary-foreground: 270 20% 8%;
+    --secondary: 280 30% 28%; /* Darker indigo */
+    --secondary-foreground: 260 70% 85%;
+    --accent: 250 90% 75%; /* Hazy blue */
+    --accent-foreground: 270 20% 8%;
+    --ring: 290 80% 70%;
+    --sidebar-background: 270 20% 12%; 
+    --sidebar-foreground: 260 70% 80%;
+    --sidebar-primary: 290 75% 75%;
+    --sidebar-primary-foreground: 270 15% 6%;
+    --sidebar-accent: 250 85% 80%;
+    --sidebar-accent-foreground: 270 15% 6%;
+    --sidebar-border: 280 20% 18%;
+  }
+
+  /* Chromatic Glaze Light */
+  html.chromatic-glaze-light {
+    --background: 0 0% 97%; /* Off-white, almost stark */
+    --foreground: 0 0% 20%; /* Dark grey */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 15%;
+    --border: 0 0% 90%; /* Light grey border */
+    --input: 0 0% 95%;
+    --primary: 50 100% 55%; /* Vibrant, almost neon yellow/gold */
+    --primary-foreground: 0 0% 10%;
+    --secondary: 0 0% 88%; /* Very light grey */
+    --secondary-foreground: 0 0% 20%;
+    --accent: 170 100% 45%; /* Sharp teal/cyan */
+    --accent-foreground: 0 0% 100%;
+    --ring: 50 100% 55%;
+    --sidebar-background: 0 0% 92%; 
+    --sidebar-foreground: 0 0% 25%;
+    --sidebar-primary: 50 95% 60%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 170 90% 50%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 85%;
+  }
+  /* Chromatic Glaze Dark */
+  html.chromatic-glaze-dark {
+    --background: 0 0% 8%; /* True black */
+    --foreground: 0 0% 90%; /* Light grey text */
+    --card: 0 0% 12%; 
+    --card-foreground: 0 0% 92%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 92%;
+    --border: 0 0% 20%; /* Dark grey border */
+    --input: 0 0% 18%;
+    --primary: 300 100% 65%; /* Electric magenta/pink */
+    --primary-foreground: 0 0% 5%;
+    --secondary: 0 0% 22%; /* Darker grey */
+    --secondary-foreground: 0 0% 88%;
+    --accent: 130 100% 55%; /* Neon green */
+    --accent-foreground: 0 0% 5%;
+    --ring: 300 100% 65%;
+    --sidebar-background: 0 0% 10%; 
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 300 95% 70%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 130 90% 60%;
+    --sidebar-accent-foreground: 0 0% 5%;
+    --sidebar-border: 0 0% 15%;
+  }
 
 }
 

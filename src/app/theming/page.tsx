@@ -3,7 +3,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Palette, Sun, Moon, Contrast, Terminal, Waves, Leaf, Sunset, Building, Flame, Sparkles, Trees, Cpu, Snowflake, Mountain, Fish, Scroll, Edit3, Binary, Wand2, CircuitBoard } from "lucide-react";
+import { Palette, Sun, Moon, Contrast, Terminal, Waves, Leaf, Sunset, Building, Flame, Sparkles, Trees, Cpu, Snowflake, Mountain, Fish, Scroll, Edit3, Binary, Wand2, CircuitBoard, Zap, Gem, Layers } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 
@@ -31,7 +31,6 @@ const appThemes = [
   { id: "cyber-city-light", name: "Cyber City (Light)", description: "Clean light greys & electric blues. Modern tech.", icon: Cpu, isDark: false, gradient: "from-sky-200 via-cyan-300 to-blue-300" },
   { id: "cyber-city-dark", name: "Cyber City (Dark)", description: "Electric blues & cyans on dark. Futuristic.", icon: Cpu, isDark: true, gradient: "from-blue-800 via-cyan-600 to-slate-900" },
 
-  // 14 Additional Themes Start Here
   { id: "arctic-horizon-light", name: "Arctic Horizon (Light)", description: "Cool whites, icy blues, and pale lavenders.", icon: Snowflake, isDark: false, gradient: "from-sky-200 via-blue-300 to-purple-200" },
   { id: "arctic-horizon-dark", name: "Arctic Horizon (Dark)", description: "Deep blues, purples, and aurora-like greens.", icon: Mountain, isDark: true, gradient: "from-blue-800 via-purple-700 to-teal-600" },
 
@@ -52,6 +51,16 @@ const appThemes = [
 
   { id: "digital-dreams-light", name: "Digital Dreams (Light)", description: "Electric blues, purples, and pinks with sharp contrasts.", icon: CircuitBoard, isDark: false, gradient: "from-sky-300 via-purple-400 to-pink-400" },
   { id: "digital-dreams-dark", name: "Digital Dreams (Dark)", description: "Deep indigos, vibrant magentas, on a dark tech background.", icon: CircuitBoard, isDark: true, gradient: "from-indigo-700 via-fuchsia-600 to-blue-800" },
+
+  // --- New Glassmorphic Inspired Themes ---
+  { id: "crystal-frost-light", name: "Crystal Frost (Light)", description: "Icy, clean, with sharp blue accents. Simulates clear glass.", icon: Gem, isDark: false, gradient: "bg-[radial-gradient(ellipse_at_center,_rgba(220,235,255,0.7)_0%,_rgba(255,255,255,0.3)_70%)]" },
+  { id: "crystal-frost-dark", name: "Crystal Frost (Dark)", description: "Deep, cool darks with glowing cyan edges. Dark frosted glass.", icon: Gem, isDark: true, gradient: "bg-[radial-gradient(ellipse_at_center,_rgba(10,20,40,0.7)_0%,_rgba(0,0,10,0.5)_70%)]" },
+
+  { id: "ethereal-veil-light", name: "Ethereal Veil (Light)", description: "Soft lavenders and pinks, a hazy, dreamlike glass.", icon: Wand2, isDark: false, gradient: "bg-[radial-gradient(ellipse_at_center,_rgba(230,220,250,0.6)_0%,_rgba(255,230,240,0.3)_80%)]" },
+  { id: "ethereal-veil-dark", name: "Ethereal Veil (Dark)", description: "Mystical deep purples and blues with a soft glow.", icon: Wand2, isDark: true, gradient: "bg-[radial-gradient(ellipse_at_center,_rgba(30,10,50,0.7)_0%,_rgba(20,0,40,0.4)_70%)]" },
+  
+  { id: "chromatic-glaze-light", name: "Chromatic Glaze (Light)", description: "Bright off-white with vibrant neon yellow and teal highlights.", icon: Zap, isDark: false, gradient: "bg-[radial-gradient(ellipse_at_center,_rgba(245,245,245,0.7)_0%,_rgba(220,255,255,0.4)_80%)]" },
+  { id: "chromatic-glaze-dark", name: "Chromatic Glaze (Dark)", description: "Glossy black with electric magenta and green accents.", icon: Zap, isDark: true, gradient: "bg-[radial-gradient(ellipse_at_center,_rgba(20,20,20,0.8)_0%,_rgba(0,0,0,0.6)_70%)]" },
 ];
 
 export default function ThemingPage() {
@@ -83,10 +92,10 @@ export default function ThemingPage() {
             <Card key={themeOption.id} className="overflow-hidden flex flex-col">
               <CardHeader className="p-0">
                 <div
-                  className={`h-32 w-full flex items-center justify-center bg-gradient-to-br ${themeOption.gradient}`}
+                  className={`h-32 w-full flex items-center justify-center ${themeOption.gradient}`}
                   data-ai-hint="theme color palette"
                 >
-                  <themeOption.icon className={`h-12 w-12 ${themeOption.isDark ? 'text-white' : 'text-primary-foreground' } opacity-80`} />
+                  <themeOption.icon className={`h-12 w-12 ${themeOption.isDark ? 'text-slate-100' : 'text-slate-800' } opacity-70`} />
                 </div>
               </CardHeader>
               <CardContent className="p-4 flex-grow flex flex-col">
@@ -111,7 +120,7 @@ export default function ThemingPage() {
         </CardHeader>
         <CardContent>
             <p className="text-muted-foreground">
-                The application uses CSS variables for theming. Advanced users or administrators might be able to define custom themes by overriding these variables in the future. This would allow for precise branding alignment.
+                The application uses CSS variables for theming. True glassmorphism with blurred backgrounds on components like cards typically requires `backdrop-filter` and semi-transparent backgrounds, which are more advanced styling changes beyond simple color variable swaps. These themes aim to evoke a glass-like feel through color and light effects.
             </p>
         </CardContent>
       </Card>

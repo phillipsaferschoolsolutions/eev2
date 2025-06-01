@@ -59,6 +59,12 @@ const THEME_IDS = [
   'vintage-paper-dark',
   'digital-dreams-light',
   'digital-dreams-dark',
+  'crystal-frost-light',
+  'crystal-frost-dark',
+  'ethereal-veil-light',
+  'ethereal-veil-dark',
+  'chromatic-glaze-light',
+  'chromatic-glaze-dark',
 ];
 
 export default function RootLayout({
