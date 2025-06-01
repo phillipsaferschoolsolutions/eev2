@@ -721,9 +721,10 @@ export default function CompleteAssignmentPage() {
     const finalAudioNotesForSubmission: Record<string, { name?: string; url?: string }> = {};
     const audioUploadPromises: Promise<void>[] = [];
 
+    // Process and upload audio notes
     Object.keys(audioNotes).forEach(questionId => {
         const note = audioNotes[questionId];
-        if (note && note.blob && !note.downloadURL && !note.isUploading) {
+        if (note?.blob && !note.downloadURL && !note.isUploading) { // Only upload if there's a blob and no download URL yet
             setAudioNotes(prev => ({
             ...prev,
             [questionId]: { ...note, isUploading: true, uploadProgress: 0, uploadError: null }
@@ -759,7 +760,7 @@ export default function CompleteAssignmentPage() {
             );
             });
             audioUploadPromises.push(promise);
-        } else if (note && note.downloadURL) { 
+        } else if (note?.downloadURL) { // Include already uploaded audio notes
             finalAudioNotesForSubmission[questionId] = { name: note.name, url: note.downloadURL };
         }
     });
@@ -775,13 +776,23 @@ export default function CompleteAssignmentPage() {
     const formDataForSubmission = new FormData();
     const answersObject: Record<string, any> = {};
     const photoLinksForSync: Record<string, string> = {};
-    const commentsForSubmission: Record<string, string> = {};
+    const commentsObject: Record<string, string> = {};
 
     conditionallyVisibleQuestions.forEach(question => {
         let questionAnswer: any;
+
+        // --- Extract Answer Data ---
         if (question.component === 'checkbox' && question.options && Array.isArray(parseOptions(question.options))) {
             const selectedOptions: string[] = [];
             parseOptions(question.options).forEach(opt => {
+                if (data[`${question.id}.${opt}`]) {
+                    selectedOptions.push(opt);
+                }
+            });
+            questionAnswer = selectedOptions;
+        } else if ((question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && Array.isArray(parseOptions(question.options))) {
+             const selectedOptions: string[] = [];
+             parseOptions(question.options).forEach(opt => {
                 if (data[`${question.id}.${opt}`]) {
                     selectedOptions.push(opt);
                 }
@@ -808,22 +819,25 @@ export default function CompleteAssignmentPage() {
         }
         answersObject[question.id] = questionAnswer;
 
+        // --- Extract Comment Data ---
         const commentText = data[`${question.id}_comment`];
         if (question.comment && typeof commentText === 'string' && commentText.trim() !== '') {
-            commentsForSubmission[question.id] = commentText.trim();
-        }
+            commentsObject[question.id] = commentText.trim();
+        } // Else if comment is empty or not a string, it's not included
 
         if (question.photoUpload && uploadedFileDetails[question.id]?.url) {
             photoLinksForSync[question.id] = uploadedFileDetails[question.id]!.url;
         }
     });
 
+    console.log("Comments Object being sent:", commentsObject);
+    console.log("Answers Object being sent:", answersObject);
     formDataForSubmission.append("content", JSON.stringify(answersObject));
 
     if (Object.keys(photoLinksForSync).length > 0) {
       formDataForSubmission.append("syncPhotoLinks", JSON.stringify(photoLinksForSync));
     }
-    formDataForSubmission.append("commentsData", Object.keys(commentsForSubmission).length > 0 ? JSON.stringify(commentsForSubmission) : "{}");
+    formDataForSubmission.append("commentsData", JSON.stringify(commentsObject)); // Always send commentsObject, even if empty
     formDataForSubmission.append("audioNotesData", Object.keys(finalAudioNotesForSubmission).length > 0 ? JSON.stringify(finalAudioNotesForSubmission) : "{}");
 
     formDataForSubmission.append("assessmentName", assignment.assessmentName || "Unnamed Assignment");

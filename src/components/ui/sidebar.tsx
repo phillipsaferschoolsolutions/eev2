@@ -557,7 +557,7 @@ const SidebarMenuButton = React.forwardRef<
     const Comp = asChild ? Slot : "button"
     const { isMobile, state } = useSidebar()
 
-    const button = (
+    const buttonElement = (
       <Comp
         ref={ref}
         data-sidebar="menu-button"
@@ -568,24 +568,26 @@ const SidebarMenuButton = React.forwardRef<
       />
     )
 
-    if (!tooltip) {
-      return button
+    // Tooltip should only be active (and thus TooltipTrigger rendered)
+    // when the sidebar is collapsed on desktop.
+    const tooltipShouldBeActive = state === "collapsed" && !isMobile;
+
+    if (!tooltip || !tooltipShouldBeActive) {
+      return buttonElement; // Render the button directly without Tooltip wrapper
     }
 
-    if (typeof tooltip === "string") {
-      tooltip = {
-        children: tooltip,
-      }
-    }
-
+    // If tooltip is a string, convert to object for TooltipContent props
+    const tooltipContentProps = typeof tooltip === "string" ? { children: tooltip } : tooltip;
+    
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{button}</TooltipTrigger>
+        <TooltipTrigger asChild>{buttonElement}</TooltipTrigger>
         <TooltipContent
           side="right"
           align="center"
-          hidden={state !== "collapsed" || isMobile}
-          {...tooltip}
+          // The 'hidden' prop is not needed here because the entire Tooltip wrapper
+          // is now conditional based on tooltipShouldBeActive.
+          {...tooltipContentProps}
         />
       </Tooltip>
     )
@@ -762,3 +764,4 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
