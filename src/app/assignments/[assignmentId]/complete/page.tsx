@@ -474,10 +474,6 @@ export default function CompleteAssignmentPage() {
   const getComponentType = (componentName: string | undefined): string => {
     switch (componentName?.toLowerCase()) {
       case 'telephone': return 'tel';
-      // case 'time': return 'time'; // Handled by custom hour/minute selects
-      // case 'completiontime': return 'time'; // Handled by custom hour/minute selects
-      // case 'date': return 'date'; // Handled by DatePicker
-      // case 'completiondate': return 'date'; // Handled by DatePicker
       case 'datetime': return 'datetime-local';
       case 'text': return 'text';
       case 'number': return 'number';
