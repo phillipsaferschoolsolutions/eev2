@@ -9,221 +9,307 @@ const admin = require("firebase-admin");
 const db = admin.firestore();
 const { FieldValue } = admin.firestore;
 
-// --- Helper to generate unique IDs (e.g., UUID v4) ---
-function generateUUID() {
-  // Basic unique ID generator, consider a proper UUID library for production
-  return db.collection("temp").doc().id;
+/**
+ * Generates a unique ID.
+ * Replace with your actual generateQuestionId if it's a specific custom implementation.
+ * This version uses Firestore's auto-ID generation method.
+ */
+async function generateQuestionId(count) {
+    // This is a placeholder. The original code implies `generateQuestionId` returns an array of IDs.
+    // For a self-contained solution, we'd generate one by one or adapt.
+    // For now, assuming it's an external helper you have.
+    // If not, individual IDs will be generated per question in the loop.
+    if (typeof generateQuestionId.external === 'function') {
+        return generateQuestionId.external(count);
+    }
+    functions.logger.warn("Using placeholder for generateQuestionId. Implement if custom logic is needed for an array of IDs.");
+    const ids = [];
+    for (let i = 0; i < count; i++) {
+        ids.push(db.collection("temp").doc().id);
+    }
+    return ids;
 }
 
-/**
- * Handles the creation of new assignments.
- * Endpoint: POST /createassignment (or wherever this is routed)
- */
+// Placeholder for firebaseHelper if it's an external module you have
+const firebaseHelper = {
+    AssignmentQuestionsActions: async ({ assignmentId, content, action }) => {
+        functions.logger.info("Placeholder: firebaseHelper.AssignmentQuestionsActions called", { assignmentId, action, questionCount: content.length });
+        // Implement actual logic here if this helper is used,
+        // e.g., saving questions to a separate subcollection.
+        // For now, questions are embedded in the main assignment document.
+        return Promise.resolve();
+    }
+};
+
+
 const createAssignmentHandler = async (req, res) => {
-    // ----- 1. Authorization and Initial Setup -----
-    if (!req.user || !req.user.email) { // req.user is populated by auth middleware
+    // 1. Authorization and Initial Setup
+    // @ts-ignore (req.user is populated by auth middleware)
+    if (!req.user || !req.user.email) {
         functions.logger.error("User not authenticated or email missing.");
-        res.status(403).send({error: "Unauthorized: User authentication issue."});
+        res.status(403).send({ error: "Unauthorized: User authentication issue." });
         return;
     }
     if (!req.headers.account || typeof req.headers.account !== 'string') {
         functions.logger.error("No account header provided or invalid format.");
-        res.status(403).send({error: "Unauthorized: Account header missing or invalid."});
+        res.status(403).send({ error: "Unauthorized: Account header missing or invalid." });
         return;
     }
 
     const account = req.headers.account;
+    // @ts-ignore
     const authorEmail = req.user.email;
 
-    const now = new Date();
-    const todayFormatted = `${now.getFullYear()}-${("0" + (now.getMonth() + 1)).slice(-2)}-${("0" + now.getDate()).slice(-2)}`;
+    const date = new Date();
+    const localDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const day = ("0" + localDate.getDate()).slice(-2);
+    const month = ("0" + (localDate.getMonth() + 1)).slice(-2);
+    const year = localDate.getFullYear();
+    const today = `${month}-${day}-${year}`; // Original format: MM-DD-YYYY
+    // const todayFormatted = `${year}-${month}-${day}`; // Alternative: YYYY-MM-DD for better sorting
 
-    // ----- 2. Prepare Main Assignment Document Data -----
-    const assignmentData = {
+    const alphaString = '.abcdefghijklmnopqrstuvwxyz'.split('');
+
+    // 2. Prepare Main Assignment Document Data
+    const assignment = {
         accountSubmittedFor: account,
         assessmentName: req.body.assessmentName || "Untitled Assignment",
-        createdDate: todayFormatted,
-        dueDate: req.body.dueDate || todayFormatted,
+        assignmentAdminArray: req.body.assignmentAdminArray || [],
+        createdDate: today,
+        dueDate: req.body.dueDate || today,
         frequency: req.body.frequency || "onetime",
         assignmentType: req.body.assignmentType || "assignment",
         author: authorEmail,
-        description: req.body.description || `Assignment created by ${authorEmail} on ${todayFormatted}.`,
+        description: req.body.description || `Assignment created by ${authorEmail} on ${today}.`,
         communityShare: req.body.communityShare === true,
         shareWith: req.body.shareWith || { assignToUsers: [authorEmail] },
         status: req.body.status || "Pending",
-        questions: [],
         timeStamp: FieldValue.serverTimestamp(),
-        // schoolSelectorId, completionDateId, completionTimeId will be added during question processing
+        questions: [], // This will hold the processed questions
+        schoolSelectorId: null,
+        completionDateId: null,
+        completionTimeId: null,
     };
 
-    // ----- 3. Process Questions -----
-    const inputQuestionsRaw = req.body.questions || req.body.content;
-    const inputQuestions = Array.isArray(inputQuestionsRaw) ? inputQuestionsRaw : [];
+    // 3. Process Questions
+    let initContent = req.body.content || [];
+    if (!Array.isArray(initContent)) {
+        initContent = [];
+        functions.logger.warn("req.body.content was not an array. Initializing to empty array.", { assessmentName: assignment.assessmentName });
+    }
 
-    const processedQuestions = [];
-    const questionIdResolutionMap = new Map();
+    // Generate IDs if `generateQuestionId` is a placeholder or if needed individually
+    const proposedIdArray = await generateQuestionId(initContent.length);
 
-    const questionsWithPermanentIds = inputQuestions.map((q, index) => {
+    const contentStateArr = []; // For firebaseHelper.AssignmentQuestionsActions
+    const questionIdResolutionMap = new Map(); // To map old UIDs to new permanent IDs
+
+    // First pass for ID generation and reordering conditional questions (if necessary)
+    // The original reordering logic was complex. A safer approach is to ensure parent questions are processed first
+    // or use ID resolution robustly. For now, we'll rely on the order given and ID resolution.
+    const questionsWithTempIds = initContent.map((q, index) => {
         const tempId = q._uid || q.id || `temp_frontend_id_${index}`;
-        const permanentId = (q._uid && !q._uid.startsWith("#") && !q._uid.startsWith("new-") && !q._uid.startsWith("temp_frontend_id_")) 
-                            ? q._uid 
-                            : generateUUID();
+        const permanentId = (q._uid && !q._uid.startsWith("#") && !q._uid.startsWith("new-"))
+            ? q._uid
+            : (proposedIdArray[index] || db.collection("temp").doc().id); // Fallback ID gen
         questionIdResolutionMap.set(tempId, permanentId);
-        return { ...q, permanentId: permanentId, originalTempId: tempId };
+        return { ...q, permanentId, originalTempId: tempId, originalIndex: index };
     });
 
-    let questionNumberCounter = 0;
-    const alphaSuffix = ['.', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
-    const conditionalSubCounters = {};
 
-    for (const [index, qData] of questionsWithPermanentIds.entries()) {
-        const finalQuestionId = qData.permanentId;
-        const optionsArray = [];
-        if (qData.options) {
-            const optsSource = Array.isArray(qData.options) ? qData.options : String(qData.options).split(';').map(opt => opt.trim()).filter(opt => opt);
-            optsSource.forEach(opt => optionsArray.push({ component: "option", label: opt, value: opt }));
-        }
+    let questionNumberCount = 0;
+    const conditionalQCounter = {};
 
-        let finalConditionalConfig = undefined;
-        if (qData.conditional && qData.conditional.field) {
-            const resolvedFieldId = questionIdResolutionMap.get(qData.conditional.field);
-            if (resolvedFieldId) {
-                finalConditionalConfig = { field: resolvedFieldId, value: qData.conditional.value };
-            } else {
-                functions.logger.warn(`Could not resolve conditional field ID '${qData.conditional.field}' for question '${finalQuestionId}'.`);
-            }
-        } else if (qData.conditionalQuestionId) { // Legacy
-            const resolvedFieldId = questionIdResolutionMap.get(qData.conditionalQuestionId);
-            if (resolvedFieldId) {
-                finalConditionalConfig = { field: resolvedFieldId, value: qData.conditionalQuestionValue || "" };
-            } else {
-                functions.logger.warn(`Could not resolve legacy conditionalQuestionId '${qData.conditionalQuestionId}' for question '${finalQuestionId}'.`);
-            }
+    questionsWithTempIds.forEach((obj, index) => {
+        const submittedField = {};
+        submittedField.id = obj.permanentId; // Use the generated permanent ID
+
+        // Convert legacy conditional structure to new, if present
+        if (obj.conditionalQuestionId) {
+            obj.conditional = {
+                field: obj.conditionalQuestionId, // This will be resolved using the map
+                value: obj.conditionalQuestionValue || ""
+            };
         }
         
-        let questionDisplayNumber = "";
-        if (finalConditionalConfig && finalConditionalConfig.field) {
-            const parentQuestionProcessed = processedQuestions.find(pq => pq.id === finalConditionalConfig.field);
-            const parentQuestionOriginalData = questionsWithPermanentIds.find(pq => pq.permanentId === finalConditionalConfig.field);
-            
-            let parentDisplayNumber = "";
-            if (parentQuestionProcessed) {
-                parentDisplayNumber = parentQuestionProcessed.questionNumber;
-            } else if (parentQuestionOriginalData) {
-                // Fallback if parent is later in the array, use its eventual main number
-                // This simple fallback assumes parent isn't also conditional for deep nesting display number.
-                let tempParentIndex = 0;
-                for(let i=0; i < questionsWithPermanentIds.indexOf(parentQuestionOriginalData); i++) {
-                    if (!questionsWithPermanentIds[i].conditional && !questionsWithPermanentIds[i].conditionalQuestionId) {
-                        tempParentIndex++;
-                    }
-                }
-                parentDisplayNumber = String(tempParentIndex + 1);
-            }
+        submittedField.order = obj.order !== undefined ? obj.order : obj.originalIndex + 1;
+        submittedField.photoUpload = obj.photoUpload === true;
+        submittedField.component = obj.component || "text";
+        submittedField.pageNumber = obj.pageNumber || 1;
+        submittedField.label = obj.label || "Untitled Question";
 
-            if (parentDisplayNumber) {
-                conditionalSubCounters[finalConditionalConfig.field] = (conditionalSubCounters[finalConditionalConfig.field] || 0) + 1;
-                const subIndex = conditionalSubCounters[finalConditionalConfig.field];
-                questionDisplayNumber = `${parentDisplayNumber}${alphaSuffix[subIndex] || subIndex}`;
-            } else {
-                questionNumberCounter++;
-                questionDisplayNumber = String(questionNumberCounter);
-                functions.logger.warn(`Conditional parent ${finalConditionalConfig.field} not found for numbering child ${finalQuestionId}. Using main counter.`);
-            }
+        if (obj.component === "schoolSelector") assignment.schoolSelectorId = submittedField.id;
+        if (obj.component === "completionDate") assignment.completionDateId = submittedField.id;
+        if (obj.component === "completionTime") assignment.completionTimeId = submittedField.id;
+
+        // Per-question assignment (legacy fields)
+        if (Array.isArray(obj.assignedToEmail)) {
+            submittedField.assignedToEmail = obj.assignedToEmail;
+        } else if (obj.assignedToEmail && typeof obj.assignedToEmail === 'string') {
+            submittedField.assignedToEmail = obj.assignedToEmail.replace(/; /g, ';').split(';');
+        }
+        if (obj.assignedToRole) submittedField.assignedToRole = obj.assignedToRole;
+        if (Array.isArray(obj.assignedToLocations)) {
+            submittedField.assignedToLocations = obj.assignedToLocations;
+        } else if (obj.assignedToLocations && typeof obj.assignedToLocations === 'string' && obj.assignedToLocations.trim() !== "") {
+            submittedField.assignedToLocations = obj.assignedToLocations.replace(/; /g, ';').split(';');
         } else {
-            questionNumberCounter++;
-            questionDisplayNumber = String(questionNumberCounter);
+            submittedField.assignedToLocations = [];
         }
 
-        const processedQ = {
-            id: finalQuestionId,
-            label: qData.label || "Untitled Question",
-            component: qData.component || "text",
-            options: optionsArray,
-            required: qData.required === true,
-            comment: qData.comment === true,
-            photoUpload: qData.photoUpload === true,
-            pageNumber: qData.pageNumber || 1,
-            order: qData.order !== undefined ? qData.order : index + 1,
-            questionNumber: questionDisplayNumber,
 
-            conditional: finalConditionalConfig,
-            deficiencyLabel: qData.deficiencyLabel,
-            deficiencyValues: Array.isArray(qData.deficiencyValues) ? qData.deficiencyValues : [],
-            aiDeficiencyCheck: qData.aiDeficiencyCheck === true,
+        if (obj.category) submittedField.category = obj.category;
+        submittedField.comment = obj.comment === true;
+        if (obj.subCategory) submittedField.subCategory = obj.subCategory;
+        if (obj.section) submittedField.section = obj.section;
+        if (obj.subSection) submittedField.subSection = obj.subSection;
+        if (obj.observationLocation) submittedField.observationLocation = obj.observationLocation;
+        submittedField.criticality = obj.criticality || "low";
+        
+        // Deficiency fields (from new editor)
+        if (obj.deficiencyLabel) submittedField.deficiencyLabel = obj.deficiencyLabel;
+        if (Array.isArray(obj.deficiencyValues)) submittedField.deficiencyValues = obj.deficiencyValues;
+        if (typeof obj.aiDeficiencyCheck === 'boolean') submittedField.aiDeficiencyCheck = obj.aiDeficiencyCheck;
+        
+        submittedField.required = obj.required === true;
+        if (obj.questionId) submittedField.originalQuestionId = obj.questionId; // Legacy "origQuestionId"
 
-            category: qData.category,
-            subCategory: qData.subCategory,
-            section: qData.section,
-            subSection: qData.subSection,
-            observationLocation: qData.observationLocation,
-            criticality: qData.criticality || "low",
-            originalQuestionId: qData.questionId, // Legacy obj.questionId
-            assignedTo: qData.assignedTo || {}, // For per-question assignment
-        };
+        // Options processing
+        const options = [];
+        let tempOptionArray = [];
+        if (Array.isArray(obj.options)) {
+            tempOptionArray = obj.options;
+        } else if (typeof obj.options === 'string') {
+            tempOptionArray = obj.options.split(';').map(opt => opt.trim()).filter(Boolean);
+        }
+        tempOptionArray.forEach(option => {
+            options.push({ component: "option", label: option, value: option });
+        });
+        submittedField.options = options;
 
-        if (processedQ.component === "schoolSelector") assignmentData.schoolSelectorId = finalQuestionId;
-        if (processedQ.component === "completionDate") assignmentData.completionDateId = finalQuestionId;
-        if (processedQ.component === "completionTime") assignmentData.completionTimeId = finalQuestionId;
+        // Conditional Logic and Question Numbering
+        if (obj.conditional && obj.conditional.field) {
+            const resolvedConditionalFieldId = questionIdResolutionMap.get(obj.conditional.field);
+            if (resolvedConditionalFieldId) {
+                submittedField.conditional = {
+                    field: resolvedConditionalFieldId,
+                    value: obj.conditional.value
+                };
 
-        processedQuestions.push(processedQ);
-    }
-    assignmentData.questions = processedQuestions;
+                let parentQuestionNumber = "0"; // Default if parent not found or not numbered yet
+                const parentQuestion = contentStateArr.find(q => q.id === resolvedConditionalFieldId) ||
+                                   assignment.questions.find(q => q.id === resolvedConditionalFieldId);
 
-    // ----- 4. Save Main Assignment Document -----
-    let newAssignmentRef;
+
+                if (parentQuestion) {
+                    parentQuestionNumber = parentQuestion.questionNumber;
+                } else {
+                     // Attempt to find in already processed questions in this loop run if not in contentStateArr
+                    const alreadyProcessedParent = assignment.questions.find(q => q.id === resolvedConditionalFieldId);
+                    if (alreadyProcessedParent) {
+                        parentQuestionNumber = alreadyProcessedParent.questionNumber;
+                    } else {
+                        functions.logger.warn(`Parent question ${resolvedConditionalFieldId} for conditional logic not found or not yet numbered for question ${submittedField.id}.`);
+                    }
+                }
+                
+                conditionalQCounter[resolvedConditionalFieldId] = (conditionalQCounter[resolvedConditionalFieldId] || 0) + 1;
+                const subIndex = conditionalQCounter[resolvedConditionalFieldId];
+                submittedField.questionNumber = `${parentQuestionNumber}${alphaString[subIndex] || subIndex}`; // e.g. 1a, 1b or 1.1, 1.2 if alphaString runs out
+            } else {
+                functions.logger.warn(`Could not resolve conditional field ID '${obj.conditional.field}' for question '${submittedField.id}'. Removing conditional.`);
+                delete submittedField.conditional;
+                questionNumberCount++;
+                submittedField.questionNumber = String(questionNumberCount);
+            }
+        } else {
+            questionNumberCount++;
+            submittedField.questionNumber = String(questionNumberCount);
+        }
+        
+        // Add to the main assignment's questions array
+        assignment.questions.push(submittedField);
+        // Also add to contentStateArr for the legacy firebaseHelper call
+        contentStateArr.push(submittedField); // This one uses `id` instead of `_uid`
+    });
+
+    // 4. Save to Firestore
+    let newAssignmentDocumentId = req.body.id; // If an ID is passed, assume it's for updating/setting with specific ID
+
     try {
-        newAssignmentRef = await db.collection("assignments").add(assignmentData);
-        functions.logger.info(`Assignment created with ID: ${newAssignmentRef.id} for account ${account}`, { name: assignmentData.assessmentName });
+        if (newAssignmentDocumentId && typeof newAssignmentDocumentId === 'string' && newAssignmentDocumentId.trim() !== "") {
+            // This logic is more for an "update" or "create with specific ID" scenario.
+            // For a pure "create new", .add() is usually preferred.
+            // The original code used this conditional .set() or .add().
+            await db.collection("assignments").doc(newAssignmentDocumentId).set(assignment);
+            functions.logger.info(`Assignment set with specified ID: ${newAssignmentDocumentId} for account ${account}`);
+        } else {
+            const docRef = await db.collection("assignments").add(assignment);
+            newAssignmentDocumentId = docRef.id;
+            functions.logger.info(`Assignment added with auto-generated ID: ${newAssignmentDocumentId} for account ${account}`);
+        }
+
+        // Call the legacy firebaseHelper if it's still needed
+        // Note: contentStateArr contains questions with `id` property, not `_uid` as per original code's `submittedField._uid`
+        // If firebaseHelper strictly expects `_uid`, contentStateArr items would need to be mapped.
+        await firebaseHelper.AssignmentQuestionsActions({
+            assignmentId: newAssignmentDocumentId,
+            content: contentStateArr, // This is an array of processed questions
+            action: "BATCH_UPDATE_OVERWRITE_ALL"
+        });
+
     } catch (error) {
-        functions.logger.error("Error saving main assignment document to Firestore:", error, { payload: assignmentData });
-        res.status(500).send({error: "Internal Server Error: Could not save assignment data."});
+        functions.logger.error("Error saving assignment to Firestore:", error, { payload: assignment });
+        res.status(500).send({ error: "Internal Server Error: Could not save assignment data." });
         return;
     }
 
-    // ----- 5. Assign to Users (Transaction Logic) -----
-    const shareWithData = assignmentData.shareWith;
-    const newAssignmentIdForUserRecords = newAssignmentRef.id;
+
+    // 5. Assign to Users (Transaction Logic) - adapted from original
+    const shareWithData = assignment.shareWith;
+    const finalAssignmentIdForUserRecords = newAssignmentDocumentId; // Use the actual doc ID
 
     if (shareWithData && (shareWithData.assignToUsers || shareWithData.assignToLocations || shareWithData.assignToTitles)) {
         try {
-            await db.runTransaction(async (transaction) => {
+            await db.runTransaction(async (t) => {
                 const userEmailsToUpdate = new Set();
 
                 if (Array.isArray(shareWithData.assignToUsers)) {
-                    shareWithData.assignToUsers.forEach((email) => {
+                    shareWithData.assignToUsers.forEach(email => {
                         if (typeof email === 'string' && email.trim()) userEmailsToUpdate.add(email.trim());
                     });
                 }
 
                 const locationsToQuery = [];
                 if (shareWithData.assignToLocations && typeof shareWithData.assignToLocations === 'object') {
-                     Object.entries(shareWithData.assignToLocations).forEach(([locKey, locValue]) => {
-                        if (locValue === true || (typeof locValue === 'object' && locValue.status === true)) {
+                    Object.keys(shareWithData.assignToLocations).forEach(locKey => {
+                        if (shareWithData.assignToLocations[locKey] === true || 
+                            (typeof shareWithData.assignToLocations[locKey] === 'object' && shareWithData.assignToLocations[locKey].status === true)) {
                             locationsToQuery.push(locKey);
                         }
                     });
                 }
-                
+
                 const titlesToQuery = [];
                 if (shareWithData.assignToTitles && typeof shareWithData.assignToTitles === 'object') {
-                   Object.entries(shareWithData.assignToTitles).forEach(([titleKey, titleValue]) => {
-                       if (titleValue === true) titlesToQuery.push(titleKey);
-                   });
-                } else if (Array.isArray(shareWithData.assignToTitles)) { // Legacy array of strings
-                    shareWithData.assignToTitles.forEach((title) => {
-                       if (typeof title === 'string') titlesToQuery.push(title);
+                    Object.keys(shareWithData.assignToTitles).forEach(titleKey => {
+                        if (shareWithData.assignToTitles[titleKey] === true) titlesToQuery.push(titleKey);
+                    });
+                } else if (Array.isArray(shareWithData.assignToTitles)) { // Legacy
+                    shareWithData.assignToTitles.forEach(title => {
+                        if (typeof title === 'string') titlesToQuery.push(title);
                     });
                 }
 
+                const CHUNK_SIZE = 30; // Firestore 'in' query limit
+
                 if (locationsToQuery.length > 0) {
-                    const CHUNK_SIZE = 30;
                     for (let i = 0; i < locationsToQuery.length; i += CHUNK_SIZE) {
                         const chunk = locationsToQuery.slice(i, i + CHUNK_SIZE);
                         const usersByLocQuery = db.collection("users")
                             .where("account", "==", account)
                             .where("locationName", "in", chunk);
-                        const usersByLocSnap = await transaction.get(usersByLocQuery);
+                        const usersByLocSnap = await t.get(usersByLocQuery);
                         usersByLocSnap.forEach(doc => {
                             const userData = doc.data();
                             if (userData && userData.email && typeof userData.email === 'string') {
@@ -236,13 +322,12 @@ const createAssignmentHandler = async (req, res) => {
                         });
                     }
                 } else if (titlesToQuery.length > 0) { // Only titles specified, no locations
-                    const CHUNK_SIZE = 30;
                     for (let i = 0; i < titlesToQuery.length; i += CHUNK_SIZE) {
                         const chunk = titlesToQuery.slice(i, i + CHUNK_SIZE);
                         const usersByTitleQuery = db.collection("users")
                             .where("account", "==", account)
                             .where("title", "in", chunk);
-                        const usersByTitleSnap = await transaction.get(usersByTitleQuery);
+                        const usersByTitleSnap = await t.get(usersByTitleQuery);
                         usersByTitleSnap.forEach(doc => {
                             const userData = doc.data();
                             if (userData && userData.email && typeof userData.email === 'string') {
@@ -253,28 +338,30 @@ const createAssignmentHandler = async (req, res) => {
                 }
                 
                 if (userEmailsToUpdate.size > 0) {
-                    functions.logger.info(`Assigning assignment ${newAssignmentIdForUserRecords} to users:`, Array.from(userEmailsToUpdate));
+                    functions.logger.info(`Assigning assignment ${finalAssignmentIdForUserRecords} to users:`, Array.from(userEmailsToUpdate));
                 }
                 userEmailsToUpdate.forEach(email => {
                     const userDocRef = db.collection("users").doc(email);
-                    transaction.update(userDocRef, {
+                    t.update(userDocRef, {
                         assignedToMe: FieldValue.arrayUnion({
-                            assignmentId: newAssignmentIdForUserRecords,
-                            assessmentName: assignmentData.assessmentName,
-                            dueDate: assignmentData.dueDate,
+                            assignmentId: finalAssignmentIdForUserRecords, // Use the actual Firestore ID
+                            assessmentName: assignment.assessmentName,
+                            dueDate: assignment.dueDate,
                             status: "Pending"
                         })
                     });
                 });
-            }); // End transaction
-            functions.logger.info(`Successfully processed user assignments for assignment ID: ${newAssignmentIdForUserRecords} in account ${account}.`);
+            });
+            functions.logger.info(`Successfully processed user assignments for assignment ID: ${finalAssignmentIdForUserRecords} in account ${account}.`);
         } catch (transactionError) {
-            functions.logger.error(`User assignment transaction failure for assignment ${newAssignmentIdForUserRecords} in account ${account}:`, transactionError);
+            functions.logger.error(`User assignment transaction failure for assignment ${finalAssignmentIdForUserRecords}:`, transactionError);
         }
     }
 
-    // ----- 6. Send Response -----
-    res.status(201).send({ id: newAssignmentRef.id, ...assignmentData });
+    // 6. Send Response
+    // The original code sent back the `assignment` object which didn't include the final ID if it was auto-generated.
+    // Sending back an object that includes the definitive ID.
+    res.status(201).send({ id: newAssignmentDocumentId, ...assignment });
 };
 
 // If this is the only function in the file, you might export it directly
@@ -288,7 +375,5 @@ const createAssignmentHandler = async (req, res) => {
 // For the purpose of this example, I'll assume it's directly callable as createAssignmentHandler
 // And you would integrate it into your Firebase Functions export structure.
 module.exports = { createAssignmentHandler };
-
-    
 
     
