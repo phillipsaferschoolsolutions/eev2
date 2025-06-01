@@ -44,13 +44,12 @@ const AccountSwitcher: React.FC = () => {
       setIsLoadingDistricts(true);
       getDistrictsForSuperAdmin(userProfile.account)
         .then(fetchedDistricts => {
-          // Ensure fetchedDistricts is an array, default to empty if not
           setDistricts(Array.isArray(fetchedDistricts) ? fetchedDistricts : []);
         })
         .catch(err => {
           console.error("Failed to fetch districts:", err);
           toast({ variant: "destructive", title: "Error Loading Districts", description: "Could not load districts for account switching. " + (err.message || '') });
-          setDistricts([]); // Set to empty array on error
+          setDistricts([]); 
         })
         .finally(() => setIsLoadingDistricts(false));
     } else if (isSuperAdmin && !userProfile?.account) {
@@ -65,22 +64,27 @@ const AccountSwitcher: React.FC = () => {
 
   const handleAccountSwitch = async (selectedDistrictId: string) => {
     if (!userProfile || !userProfile.account || !selectedDistrictId ) {
+      toast({ variant: "destructive", title: "Switch Error", description: "User profile or selection missing." });
       return;
     }
 
     const selectedDistrictObject = districts.find(d => d.id === selectedDistrictId);
-    if (!selectedDistrictObject || selectedDistrictObject.accountName === userProfile.account) {
-        // If district not found or already selected, do nothing
+    if (!selectedDistrictObject) {
+        toast({ variant: "destructive", title: "Switch Error", description: "Selected district could not be found." });
         return;
     }
     
-    const newAccountName = selectedDistrictObject.accountName;
+    if (selectedDistrictObject.accountName === userProfile.account) {
+        return; // Already selected this account
+    }
 
     setIsSwitchingAccount(true);
     try {
-      await switchUserAccount(newAccountName, userProfile.account); 
-      updateCurrentAccountInProfile(newAccountName); 
-      toast({ title: "Account Switched", description: `Successfully switched to ${newAccountName}. Reloading...` });
+      // Pass the selectedDistrictId to the service, it expects the ID for the payload
+      await switchUserAccount(selectedDistrictId, userProfile.account); 
+      // Update the local context with the account NAME for display and other frontend purposes
+      updateCurrentAccountInProfile(selectedDistrictObject.accountName); 
+      toast({ title: "Account Switched", description: `Successfully switched to ${selectedDistrictObject.accountName}. Reloading...` });
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -93,8 +97,8 @@ const AccountSwitcher: React.FC = () => {
 
   if (!isSuperAdmin) return null;
 
-  // Determine the ID of the currently active account for the DropdownMenuRadioGroup's value
-  const currentSelectedValue = districts.find(d => d.accountName === userProfile?.account)?.id || "";
+  const currentActiveDistrict = districts.find(d => d.accountName === userProfile?.account);
+  const currentSelectedValue = currentActiveDistrict ? currentActiveDistrict.id : "";
 
   return (
     <DropdownMenuGroup>
@@ -117,11 +121,11 @@ const AccountSwitcher: React.FC = () => {
           {districts.map((district) => (
             <DropdownMenuRadioItem 
               key={district.id} 
-              value={district.id} // Value for selection logic is the district ID
+              value={district.id} 
               className="cursor-pointer"
               disabled={isSwitchingAccount || district.accountName === userProfile?.account}
             >
-              {district.id} {/* Display district.id as per user request */}
+              {district.id} {/* Display district.id */}
               {district.accountName === userProfile?.account && <Check className="ml-auto h-4 w-4" />}
             </DropdownMenuRadioItem>
           ))}
@@ -130,6 +134,7 @@ const AccountSwitcher: React.FC = () => {
          <DropdownMenuItem disabled>No other accounts available.</DropdownMenuItem>
       )}
       {isSwitchingAccount && <DropdownMenuItem disabled>Switching...</DropdownMenuItem>}
+       <DropdownMenuSeparator />
     </DropdownMenuGroup>
   );
 };
@@ -223,7 +228,7 @@ export function AppHeader() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {isSuperAdmin && <AccountSwitcher />} 
-                {isSuperAdmin && <DropdownMenuSeparator />} 
+                {/* Removed the extra separator here if AccountSwitcher adds its own */}
                 <DropdownMenuItem asChild><Link href="/settings">Profile</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />

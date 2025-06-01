@@ -37,11 +37,8 @@ async function authedFetch<T>(
     headers.set('Authorization', `Bearer ${token}`);
   } else {
     console.warn(`authedFetch (adminActions): No token available for endpoint: ${fullUrl}`);
-    // Depending on backend, some admin actions might not require a token if they are public,
-    // but switching accounts certainly would.
   }
 
-  // If the specific admin action needs the current account context in a header
   const trimmedAccountName = currentAccountName?.trim();
   if (trimmedAccountName) {
     headers.set('account', trimmedAccountName);
@@ -121,31 +118,31 @@ export async function getDistrictsForSuperAdmin(currentAccountName: string): Pro
 }
 
 interface SwitchAccountPayload {
-  account: string; // The name of the new account/district to switch to
+  account: string; // The ID of the new account/district to switch to
 }
 
 interface SwitchAccountResponse {
   message: string;
-  // Potentially new user profile data or just a success status
   updatedProfile?: Partial<UserProfile>; 
 }
 
 /**
  * Sends a request to the backend to switch the user's active account.
- * @param newAccountName The name of the district/account to switch to.
+ * @param newAccountId The ID of the district/account to switch to. This ID will be sent in the payload.
  * @param currentAccountName The user's current account (passed in the 'account' header for context/auth)
  */
-export async function switchUserAccount(newAccountName: string, currentAccountName: string): Promise<SwitchAccountResponse> {
-  if (!newAccountName || newAccountName.trim() === "") {
-    throw new Error('New account name is required to switch accounts.');
+export async function switchUserAccount(newAccountId: string, currentAccountName: string): Promise<SwitchAccountResponse> {
+  if (!newAccountId || newAccountId.trim() === "") {
+    throw new Error('New account ID is required to switch accounts.');
   }
   if (!currentAccountName || currentAccountName.trim() === "") {
     throw new Error('Current account name is required for the switchUserAccount request header.');
   }
-  const payload: SwitchAccountPayload = { account: newAccountName };
+  const payload: SwitchAccountPayload = { account: newAccountId };
 
   return authedFetch<SwitchAccountResponse>(`${ADMIN_ACTIONS_BASE_URL}/switchAccount`, {
     method: 'POST',
     body: JSON.stringify(payload),
-  }, currentAccountName); // Pass currentAccountName to be used in the 'account' header
+  }, currentAccountName);
 }
+
