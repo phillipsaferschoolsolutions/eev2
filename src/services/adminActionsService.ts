@@ -5,6 +5,7 @@
 import { auth } from '@/lib/firebase';
 import type { User } from 'firebase/auth';
 import type { District } from '@/types/Admin';
+import type { UserProfile } from '@/types/User';
 
 // IMPORTANT: Replace this with the actual base URL for your admin actions Cloud Functions
 const ADMIN_ACTIONS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/adminActions';
@@ -44,6 +45,8 @@ async function authedFetch<T>(
   const trimmedAccountName = currentAccountName?.trim();
   if (trimmedAccountName) {
     headers.set('account', trimmedAccountName);
+  } else {
+    console.warn(`authedFetch (adminActions): 'account' header NOT SET for URL: ${fullUrl} because currentAccountName was:`, currentAccountName);
   }
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
@@ -107,11 +110,13 @@ async function authedFetch<T>(
 
 /**
  * Fetches the list of districts/accounts available for a superAdmin.
+ * @param currentAccountName The superAdmin's currently active account name, passed in the 'account' header.
  */
-export async function getDistrictsForSuperAdmin(): Promise<District[]> {
-  // This endpoint might or might not need the 'account' header depending on backend logic.
-  // Assuming for now it only needs Authorization.
-  const result = await authedFetch<District[] | undefined>(`${ADMIN_ACTIONS_BASE_URL}/districts`);
+export async function getDistrictsForSuperAdmin(currentAccountName: string): Promise<District[]> {
+  if (!currentAccountName || currentAccountName.trim() === "") {
+    throw new Error("Current account name is required to fetch districts for superAdmin.");
+  }
+  const result = await authedFetch<District[] | undefined>(`${ADMIN_ACTIONS_BASE_URL}/districts`, {}, currentAccountName);
   return result || [];
 }
 
@@ -128,17 +133,19 @@ interface SwitchAccountResponse {
 /**
  * Sends a request to the backend to switch the user's active account.
  * @param newAccountName The name of the district/account to switch to.
- * @param currentAccountName The user's current account (might be needed by backend for context or logging)
+ * @param currentAccountName The user's current account (passed in the 'account' header for context/auth)
  */
-export async function switchUserAccount(newAccountName: string, currentAccountName?: string): Promise<SwitchAccountResponse> {
-  if (!newAccountName) {
+export async function switchUserAccount(newAccountName: string, currentAccountName: string): Promise<SwitchAccountResponse> {
+  if (!newAccountName || newAccountName.trim() === "") {
     throw new Error('New account name is required to switch accounts.');
   }
+  if (!currentAccountName || currentAccountName.trim() === "") {
+    throw new Error('Current account name is required for the switchUserAccount request header.');
+  }
   const payload: SwitchAccountPayload = { account: newAccountName };
-  // The endpoint for switching account context is assumed to be '/switchAccount'
-  // The 'currentAccountName' is passed to authedFetch to be included in headers if the backend needs it.
+
   return authedFetch<SwitchAccountResponse>(`${ADMIN_ACTIONS_BASE_URL}/switchAccount`, {
     method: 'POST',
     body: JSON.stringify(payload),
-  }, currentAccountName);
+  }, currentAccountName); // Pass currentAccountName to be used in the 'account' header
 }

@@ -12,10 +12,10 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuGroup,
-  DropdownMenuTrigger, // Added DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check } from "lucide-react"; // Removed ChevronsUpDown as it's not used
+import { Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -40,25 +40,30 @@ const AccountSwitcher: React.FC = () => {
   const isSuperAdmin = userProfile?.permission === 'superAdmin' || customClaims?.superAdmin === true;
 
   useEffect(() => {
-    if (isSuperAdmin) {
+    if (isSuperAdmin && userProfile?.account) { // Ensure userProfile.account is available
       setIsLoadingDistricts(true);
-      getDistrictsForSuperAdmin()
+      getDistrictsForSuperAdmin(userProfile.account) // Pass current account
         .then(setDistricts)
         .catch(err => {
           console.error("Failed to fetch districts:", err);
-          toast({ variant: "destructive", title: "Error", description: "Could not load districts for account switching." });
+          toast({ variant: "destructive", title: "Error Loading Districts", description: "Could not load districts for account switching. " + (err.message || '') });
         })
         .finally(() => setIsLoadingDistricts(false));
+    } else if (isSuperAdmin && !userProfile?.account) {
+        console.warn("SuperAdmin detected, but userProfile.account is not yet available for fetching districts.");
+        setIsLoadingDistricts(false); // Avoid infinite loading
+        toast({ variant: "destructive", title: "Account Info Missing", description: "Cannot load districts without current account context." });
     }
-  }, [isSuperAdmin, toast]);
+  }, [isSuperAdmin, userProfile?.account, toast]);
 
   const handleAccountSwitch = async (newAccountName: string) => {
-    if (!userProfile || !newAccountName || newAccountName === userProfile.account) {
+    if (!userProfile || !userProfile.account || !newAccountName || newAccountName === userProfile.account) {
       return;
     }
     setIsSwitchingAccount(true);
     try {
-      await switchUserAccount(newAccountName, userProfile.account);
+      // Pass current account to switchUserAccount for the header
+      await switchUserAccount(newAccountName, userProfile.account); 
       updateCurrentAccountInProfile(newAccountName); 
       toast({ title: "Account Switched", description: `Successfully switched to ${newAccountName}. Reloading...` });
       setTimeout(() => {
