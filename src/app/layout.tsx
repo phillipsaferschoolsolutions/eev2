@@ -45,6 +45,20 @@ const THEME_IDS = [
   'emerald-forest-dark',
   'cyber-city-light',
   'cyber-city-dark',
+  'arctic-horizon-light',
+  'arctic-horizon-dark',
+  'volcanic-glow-light',
+  'volcanic-glow-dark',
+  'coral-reef-light',
+  'coral-reef-dark',
+  'retro-funk-light',
+  'retro-funk-dark',
+  'urban-jungle-light',
+  'urban-jungle-dark',
+  'vintage-paper-light',
+  'vintage-paper-dark',
+  'digital-dreams-light',
+  'digital-dreams-dark',
 ];
 
 export default function RootLayout({
@@ -97,3 +111,4 @@ export default function RootLayout({
     </html>
   );
 }
+
