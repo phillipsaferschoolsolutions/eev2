@@ -10,9 +10,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sun, Moon, Bell, LogIn, LogOut as LogOutIcon } from "lucide-react";
+import { Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, ChevronsUpDown, Check } from "lucide-react"; // Added Building, ChevronsUpDown, Check
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -22,15 +25,104 @@ import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { getDistrictsForSuperAdmin, switchUserAccount } from "@/services/adminActionsService";
+import type { District } from "@/types/Admin";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const AccountSwitcher: React.FC = () => {
+  const { userProfile, updateCurrentAccountInProfile, customClaims } = useAuth();
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [isLoadingDistricts, setIsLoadingDistricts] = useState(true);
+  const [isSwitchingAccount, setIsSwitchingAccount] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const isSuperAdmin = userProfile?.permission === 'superAdmin' || customClaims?.superAdmin === true;
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      setIsLoadingDistricts(true);
+      getDistrictsForSuperAdmin()
+        .then(setDistricts)
+        .catch(err => {
+          console.error("Failed to fetch districts:", err);
+          toast({ variant: "destructive", title: "Error", description: "Could not load districts for account switching." });
+        })
+        .finally(() => setIsLoadingDistricts(false));
+    }
+  }, [isSuperAdmin, toast]);
+
+  const handleAccountSwitch = async (newAccountName: string) => {
+    if (!userProfile || !newAccountName || newAccountName === userProfile.account) {
+      return;
+    }
+    setIsSwitchingAccount(true);
+    try {
+      // The backend needs to know which user is making the request (via ID token)
+      // and what their current account context is, if it's relevant for the switch logic.
+      await switchUserAccount(newAccountName, userProfile.account);
+      updateCurrentAccountInProfile(newAccountName); // Update local context
+      toast({ title: "Account Switched", description: `Successfully switched to ${newAccountName}. Reloading...` });
+      // Reload the page to apply the new account context everywhere
+      // Timeout to allow toast to be seen
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Account Switch Failed", description: err.message || "Could not switch accounts." });
+    } finally {
+      setIsSwitchingAccount(false);
+    }
+  };
+
+  if (!isSuperAdmin) return null;
+
+  return (
+    <DropdownMenuGroup>
+      <DropdownMenuLabel className="flex items-center gap-2">
+        <Building className="h-4 w-4" />
+        Switch Account
+      </DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      {isLoadingDistricts ? (
+        <div className="px-2 py-1.5">
+          <Skeleton className="h-6 w-full" />
+        </div>
+      ) : (
+        <DropdownMenuRadioGroup 
+          value={userProfile?.account || ""} 
+          onValueChange={handleAccountSwitch}
+          disabled={isSwitchingAccount}
+        >
+          {districts.map((district) => (
+            <DropdownMenuRadioItem 
+              key={district.id || district.name} 
+              value={district.name}
+              className="cursor-pointer"
+              disabled={isSwitchingAccount || district.name === userProfile?.account}
+            >
+              {district.name}
+              {district.name === userProfile?.account && <Check className="ml-auto h-4 w-4" />}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      )}
+      {isSwitchingAccount && <DropdownMenuItem disabled>Switching...</DropdownMenuItem>}
+    </DropdownMenuGroup>
+  );
+};
+
 
 export function AppHeader() {
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const { user, loading: authLoading } = useAuth();
+  const { user, userProfile, customClaims, loading: authLoading } = useAuth(); // Added userProfile and customClaims
   const router = useRouter();
   const { toast } = useToast();
 
   const isDark = mounted && resolvedTheme === "dark";
+  const isSuperAdmin = !authLoading && (userProfile?.permission === 'superAdmin' || customClaims?.superAdmin === true);
+
 
   useEffect(() => {
     setMounted(true);
@@ -50,7 +142,11 @@ export function AppHeader() {
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 px-6 backdrop-blur-sm">
       <SidebarTrigger className="md:hidden" />
       <div className="flex-1">
-        {/* Can add breadcrumbs or page title here */}
+        {isSuperAdmin && userProfile?.account && (
+            <div className="text-sm text-muted-foreground">
+                Current Account: <span className="font-semibold text-primary">{userProfile.account}</span>
+            </div>
+        )}
       </div>
       <div className="flex items-center gap-4">
         <Button
@@ -63,8 +159,6 @@ export function AppHeader() {
             }
           }}
         >
-          {/* Static placeholder for SSR and initial client render. Theme is assumed light here. */}
-          {/* After mount, isDark updates and classes change accordingly. */}
           <Sun
             className={cn(
               "h-5 w-5 transition-all",
@@ -94,15 +188,20 @@ export function AppHeader() {
                 ) : (
                   <AvatarImage src="https://placehold.co/40x40.png" alt="Guest Avatar" data-ai-hint="guest avatar" />
                 )}
-                <AvatarFallback>{user ? (user.email?.[0]?.toUpperCase() || 'U') : 'G'}</AvatarFallback>
+                <AvatarFallback>{user ? (userProfile?.displayName?.[0] || user.email?.[0]?.toUpperCase() || 'U') : 'G'}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-64"> {/* Increased width for account switcher */}
             {user ? (
               <>
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuLabel>
+                  <div>{userProfile?.displayName || user.email}</div>
+                  {userProfile?.account && !isSuperAdmin && <div className="text-xs text-muted-foreground font-normal">Account: {userProfile.account}</div>}
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {isSuperAdmin && <AccountSwitcher />} 
+                {isSuperAdmin && <DropdownMenuSeparator />} 
                 <DropdownMenuItem asChild><Link href="/settings">Profile</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />
