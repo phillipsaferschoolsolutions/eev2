@@ -1,10 +1,126 @@
 
+"use client";
+
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, CalendarDays, CloudSun, Newspaper, ShieldAlert, ListChecks, Edit3, FileText } from "lucide-react";
+import { AlertTriangle, CalendarDays, CloudSun, Newspaper, ShieldAlert, ListChecks, Edit3, FileText, ExternalLink, Info } from "lucide-react";
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/auth-context";
+import { getWeatherAndLocation, type WeatherLocationData } from "@/services/assignmentFunctionsService";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface NewsItem {
+  title: string;
+  link: string;
+  pubDate: string;
+  content: string; // Raw content which might include HTML
+  description: string; // Usually a shorter summary, might also have HTML
+  guid: string;
+  thumbnail?: string;
+}
+
+interface RssResponse {
+  status: string;
+  feed: object;
+  items: NewsItem[];
+}
+
+const GOOGLE_NEWS_RSS_URL = "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
+const RSS2JSON_API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(GOOGLE_NEWS_RSS_URL)}`;
+
+
+// Function to sanitize HTML from strings
+const sanitizeHTML = (htmlString: string): string => {
+  if (typeof document !== 'undefined') {
+    const doc = new DOMParser().parseFromString(htmlString, 'text/html');
+    return doc.body.textContent || "";
+  }
+  // Fallback for server-side or environments without DOMParser
+  return htmlString.replace(/<[^>]+>/g, '');
+};
+
 
 export default function DashboardPage() {
+  const { userProfile } = useAuth();
+  const [weatherData, setWeatherData] = useState<WeatherLocationData | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
+  const [newsLoading, setNewsLoading] = useState(true);
+  const [newsError, setNewsError] = useState<string | null>(null);
+  const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItem | null>(null);
+
+  useEffect(() => {
+    // Fetch Weather
+    const fetchWeather = () => {
+      if (!navigator.geolocation) {
+        setWeatherError("Geolocation is not supported by your browser.");
+        setWeatherLoading(false);
+        return;
+      }
+
+      setWeatherLoading(true);
+      setWeatherError(null);
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            if (userProfile?.account) {
+              const data = await getWeatherAndLocation(
+                position.coords.latitude,
+                position.coords.longitude,
+                userProfile.account
+              );
+              setWeatherData(data);
+            } else {
+              setWeatherError("User account information not available for weather.");
+            }
+          } catch (err) {
+            setWeatherError(err instanceof Error ? err.message : "Failed to fetch weather data.");
+          } finally {
+            setWeatherLoading(false);
+          }
+        },
+        (error) => {
+          setWeatherError(`Geolocation error: ${error.message}. Please enable location services.`);
+          setWeatherLoading(false);
+        }
+      );
+    };
+
+    // Fetch News
+    const fetchNews = async () => {
+      setNewsLoading(true);
+      setNewsError(null);
+      try {
+        const response = await fetch(RSS2JSON_API_URL);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch news: ${response.statusText}`);
+        }
+        const data: RssResponse = await response.json();
+        if (data.status === "ok") {
+          setNewsItems(data.items.slice(0, 5)); // Limit to 5 news items
+        } else {
+          throw new Error("News feed API returned an error.");
+        }
+      } catch (err) {
+        setNewsError(err instanceof Error ? err.message : "Failed to fetch news.");
+      } finally {
+        setNewsLoading(false);
+      }
+    };
+
+    fetchWeather();
+    fetchNews();
+
+  }, [userProfile?.account]);
+
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -99,27 +215,94 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="grid gap-6 md:grid-cols-2">
             <div>
-              <h3 className="font-semibold mb-2">Weather: Anytown, USA</h3>
-              <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
-                <CloudSun className="h-12 w-12 text-primary" />
-                <div>
-                  <p className="text-2xl font-bold">72°F, Sunny</p>
-                  <p className="text-sm text-muted-foreground">Wind: 5mph W, Humidity: 45%</p>
+              <h3 className="font-semibold mb-2">Weather: {weatherData?.name || "Loading..."}</h3>
+              {weatherLoading ? (
+                <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div>
+                        <Skeleton className="h-7 w-32 mb-1" />
+                        <Skeleton className="h-4 w-48" />
+                    </div>
                 </div>
-              </div>
+              ) : weatherError ? (
+                <Alert variant="destructive">
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>Weather Error</AlertTitle>
+                  <AlertDescription>{weatherError}</AlertDescription>
+                </Alert>
+              ) : weatherData ? (
+                <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
+                  <CloudSun className="h-12 w-12 text-primary" /> {/* Consider dynamic icon based on weatherData.weather[0].icon */}
+                  <div>
+                    <p className="text-2xl font-bold">{Math.round(weatherData.current?.temp)}°F, {weatherData.current?.weather?.[0]?.description}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Wind: {Math.round(weatherData.current?.wind_speed)}mph, Humidity: {weatherData.current?.humidity}%
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Weather data not available.</p>
+              )}
             </div>
             <div>
-                <h3 className="font-semibold mb-2">Campus News Highlights</h3>
-                <ul className="space-y-2 text-sm">
-                    <li className="hover:bg-muted/50 p-2 rounded-md transition-colors"><a href="#" className="text-primary hover:underline">New library wing opening next month.</a></li>
-                    <li className="hover:bg-muted/50 p-2 rounded-md transition-colors"><a href="#" className="text-primary hover:underline">Upcoming fundraiser for sports facilities.</a></li>
-                    <li className="hover:bg-muted/50 p-2 rounded-md transition-colors"><a href="#" className="text-primary hover:underline">Student council election results.</a></li>
-                </ul>
-                <Button variant="link" className="mt-2 px-0">View all news (Google Newsfeed)</Button>
+                <h3 className="font-semibold mb-2">Campus Safety News</h3>
+                {newsLoading ? (
+                    <div className="space-y-2">
+                        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+                    </div>
+                ) : newsError ? (
+                     <Alert variant="destructive">
+                        <Info className="h-4 w-4" />
+                        <AlertTitle>News Error</AlertTitle>
+                        <AlertDescription>{newsError}</AlertDescription>
+                    </Alert>
+                ) : newsItems.length > 0 ? (
+                    <ScrollArea className="h-[200px] pr-3">
+                        <ul className="space-y-2 text-sm">
+                            {newsItems.map((item) => (
+                                <li key={item.guid} className="hover:bg-muted/50 p-2 rounded-md transition-colors">
+                                    <Dialog>
+                                        <DialogTrigger asChild>
+                                            <button className="text-left w-full">
+                                                <span className="font-medium text-primary hover:underline block truncate">{item.title}</span>
+                                                <span className="text-xs text-muted-foreground">{new Date(item.pubDate).toLocaleDateString()}</span>
+                                            </button>
+                                        </DialogTrigger>
+                                        <DialogContent className="sm:max-w-[625px]">
+                                            <DialogHeader>
+                                                <DialogTitle>{item.title}</DialogTitle>
+                                                <DialogDescription>
+                                                    Published: {new Date(item.pubDate).toLocaleString()}
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <ScrollArea className="max-h-[50vh] pr-4">
+                                                <div className="text-sm text-muted-foreground py-4 whitespace-pre-wrap break-words"
+                                                     dangerouslySetInnerHTML={{ __html: sanitizeHTML(item.content || item.description || "No content available.") }} />
+                                            </ScrollArea>
+                                            <DialogFooter>
+                                                <Button variant="outline" asChild>
+                                                    <a href={item.link} target="_blank" rel="noopener noreferrer">
+                                                        Read Full Article <ExternalLink className="ml-2 h-4 w-4" />
+                                                    </a>
+                                                </Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+                                </li>
+                            ))}
+                        </ul>
+                    </ScrollArea>
+                ) : (
+                    <p className="text-sm text-muted-foreground">No news articles found.</p>
+                )}
+                <Button variant="link" className="mt-2 px-0" asChild>
+                    <a href="https://news.google.com/search?q=K-12%20school%20security%20OR%20school%20cybersecurity&hl=en-US&gl=US&ceid=US%3Aen" target="_blank" rel="noopener noreferrer">
+                        View all on Google News <ExternalLink className="ml-1 h-3 w-3" />
+                    </a>
+                </Button>
             </div>
           </CardContent>
         </Card>
       </div>
     </div>
   );
-}
