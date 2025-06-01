@@ -13,9 +13,9 @@ import { signOut } from "firebase/auth";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuRadioGroup, DropdownMenuRadioItem,
-  DropdownMenuGroup, DropdownMenuTrigger
+  DropdownMenuGroup
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,13 +26,13 @@ import { getDistrictsForSuperAdmin, switchUserAccount } from "@/services/adminAc
 import type { District } from "@/types/Admin";
 import { 
   Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check, Menu,
-  LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon
+  LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon, Settings
 } from "lucide-react";
 
 
-// Icon mapping (consistent with sidebar)
+// Icon mapping (consistent with PageShell for navItems)
 const iconMap: { [key: string]: React.ElementType } = {
-  LayoutDashboard, Map: MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare: MessageSquareIcon,
+  LayoutDashboard, Map: MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare: MessageSquareIcon, Settings,
   Default: LayoutDashboard,
 };
 
@@ -54,7 +54,7 @@ const AccountSwitcher: React.FC = () => {
   useEffect(() => {
     if (isSuperAdmin && userProfile?.account) {
       setIsLoadingDistricts(true);
-      getDistrictsForSuperAdmin(userProfile.account)
+      getDistrictsForSuperAdmin(userProfile.account) // Pass current account for header
         .then(fetchedDistricts => {
           setDistricts(Array.isArray(fetchedDistricts) ? fetchedDistricts : []);
         })
@@ -79,12 +79,14 @@ const AccountSwitcher: React.FC = () => {
         toast({ variant: "destructive", title: "Switch Error", description: "No district ID selected." });
         return;
     }
-    if (selectedDistrictId === userProfile.account) return; // Already selected this account (ID)
+    if (selectedDistrictId === userProfile.account) return; // Already selected this account
 
     setIsSwitchingAccount(true);
     try {
-      await switchUserAccount(selectedDistrictId, userProfile.account); // Send ID to backend
-      updateCurrentAccountInProfile(selectedDistrictId); // Update context with ID
+      // The backend expects the ID in the payload's 'account' field.
+      // The second argument to switchUserAccount is the current account for the header.
+      await switchUserAccount(selectedDistrictId, userProfile.account); 
+      updateCurrentAccountInProfile(selectedDistrictId); // Update context with the ID
       toast({ title: "Account Switched", description: `Successfully switched to account ID: ${selectedDistrictId}. Reloading...` });
       setTimeout(() => window.location.reload(), 1500);
     } catch (err: any) {
@@ -109,8 +111,13 @@ const AccountSwitcher: React.FC = () => {
       ) : districts.length > 0 ? (
         <DropdownMenuRadioGroup value={currentSelectedValue} onValueChange={handleAccountSwitch} disabled={isSwitchingAccount}>
           {districts.map((district) => (
-            <DropdownMenuRadioItem key={district.id} value={district.id} className="cursor-pointer" disabled={isSwitchingAccount || district.id === userProfile?.account}>
-              {district.id}
+            <DropdownMenuRadioItem 
+              key={district.id} 
+              value={district.id} 
+              className="cursor-pointer" 
+              disabled={isSwitchingAccount || district.id === userProfile?.account}
+            >
+              {district.id} {/* Display district ID */}
               {district.id === userProfile?.account && <Check className="ml-auto h-4 w-4" />}
             </DropdownMenuRadioItem>
           ))}
@@ -169,7 +176,7 @@ export function AppHeader({ navItems }: AppHeaderProps) {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 px-4 sm:px-6 backdrop-blur-sm">
-      {/* Mobile Sidebar Trigger: Always show for mobile, regardless of layout mode */}
+      {/* Mobile Sidebar Trigger: Always show for mobile, toggle sheet */}
       {isMobileViewForLayout && (
          <Button variant="ghost" size="icon" onClick={toggleMobileSidebar} aria-label="Open menu">
            <Menu className="h-5 w-5" />
@@ -204,7 +211,7 @@ export function AppHeader({ navItems }: AppHeaderProps) {
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64 max-h-[var(--dropdown-max-h,70vh)] overflow-y-auto">
+          <DropdownMenuContent align="end" className="w-64 max-h-[70vh] overflow-y-auto">
             {user ? (
               <>
                 <DropdownMenuLabel>
@@ -213,7 +220,7 @@ export function AppHeader({ navItems }: AppHeaderProps) {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {isSuperAdmin && <AccountSwitcher />}
-                <DropdownMenuItem asChild><Link href="/settings">Profile & Settings</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/settings" className="flex items-center w-full"><Settings className="mr-2 h-4 w-4" />Profile & Settings</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                   <LogOutIcon className="mr-2 h-4 w-4" /> Log out

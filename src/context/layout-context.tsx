@@ -21,22 +21,27 @@ export const LayoutProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isMobileViewForLayout, setIsMobileViewForLayout] = useState(false);
 
   useEffect(() => {
-    const storedLayout = localStorage.getItem('appLayoutMode') as LayoutMode | null;
-    if (storedLayout && ["standard", "topNav", "minimalIcon"].includes(storedLayout)) {
-      setLayoutModeState(storedLayout);
-    }
+    // Check localStorage only on the client-side
+    if (typeof window !== 'undefined') {
+      const storedLayout = localStorage.getItem('appLayoutMode') as LayoutMode | null;
+      if (storedLayout && ["standard", "topNav", "minimalIcon"].includes(storedLayout)) {
+        setLayoutModeState(storedLayout);
+      }
 
-    const checkMobile = () => {
-      setIsMobileViewForLayout(window.innerWidth < MOBILE_BREAKPOINT_FOR_LAYOUT);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+      const checkMobile = () => {
+        setIsMobileViewForLayout(window.innerWidth < MOBILE_BREAKPOINT_FOR_LAYOUT);
+      };
+      checkMobile(); // Initial check
+      window.addEventListener('resize', checkMobile);
+      return () => window.removeEventListener('resize', checkMobile);
+    }
   }, []);
 
   const setLayoutMode = useCallback((mode: LayoutMode) => {
     setLayoutModeState(mode);
-    localStorage.setItem('appLayoutMode', mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('appLayoutMode', mode);
+    }
   }, []);
 
   return (

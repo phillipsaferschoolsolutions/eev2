@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from 'react'; // Ensured React is imported
+import React from 'react';
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
 import { SidebarInset, useSidebar } from "@/components/ui/sidebar";
@@ -33,11 +33,12 @@ export function PageShell({ children }: { children: React.ReactNode }) {
           sidebarContext.toggleSidebar(); // Collapse if expanded
         }
       } else if (layoutMode === "standard") {
-        // If you want 'standard' to default to expanded, you could add logic here,
-        // but it usually remembers its last state via cookie.
+        // Standard layout can remember its last state (expanded/collapsed) via cookie
+        // or default to expanded if no cookie is set.
+        // No explicit action needed here unless a specific default state is required on mode switch.
       }
     }
-  }, [layoutMode, isMobileViewForLayout, sidebarContext]);
+  }, [layoutMode, isMobileViewForLayout, sidebarContext.state, sidebarContext.toggleSidebar]);
   
 
   const showSidebar = layoutMode === "standard" || layoutMode === "minimalIcon";
@@ -47,12 +48,15 @@ export function PageShell({ children }: { children: React.ReactNode }) {
       {showSidebar && <AppSidebar navItems={mainNavItems} />}
       <div className={cn(
         "flex flex-col flex-1",
+        // Standard layout: sidebar width applies, respects collapsed state
         layoutMode === "standard" && "md:ml-[var(--sidebar-width)] group-data-[state=collapsed]/sidebar-wrapper:md:ml-[var(--sidebar-width-icon)] transition-[margin-left] duration-200 ease-linear",
+        // Minimal Icon layout: icon-only sidebar width applies
         layoutMode === "minimalIcon" && "md:ml-[var(--sidebar-width-icon)] transition-[margin-left] duration-200 ease-linear",
-        // topNav takes full width, so no margin-left needed for desktop
+        // Top Nav layout: takes full width, so no margin-left needed for desktop content
       )}>
         <AppHeader navItems={mainNavItems} />
-        {/* SidebarInset is used by standard and minimalIcon layouts */}
+        {/* SidebarInset is used by standard and minimalIcon layouts for main content padding */}
+        {/* For topNav, content is directly under header without special inset */}
         {showSidebar ? (
           <SidebarInset className="flex-grow">
             <main className="p-4 sm:p-6 lg:p-8 flex-grow">
@@ -60,7 +64,6 @@ export function PageShell({ children }: { children: React.ReactNode }) {
             </main>
           </SidebarInset>
         ) : (
-          // For topNav layout, main content is directly under header
           <main className="p-4 sm:p-6 lg:p-8 flex-grow">
             {children}
           </main>

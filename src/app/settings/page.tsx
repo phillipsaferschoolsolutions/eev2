@@ -1,15 +1,16 @@
 
 "use client";
 
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { UserCircle, Bell, ShieldCheck, Palette, LayoutList, SidebarOpen, Rows3 } from "lucide-react";
+import { UserCircle, Bell, ShieldCheck, Palette, LayoutList, SidebarOpen, Rows3, Settings as SettingsIcon } from "lucide-react"; // Renamed Settings to SettingsIcon
 import { useLayout, type LayoutMode } from "@/context/layout-context";
-import Link from "next/link";
+
 
 const layoutOptions: { value: LayoutMode; label: string; description: string; icon: React.ElementType }[] = [
   { value: "standard", label: "Standard Layout", description: "Classic sidebar navigation with a top header.", icon: SidebarOpen },
@@ -56,12 +57,16 @@ export default function SettingsPage() {
             <CardDescription>Choose your preferred application layout.</CardDescription>
           </CardHeader>
           <CardContent>
-            <RadioGroup value={layoutMode} onValueChange={(value) => setLayoutMode(value as LayoutMode)} className="space-y-3">
+            <RadioGroup 
+              value={layoutMode} 
+              onValueChange={(value) => setLayoutMode(value as LayoutMode)} 
+              className="space-y-3"
+            >
               {layoutOptions.map((option) => (
                 <Label
                   key={option.value}
                   htmlFor={`layout-${option.value}`}
-                  className="flex flex-col items-start cursor-pointer rounded-md border p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary"
+                  className="flex flex-col items-start cursor-pointer rounded-md border p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:ring-2 [&:has([data-state=checked])]:ring-primary/50"
                 >
                   <div className="flex items-center justify-between w-full">
                       <div className="flex items-center gap-2">

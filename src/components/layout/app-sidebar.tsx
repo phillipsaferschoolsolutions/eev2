@@ -66,27 +66,31 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
     return null;
   }
 
-  // For TopNav layout on desktop, sidebar is not rendered.
-  // For mobile, it's handled by Sheet in AppHeader.
+  // For TopNav layout on desktop, sidebar is not rendered persistently.
+  // Mobile sidebar (sheet) for TopNav is handled by AppHeader.
   if (layoutMode === "topNav" && !isMobileViewForLayout) {
     return null;
   }
   
   const isMinimalIconModeDesktop = layoutMode === "minimalIcon" && !isMobileViewForLayout;
-  const effectiveCollapsible = isMinimalIconModeDesktop ? "icon" : "icon"; // Can be "offcanvas" or "icon" from props
-  const initialSidebarState = isMinimalIconModeDesktop ? "collapsed" : sidebarContext.state;
+  // In minimalIcon mode on desktop, it should always be icon-only.
+  // In standard mode, it can be expanded/collapsed.
+  // The `collapsible="icon"` prop allows it to go to icon mode.
+  // The `initialSidebarState` helps determine what the toggle button shows.
+  const effectiveCollapsible = isMinimalIconModeDesktop ? "icon" : "icon"; 
+  const initialSidebarState = sidebarContext.state;
 
 
   return (
     <Sidebar 
       side="left" 
-      variant="sidebar" 
-      collapsible={effectiveCollapsible}
+      variant="sidebar" // This variant provides the standard sidebar styling
+      collapsible={effectiveCollapsible} // Allows collapsing to icon mode
       className={cn(
-        layoutMode === "topNav" && "md:hidden" // Hide on desktop for topNav
+        // If it's mobile, the Sidebar component itself will be rendered within a Sheet by PageShell/AppHeader,
+        // so this class is mostly for desktop behavior.
+        layoutMode === "topNav" && "md:hidden" // Hide on desktop for topNav, though already handled by outer conditional.
       )}
-      // To force minimalIcon mode to stay collapsed, more advanced state management in SidebarProvider might be needed
-      // Or, we can simply hide the toggle button for that mode.
     >
       <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2.5">
         <Logo />
@@ -118,6 +122,7 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
       <SidebarFooter className="p-2">
         <SidebarMenu>
           {/* Desktop only toggle, and hide if in minimalIcon mode on desktop */}
+          {/* Also hide if it's mobile, as mobile toggle is in header */}
           {layoutMode !== "minimalIcon" && !isMobileViewForLayout && (
             <SidebarMenuItem className="hidden md:block">
               <SidebarMenuButton

@@ -58,7 +58,7 @@ export default function RootLayout({
             enableSystem={false}
             themes={THEME_IDS}
           >
-            <LayoutProvider> {/* New LayoutProvider */}
+            <LayoutProvider> {/* New LayoutProvider wraps SidebarProvider and PageShell */}
               <SidebarProvider> {/* SidebarProvider wraps PageShell */}
                 <PageShell>{children}</PageShell>
                 <Toaster />
