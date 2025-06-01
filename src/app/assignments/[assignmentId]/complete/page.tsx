@@ -695,7 +695,7 @@ export default function CompleteAssignmentPage() {
         <CardContent>
           <Card className="mb-6 p-4 bg-muted/30">
             <CardHeader className="p-2 pb-3">
-              <CardTitle className="text-xl flex items-center gap-2">
+             <CardTitle className="text-xl flex items-center gap-2">
                 <Filter className="h-5 w-5 text-primary shrink-0"/>
                 <span className="min-w-0">Filter Questions</span>
               </CardTitle>
@@ -758,9 +758,13 @@ export default function CompleteAssignmentPage() {
                     {questionsToRender.length > 0 ? `${questionsToRender.indexOf(question) + 1}` : index + 1}. {question.label}
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </Label>
-                  <div className="text-xs text-muted-foreground space-x-2 mb-2">
-                    {question.section && <span>Section: <Badge variant="outline" className="text-xs">{question.section}</Badge></span>}
-                    {question.subSection && <span>Sub-Section: <Badge variant="outline" className="text-xs">{question.subSection}</Badge></span>}
+                   <div className="text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 mb-2">
+                    <span>
+                      Section: <Badge variant="outline" className="text-xs">{question.section || "N/A"}</Badge>
+                    </span>
+                    <span>
+                      Sub-Section: <Badge variant="outline" className="text-xs">{question.subSection || "N/A"}</Badge>
+                    </span>
                   </div>
 
 
@@ -1239,3 +1243,4 @@ export default function CompleteAssignmentPage() {
     </div>
   );
 }
+
