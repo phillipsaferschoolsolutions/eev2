@@ -60,11 +60,21 @@ export default function DashboardPage() {
   const [newsError, setNewsError] = useState<string | null>(null);
   const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItem | null>(null);
 
+  // Effect for Weather
   useEffect(() => {
-    // Fetch Weather
     const fetchWeather = () => {
       if (!navigator.geolocation) {
         setWeatherError("Geolocation is not supported by your browser.");
+        setWeatherLoading(false);
+        return;
+      }
+
+      if (!userProfile?.account) {
+        if (userProfile !== undefined) { // userProfile is loaded, but no account
+          setWeatherError("User account information not available for weather data.");
+        }
+        // If userProfile is undefined (still loading from AuthContext), this effect shouldn't run due to dependency,
+        // or this check will prevent fetch.
         setWeatherLoading(false);
         return;
       }
@@ -75,17 +85,13 @@ export default function DashboardPage() {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           try {
-            console.log("[DashboardPage] Attempting to fetch weather. User profile account:", userProfile?.account); // Diagnostic log
-            if (userProfile?.account) {
-              const data = await getWeatherAndLocation(
-                position.coords.latitude,
-                position.coords.longitude,
-                userProfile.account
-              );
-              setWeatherData(data);
-            } else {
-              setWeatherError("User account information not available for weather. Cannot set 'account' header.");
-            }
+            // userProfile.account is confirmed to exist here
+            const data = await getWeatherAndLocation(
+              position.coords.latitude,
+              position.coords.longitude,
+              userProfile.account
+            );
+            setWeatherData(data);
           } catch (err) {
             setWeatherError(err instanceof Error ? err.message : "Failed to fetch weather data.");
           } finally {
@@ -99,7 +105,15 @@ export default function DashboardPage() {
       );
     };
 
-    // Fetch News
+    // Only attempt to fetch weather if userProfile is resolved (not in its initial undefined state from context)
+    if (userProfile !== undefined) {
+      fetchWeather();
+    }
+
+  }, [userProfile?.account]); // Dependency: only re-run if account string changes or becomes available
+
+  // Effect for News (runs once on mount)
+  useEffect(() => {
     const fetchNews = async () => {
       setNewsLoading(true);
       setNewsError(null);
@@ -121,12 +135,8 @@ export default function DashboardPage() {
       }
     };
 
-    if (userProfile !== undefined) { // Ensures userProfile state from AuthContext is initialized
-        fetchWeather();
-    }
     fetchNews();
-
-  }, [userProfile]); // Re-run if userProfile changes (e.g., after login)
+  }, []); // Empty dependency array: runs once on mount
 
 
   return (
@@ -223,7 +233,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="grid gap-6 md:grid-cols-2">
             <div>
-              <h3 className="font-semibold mb-2">Weather: {weatherData?.name || "Loading..."}</h3>
+              <h3 className="font-semibold mb-2">Weather: {weatherData?.name || (weatherLoading ? "Loading..." : "Unavailable")}</h3>
               {weatherLoading ? (
                 <div className="p-4 bg-muted/30 rounded-lg space-y-3">
                     <div className="flex items-center gap-4">
@@ -277,7 +287,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg">Weather data not available or incomplete.</p>
+                <p className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg">Weather data not available or incomplete. Ensure location services are enabled and an account is active.</p>
               )}
             </div>
             <div>
@@ -347,3 +357,4 @@ export default function DashboardPage() {
 
     
 }
+
