@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, submitCompletedAssignment, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
-import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building } from "lucide-react";
+import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic } from "lucide-react";
 
 const formSchema = z.record(z.any());
 type FormDataSchema = z.infer<typeof formSchema>;
@@ -65,7 +65,7 @@ export default function CompleteAssignmentPage() {
     defaultValues: {},
   });
 
-  const allWatchedValues = watch(); // Watch all fields for conditional logic
+  const allWatchedValues = watch(); 
 
   useEffect(() => {
     if (!assignmentId) {
@@ -103,7 +103,7 @@ export default function CompleteAssignmentPage() {
           fetchedAssignment.questions.forEach(q => {
             if (q.component === 'checkbox' && q.options && Array.isArray(parseOptions(q.options))) {
               parseOptions(q.options).forEach(opt => {
-                defaultVals[`${q.id}.${opt}`] = false; // For checkbox groups, default to false
+                defaultVals[`${q.id}.${opt}`] = false; 
               });
             } else if (q.component === 'range') {
                 let defaultRangeVal = 50;
@@ -121,10 +121,10 @@ export default function CompleteAssignmentPage() {
                     }
                 }
                 defaultVals[q.id] = defaultRangeVal;
-            } else if (q.component === 'checkbox' && !q.options) { // Single checkbox
+            } else if (q.component === 'checkbox' && !q.options) { 
                 defaultVals[q.id] = false;
             }
-            else { // For text, select, radio, etc.
+            else { 
               defaultVals[q.id] = '';
             }
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
@@ -149,9 +149,10 @@ export default function CompleteAssignmentPage() {
 
   useEffect(() => {
     const hasSchoolSelector = assignment?.questions.some(q => q.component === 'schoolSelector');
-    if (hasSchoolSelector && userProfile?.account && !isLoading) { // Ensure assignment is loaded before checking
+    if (hasSchoolSelector && userProfile?.account && !isLoading) { 
       setIsLoadingLocations(true);
       setLocationsError(null);
+      console.log("[CompleteAssignmentPage] Fetching locations for account:", userProfile.account); // DEBUG LOG
       getLocationsForLookup(userProfile.account)
         .then(fetchedLocations => {
           setLocations(fetchedLocations);
@@ -171,7 +172,7 @@ export default function CompleteAssignmentPage() {
       setUploadErrors(prev => ({ ...prev, [questionId]: "User or assignment data missing." }));
       return;
     }
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    if (file.size > 5 * 1024 * 1024) { 
         setUploadErrors(prev => ({ ...prev, [questionId]: "File exceeds 5MB limit." }));
         toast({ variant: "destructive", title: "Upload Error", description: "File exceeds 5MB limit."});
         return;
@@ -243,16 +244,19 @@ export default function CompleteAssignmentPage() {
     const answersObject: Record<string, any> = {};
 
     assignment.questions.forEach(question => {
+        if (!shouldBeVisible(question.conditional, question.id)) {
+            return; // Skip non-visible questions from submission data
+        }
         let questionAnswer: any;
         if (question.component === 'checkbox' && question.options && Array.isArray(parseOptions(question.options))) {
             const selectedOptions: string[] = [];
             parseOptions(question.options).forEach(opt => {
-                if (data[`${question.id}.${opt}`]) { // Check the form data directly
+                if (data[`${question.id}.${opt}`]) { 
                     selectedOptions.push(opt);
                 }
             });
             questionAnswer = selectedOptions;
-        } else if (question.component === 'checkbox' && !question.options) { // Single checkbox
+        } else if (question.component === 'checkbox' && !question.options) { 
             questionAnswer = data[question.id] || false;
         }
         else {
@@ -308,11 +312,17 @@ export default function CompleteAssignmentPage() {
     return options.split(';').map(opt => opt.trim()).filter(opt => opt);
   };
 
-  const getComponentType = (componentName: string): string => {
+  const getComponentType = (componentName: string | undefined): string => {
     switch (componentName?.toLowerCase()) {
       case 'telephone': return 'tel';
       case 'datetime': return 'datetime-local';
-      default: return componentName;
+      case 'date': return 'date';
+      case 'time': return 'time';
+      case 'text': return 'text';
+      case 'number': return 'number';
+      case 'email': return 'email';
+      case 'url': return 'url';
+      default: return componentName || 'text'; // Fallback to text
     }
   };
   
@@ -339,19 +349,18 @@ export default function CompleteAssignmentPage() {
   
     if (triggerQuestion.component === 'checkbox') {
       if (triggerQuestion.options) { 
-        // Checkbox group: conditionValues are the option *texts* that must be checked
+        
         for (const expectedOptionText of conditionValues) {
           if (allWatchedValues[`${triggerFieldId}.${expectedOptionText}`] === true) {
             return true; 
           }
         }
         return false;
-      } else { // Single checkbox
-        // watchedValue will be true or false.
-        // conditionValues should contain "true" or "false" (as strings from config)
+      } else { 
+        
         return conditionValues.some(cv => cv.toLowerCase() === String(watchedValue).toLowerCase());
       }
-    } else { // Radio, select, text, number etc.
+    } else { 
       if (watchedValue === undefined || watchedValue === null || watchedValue === "") {
         return false; 
       }
@@ -421,7 +430,7 @@ export default function CompleteAssignmentPage() {
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </Label>
 
-                  {['text', 'number', 'email', 'url', 'date', 'time'].includes(question.component) || question.component === 'telephone' || question.component === 'datetime' ? (
+                  {['text', 'number', 'email', 'url', 'date', 'time', 'telephone', 'datetime'].includes(question.component) ? (
                     <Input
                       id={question.id}
                       type={getComponentType(question.component)}
@@ -439,7 +448,7 @@ export default function CompleteAssignmentPage() {
                     />
                   )}
 
-                  {question.component === 'options' && ( // Maps to radio
+                  {question.component === 'options' && ( 
                     <Controller
                       name={question.id}
                       control={control}
@@ -461,13 +470,13 @@ export default function CompleteAssignmentPage() {
                     />
                   )}
                   
-                  {question.component === 'buttonSelect' && ( // Also maps to radio for now
+                  {question.component === 'buttonSelect' && ( 
                     <Controller
                       name={question.id}
                       control={control}
                       rules={{ required: question.required }}
                       render={({ field }) => (
-                        // Basic RadioGroup, can be styled later
+                        
                         <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-wrap gap-2 bg-background p-2 rounded-md">
                            {parseOptions(question.options).map(option => (
                                 <div key={option} className="flex items-center">
@@ -534,7 +543,7 @@ export default function CompleteAssignmentPage() {
                     />
                   )}
 
-                  {question.component === 'checkbox' && !question.options && ( // Single checkbox
+                  {question.component === 'checkbox' && !question.options && ( 
                      <Controller
                         name={question.id}
                         control={control}
@@ -552,12 +561,12 @@ export default function CompleteAssignmentPage() {
                     />
                   )}
 
-                  {question.component === 'checkbox' && question.options && ( // Checkbox group
+                  {question.component === 'checkbox' && question.options && ( 
                     <div className="space-y-2 bg-background p-2 rounded-md">
                         {parseOptions(question.options).map(opt => (
                             <Controller
                                 key={opt}
-                                name={`${question.id}.${opt}`} // Unique name for each checkbox in the group
+                                name={`${question.id}.${opt}`} 
                                 control={control}
                                 defaultValue={false}
                                 render={({ field }) => (
@@ -575,7 +584,7 @@ export default function CompleteAssignmentPage() {
                     </div>
                   )}
                   
-                  {(question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && ( // Treat as checkbox group for now
+                  {(question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && ( 
                     <div className="space-y-2 bg-background p-2 rounded-md">
                         <Label className="text-sm text-muted-foreground block mb-1">Select one or more:</Label>
                         {parseOptions(question.options).map(opt => (
@@ -615,7 +624,7 @@ export default function CompleteAssignmentPage() {
                             });
                         }
                         if (typeof currentVal !== 'number' || isNaN(currentVal)) {
-                           currentVal = (value as number) ?? min; // Ensure value is treated as number for slider
+                           currentVal = (value as number) ?? min; 
                         }
                         currentVal = Math.max(min, Math.min(max, currentVal));
 
@@ -645,13 +654,13 @@ export default function CompleteAssignmentPage() {
                     </Alert>
                   )}
 
-                  { (question.component === 'completionTime' || question.component === 'completionDate') && (
+                  {(question.component === 'completionTime' || question.component === 'completionDate') && (
                       <p className="text-xs text-muted-foreground italic p-2 bg-muted/30 rounded-md">({question.label} will be recorded automatically upon submission.)</p>
                   )}
 
 
                   {formErrors[question.id] && <p className="text-sm text-destructive">{formErrors[question.id]?.message as string}</p>}
-                  {/* For checkbox groups, error display might need adjustment if errors are per-option */}
+                  
 
 
                   {question.comment && (
@@ -746,6 +755,17 @@ export default function CompleteAssignmentPage() {
                       )}
                     </div>
                   )}
+
+                  {/* Audio Note Placeholder */}
+                  <div className="mt-4 border-t pt-3">
+                     <Label className="text-xs text-muted-foreground block mb-1">Audio Note (Optional)</Label>
+                     <Button type="button" variant="outline" size="sm" disabled>
+                        <Mic className="h-4 w-4 mr-2" />
+                        Record Audio Note (20s) - Coming Soon
+                     </Button>
+                     {/* Future: Playback controls would go here */}
+                  </div>
+
                 </fieldset>
               </Card>
             ))}
@@ -771,3 +791,5 @@ export default function CompleteAssignmentPage() {
   );
 }
 
+
+    
