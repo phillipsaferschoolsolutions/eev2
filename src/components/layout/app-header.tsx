@@ -12,7 +12,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuGroup,
-  DropdownMenuTrigger, 
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check } from "lucide-react";
@@ -49,7 +49,7 @@ const AccountSwitcher: React.FC = () => {
         .catch(err => {
           console.error("Failed to fetch districts:", err);
           toast({ variant: "destructive", title: "Error Loading Districts", description: "Could not load districts for account switching. " + (err.message || '') });
-          setDistricts([]); 
+          setDistricts([]);
         })
         .finally(() => setIsLoadingDistricts(false));
     } else if (isSuperAdmin && !userProfile?.account) {
@@ -63,32 +63,33 @@ const AccountSwitcher: React.FC = () => {
   }, [isSuperAdmin, userProfile?.account, toast]);
 
   const handleAccountSwitch = async (selectedDistrictId: string) => {
-    if (!userProfile || !userProfile.account || !selectedDistrictId ) {
-      toast({ variant: "destructive", title: "Switch Error", description: "User profile or selection missing." });
+    if (!userProfile || !userProfile.account) {
+      toast({ variant: "destructive", title: "Switch Error", description: "User profile or current account missing." });
       return;
     }
 
-    const selectedDistrictObject = districts.find(d => d.id === selectedDistrictId);
-
-    if (!selectedDistrictObject || !selectedDistrictObject.accountName || selectedDistrictObject.accountName.trim() === "") {
-        toast({ variant: "destructive", title: "Switch Error", description: "Selected district data is incomplete. Cannot determine a valid account name." });
-        console.error("In handleAccountSwitch: Selected district object is problematic. ID:", selectedDistrictId, "Found Object:", selectedDistrictObject);
+    if (!selectedDistrictId || selectedDistrictId.trim() === "") {
+        toast({ variant: "destructive", title: "Switch Error", description: "No district selected or invalid district ID." });
+        console.error("In handleAccountSwitch: selectedDistrictId is invalid:", selectedDistrictId);
         return;
     }
     
-    if (selectedDistrictObject.accountName === userProfile.account) {
-        return; // Already selected this account
+    // If the selected ID is already the current account, do nothing.
+    // Assumes userProfile.account stores the ID of the current district.
+    if (selectedDistrictId === userProfile.account) {
+        return; 
     }
 
     setIsSwitchingAccount(true);
     try {
-      // Pass the NAME of the selected district to the service for the payload.
-      // Pass the current userProfile.account for the 'account' header of the request.
-      await switchUserAccount(selectedDistrictObject.accountName, userProfile.account); 
+      // Pass the selectedDistrictId (which is the ID of the district) to the service.
+      // The service function `switchUserAccount` expects this ID to be sent to the backend.
+      // The second argument is the current account name/ID for the 'account' header.
+      await switchUserAccount(selectedDistrictId, userProfile.account); 
       
-      // Update the local context with the account NAME for display and other frontend purposes
-      updateCurrentAccountInProfile(selectedDistrictObject.accountName); 
-      toast({ title: "Account Switched", description: `Successfully switched to ${selectedDistrictObject.accountName}. Reloading...` });
+      // Update the local context with the new account ID.
+      updateCurrentAccountInProfile(selectedDistrictId); 
+      toast({ title: "Account Switched", description: `Successfully switched to ${selectedDistrictId}. Reloading...` });
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -101,9 +102,8 @@ const AccountSwitcher: React.FC = () => {
 
   if (!isSuperAdmin) return null;
 
-  // Determine the ID of the district that matches the current userProfile.account (which stores accountName)
-  const currentActiveDistrict = districts.find(d => d.accountName === userProfile?.account);
-  const currentSelectedValue = currentActiveDistrict ? currentActiveDistrict.id : "";
+  // userProfile.account should store the ID of the currently active district.
+  const currentSelectedValue = userProfile?.account || "";
 
   return (
     <DropdownMenuGroup>
@@ -128,10 +128,11 @@ const AccountSwitcher: React.FC = () => {
               key={district.id} 
               value={district.id} // Value for selection is the district's ID
               className="cursor-pointer"
-              disabled={isSwitchingAccount || district.accountName === userProfile?.account}
+              // Disable if switching or if this district ID is the current account ID
+              disabled={isSwitchingAccount || district.id === userProfile?.account} 
             >
               {district.id} {/* Display district.id as requested */}
-              {district.accountName === userProfile?.account && <Check className="ml-auto h-4 w-4" />}
+              {district.id === userProfile?.account && <Check className="ml-auto h-4 w-4" />}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
@@ -259,3 +260,4 @@ export function AppHeader() {
     </header>
   );
 }
+
