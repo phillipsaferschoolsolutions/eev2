@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter, useSearchParams } from 'next/navigation'; // Added useSearchParams
+import { useRouter, useSearchParams } from 'next/navigation'; 
 import { auth } from '@/lib/firebase';
 import {
   createUserWithEmailAndPassword,
@@ -114,7 +114,7 @@ const SocialLoginButtons = ({ isLoading, onSocialLogin }: { isLoading: boolean, 
 export function AuthForm() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams(); // Get search params
+  const searchParams = useSearchParams(); 
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -161,38 +161,11 @@ export function AuthForm() {
       if (redirectUrl) {
         router.push(redirectUrl);
       } else {
-        router.push('/'); // Default redirect
+        router.push('/'); 
       }
     }
   }, [user, authLoading, router, searchParams]);
 
-
-  useEffect(() => {
-    if (currentTab === 'phone' && phoneStep === 'input' && recaptchaContainerRef.current && !recaptchaVerifierRef.current) {
-      if (typeof window !== 'undefined' && (window as any).grecaptcha && (window as any).grecaptcha.render) {
-        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
-            'size': 'invisible',
-            'callback': (response: any) => {},
-            'expired-callback': () => {
-              toast({ variant: "destructive", title: "reCAPTCHA expired", description: "Please try sending the OTP again." });
-              resetRecaptcha();
-            }
-          });
-          recaptchaVerifierRef.current.render().catch(err => {
-             console.error("Recaptcha render error:", err);
-             setError("Failed to render reCAPTCHA. Please refresh.");
-          });
-      } else {
-        console.warn("reCAPTCHA script not loaded or container not ready.");
-      }
-    }
-    return () => {
-      resetRecaptcha();
-      if (loginPasswordTimerRef.current) clearTimeout(loginPasswordTimerRef.current);
-      if (signupPasswordTimerRef.current) clearTimeout(signupPasswordTimerRef.current);
-      if (signupConfirmPasswordTimerRef.current) clearTimeout(signupConfirmPasswordTimerRef.current);
-    };
-  }, [currentTab, phoneStep, toast]);
 
   const resetRecaptcha = () => {
     if (recaptchaVerifierRef.current) {
@@ -212,6 +185,44 @@ export function AuthForm() {
     }
   };
 
+  useEffect(() => {
+    if (currentTab === 'phone' && phoneStep === 'input' && recaptchaContainerRef.current && !recaptchaVerifierRef.current) {
+      if (typeof window !== 'undefined' && (window as any).grecaptcha && typeof (window as any).grecaptcha.render === 'function') {
+        try {
+          recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+            'size': 'invisible',
+            'callback': (response: any) => {
+              // console.log("reCAPTCHA solved:", response);
+            },
+            'expired-callback': () => {
+              toast({ variant: "destructive", title: "reCAPTCHA expired", description: "Please try sending the OTP again." });
+              resetRecaptcha();
+            }
+          });
+          recaptchaVerifierRef.current.render().catch(renderErr => {
+             console.error("Recaptcha render error inside useEffect:", renderErr);
+             setError("Failed to render reCAPTCHA. Please refresh or try again later.");
+             resetRecaptcha(); 
+          });
+        } catch (initErr) {
+          console.error("RecaptchaVerifier initialization error:", initErr);
+          setError("Failed to initialize reCAPTCHA. Please refresh or try again later.");
+          resetRecaptcha(); 
+        }
+      } else {
+        // console.warn("reCAPTCHA script not loaded or container not ready for useEffect init.");
+      }
+    }
+    // Cleanup function
+    return () => {
+      resetRecaptcha();
+      if (loginPasswordTimerRef.current) clearTimeout(loginPasswordTimerRef.current);
+      if (signupPasswordTimerRef.current) clearTimeout(signupPasswordTimerRef.current);
+      if (signupConfirmPasswordTimerRef.current) clearTimeout(signupConfirmPasswordTimerRef.current);
+    };
+  }, [currentTab, phoneStep]); // Removed toast from dependencies
+
+
   const handleEmailPasswordSubmit = async (data: EmailPasswordFormData | SignupEmailPasswordFormData, isSignUp: boolean) => {
     setIsLoading(true);
     setError(null);
@@ -225,7 +236,6 @@ export function AuthForm() {
         toast({ title: "Logged In!", description: "Welcome back!" });
         loginForm.reset();
       }
-      // Redirection is handled by the main useEffect
     } catch (err: any) {
       const firebaseError = err as { code?: string; message?: string };
       setError(firebaseError.message || 'An unknown error occurred.');
@@ -257,7 +267,6 @@ export function AuthForm() {
         title: 'Logged In!',
         description: `Successfully signed in with ${result.providerId}.`,
       });
-      // Redirection is handled by the main useEffect
     } catch (err: any) {
       const firebaseError = err as { code?: string; message?: string };
       if (firebaseError.code === 'auth/account-exists-with-different-credential') {
@@ -323,7 +332,6 @@ export function AuthForm() {
       setPhoneStep('input');
       otpForm.reset();
       resetRecaptcha();
-      // Redirection is handled by the main useEffect
     } catch (err: any) {
       const firebaseError = err as { code?: string; message?: string };
       setError(firebaseError.message || 'Failed to verify OTP.');
