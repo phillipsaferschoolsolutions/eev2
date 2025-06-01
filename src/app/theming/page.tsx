@@ -89,11 +89,7 @@ export default function ThemingPage() {
       <p className="text-lg text-muted-foreground">
         Personalize the application's appearance to suit your preferences or conform with corporate branding.
       </p>
-      <div className="text-sm p-3 rounded-md bg-yellow-100 border border-yellow-300 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700/50 dark:text-yellow-300">
-        <strong>Security Note:</strong> Photo-heavy themes use the Pexels API. The API key is stored as `NEXT_PUBLIC_PEXEL_API_KEY` in your environment variables. 
-        While using a `NEXT_PUBLIC_` prefix makes it available on the client, for production, consider routing API calls through a backend proxy to better protect your key.
-      </div>
-
+      
       <Card>
         <CardHeader>
           <CardTitle>Select Your Theme</CardTitle>
@@ -132,11 +128,10 @@ export default function ThemingPage() {
         </CardHeader>
         <CardContent>
             <p className="text-muted-foreground">
-                Photo-heavy themes use a dynamic background image fetched from Pexels. Other themes primarily adjust color schemes. True glassmorphism with blurred backgrounds on components like cards typically requires `backdrop-filter` and semi-transparent backgrounds, which are more advanced styling changes.
+                Photo-heavy themes use a dynamic background image fetched from Pexels. Other themes primarily adjust color schemes. True glassmorphism with blurred backgrounds on components like cards typically requires `backdrop-filter` and semi-transparent backgrounds, which are more advanced styling changes. More significant layout alterations based on themes are being developed.
             </p>
         </CardContent>
       </Card>
     </div>
   );
 }
-
