@@ -405,6 +405,12 @@ export default function CompleteAssignmentPage() {
 
     setIsRecordingQuestionId(questionId);
     audioChunksRef.current = [];
+    // Clear any previous errors or progress for this note specifically
+    setAudioNotes(prev => ({
+      ...prev,
+      [questionId]: { ...prev[questionId], isUploading: false, uploadProgress: undefined, uploadError: null }
+    }));
+
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -421,7 +427,7 @@ export default function CompleteAssignmentPage() {
 
         setAudioNotes(prev => ({
           ...prev,
-          [questionId]: { ...prev[questionId], blob: audioBlob, url: audioUrl, name: audioName, isUploading: false, uploadProgress: undefined, uploadError: null }
+          [questionId]: { ...prev[questionId], blob: audioBlob, url: audioUrl, name: audioName, isUploading: false, uploadProgress: undefined, uploadError: null, downloadURL: undefined }
         }));
         setIsRecordingQuestionId(null);
         stream.getTracks().forEach(track => track.stop());
@@ -465,18 +471,16 @@ export default function CompleteAssignmentPage() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
     }
-
   };
 
   const removeAudioNote = (questionId: string) => {
     const note = audioNotes[questionId];
-    if (note?.url) {
+    if (note?.url && !note.isUploading) { // Only revoke if not currently uploading
       URL.revokeObjectURL(note.url);
     }
-    // Reset all properties for the specific audio note
     setAudioNotes(prev => ({
       ...prev,
-      [questionId]: null
+      [questionId]: null // Fully clear the note details for this question
     }));
   };
 
@@ -554,13 +558,12 @@ export default function CompleteAssignmentPage() {
     }
     setIsSubmitting(true);
 
-    // Finalize audio notes before constructing form data
     const finalAudioNotesForSubmission: Record<string, { name?: string; url?: string }> = {};
     const audioUploadPromises: Promise<void>[] = [];
 
     for (const questionId in audioNotes) {
       const note = audioNotes[questionId];
-      if (note && note.blob && !note.downloadURL && !note.isUploading) { // Only process if not already uploaded/uploading
+      if (note && note.blob && !note.downloadURL && !note.isUploading) {
         setAudioNotes(prev => ({
           ...prev,
           [questionId]: { ...note, isUploading: true, uploadProgress: 0, uploadError: null }
@@ -584,9 +587,8 @@ export default function CompleteAssignmentPage() {
             async () => {
               try {
                 const url = await getDownloadURL(audioUploadTask.snapshot.ref);
-                // This state update is critical and must complete before building finalAudioNotesForSubmission
                 setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, downloadURL: url, name: audioFileName, isUploading: false, uploadProgress: 100 }}));
-                finalAudioNotesForSubmission[questionId] = { name: audioFileName, url: url };
+                // finalAudioNotesForSubmission[questionId] = { name: audioFileName, url: url }; // Moved this to after Promise.all
                 resolve();
               } catch (getUrlError){
                 console.error(`Failed to get audio download URL for ${questionId}:`, getUrlError);
@@ -597,22 +599,20 @@ export default function CompleteAssignmentPage() {
           );
         });
         audioUploadPromises.push(promise);
-      } else if (note && note.downloadURL) { // Already uploaded in a previous attempt (e.g. draft save)
+      } else if (note && note.downloadURL) {
         finalAudioNotesForSubmission[questionId] = { name: note.name, url: note.downloadURL };
       }
     }
 
     try {
       await Promise.all(audioUploadPromises);
-      // After all uploads complete, ensure finalAudioNotesForSubmission is correctly populated
-      // This might involve re-iterating audioNotes if state updates from promises aren't immediate enough
+      // After all uploads complete, ensure finalAudioNotesForSubmission is correctly populated from the latest state
       for (const qId in audioNotes) {
         const note = audioNotes[qId];
-        if (note && note.downloadURL && !finalAudioNotesForSubmission[qId]) {
+        if (note && note.downloadURL && !finalAudioNotesForSubmission[qId]) { // Check if already added
             finalAudioNotesForSubmission[qId] = { name: note.name, url: note.downloadURL };
         }
       }
-
     } catch (error) {
       toast({ variant: "destructive", title: "Audio Upload Failed", description: `One or more audio notes could not be uploaded. Please review any errors and try again.` });
       setIsSubmitting(false);
@@ -624,13 +624,13 @@ export default function CompleteAssignmentPage() {
     const photoLinksForSync: Record<string, string> = {};
     const commentsForSubmission: Record<string, string> = {};
 
-
-    (assignment.questions).forEach(question => {
+    // Iterate over conditionallyVisibleQuestions to ensure only relevant data is submitted
+    conditionallyVisibleQuestions.forEach(question => {
         let questionAnswer: any;
         if (question.component === 'checkbox' && question.options && Array.isArray(parseOptions(question.options))) {
             const selectedOptions: string[] = [];
             parseOptions(question.options).forEach(opt => {
-                if (data[`${question.id}.${opt}`]) {
+                if (data[`${question.id}.${opt}`]) { // data comes from react-hook-form's handleSubmit
                     selectedOptions.push(opt);
                 }
             });
@@ -648,10 +648,12 @@ export default function CompleteAssignmentPage() {
         }
         answersObject[question.id] = questionAnswer;
 
+        // Collect comments for visible questions
         if (question.comment && typeof data[`${question.id}_comment`] === 'string' && data[`${question.id}_comment`].trim() !== '') {
             commentsForSubmission[question.id] = data[`${question.id}_comment`].trim();
         }
 
+        // Collect photo links for visible questions
         if (question.photoUpload && uploadedFileDetails[question.id]?.url) {
             photoLinksForSync[question.id] = uploadedFileDetails[question.id]!.url;
         }
@@ -664,12 +666,14 @@ export default function CompleteAssignmentPage() {
     }
     if (Object.keys(commentsForSubmission).length > 0) {
       formDataForSubmission.append("commentsData", JSON.stringify(commentsForSubmission));
+    } else {
+      formDataForSubmission.append("commentsData", JSON.stringify({})); // Ensure it's an empty object if no comments
     }
+
     if (Object.keys(finalAudioNotesForSubmission).length > 0) {
       formDataForSubmission.append("audioNotesData", JSON.stringify(finalAudioNotesForSubmission));
     } else {
-      // Ensure audioNotesData is at least an empty object if no notes, to avoid backend treating it as null
-      formDataForSubmission.append("audioNotesData", JSON.stringify({}));
+      formDataForSubmission.append("audioNotesData", JSON.stringify({})); // Ensure it's an empty object
     }
     
     formDataForSubmission.append("assessmentName", assignment.assessmentName || "Unnamed Assignment");
@@ -678,18 +682,6 @@ export default function CompleteAssignmentPage() {
     formDataForSubmission.append("completedTime", new Date().toISOString());
     formDataForSubmission.append("status", "completed");
     formDataForSubmission.append("submittedOnPlatform", "web");
-
-    // Append individual files to FormData, named by their question ID (or a unique key if not question-specific)
-    // This matches how the backend (submitCompletedV2Endpoint.js) expects to iterate `files` object by fieldName.
-    for (const questionId in uploadedFileDetails) {
-      const details = uploadedFileDetails[questionId];
-      // This part is a bit tricky. The file itself is not stored in uploadedFileDetails, only its URL after upload.
-      // The actual file needs to be re-fetched from the input if it wasn't already sent.
-      // However, the current flow uploads files *before* this final submission.
-      // The `photoLinksForSync` already contains the URLs. The backend's `files` object will be from `form.parse(req)`.
-      // So, we don't re-append files here. The backend gets them from the multipart request directly.
-    }
-
 
     try {
       await submitCompletedAssignment(assignment.id, formDataForSubmission, userProfile.account);
@@ -1329,4 +1321,4 @@ export default function CompleteAssignmentPage() {
   );
 }
 
-
+    
