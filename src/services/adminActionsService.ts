@@ -140,7 +140,8 @@ export async function switchUserAccount(newAccountId: string, currentAccountName
   }
   const payload: SwitchAccountPayload = { account: newAccountId };
 
-  return authedFetch<SwitchAccountResponse>(`${ADMIN_ACTIONS_BASE_URL}/switchAccount`, {
+  // POST to /districts endpoint to switch account
+  return authedFetch<SwitchAccountResponse>(`${ADMIN_ACTIONS_BASE_URL}/districts`, {
     method: 'POST',
     body: JSON.stringify(payload),
   }, currentAccountName);
