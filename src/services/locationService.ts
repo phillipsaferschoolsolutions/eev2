@@ -78,12 +78,12 @@ async function authedFetch<T>(
   }
 
   const textResponse = await response.text();
-  console.log(`[authedFetch DEBUG] Raw textResponse from ${fullUrl}:`, textResponse); // DEBUG LOG
+  console.log(`[authedFetch DEBUG] Raw textResponse from ${fullUrl}:`, textResponse); 
 
   if (contentType && contentType.indexOf("application/json") !== -1) {
     try {
       const jsonData = JSON.parse(textResponse) as T;
-      console.log(`[authedFetch DEBUG] Parsed JSON response from ${fullUrl}:`, jsonData); // DEBUG LOG
+      console.log(`[authedFetch DEBUG] Parsed JSON response from ${fullUrl}:`, jsonData); 
       return jsonData;
     } catch(e) {
       console.error(`[authedFetch DEBUG] Failed to parse JSON response from ${fullUrl} despite content-type. Error: ${e}. Raw text: ${textResponse}`);
@@ -92,28 +92,25 @@ async function authedFetch<T>(
   } else {
     if (textResponse) {
       try {
-        // Attempt to parse if it looks like JSON, even if content-type is not set
         if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
           const jsonData = JSON.parse(textResponse) as T;
-          console.log(`[authedFetch DEBUG] Parsed JSON-like response from ${fullUrl} (no JSON content-type):`, jsonData); // DEBUG LOG
+          console.log(`[authedFetch DEBUG] Parsed JSON-like response from ${fullUrl} (no JSON content-type):`, jsonData); 
           return jsonData;
         }
       } catch (e) {
          console.error(`[authedFetch DEBUG] Failed to parse non-JSON text response from ${fullUrl} as JSON despite structure match. Error: ${e}. Raw text: ${textResponse}`);
       }
-      // If not parseable as JSON or not structured like JSON, return as text
-      console.log(`[authedFetch DEBUG] Returning text response from ${fullUrl} as is.`); // DEBUG LOG
+      console.log(`[authedFetch DEBUG] Returning text response from ${fullUrl} as is.`); 
       return textResponse as any as T;
     }
-    // If response is empty and not 204, this might be an issue or intended.
-    console.log(`[authedFetch DEBUG] Returning undefined from ${fullUrl} (empty response, not 204).`); // DEBUG LOG
+    console.log(`[authedFetch DEBUG] Returning undefined from ${fullUrl} (empty response, not 204).`); 
     return undefined as any as T;
   }
 }
 
 /**
- * Fetches all locations for the authorized account (lookup version).
- * Uses GET /lookup endpoint.
+ * Fetches all locations for the authorized account.
+ * Uses GET / endpoint (root of LOCATIONS_BASE_URL).
  * Account name is passed in the 'account' header.
  */
 export async function getLocationsForLookup(accountName: string): Promise<Location[]> {
@@ -121,8 +118,8 @@ export async function getLocationsForLookup(accountName: string): Promise<Locati
   if (!trimmedAccountName) {
      throw new Error('Account name is required and cannot be empty to fetch locations.');
   }
-  // Assuming the /lookup endpoint is at the root of LOCATIONS_BASE_URL
-  const result = await authedFetch<Location[] | undefined>(`${LOCATIONS_BASE_URL}/lookup`, {}, trimmedAccountName);
+  // Call the root endpoint of LOCATIONS_BASE_URL
+  const result = await authedFetch<Location[] | undefined>(`${LOCATIONS_BASE_URL}/`, {}, trimmedAccountName);
   return result || []; // Return empty array if undefined
 }
 

@@ -129,7 +129,7 @@ export default function CompleteAssignmentPage() {
                 defaultVals[q.id] = false;
             }
             else { 
-              defaultVals[q.id] = q.component === 'date' ? undefined : ''; // For DatePicker, undefined is better for placeholder
+              defaultVals[q.id] = (q.component === 'date' || q.component === 'completionDate') ? undefined : ''; // For DatePicker, undefined is better for placeholder
             }
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
           });
@@ -262,7 +262,7 @@ export default function CompleteAssignmentPage() {
             questionAnswer = selectedOptions;
         } else if (question.component === 'checkbox' && !question.options) { 
             questionAnswer = data[question.id] || false;
-        } else if (question.component === 'date' && data[question.id] instanceof Date) {
+        } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
             questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
         }
         else {
@@ -321,8 +321,8 @@ export default function CompleteAssignmentPage() {
   const getComponentType = (componentName: string | undefined): string => {
     switch (componentName?.toLowerCase()) {
       case 'telephone': return 'tel';
-      // case 'date': return 'date'; // Handled by DatePicker now
       case 'time': return 'time';
+      case 'completiontime': return 'time';
       case 'datetime': return 'datetime-local';
       case 'text': return 'text';
       case 'number': return 'number';
@@ -434,7 +434,7 @@ export default function CompleteAssignmentPage() {
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </Label>
 
-                  {['text', 'number', 'email', 'url', 'time', 'telephone', 'datetime'].includes(question.component) ? (
+                  {['text', 'number', 'email', 'url', 'time', 'telephone', 'datetime', 'completionTime'].includes(question.component) ? (
                     <Input
                       id={question.id}
                       type={getComponentType(question.component)}
@@ -443,7 +443,7 @@ export default function CompleteAssignmentPage() {
                     />
                   ) : null}
 
-                  {question.component === 'date' && (
+                  {(question.component === 'date' || question.component === 'completionDate') && (
                     <Controller
                       name={question.id}
                       control={control}
@@ -686,10 +686,6 @@ export default function CompleteAssignmentPage() {
                     </Alert>
                   )}
 
-                  {(question.component === 'completionTime' || question.component === 'completionDate') && (
-                      <p className="text-xs text-muted-foreground italic p-2 bg-muted/30 rounded-md">({question.label} will be recorded automatically upon submission.)</p>
-                  )}
-
                   {formErrors[question.id] && <p className="text-sm text-destructive">{formErrors[question.id]?.message as string}</p>}
                   
                   {question.comment && (
@@ -817,3 +813,4 @@ export default function CompleteAssignmentPage() {
     </div>
   );
 }
+
