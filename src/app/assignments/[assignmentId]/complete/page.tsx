@@ -30,7 +30,7 @@ import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, submitCompletedAssignment, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Badge, Trash2, Radio } from "lucide-react";
+import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Trash2, Radio } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 
@@ -44,17 +44,17 @@ interface UploadedFileDetail {
 
 interface AudioNoteDetail {
   blob?: Blob;
-  url?: string; 
+  url?: string;
   name?: string;
   isUploading?: boolean;
   uploadProgress?: number;
   uploadError?: string | null;
-  downloadURL?: string; 
+  downloadURL?: string;
 }
 
 
 const UNASSIGNED_FILTER_VALUE = "n/a";
-const MAX_AUDIO_RECORDING_MS = 20000; 
+const MAX_AUDIO_RECORDING_MS = 20000;
 
 const pillGradientClasses = [
   "bg-gradient-to-r from-primary to-accent text-primary-foreground",
@@ -64,17 +64,17 @@ const pillGradientClasses = [
   "bg-gradient-to-r from-violet-500 to-purple-600 text-white",
   "bg-gradient-to-r from-cyan-500 to-blue-600 text-white",
   "bg-gradient-to-r from-lime-500 to-green-600 text-white",
-  "bg-gradient-to-r from-amber-500 to-yellow-600 text-black", // Note: uses black text
+  "bg-gradient-to-r from-amber-500 to-yellow-600 text-black",
 ];
 
 function getGradientClassForText(text?: string): string {
-  const inputText = text || "default"; // Use a default key if text is undefined/empty
+  const inputText = text || "default";
   if (!inputText) return pillGradientClasses[0];
   let hash = 0;
   for (let i = 0; i < inputText.length; i++) {
     const char = inputText.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash |= 0; // Convert to 32bit integer
+    hash |= 0;
   }
   const index = Math.abs(hash) % pillGradientClasses.length;
   return pillGradientClasses[index];
@@ -111,7 +111,7 @@ export default function CompleteAssignmentPage() {
   const [selectedSubSection, setSelectedSubSection] = useState<string>("all");
   const [answeredStatusFilter, setAnsweredStatusFilter] = useState<'all' | 'answered' | 'unanswered'>('all');
 
-  
+
   const [audioNotes, setAudioNotes] = useState<{ [questionId: string]: AudioNoteDetail | null }>({});
   const [isRecordingQuestionId, setIsRecordingQuestionId] = useState<string | null>(null);
   const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
@@ -162,15 +162,15 @@ export default function CompleteAssignmentPage() {
     const watchedValue = allWatchedValues[triggerFieldId];
 
     if (triggerQuestion.component === 'checkbox') {
-      if (triggerQuestion.options) { 
+      if (triggerQuestion.options) {
         const options = parseOptions(triggerQuestion.options);
         return options.some(opt =>
           conditionValues.includes(opt) && allWatchedValues[`${triggerFieldId}.${opt}`] === true
         );
-      } else { 
+      } else {
         return conditionValues.some(cv => cv.toLowerCase() === String(watchedValue).toLowerCase());
       }
-    } else { 
+    } else {
       if (watchedValue === undefined || watchedValue === null || String(watchedValue).trim() === "") {
         return false;
       }
@@ -193,10 +193,10 @@ export default function CompleteAssignmentPage() {
       case 'url':
       case 'telephone':
       case 'number':
-      case 'datetime': 
+      case 'datetime':
         return value !== undefined && value !== null && String(value).trim() !== '';
       case 'select':
-      case 'options': 
+      case 'options':
       case 'buttonSelect':
       case 'schoolSelector':
         return value !== undefined && value !== null && String(value) !== '';
@@ -204,24 +204,24 @@ export default function CompleteAssignmentPage() {
         return value !== undefined && value !== null;
       case 'date':
       case 'completionDate':
-        return value instanceof Date; 
+        return value instanceof Date;
       case 'time':
       case 'completionTime':
-        return typeof value === 'string' && value.includes(':') && value !== "00:00"; 
+        return typeof value === 'string' && value.includes(':') && value !== "00:00";
       case 'checkbox':
-        if (question.options) { 
+        if (question.options) {
           const options = parseOptions(question.options);
           return options.some(opt => formData[`${question.id}.${opt}`] === true);
-        } else { 
+        } else {
           return value === true;
         }
-      case 'multiButtonSelect': 
-      case 'multiSelect': 
+      case 'multiButtonSelect':
+      case 'multiSelect':
         if (question.options) {
           const options = parseOptions(question.options);
           return options.some(opt => formData[`${question.id}.${opt}`] === true);
         }
-        return false; 
+        return false;
       case 'photoUpload':
         return !!uploadedFileDetails[question.id];
       default:
@@ -303,13 +303,13 @@ export default function CompleteAssignmentPage() {
                 defaultVals[`${q.id}.${opt}`] = false;
               });
             } else if (q.component === 'range') {
-                let defaultRangeVal = 50; 
+                let defaultRangeVal = 50;
                 if (typeof q.options === 'string') {
                     const defaultOpt = q.options.split(';').find(opt => opt.startsWith('default='));
                     if (defaultOpt) {
                         const val = parseInt(defaultOpt.split('=')[1]);
                         if (!isNaN(val)) defaultRangeVal = val;
-                    } else { 
+                    } else {
                          const minOpt = q.options.split(';').find(opt => opt.startsWith('min='));
                          if (minOpt) {
                             const val = parseInt(minOpt.split('=')[1]);
@@ -321,14 +321,14 @@ export default function CompleteAssignmentPage() {
             } else if (q.component === 'checkbox' && !q.options) {
                 defaultVals[q.id] = false;
             } else if (q.component === 'time' || q.component === 'completionTime') {
-                defaultVals[q.id] = "00:00"; 
+                defaultVals[q.id] = "00:00";
             }
-            else { 
-              defaultVals[q.id] = (q.component === 'date' || q.component === 'completionDate') ? undefined : ''; 
+            else {
+              defaultVals[q.id] = (q.component === 'date' || q.component === 'completionDate') ? undefined : '';
             }
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
           });
-          reset(defaultVals); 
+          reset(defaultVals);
         } else {
           setError("Assignment not found or you do not have permission to access it.");
           toast({ variant: "destructive", title: "Error", description: "Assignment not found." });
@@ -348,7 +348,7 @@ export default function CompleteAssignmentPage() {
 
   useEffect(() => {
     const hasSchoolSelector = assignment?.questions.some(q => q.component === 'schoolSelector');
-    if (hasSchoolSelector && userProfile?.account && !isLoading) { 
+    if (hasSchoolSelector && userProfile?.account && !isLoading) {
       setIsLoadingLocations(true);
       setLocationsError(null);
       getLocationsForLookup(userProfile.account)
@@ -368,9 +368,9 @@ export default function CompleteAssignmentPage() {
     setSelectedSubSection("all");
   }, [selectedSection]);
 
-  
+
   useEffect(() => {
-    return () => { 
+    return () => {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
         mediaRecorderRef.current.stop();
       }
@@ -418,19 +418,19 @@ export default function CompleteAssignmentPage() {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const audioUrl = URL.createObjectURL(audioBlob);
         const audioName = `audio_note_${questionId}_${Date.now()}.webm`;
-        
+
         setAudioNotes(prev => ({
           ...prev,
           [questionId]: { blob: audioBlob, url: audioUrl, name: audioName }
         }));
         setIsRecordingQuestionId(null);
-        stream.getTracks().forEach(track => track.stop()); 
+        stream.getTracks().forEach(track => track.stop());
         if (maxRecordingTimerRef.current) {
           clearTimeout(maxRecordingTimerRef.current);
           maxRecordingTimerRef.current = null;
         }
       };
-      
+
       mediaRecorderRef.current.onerror = (event) => {
         console.error("MediaRecorder error:", event);
         setMicPermissionError("An error occurred during recording.");
@@ -465,7 +465,7 @@ export default function CompleteAssignmentPage() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
     }
-    
+
   };
 
   const removeAudioNote = (questionId: string) => {
@@ -481,7 +481,7 @@ export default function CompleteAssignmentPage() {
       setUploadErrors(prev => ({ ...prev, [questionId]: "User or assignment data missing." }));
       return;
     }
-    if (file.size > 5 * 1024 * 1024) { 
+    if (file.size > 5 * 1024 * 1024) {
         setUploadErrors(prev => ({ ...prev, [questionId]: "File exceeds 5MB limit." }));
         toast({ variant: "destructive", title: "Upload Error", description: "File exceeds 5MB limit."});
         return;
@@ -490,7 +490,7 @@ export default function CompleteAssignmentPage() {
     setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
     setUploadErrors(prev => ({ ...prev, [questionId]: null }));
     setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
-    setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); 
+    setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
 
     if (file.type.startsWith("image/")) {
         const reader = new FileReader();
@@ -513,20 +513,20 @@ export default function CompleteAssignmentPage() {
         console.error("Upload failed for question " + questionId + ":", error);
         setUploadErrors(prev => ({ ...prev, [questionId]: error.message }));
         toast({ variant: "destructive", title: "Upload Failed", description: `Could not upload ${file.name}: ${error.message}` });
-        setUploadProgress(prev => ({ ...prev, [questionId]: 0 })); 
-        setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); 
+        setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
+        setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
       },
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
           setUploadedFileDetails(prev => ({ ...prev, [questionId]: { name: file.name, url: downloadURL } }));
           toast({ title: "Upload Successful", description: `${file.name} uploaded.` });
-          setUploadProgress(prev => ({ ...prev, [questionId]: 100 })); 
+          setUploadProgress(prev => ({ ...prev, [questionId]: 100 }));
         } catch (err) {
             console.error("Failed to get download URL for " + questionId + ":", err);
             const errorMessage = err instanceof Error ? err.message : "Unknown error getting URL.";
             setUploadErrors(prev => ({ ...prev, [questionId]: "Failed to get file URL: " + errorMessage }));
-            setImagePreviewUrls(prev => ({ ...prev, [questionId]: null })); 
+            setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
         }
       }
     );
@@ -534,7 +534,7 @@ export default function CompleteAssignmentPage() {
 
   const removeUploadedFile = (questionId: string) => {
     setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
-    setUploadProgress(prev => ({ ...prev, [questionId]: 0 })); 
+    setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
     setUploadErrors(prev => ({ ...prev, [questionId]: null }));
     setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
     const fileInput = document.getElementById(`${questionId}_file`) as HTMLInputElement;
@@ -543,104 +543,120 @@ export default function CompleteAssignmentPage() {
 
 
   const onSubmit: SubmitHandler<FormDataSchema> = async (data) => {
-    if (!assignment || !userProfile?.account || !user) {
-        toast({ variant: "destructive", title: "Submission Error", description: "Cannot submit, assignment or user account data missing." });
+    if (!assignment || !userProfile?.account || !user || !user.email) {
+        toast({ variant: "destructive", title: "Submission Error", description: "Cannot submit, critical assignment or user account data missing." });
         return;
     }
     setIsSubmitting(true);
 
-    const formDataForSubmission = new FormData();
-    const answersObject: Record<string, any> = {};
-
-    
+    // Upload any pending audio notes first
+    const audioUploadPromises: Promise<void>[] = [];
     for (const questionId in audioNotes) {
       const note = audioNotes[questionId];
-      if (note && note.blob && !note.downloadURL) { 
+      if (note && note.blob && !note.downloadURL) {
         setAudioNotes(prev => ({
           ...prev,
           [questionId]: { ...prev[questionId]!, isUploading: true, uploadProgress: 0, uploadError: null }
         }));
-        try {
-          const audioFileName = note.name || `audio_note_${questionId}_${Date.now()}.webm`;
-          const audioStoragePath = `assignment_audio_notes/${assignment.id}/${user.uid}/${questionId}/${audioFileName}`;
-          const audioStorageRef = ref(storage, audioStoragePath);
-          const audioUploadTask = uploadBytesResumable(audioStorageRef, note.blob);
+        const audioFileName = note.name || `audio_note_${questionId}_${Date.now()}.webm`;
+        const audioStoragePath = `assignment_audio_notes/${assignment.id}/${user.uid}/${questionId}/${audioFileName}`;
+        const audioStorageRef = ref(storage, audioStoragePath);
+        const audioUploadTask = uploadBytesResumable(audioStorageRef, note.blob);
 
-          const downloadURL = await new Promise<string>((resolve, reject) => {
-            audioUploadTask.on('state_changed',
-              (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, uploadProgress: progress }}));
-              },
-              (error) => {
-                console.error(`Audio upload failed for ${questionId}:`, error);
-                setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, uploadError: error.message, isUploading: false }}));
-                reject(error);
-              },
-              async () => {
+        const promise = new Promise<void>((resolve, reject) => {
+          audioUploadTask.on('state_changed',
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, uploadProgress: progress }}));
+            },
+            (error) => {
+              console.error(`Audio upload failed for ${questionId}:`, error);
+              setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, uploadError: error.message, isUploading: false }}));
+              reject(error);
+            },
+            async () => {
+              try {
                 const url = await getDownloadURL(audioUploadTask.snapshot.ref);
-                setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, downloadURL: url, isUploading: false, uploadProgress: 100 }}));
-                resolve(url);
+                setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, downloadURL: url, name: audioFileName, isUploading: false, uploadProgress: 100 }}));
+                resolve();
+              } catch (getUrlError){
+                reject(getUrlError);
               }
-            );
-          });
-          if (!answersObject[questionId]) answersObject[questionId] = {};
-          answersObject[questionId].audioNote = { name: audioFileName, url: downloadURL };
-        } catch (error) {
-          toast({ variant: "destructive", title: "Audio Upload Failed", description: `Could not upload audio for question ${questionId}.` });
-          setIsSubmitting(false);
-          return; 
-        }
-      } else if (note && note.downloadURL) { 
-         if (!answersObject[questionId]) answersObject[questionId] = {};
-         answersObject[questionId].audioNote = { name: note.name, url: note.downloadURL };
+            }
+          );
+        });
+        audioUploadPromises.push(promise);
       }
     }
 
+    try {
+      await Promise.all(audioUploadPromises);
+    } catch (error) {
+      toast({ variant: "destructive", title: "Audio Upload Failed", description: `One or more audio notes could not be uploaded. Please try again.` });
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Now construct the FormData
+    const formDataForSubmission = new FormData();
+    const answersObject: Record<string, any> = {};
 
     (assignment.questions).forEach(question => {
         let questionAnswer: any;
         if (question.component === 'checkbox' && question.options && Array.isArray(parseOptions(question.options))) {
             const selectedOptions: string[] = [];
             parseOptions(question.options).forEach(opt => {
-                if (data[`${question.id}.${opt}`]) { 
+                if (data[`${question.id}.${opt}`]) {
                     selectedOptions.push(opt);
                 }
             });
             questionAnswer = selectedOptions;
-        } else if (question.component === 'checkbox' && !q.options) { 
+        } else if (question.component === 'checkbox' && !question.options) {
             questionAnswer = data[question.id] || false;
         } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
             questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
         } else if ((question.component === 'time' || question.component === 'completionTime') && typeof data[question.id] === 'string' && data[question.id].includes(':')) {
             questionAnswer = data[question.id];
-        }
-        else { 
-            questionAnswer = data[question.id] ?? ""; 
+        } else if (question.component === 'range') {
+             questionAnswer = data[question.id] ?? 0;
+        } else {
+            questionAnswer = data[question.id] ?? "";
         }
 
-        if (!answersObject[question.id]) answersObject[question.id] = {};
-        answersObject[question.id].answer = questionAnswer;
+        const answerEntry: any = { answer: questionAnswer };
 
         if (question.comment && data[`${question.id}_comment`]) {
-            answersObject[question.id].comment = data[`${question.id}_comment`];
+            answerEntry.comment = data[`${question.id}_comment`];
         }
 
         if (question.photoUpload && uploadedFileDetails[question.id]) {
-            answersObject[question.id].file = {
+            answerEntry.file = {
                 name: uploadedFileDetails[question.id]!.name,
                 url: uploadedFileDetails[question.id]!.url,
             };
         }
+
+        const finalAudioNote = audioNotes[question.id]; // Use the potentially updated audioNotes state
+        if (finalAudioNote && finalAudioNote.downloadURL) {
+             answerEntry.audioNote = {
+                name: finalAudioNote.name,
+                url: finalAudioNote.downloadURL,
+            };
+        }
+        answersObject[question.id] = answerEntry;
     });
 
-    formDataForSubmission.append("answers", JSON.stringify(answersObject));
-    formDataForSubmission.append("assignmentId", assignment.id);
+    formDataForSubmission.append("content", JSON.stringify(answersObject));
     formDataForSubmission.append("assessmentName", assignment.assessmentName || "Unnamed Assignment");
-    formDataForSubmission.append("accountSubmittedFor", userProfile.account);
-    formDataForSubmission.append("userId", user.uid);
-    formDataForSubmission.append("userEmail", user.email || "");
-
+    formDataForSubmission.append("account", userProfile.account); // Backend expects 'account'
+    formDataForSubmission.append("completedBy", user.email); // Send email as 'completedBy'
+    formDataForSubmission.append("completedTime", new Date().toISOString());
+    formDataForSubmission.append("status", "completed");
+    formDataForSubmission.append("submittedOnPlatform", "web");
+    // assignment.id is the document ID to be used in the URL path
+    // No need to append assignmentId to FormData body if it's in the URL,
+    // unless the backend specifically requires it in both places.
+    // The backend code uses req.params.id for the document.
 
     try {
       await submitCompletedAssignment(assignment.id, formDataForSubmission, userProfile.account);
@@ -664,7 +680,7 @@ export default function CompleteAssignmentPage() {
       case 'number': return 'number';
       case 'email': return 'email';
       case 'url': return 'url';
-      default: return componentName || 'text'; 
+      default: return componentName || 'text';
     }
   };
 
@@ -684,7 +700,7 @@ export default function CompleteAssignmentPage() {
     );
   }
 
-  if (error && !user) { 
+  if (error && !user) {
     return (
        <div className="p-4 text-center">
          <Alert variant="destructive" className="m-4">
@@ -695,7 +711,7 @@ export default function CompleteAssignmentPage() {
        </div>
     );
   }
-  if (error) { 
+  if (error) {
     return (
       <Alert variant="destructive" className="m-4">
         <AlertTriangle className="h-4 w-4" />
@@ -783,20 +799,20 @@ export default function CompleteAssignmentPage() {
                     {questionsToRender.length > 0 ? `${questionsToRender.indexOf(question) + 1}` : index + 1}. {question.label}
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </Label>
-                  <div className="text-xs text-muted-foreground space-y-1 mb-2">
-                    <div className="flex items-center">
-                      <span className="font-medium mr-1.5">Section:</span>
-                      <span className={`inline-block px-2 py-0.5 border-transparent rounded-full text-xs ${getGradientClassForText(question.section)}`}>
-                        {String(question.section || "N/A")}
-                      </span>
+                   <div className="text-xs text-muted-foreground space-y-1 mb-2">
+                      <div className="flex items-center">
+                        <span className="font-medium mr-1.5">Section:</span>
+                        <span className={`inline-block px-2 py-0.5 border-transparent rounded-full text-xs ${getGradientClassForText(question.section)}`}>
+                          {String(question.section || "N/A")}
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="font-medium mr-1.5">Sub-Section:</span>
+                        <span className={`inline-block px-2 py-0.5 border-transparent rounded-full text-xs ${getGradientClassForText(question.subSection)}`}>
+                          {String(question.subSection || "N/A")}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center">
-                      <span className="font-medium mr-1.5">Sub-Section:</span>
-                      <span className={`inline-block px-2 py-0.5 border-transparent rounded-full text-xs ${getGradientClassForText(question.subSection)}`}>
-                        {String(question.subSection || "N/A")}
-                      </span>
-                    </div>
-                  </div>
 
 
                   {['text', 'number', 'email', 'url', 'telephone', 'datetime'].includes(question.component) ? (
@@ -1193,7 +1209,7 @@ export default function CompleteAssignmentPage() {
                   <div className="mt-4 border-t pt-3 space-y-2">
                      <Label className="text-xs text-muted-foreground block mb-1">Audio Note (Optional, Max 20s)</Label>
                       {micPermissionError && <Alert variant="destructive" className="text-xs p-2"><XCircle className="h-4 w-4" /><AlertDescription>{micPermissionError}</AlertDescription></Alert>}
-                      
+
                       {audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading ? (
                         <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/30">
                            <audio controls src={audioNotes[question.id]?.url} className="w-full h-10"></audio>
@@ -1214,8 +1230,8 @@ export default function CompleteAssignmentPage() {
                           size="sm"
                           onMouseDown={() => handleStartRecording(question.id)}
                           onMouseUp={() => handleStopRecording(question.id)}
-                          onTouchStart={() => handleStartRecording(question.id)} 
-                          onTouchEnd={() => handleStopRecording(question.id)}   
+                          onTouchStart={() => handleStartRecording(question.id)}
+                          onTouchEnd={() => handleStopRecording(question.id)}
                           disabled={isSubmitting || (!!isRecordingQuestionId && isRecordingQuestionId !== question.id)}
                           className="w-full"
                         >
@@ -1254,12 +1270,12 @@ export default function CompleteAssignmentPage() {
 
 
             <div className="flex justify-end pt-6">
-              <Button 
-                type="submit" 
-                size="lg" 
+              <Button
+                type="submit"
+                size="lg"
                 disabled={
-                    isSubmitting || 
-                    Object.values(uploadProgress).some(p => p > 0 && p < 100) || 
+                    isSubmitting ||
+                    Object.values(uploadProgress).some(p => p > 0 && p < 100) ||
                     Object.values(audioNotes).some(note => note?.isUploading) ||
                     questionsToRender.length === 0
                 }
@@ -1274,6 +1290,3 @@ export default function CompleteAssignmentPage() {
     </div>
   );
 }
-
-
-    

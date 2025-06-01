@@ -63,6 +63,9 @@ export interface AssignmentMetadata extends AssignmentField {
 // Updated to reflect that 'questions' is an array of detailed AssignmentQuestion objects
 export interface AssignmentWithPermissions extends AssignmentField {
   questions: AssignmentQuestion[];
+  schoolSelectorId?: string; // Ensure this is part of the type
+  completionDateId?: string; // Ensure this is part of the type
+  completionTimeId?: string; // Ensure this is part of the type
 }
 
 interface CreateAssignmentPayload {
@@ -93,6 +96,10 @@ export interface WeatherLocationData {
     name: string;
     current?: {
       temp: number;
+      feels_like?: number;
+      uvi?: number;
+      sunrise?: number;
+      sunset?: number;
       weather?: { description: string; icon?: string }[];
       wind_speed: number;
       humidity: number;
@@ -196,9 +203,9 @@ async function authedFetch<T>(
   const trimmedAccountName = accountName?.trim();
   if (trimmedAccountName) {
     headers.set('account', trimmedAccountName);
-    console.log(`[authedFetch DEBUG] Set 'account' header to: ${trimmedAccountName} for URL: ${fullUrl}`);
+    // console.log(`[authedFetch DEBUG] Set 'account' header to: ${trimmedAccountName} for URL: ${fullUrl}`);
   } else {
-    console.warn(`[authedFetch DEBUG] 'account' header NOT SET for URL: ${fullUrl} because accountName was:`, accountName);
+    // console.warn(`[authedFetch DEBUG] 'account' header NOT SET for URL: ${fullUrl} because accountName was:`, accountName);
   }
 
 
@@ -206,7 +213,7 @@ async function authedFetch<T>(
     headers.set('Content-Type', 'application/json');
   }
 
-  console.log(`[authedFetch DEBUG] Making API call to ${fullUrl} with headers:`, Object.fromEntries(headers.entries()));
+  // console.log(`[authedFetch DEBUG] Making API call to ${fullUrl} with headers:`, Object.fromEntries(headers.entries()));
 
   let response;
   try {
@@ -337,18 +344,26 @@ export async function deleteAssignment(id: string, accountName?: string): Promis
 }
 
 /**
- * NEW: /completednew/:id (multipart form-data, but answers JSON contains file URLs)
- * This uses the ASSIGNMENTS_V2_BASE_URL
+ * SUBMIT COMPLETED: PUT /completed/:id (multipart form-data)
  * Uploads a completed assignment.
- * Account name ('account' header) might be needed.
+ * Account name ('account' header) is needed.
  */
-export async function submitCompletedAssignment(id: string, formData: FormData, accountName?: string): Promise<CompletedAssignmentResponse> {
-  if (!id) throw new Error('Assignment ID is required.');
-  return authedFetch<CompletedAssignmentResponse>(`${ASSIGNMENTS_V2_BASE_URL}/completednew/${id}`, {
+export async function submitCompletedAssignment(
+  assignmentDocId: string,
+  formDataPayload: FormData,
+  accountName?: string
+): Promise<CompletedAssignmentResponse> {
+  if (!assignmentDocId) throw new Error('Assignment document ID is required.');
+  const trimmedAccountName = accountName?.trim();
+  if (!trimmedAccountName) {
+    throw new Error('Account name is required and cannot be empty for submitting an assignment.');
+  }
+  return authedFetch<CompletedAssignmentResponse>(`${BASE_URL}/completed/${assignmentDocId}`, {
     method: 'PUT',
-    body: formData, // Content-Type will be set by browser for FormData
-  }, accountName);
+    body: formDataPayload, // Content-Type will be set by browser for FormData
+  }, trimmedAccountName);
 }
+
 
 /**
  * 7. GET /tome OR /tome/:userEmail
@@ -570,5 +585,3 @@ export async function savePendingSubmission(assignmentId: string, payload: Draft
     body: JSON.stringify(payload),
   }, trimmedAccountName);
 }
-
-    
