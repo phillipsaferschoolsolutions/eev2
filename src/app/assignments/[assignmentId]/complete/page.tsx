@@ -571,7 +571,7 @@ export default function CompleteAssignmentPage() {
                 <RadioGroup
                   value={answeredStatusFilter}
                   onValueChange={(value: 'all' | 'answered' | 'unanswered') => setAnsweredStatusFilter(value)}
-                  className="flex space-x-2 pt-2"
+                  className="flex flex-wrap gap-x-4 gap-y-2 pt-2"
                 >
                   <div className="flex items-center space-x-1">
                     <RadioGroupItem value="all" id="filter-all" />
