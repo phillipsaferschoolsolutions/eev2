@@ -18,14 +18,18 @@ const appThemes = [
   { id: "slate-contrast", name: "Modern Slate", description: "A dark theme with neutral grays and good contrast.", icon: Palette, isDark: true, gradient: "from-gray-700 to-slate-800" },
   { id: "high-contrast-dark", name: "High Contrast Dark", description: "Maximizes readability with a dark background.", icon: Contrast, isDark: true, gradient: "from-black to-gray-600" },
   { id: "high-contrast-light", name: "High Contrast Light", description: "Maximizes readability with a light background.", icon: Contrast, isDark: false, gradient: "from-white to-gray-200" },
-  { id: "solar-flare", name: "Solar Flare", description: "Bright oranges, yellows, and reds. Energetic and warm.", icon: Flame, isDark: false, gradient: "from-yellow-300 via-orange-400 to-red-500" },
-  { id: "nebula-night", name: "Nebula Night", description: "Deep purples, blues, with pink highlights. Cosmic and mysterious.", icon: Sparkles, isDark: true, gradient: "from-indigo-800 via-purple-700 to-pink-600" },
-  { id: "emerald-forest", name: "Emerald Forest", description: "Rich greens and teals with earthy undertones. Natural and calming.", icon: Trees, isDark: false, gradient: "from-green-200 via-emerald-400 to-teal-600" },
-  { id: "cyber-city", name: "Cyber City", description: "Electric blues and cyans on a dark background. Futuristic and sleek.", icon: Cpu, isDark: true, gradient: "from-gray-900 via-blue-700 to-cyan-400" },
-  { id: "pastel-dream", name: "Pastel Dream", description: "Soft pinks, lavenders, and mints. Light and whimsical.", icon: Cloud, isDark: false, gradient: "from-pink-200 via-purple-200 to-indigo-200" },
-  { id: "volcanic-ash", name: "Volcanic Ash", description: "Dark grays with fiery red and orange accents. Intense and bold.", icon: Mountain, isDark: true, gradient: "from-neutral-800 via-red-700 to-orange-500" },
-  { id: "coral-reef", name: "Coral Reef", description: "Vibrant corals, teals, and sandy yellows. Lively and aquatic.", icon: Fish, isDark: false, gradient: "from-orange-300 via-pink-400 to-teal-400" },
-  { id: "arctic-aurora", name: "Arctic Aurora", description: "Icy blues and greens with hints of purple. Cool and ethereal.", icon: Snowflake, isDark: true, gradient: "from-blue-900 via-teal-600 to-green-500" },
+  
+  { id: "solar-flare-light", name: "Solar Flare (Light)", description: "Bright oranges & yellows. Energetic & warm.", icon: Flame, isDark: false, gradient: "from-yellow-300 via-orange-400 to-red-400" },
+  { id: "solar-flare-dark", name: "Solar Flare (Dark)", description: "Deep reds & burnt oranges. Intense & fiery.", icon: Flame, isDark: true, gradient: "from-red-700 via-orange-600 to-yellow-500" },
+  
+  { id: "nebula-night-light", name: "Nebula Dreams (Light)", description: "Ethereal light purples, pinks & silvers.", icon: Sparkles, isDark: false, gradient: "from-purple-200 via-pink-200 to-indigo-200" },
+  { id: "nebula-night-dark", name: "Nebula Night (Dark)", description: "Deep purples & blues, cosmic & mysterious.", icon: Sparkles, isDark: true, gradient: "from-indigo-700 via-purple-800 to-pink-700" },
+
+  { id: "emerald-forest-light", name: "Emerald Forest (Light)", description: "Rich greens & teals. Natural & calming.", icon: Trees, isDark: false, gradient: "from-green-300 via-emerald-400 to-teal-500" },
+  { id: "emerald-forest-dark", name: "Emerald Forest (Dark)", description: "Deep forest greens & moonlit silvers.", icon: Trees, isDark: true, gradient: "from-green-800 via-teal-700 to-slate-600" },
+
+  { id: "cyber-city-light", name: "Cyber City (Light)", description: "Clean light greys & electric blues. Modern tech.", icon: Cpu, isDark: false, gradient: "from-sky-200 via-cyan-300 to-blue-300" },
+  { id: "cyber-city-dark", name: "Cyber City (Dark)", description: "Electric blues & cyans on dark. Futuristic.", icon: Cpu, isDark: true, gradient: "from-blue-800 via-cyan-600 to-slate-900" },
 ];
 
 export default function ThemingPage() {
@@ -60,7 +64,7 @@ export default function ThemingPage() {
                   className={`h-32 w-full flex items-center justify-center bg-gradient-to-br ${themeOption.gradient}`}
                   data-ai-hint="theme color palette"
                 >
-                  <themeOption.icon className={`h-12 w-12 ${themeOption.isDark ? 'text-white' : 'text-primary'}`} />
+                  <themeOption.icon className={`h-12 w-12 ${themeOption.isDark && currentTheme !== 'dark' && !themeOption.id.includes('dark') ? 'text-primary' : (themeOption.id.includes('dark') || currentTheme ==='dark' ? 'text-white' : 'text-primary') }`} />
                 </div>
               </CardHeader>
               <CardContent className="p-4 flex-grow flex flex-col">

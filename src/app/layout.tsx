@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/context/auth-context";
+// import { PageLoader } from "@/components/layout/page-loader"; // Example for future integration
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,7 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EagleEyED - Campus Safety Management",
+  title: "EagleEyED™ - Campus Safety Management",
   description: "Comprehensive campus safety and security management platform.",
 };
 
@@ -36,14 +37,14 @@ const THEME_IDS = [
   'slate-contrast', 
   'high-contrast-dark',
   'high-contrast-light',
-  'solar-flare',
-  'nebula-night',
-  'emerald-forest',
-  'cyber-city',
-  'pastel-dream',
-  'volcanic-ash',
-  'coral-reef',
-  'arctic-aurora',
+  'solar-flare-light',
+  'solar-flare-dark',
+  'nebula-night-light',
+  'nebula-night-dark',
+  'emerald-forest-light',
+  'emerald-forest-dark',
+  'cyber-city-light',
+  'cyber-city-dark',
 ];
 
 export default function RootLayout({
@@ -67,6 +68,17 @@ export default function RootLayout({
             enableSystem={false}
             themes={THEME_IDS}
           >
+            {/* 
+              Future Page Loader Integration Example:
+              You could wrap {children} with a React.Suspense boundary 
+              and provide <PageLoader /> as the fallback.
+              Alternatively, for more control over route changes,
+              you might listen to Next.js router events to show/hide the loader.
+              e.g.,
+              <React.Suspense fallback={<PageLoader />}>
+                {children}
+              </React.Suspense> 
+            */}
             <SidebarProvider>
               <AppSidebar />
               <div className="flex flex-col flex-1 min-h-screen">
