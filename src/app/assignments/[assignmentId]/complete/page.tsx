@@ -9,6 +9,7 @@ import * as z from "zod";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import Image from "next/image";
+import { format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,11 +23,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, submitCompletedAssignment, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
-import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon } from "lucide-react";
 
 const formSchema = z.record(z.any());
 type FormDataSchema = z.infer<typeof formSchema>;
@@ -125,7 +129,7 @@ export default function CompleteAssignmentPage() {
                 defaultVals[q.id] = false;
             }
             else { 
-              defaultVals[q.id] = '';
+              defaultVals[q.id] = q.component === 'date' ? undefined : ''; // For DatePicker, undefined is better for placeholder
             }
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
           });
@@ -152,7 +156,7 @@ export default function CompleteAssignmentPage() {
     if (hasSchoolSelector && userProfile?.account && !isLoading) { 
       setIsLoadingLocations(true);
       setLocationsError(null);
-      console.log("[CompleteAssignmentPage] Fetching locations for account:", userProfile.account); // DEBUG LOG
+      console.log("[CompleteAssignmentPage] Fetching locations for account:", userProfile.account);
       getLocationsForLookup(userProfile.account)
         .then(fetchedLocations => {
           setLocations(fetchedLocations);
@@ -258,6 +262,8 @@ export default function CompleteAssignmentPage() {
             questionAnswer = selectedOptions;
         } else if (question.component === 'checkbox' && !question.options) { 
             questionAnswer = data[question.id] || false;
+        } else if (question.component === 'date' && data[question.id] instanceof Date) {
+            questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
         }
         else {
             questionAnswer = data[question.id] ?? "";
@@ -315,14 +321,14 @@ export default function CompleteAssignmentPage() {
   const getComponentType = (componentName: string | undefined): string => {
     switch (componentName?.toLowerCase()) {
       case 'telephone': return 'tel';
-      case 'datetime': return 'datetime-local';
-      case 'date': return 'date';
+      // case 'date': return 'date'; // Handled by DatePicker now
       case 'time': return 'time';
+      case 'datetime': return 'datetime-local';
       case 'text': return 'text';
       case 'number': return 'number';
       case 'email': return 'email';
       case 'url': return 'url';
-      default: return componentName || 'text'; // Fallback to text
+      default: return componentName || 'text'; 
     }
   };
   
@@ -349,7 +355,6 @@ export default function CompleteAssignmentPage() {
   
     if (triggerQuestion.component === 'checkbox') {
       if (triggerQuestion.options) { 
-        
         for (const expectedOptionText of conditionValues) {
           if (allWatchedValues[`${triggerFieldId}.${expectedOptionText}`] === true) {
             return true; 
@@ -357,7 +362,6 @@ export default function CompleteAssignmentPage() {
         }
         return false;
       } else { 
-        
         return conditionValues.some(cv => cv.toLowerCase() === String(watchedValue).toLowerCase());
       }
     } else { 
@@ -430,7 +434,7 @@ export default function CompleteAssignmentPage() {
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </Label>
 
-                  {['text', 'number', 'email', 'url', 'date', 'time', 'telephone', 'datetime'].includes(question.component) ? (
+                  {['text', 'number', 'email', 'url', 'time', 'telephone', 'datetime'].includes(question.component) ? (
                     <Input
                       id={question.id}
                       type={getComponentType(question.component)}
@@ -439,6 +443,37 @@ export default function CompleteAssignmentPage() {
                     />
                   ) : null}
 
+                  {question.component === 'date' && (
+                    <Controller
+                      name={question.id}
+                      control={control}
+                      rules={{ required: question.required }}
+                      render={({ field }) => (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start text-left font-normal bg-background",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                    />
+                  )}
 
                   {question.component === 'textarea' && (
                     <Textarea
@@ -476,7 +511,6 @@ export default function CompleteAssignmentPage() {
                       control={control}
                       rules={{ required: question.required }}
                       render={({ field }) => (
-                        
                         <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-wrap gap-2 bg-background p-2 rounded-md">
                            {parseOptions(question.options).map(option => (
                                 <div key={option} className="flex items-center">
@@ -491,7 +525,6 @@ export default function CompleteAssignmentPage() {
                       )}
                     />
                   )}
-
 
                   {question.component === 'select' && (
                      <Controller
@@ -604,7 +637,6 @@ export default function CompleteAssignmentPage() {
                     </div>
                   )}
 
-
                   {question.component === 'range' && (
                     <Controller
                       name={question.id}
@@ -658,11 +690,8 @@ export default function CompleteAssignmentPage() {
                       <p className="text-xs text-muted-foreground italic p-2 bg-muted/30 rounded-md">({question.label} will be recorded automatically upon submission.)</p>
                   )}
 
-
                   {formErrors[question.id] && <p className="text-sm text-destructive">{formErrors[question.id]?.message as string}</p>}
                   
-
-
                   {question.comment && (
                     <div className="mt-3">
                       <Label htmlFor={`${question.id}_comment`} className="text-sm text-muted-foreground flex items-center">
@@ -756,14 +785,12 @@ export default function CompleteAssignmentPage() {
                     </div>
                   )}
 
-                  {/* Audio Note Placeholder */}
                   <div className="mt-4 border-t pt-3">
                      <Label className="text-xs text-muted-foreground block mb-1">Audio Note (Optional)</Label>
                      <Button type="button" variant="outline" size="sm" disabled>
                         <Mic className="h-4 w-4 mr-2" />
                         Record Audio Note (20s) - Coming Soon
                      </Button>
-                     {/* Future: Playback controls would go here */}
                   </div>
 
                 </fieldset>
@@ -790,6 +817,3 @@ export default function CompleteAssignmentPage() {
     </div>
   );
 }
-
-
-    

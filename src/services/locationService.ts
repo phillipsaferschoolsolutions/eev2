@@ -77,23 +77,36 @@ async function authedFetch<T>(
     return undefined as any as T;
   }
 
+  const textResponse = await response.text();
+  console.log(`[authedFetch DEBUG] Raw textResponse from ${fullUrl}:`, textResponse); // DEBUG LOG
+
   if (contentType && contentType.indexOf("application/json") !== -1) {
-    return response.json() as Promise<T>;
+    try {
+      const jsonData = JSON.parse(textResponse) as T;
+      console.log(`[authedFetch DEBUG] Parsed JSON response from ${fullUrl}:`, jsonData); // DEBUG LOG
+      return jsonData;
+    } catch(e) {
+      console.error(`[authedFetch DEBUG] Failed to parse JSON response from ${fullUrl} despite content-type. Error: ${e}. Raw text: ${textResponse}`);
+      throw new Error(`API Error: Failed to parse JSON response from ${fullUrl}.`);
+    }
   } else {
-    const textResponse = await response.text();
     if (textResponse) {
       try {
-         // Attempt to parse if it looks like JSON, even if content-type is not set
+        // Attempt to parse if it looks like JSON, even if content-type is not set
         if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
-          return JSON.parse(textResponse) as T;
+          const jsonData = JSON.parse(textResponse) as T;
+          console.log(`[authedFetch DEBUG] Parsed JSON-like response from ${fullUrl} (no JSON content-type):`, jsonData); // DEBUG LOG
+          return jsonData;
         }
       } catch (e) {
-         console.error(`authedFetch: Failed to parse non-JSON text response from ${fullUrl} as JSON despite structure match. Error: ${e}`);
+         console.error(`[authedFetch DEBUG] Failed to parse non-JSON text response from ${fullUrl} as JSON despite structure match. Error: ${e}. Raw text: ${textResponse}`);
       }
       // If not parseable as JSON or not structured like JSON, return as text
+      console.log(`[authedFetch DEBUG] Returning text response from ${fullUrl} as is.`); // DEBUG LOG
       return textResponse as any as T;
     }
     // If response is empty and not 204, this might be an issue or intended.
+    console.log(`[authedFetch DEBUG] Returning undefined from ${fullUrl} (empty response, not 204).`); // DEBUG LOG
     return undefined as any as T;
   }
 }
@@ -116,3 +129,4 @@ export async function getLocationsForLookup(accountName: string): Promise<Locati
 // Add other location service functions here as needed, for example:
 // export async function getLocationById(id: string, accountName: string): Promise<Location | null> { ... }
 // export async function createOrUpdateLocation(locationData: Partial<Location>, accountName: string): Promise<Location> { ... }
+
