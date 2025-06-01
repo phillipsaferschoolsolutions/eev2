@@ -2,6 +2,16 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 
+// This file assumes 'assignmentsv2App' is an Express app or router instance
+// already defined and passed into the scope where this file is required/executed.
+// For example, in your main index.js:
+// const assignmentsv2App = express();
+// /* ... other middleware ... */
+// require('./api/createAssignmentEndpoint')(assignmentsv2App); // Hypothetical way to pass app
+
+// If 'assignmentsv2App' is not globally available or passed in, this file will error.
+// This structure adheres to the user's request for the file to start with assignmentsv2App.post(...)
+
 // Ensure Firebase Admin is initialized (typically in your index.js or main file)
 // if (admin.apps.length === 0) {
 //   admin.initializeApp();
@@ -9,14 +19,18 @@ const admin = require("firebase-admin");
 const db = admin.firestore();
 const { FieldValue } = admin.firestore;
 
+// --- Helper to generate unique IDs ---
+function generateUUID() {
+  return db.collection("temp").doc().id;
+}
+
 // DEPENDENCY: generateQuestionId() - Assuming this is available or you'll replace it
 // For now, a placeholder that uses Firestore's auto-ID.
-// If generateQuestionId is supposed to return an array as per original code,
-// this placeholder needs to be adjusted or the calling code adapted.
 async function generateQuestionId(count = 1) {
     // This is a placeholder. The original code implies `generateQuestionId` returns an array of IDs.
     // If generateQuestionId.external is your actual function, ensure it's correctly available.
     if (typeof generateQuestionId.external === 'function') {
+        // @ts-ignore
         return generateQuestionId.external(count);
     }
     functions.logger.warn("Using placeholder for generateQuestionId. Ensure custom logic for array of IDs is implemented if needed.");
@@ -28,20 +42,49 @@ async function generateQuestionId(count = 1) {
 }
 
 
-// Placeholder for firebaseHelper
+// Placeholder for firebaseHelper (if it's used and not defined elsewhere)
 const firebaseHelper = {
     AssignmentQuestionsActions: async ({ assignmentId, content, action }) => {
         functions.logger.info("Placeholder: firebaseHelper.AssignmentQuestionsActions called", { assignmentId, action, questionCount: content.length });
-        // Implement actual logic here if this helper is used.
+        // Implement actual logic here if this helper is used. For example,
+        // batch writing questions to a subcollection or another collection.
+        // This example assumes content is an array of question objects.
+        // Ensure the structure of 'content' matches what this helper expects.
+        // if (action === "BATCH_UPDATE_OVERWRITE_ALL" && assignmentId && Array.isArray(content)) {
+        //   const batch = db.batch();
+        //   const questionsRef = db.collection("assignments").doc(assignmentId).collection("assignmentQuestions");
+        //   // Optional: Delete existing questions first if it's a true overwrite
+        //   // const existingSnapshot = await questionsRef.get();
+        //   // existingSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+        //
+        //   content.forEach(question => {
+        //     const questionDocRef = questionsRef.doc(question.id); // Assuming question has an 'id'
+        //     batch.set(questionDocRef, question);
+        //   });
+        //   await batch.commit();
+        //   functions.logger.info(`Batch updated/overwrote questions for assignment ${assignmentId}`);
+        // }
         return Promise.resolve();
     }
 };
 
 
-// This is the refactored handler logic
-const createAssignmentHandlerInternal = async (req, res) => {
+// This module exports a function that expects an Express app instance
+module.exports = (assignmentsv2App) => {
+  if (!assignmentsv2App || typeof assignmentsv2App.post !== 'function') {
+    functions.logger.error(
+      "CRITICAL: assignmentsv2App instance was not provided or is invalid to createAssignmentEndpoint.js. " +
+      "The /createassignment endpoint cannot be registered."
+    );
+    // Depending on how critical this is, you might throw an error:
+    // throw new Error("assignmentsv2App is not a valid Express app/router.");
+    return; // Stop further execution if appInstance is invalid
+  }
+
+  assignmentsv2App.post("/createassignment", async (req, res) => {
     // ----- 1. Authorization and Initial Setup -----
-    if (!req.user || !req.user.email) { // req.user should be populated by your auth middleware
+    // @ts-ignore (req.user is populated by auth middleware, e.g., firebase-functions-auth)
+    if (!req.user || !req.user.email) {
         functions.logger.error("User not authenticated or email missing.");
         res.status(403).send({error: "Unauthorized: User authentication issue."});
         return;
@@ -53,6 +96,7 @@ const createAssignmentHandlerInternal = async (req, res) => {
     }
 
     const account = req.headers.account;
+    // @ts-ignore
     const authorEmail = req.user.email;
 
     const date = new Date();
@@ -86,10 +130,15 @@ const createAssignmentHandlerInternal = async (req, res) => {
     };
 
     // ----- 3. Process Questions -----
-    let initContent = req.body.content || [];
-    if (!Array.isArray(initContent)) {
-        initContent = [];
-        functions.logger.warn("req.body.content was not an array. Initializing to empty array.", { assessmentName: assignment.assessmentName });
+    let initContent = req.body.content || []; // Legacy: questions might come in 'content'
+    if (!Array.isArray(initContent) || initContent.length === 0) {
+        // New frontend might send questions in 'req.body.questions'
+        if (Array.isArray(req.body.questions) && req.body.questions.length > 0) {
+            initContent = req.body.questions;
+        } else {
+            initContent = []; // Ensure it's an array
+            functions.logger.warn("req.body.content or req.body.questions was not a non-empty array. Initializing to empty array.", { assessmentName: assignment.assessmentName });
+        }
     }
     
     const proposedIdArray = await generateQuestionId(initContent.length);
@@ -98,44 +147,44 @@ const createAssignmentHandlerInternal = async (req, res) => {
     const questionIdResolutionMap = new Map(); // To map old UIDs to new permanent IDs
 
     // First pass for ID generation and reordering conditional questions (original logic)
-    // This reordering is complex and can be error-prone. A robust ID resolution is generally preferred.
     initContent.forEach((row, index) => {
         row.pageNumber = row.pageNumber == null ? 1 : row.pageNumber;
-        if (row.conditional && row.conditional.field && !row.conditionalQuestionId) { // Convert new conditional to old for reordering step
+        // Convert new conditional structure from frontend editor to legacy for reordering step, if necessary
+        if (row.conditional && row.conditional.field && !row.conditionalQuestionId) {
             row.conditionalQuestionId = row.conditional.field;
             row.conditionalQuestionValue = row.conditional.value;
+            // row.conditional = true; // Not strictly needed if conditionalQuestionId is the main driver for reordering
         }
         if (row.conditionalQuestionId) {
-            let placeholder = initContent.findIndex((r) => r._uid == row.conditionalQuestionId);
-            if (placeholder > index) { // If conditioning question is LATER in the array
-                initContent.splice(placeholder + 1, 0, row); // Move current row after its parent
-                initContent.splice(index, 1); // Delete old instance of current row
+            let placeholder = initContent.findIndex((r) => r._uid === row.conditionalQuestionId || r.id === row.conditionalQuestionId);
+            if (placeholder > index) { 
+                initContent.splice(placeholder + 1, 0, row); 
+                initContent.splice(index, 1); 
             }
         }
-         // Re-assign order after potential splice, though this might be better done after all splicing
-        initContent.forEach((item, newIdx) => item.order = newIdx + 1);
     });
+    // Re-assign order after potential splice
+    initContent.forEach((item, newIdx) => item.order = newIdx + 1);
 
 
     let questionNumberCount = 0;
-    const conditionalQCounter = {}; // Stores count of conditional children for each parent ID
+    const conditionalQCounter = {};
 
     initContent.forEach((obj, index) => {
         const submittedField = {};
         
-        // Assign/Resolve ID
-        const originalFrontendId = obj._uid || obj.id; // Frontend might send _uid or id for new items
+        const originalFrontendId = obj._uid || obj.id; 
         let permanentId;
+
         if (originalFrontendId && !String(originalFrontendId).startsWith("#") && !String(originalFrontendId).startsWith("new-")) {
             permanentId = originalFrontendId;
         } else {
-            permanentId = proposedIdArray[index] || db.collection("temp").doc().id; // Fallback ID gen
+            permanentId = proposedIdArray[index] || generateUUID(); // Fallback ID gen
         }
         questionIdResolutionMap.set(originalFrontendId, permanentId);
-        submittedField.id = permanentId; // Use 'id' consistently for the permanent ID
+        submittedField.id = permanentId;
 
-        // Update conditionalQuestionId references in the rest of initContent if they referred to this old_uid
-        if (originalFrontendId !== permanentId) {
+        if (originalFrontendId && originalFrontendId !== permanentId) {
             initContent.forEach((itemToUpdate) => {
                 if (itemToUpdate.conditionalQuestionId === originalFrontendId) {
                     itemToUpdate.conditionalQuestionId = permanentId;
@@ -149,8 +198,8 @@ const createAssignmentHandlerInternal = async (req, res) => {
                 delete conditionalQCounter[originalFrontendId];
             }
         }
-
-        submittedField.order = obj.order !== undefined ? obj.order : index + 1; // Use re-calculated order or original index
+        
+        submittedField.order = obj.order !== undefined ? obj.order : index + 1;
         submittedField.photoUpload = obj.photoUpload === true;
         submittedField.component = obj.component || "text";
         submittedField.pageNumber = obj.pageNumber || 1;
@@ -160,7 +209,7 @@ const createAssignmentHandlerInternal = async (req, res) => {
         if (obj.component === "completionDate") assignment.completionDateId = submittedField.id;
         if (obj.component === "completionTime") assignment.completionTimeId = submittedField.id;
         
-        // Per-question assignment (legacy fields)
+        // Per-question assignment (legacy fields mapping)
         if (Array.isArray(obj.assignedToEmail)) submittedField.assignedToEmail = obj.assignedToEmail;
         else if (obj.assignedToEmail && typeof obj.assignedToEmail === 'string') submittedField.assignedToEmail = obj.assignedToEmail.replace(/; /g, ';').split(';');
         
@@ -189,49 +238,50 @@ const createAssignmentHandlerInternal = async (req, res) => {
         // Options processing
         const options = [];
         let tempOptionArray = [];
-        if (Array.isArray(obj.options)) tempOptionArray = obj.options;
-        else if (typeof obj.options === 'string') tempOptionArray = obj.options.split(';').map(opt => opt.trim()).filter(Boolean);
+        if (Array.isArray(obj.options)) {
+            tempOptionArray = obj.options;
+        } else if (typeof obj.options === 'string') {
+            tempOptionArray = obj.options.split(';').map(opt => opt.trim()).filter(Boolean);
+        }
         tempOptionArray.forEach(option => options.push({ component: "option", label: option, value: option }));
         submittedField.options = options;
 
         // Conditional Logic and Question Numbering
-        // Prefer new conditional structure if present, else use legacy conditionalQuestionId
         const conditionalSource = obj.conditional || (obj.conditionalQuestionId ? { field: obj.conditionalQuestionId, value: obj.conditionalQuestionValue } : null);
 
         if (conditionalSource && conditionalSource.field) {
-            const resolvedConditionalFieldId = questionIdResolutionMap.get(conditionalSource.field) || conditionalSource.field; // Fallback if somehow not in map
+            const resolvedConditionalFieldId = questionIdResolutionMap.get(conditionalSource.field) || conditionalSource.field;
             submittedField.conditional = { field: resolvedConditionalFieldId, value: conditionalSource.value || "" };
 
-            let parentQuestionNumber = "0";
-            const parentQuestionInContentState = contentStateArr.find(q => q.id === resolvedConditionalFieldId);
-            const parentQuestionInAssignment = assignment.questions.find(q => q.id === resolvedConditionalFieldId);
+            let parentQuestionNumber = "0"; // Default if parent not found or numbered
+            const parentInProcessed = contentStateArr.find(q => q.id === resolvedConditionalFieldId);
+            const parentInAssignmentQuestions = assignment.questions.find(q => q.id === resolvedConditionalFieldId);
 
-            if (parentQuestionInContentState) parentQuestionNumber = parentQuestionInContentState.questionNumber;
-            else if (parentQuestionInAssignment) parentQuestionNumber = parentQuestionInAssignment.questionNumber;
+            if (parentInProcessed) parentQuestionNumber = parentInProcessed.questionNumber;
+            else if (parentInAssignmentQuestions) parentQuestionNumber = parentInAssignmentQuestions.questionNumber;
             else {
-                 // Attempt to find in already processed items in this loop for numbering if parent not fully processed yet
                  const alreadyProcessedParent = assignment.questions.find(q => q.id === resolvedConditionalFieldId);
                  if (alreadyProcessedParent && alreadyProcessedParent.questionNumber) {
                      parentQuestionNumber = alreadyProcessedParent.questionNumber;
                  } else {
-                    functions.logger.warn(`Parent question ${resolvedConditionalFieldId} for conditional logic not found or not yet numbered for question ${submittedField.id}.`);
+                    functions.logger.warn(`Parent question ${resolvedConditionalFieldId} for conditional logic not found or not yet numbered for question ${submittedField.id}. Defaulting parent number to 0.`);
                  }
             }
             
             conditionalQCounter[resolvedConditionalFieldId] = (conditionalQCounter[resolvedConditionalFieldId] || 0) + 1;
             const subIndex = conditionalQCounter[resolvedConditionalFieldId];
-            submittedField.questionNumber = `${parentQuestionNumber}${alphaString[subIndex] || subIndex}`; // e.g. 1a, 1b or 1.1, 1.2 if alphaString runs out
+            submittedField.questionNumber = `${parentQuestionNumber}${alphaString[subIndex] || subIndex}`;
         } else {
             questionNumberCount++;
             submittedField.questionNumber = String(questionNumberCount);
         }
         
         assignment.questions.push(submittedField);
-        contentStateArr.push(submittedField); // For firebaseHelper, ensure it expects 'id' not '_uid'
+        contentStateArr.push(submittedField); // For firebaseHelper, ensure it expects 'id'
     });
 
     // ----- 4. Save to Firestore -----
-    let newAssignmentDocumentId = req.body.id; // If an ID is passed, assume it's for updating/setting with specific ID
+    let newAssignmentDocumentId = req.body.id; 
 
     try {
         if (newAssignmentDocumentId && typeof newAssignmentDocumentId === 'string' && newAssignmentDocumentId.trim() !== "") {
@@ -243,9 +293,10 @@ const createAssignmentHandlerInternal = async (req, res) => {
             functions.logger.info(`Assignment added with auto-generated ID: ${newAssignmentDocumentId} for account ${account}`);
         }
 
+        // Ensure contentStateArr passes questions with 'id' if firebaseHelper expects it.
         await firebaseHelper.AssignmentQuestionsActions({
             assignmentId: newAssignmentDocumentId,
-            content: contentStateArr, // This is an array of processed questions
+            content: contentStateArr, 
             action: "BATCH_UPDATE_OVERWRITE_ALL"
         });
 
@@ -293,7 +344,7 @@ const createAssignmentHandlerInternal = async (req, res) => {
                 }
 
 
-                const CHUNK_SIZE = 30; // Firestore 'in' query limit
+                const CHUNK_SIZE = 30; 
 
                 if (locationsToQuery.length > 0) {
                     for (let i = 0; i < locationsToQuery.length; i += CHUNK_SIZE) {
@@ -306,14 +357,14 @@ const createAssignmentHandlerInternal = async (req, res) => {
                             const userData = doc.data();
                             if (userData && userData.email && typeof userData.email === 'string') {
                                 let shouldAdd = true;
-                                if (titlesToQuery.length > 0) { // If titles also specified, user must match one
+                                if (titlesToQuery.length > 0) { 
                                     shouldAdd = titlesToQuery.includes(userData.title);
                                 }
                                 if (shouldAdd) userEmailsToUpdate.add(userData.email);
                             }
                         });
                     }
-                } else if (titlesToQuery.length > 0) { // Only titles specified, no locations
+                } else if (titlesToQuery.length > 0) { 
                     for (let i = 0; i < titlesToQuery.length; i += CHUNK_SIZE) {
                         const chunk = titlesToQuery.slice(i, i + CHUNK_SIZE);
                         const usersByTitleQuery = db.collection("users")
@@ -351,68 +402,21 @@ const createAssignmentHandlerInternal = async (req, res) => {
     }
 
     // ----- 6. Send Response -----
-    res.status(201).send({ id: newAssignmentDocumentId, ...assignment });
+    res.status(201).send({ id: newAssignmentDocumentId, ...assignment }); // Ensure 'id' is the final Firestore ID
+  });
+  functions.logger.info("✅ POST /createassignment route initialized on the provided Express app instance.");
 };
 
-/**
- * Initializes the /createassignment route on a given Express app/router instance.
- * This function should be called from your main Firebase Functions index.js
- * or your Express app setup file.
- *
- * @param {object} appInstance - An Express app or router instance.
- */
-module.exports.initializeCreateAssignmentRoute = (appInstance) => {
-  if (!appInstance || typeof appInstance.post !== 'function') {
-    functions.logger.error(
-      "Invalid Express app/router instance provided to initializeCreateAssignmentRoute. " +
-      "The /createassignment endpoint could not be registered."
-    );
-    return;
-  }
-  // It's good practice for the appInstance to have express.json() middleware applied
-  // before this route if it's not already global.
-  // Example: appInstance.use(express.json());
-  // Also, auth middleware should be applied before this route.
-
-  appInstance.post("/createassignment", createAssignmentHandlerInternal);
-  functions.logger.info("✅ POST /createassignment route initialized.");
-};
-
-// For direct export if not using the initializer pattern (less common for complex setups)
-module.exports.createAssignmentHandler = createAssignmentHandlerInternal;
-
-// Example of how this file might be used in your main index.js for Firebase Functions:
-//
-// const functions = require("firebase-functions");
-// const express = require("express");
-// const cors = require("cors"); // If using CORS
-// const myAuthMiddleware = require("./middleware/auth"); // Your auth middleware
-//
-// // --- Initialize Express app for /assignmentsv2 ---
-// const assignmentsV2App = express();
-// assignmentsV2App.use(cors({ origin: true })); // Apply CORS
-// assignmentsV2App.use(express.json());      // Middleware to parse JSON request bodies
-// assignmentsV2App.use(myAuthMiddleware);      // Your custom authentication middleware
-//
-// // Import and initialize the /createassignment route
-// const createAssignmentEndpoint = require('./api/createAssignmentEndpoint'); // Adjust path
-// createAssignmentEndpoint.initializeCreateAssignmentRoute(assignmentsV2App);
-//
-// // Potentially other routes for assignmentsV2App...
-// // assignmentsV2App.get("/otherroute", (req, res) => { /* ... */ });
-//
-// // Export the Express app as a Firebase Function for the /assignmentsv2 base URL
-// exports.assignmentsv2 = functions.https.onRequest(assignmentsV2App);
-//
-
-// If you only have one handler in this file and want to export it directly for Firebase Functions:
+// Note: If you have only this endpoint in the file and want to export it directly
+// for a single Firebase Function (without an encompassing Express app for this file),
+// you would structure it differently, e.g.:
 // exports.createAssignmentV2 = functions.https.onRequest(async (req, res) => {
-//   // Apply middleware manually if not using Express
-//   // e.g., await someAuthMiddleware(req, res, async () => {
-//   //   await createAssignmentHandlerInternal(req, res);
+//   // Apply middleware manually if needed
+//   // await authMiddleware(req, res, async () => {
+//   //    // ... then call the core logic here ...
 //   // });
-//   // This pattern is simpler if you don't need a full Express app for this function.
-//   // However, your original code used `assignmentsApp.post`, suggesting an Express setup.
+//   // The handler logic would be directly inside this exported function.
 // });
+// However, the request was for an assignmentsv2App.post(...) structure.
 
     
