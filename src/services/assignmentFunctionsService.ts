@@ -382,12 +382,12 @@ export async function getAssignmentsByLocation(payload: ByLocationPayload, accou
 
 
 /**
- * 6. GET /header/:lat/:lng
+ * 6. GET /header/:lat/:lng (This now uses ASSIGNMENTS_V2_BASE_URL)
  * Returns current weather + reverse-geolocation for user’s location.
  * Account header may or may not be needed depending on backend.
  */
 export async function getWeatherAndLocation(lat: number, lng: number, accountName?: string): Promise<WeatherLocationData | null> {
-    const result = await authedFetch<WeatherLocationData | undefined>(`${BASE_URL}/header/${lat}/${lng}`, {}, accountName);
+    const result = await authedFetch<WeatherLocationData | undefined>(`${ASSIGNMENTS_V2_BASE_URL}/header/${lat}/${lng}`, {}, accountName);
     return result || null;
 }
 
@@ -565,5 +565,7 @@ export async function savePendingSubmission(assignmentId: string, payload: Draft
     body: JSON.stringify(payload),
   }, trimmedAccountName);
 }
+
+    
 
     
