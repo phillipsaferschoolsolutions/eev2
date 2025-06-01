@@ -496,7 +496,8 @@ export default function CompleteAssignmentPage() {
           }
         }));
         playChime('stop');
-
+        
+        // Ensure UI reflects recording stopped state reliably here
         if (isRecordingQuestionId === questionId) {
            setIsRecordingQuestionId(null);
         }
@@ -534,11 +535,12 @@ export default function CompleteAssignmentPage() {
 
   const handleStopRecording = (questionId: string, playTheStopChime: boolean = true) => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop();
-    }
-    if (isRecordingQuestionId === questionId) {
+      mediaRecorderRef.current.stop(); // This will trigger 'onstop' where isRecordingQuestionId is set to null
+    } else if(isRecordingQuestionId === questionId) {
+      // If recorder isn't "recording" but UI thinks it is for this question, reset UI
       setIsRecordingQuestionId(null);
     }
+
     if (maxRecordingTimerRef.current) {
         clearTimeout(maxRecordingTimerRef.current);
         maxRecordingTimerRef.current = null;
@@ -573,41 +575,33 @@ export default function CompleteAssignmentPage() {
 
     try {
       if (audio.paused) {
-        // Only set src and load if it's different or not set (e.g., after removeAudioNote)
         if (!audio.currentSrc || audio.currentSrc !== noteUrl) {
-          console.log(`[togglePlayPause] Setting src for ${questionId} to ${noteUrl}. Current: ${audio.currentSrc}`);
           audio.src = noteUrl;
-          audio.load(); // Crucial to load the new source
+          audio.load(); 
 
-          // Wait for 'canplay' before attempting to play
           await new Promise<void>((resolve, reject) => {
             const canPlayHandler = () => {
               audio.removeEventListener('canplay', canPlayHandler);
               audio.removeEventListener('error', errorHandler);
-              console.log(`[togglePlayPause] 'canplay' event for ${questionId}. Ready to play.`);
               resolve();
             };
             const errorHandler = (e: Event) => {
               audio.removeEventListener('canplay', canPlayHandler);
               audio.removeEventListener('error', errorHandler);
               const mediaError = (e.target as HTMLAudioElement).error;
-              console.error(`[togglePlayPause] MediaError during load for ${questionId}:`, mediaError);
               reject(new Error(`Error loading audio: ${mediaError?.message || 'Unknown error'}`));
             };
             audio.addEventListener('canplay', canPlayHandler, { once: true });
             audio.addEventListener('error', errorHandler, { once: true });
           });
         }
-        console.log(`[togglePlayPause] Attempting to play ${questionId}`);
         await audio.play();
       } else {
-        console.log(`[togglePlayPause] Attempting to pause ${questionId}`);
         audio.pause();
       }
     } catch (error: any) {
       console.error(`[togglePlayPause] Error for ${questionId}: ${error.name} - ${error.message}`);
       toast({ variant: "destructive", title: "Playback Error", description: error.message });
-      // Ensure UI reflects paused state if play() failed
       if (audio.paused && audioPlayerStates[questionId]?.isPlaying) {
         setAudioPlayerStates(prev => ({
           ...prev,
@@ -619,17 +613,42 @@ export default function CompleteAssignmentPage() {
 
   const handleAudioTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement, Event>, questionId: string) => {
     const audio = e.currentTarget;
-    setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, currentTime: audio.currentTime } }));
+    const currentDuration = audioPlayerStates[questionId]?.duration || 0;
+    setAudioPlayerStates(prev => ({ 
+        ...prev, 
+        [questionId]: { 
+            ...prev[questionId]!, 
+            currentTime: Math.min(audio.currentTime, currentDuration), // Cap currentTime at duration
+            duration: currentDuration 
+        } 
+    }));
   };
 
   const handleAudioLoadedMetadata = (e: React.SyntheticEvent<HTMLAudioElement, Event>, questionId: string) => {
     const audio = e.currentTarget;
-    const newDuration = (audio.duration && Number.isFinite(audio.duration) && audio.duration > 0) ? audio.duration : 0;
-    setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, duration: newDuration, currentTime: 0 } }));
+    let newDuration = audio.duration;
+    if (isNaN(newDuration) || !isFinite(newDuration) || newDuration <= 0) {
+        newDuration = 0; // Default to 0 if duration is invalid
+    }
+    setAudioPlayerStates(prev => ({ 
+        ...prev, 
+        [questionId]: { 
+            ...prev[questionId]!, 
+            duration: newDuration, 
+            currentTime: 0 // Reset currentTime when metadata loads
+        } 
+    }));
   };
-
+  
   const handleAudioEnded = (questionId: string) => {
-     setAudioPlayerStates(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, isPlaying: false, currentTime: 0 } }));
+     setAudioPlayerStates(prev => ({ 
+        ...prev, 
+        [questionId]: { 
+            ...prev[questionId]!, 
+            isPlaying: false, 
+            currentTime: 0 // Reset currentTime on end
+        } 
+    }));
       if (audioRefs.current[questionId]) {
         audioRefs.current[questionId]!.currentTime = 0;
       }
@@ -721,10 +740,9 @@ export default function CompleteAssignmentPage() {
     const finalAudioNotesForSubmission: Record<string, { name?: string; url?: string }> = {};
     const audioUploadPromises: Promise<void>[] = [];
 
-    // Process and upload audio notes
     Object.keys(audioNotes).forEach(questionId => {
         const note = audioNotes[questionId];
-        if (note?.blob && !note.downloadURL && !note.isUploading) { // Only upload if there's a blob and no download URL yet
+        if (note?.blob && !note.downloadURL && !note.isUploading) {
             setAudioNotes(prev => ({
             ...prev,
             [questionId]: { ...note, isUploading: true, uploadProgress: 0, uploadError: null }
@@ -746,21 +764,22 @@ export default function CompleteAssignmentPage() {
                 reject(error);
                 },
                 async () => {
-                try {
-                    const url = await getDownloadURL(audioUploadTask.snapshot.ref);
-                    setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, downloadURL: url, name: audioFileName, isUploading: false, uploadProgress: 100 }}));
-                    finalAudioNotesForSubmission[questionId] = { name: audioFileName, url: url };
-                    resolve();
-                } catch (getUrlError){
-                    console.error(`Failed to get audio download URL for ${questionId}:`, getUrlError);
-                    setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, uploadError: (getUrlError as Error).message, isUploading: false }}));
-                    reject(getUrlError);
-                }
+                  try {
+                      const url = await getDownloadURL(audioUploadTask.snapshot.ref);
+                      setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, downloadURL: url, name: audioFileName, isUploading: false, uploadProgress: 100 }}));
+                      // Ensure this is populated correctly for submission
+                      finalAudioNotesForSubmission[questionId] = { name: audioFileName, url: url };
+                      resolve();
+                  } catch (getUrlError){
+                      console.error(`Failed to get audio download URL for ${questionId}:`, getUrlError);
+                      setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, uploadError: (getUrlError as Error).message, isUploading: false }}));
+                      reject(getUrlError);
+                  }
                 }
             );
             });
             audioUploadPromises.push(promise);
-        } else if (note?.downloadURL) { // Include already uploaded audio notes
+        } else if (note?.downloadURL) { 
             finalAudioNotesForSubmission[questionId] = { name: note.name, url: note.downloadURL };
         }
     });
@@ -778,10 +797,11 @@ export default function CompleteAssignmentPage() {
     const photoLinksForSync: Record<string, string> = {};
     const commentsObject: Record<string, string> = {};
 
-    conditionallyVisibleQuestions.forEach(question => {
+    console.log("--- Processing questions for submission ---");
+    conditionallyVisibleQuestions.forEach((question, idx) => {
+        console.log(`Processing question ${idx + 1} (ID: ${question.id}, Label: ${question.label})`);
         let questionAnswer: any;
 
-        // --- Extract Answer Data ---
         if (question.component === 'checkbox' && question.options && Array.isArray(parseOptions(question.options))) {
             const selectedOptions: string[] = [];
             parseOptions(question.options).forEach(opt => {
@@ -797,9 +817,9 @@ export default function CompleteAssignmentPage() {
                     selectedOptions.push(opt);
                 }
             });
-            questionAnswer = selectedOptions;
+            questionAnswer = selectedOptions.join(',');
         } else if (question.component === 'checkbox' && !question.options) {
-            questionAnswer = data[question.id] || false;
+             questionAnswer = data[question.id] ?? false;
         } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
             questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
         } else if ((question.component === 'time' || question.component === 'completionTime')) {
@@ -812,32 +832,38 @@ export default function CompleteAssignmentPage() {
             } else {
                 questionAnswer = "00:00"; 
             }
-        } else if (question.component === 'range') {
+        } else if (question.component === 'range') { 
              questionAnswer = data[question.id] ?? 0;
-        } else {
-            questionAnswer = data[question.id] ?? "";
+        } else { 
+            questionAnswer = data[question.id] ?? ""; 
         }
         answersObject[question.id] = questionAnswer;
+        console.log(`  -> Answer for ${question.id}:`, questionAnswer);
 
-        // --- Extract Comment Data ---
         const commentText = data[`${question.id}_comment`];
         if (question.comment && typeof commentText === 'string' && commentText.trim() !== '') {
             commentsObject[question.id] = commentText.trim();
-        } // Else if comment is empty or not a string, it's not included
+            console.log(`  -> Comment for ${question.id}: "${commentText.trim()}"`);
+        } else if (question.comment) {
+            console.log(`  -> Comment for ${question.id}: (empty or not a string)`);
+        }
+
 
         if (question.photoUpload && uploadedFileDetails[question.id]?.url) {
             photoLinksForSync[question.id] = uploadedFileDetails[question.id]!.url;
         }
     });
 
-    console.log("Comments Object being sent:", commentsObject);
-    console.log("Answers Object being sent:", answersObject);
+    console.log("Final Comments Object for submission:", commentsObject);
+    console.log("Final Answers Object for submission:", answersObject);
+    console.log("Final Audio Notes for submission:", finalAudioNotesForSubmission);
+
     formDataForSubmission.append("content", JSON.stringify(answersObject));
 
     if (Object.keys(photoLinksForSync).length > 0) {
       formDataForSubmission.append("syncPhotoLinks", JSON.stringify(photoLinksForSync));
     }
-    formDataForSubmission.append("commentsData", JSON.stringify(commentsObject)); // Always send commentsObject, even if empty
+    formDataForSubmission.append("commentsData", JSON.stringify(commentsObject));
     formDataForSubmission.append("audioNotesData", Object.keys(finalAudioNotesForSubmission).length > 0 ? JSON.stringify(finalAudioNotesForSubmission) : "{}");
 
     formDataForSubmission.append("assessmentName", assignment.assessmentName || "Unnamed Assignment");
@@ -1521,3 +1547,5 @@ export default function CompleteAssignmentPage() {
   );
 }
 
+
+    
