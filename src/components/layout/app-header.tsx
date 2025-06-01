@@ -1,33 +1,46 @@
 
 "use client";
 
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuGroup,
-  DropdownMenuTrigger, // Ensured this is imported
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check } from "lucide-react";
-import { useTheme } from "next-themes";
-import { useState, useEffect } from "react";
-import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import type React from 'react';
+import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import { useAuth } from "@/context/auth-context";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
-import { useRouter } from "next/navigation";
+
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuRadioGroup, DropdownMenuRadioItem,
+  DropdownMenuGroup, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { useLayout } from "@/context/layout-context";
 import { getDistrictsForSuperAdmin, switchUserAccount } from "@/services/adminActionsService";
 import type { District } from "@/types/Admin";
-import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check, Menu,
+  LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon
+} from "lucide-react";
+
+
+// Icon mapping (consistent with sidebar)
+const iconMap: { [key: string]: React.ElementType } = {
+  LayoutDashboard, Map: MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare: MessageSquareIcon,
+  Default: LayoutDashboard,
+};
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: string; // Icon name as string
+}
 
 const AccountSwitcher: React.FC = () => {
   const { userProfile, updateCurrentAccountInProfile, customClaims } = useAuth();
@@ -35,7 +48,6 @@ const AccountSwitcher: React.FC = () => {
   const [isLoadingDistricts, setIsLoadingDistricts] = useState(true);
   const [isSwitchingAccount, setIsSwitchingAccount] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
 
   const isSuperAdmin = userProfile?.permission === 'superAdmin' || customClaims?.superAdmin === true;
 
@@ -48,14 +60,10 @@ const AccountSwitcher: React.FC = () => {
         })
         .catch(err => {
           console.error("Failed to fetch districts:", err);
-          toast({ variant: "destructive", title: "Error Loading Districts", description: "Could not load districts for account switching. " + (err.message || '') });
-          setDistricts([]); // Ensure districts is an empty array on error
+          toast({ variant: "destructive", title: "Error Loading Districts", description: "Could not load districts. " + (err.message || '') });
+          setDistricts([]);
         })
         .finally(() => setIsLoadingDistricts(false));
-    } else if (isSuperAdmin && !userProfile?.account) {
-        console.warn("SuperAdmin detected, but userProfile.account is not yet available for fetching districts.");
-        setIsLoadingDistricts(false);
-        setDistricts([]);
     } else {
         setIsLoadingDistricts(false);
         setDistricts([]);
@@ -71,21 +79,14 @@ const AccountSwitcher: React.FC = () => {
         toast({ variant: "destructive", title: "Switch Error", description: "No district ID selected." });
         return;
     }
-    if (selectedDistrictId === userProfile.account) {
-        return;
-    }
+    if (selectedDistrictId === userProfile.account) return; // Already selected this account (ID)
 
     setIsSwitchingAccount(true);
     try {
-      // The backend expects the ID of the district to switch to in the 'account' field of the payload
-      await switchUserAccount(selectedDistrictId, userProfile.account);
-      
-      // Update the local context with the new account ID.
-      updateCurrentAccountInProfile(selectedDistrictId);
+      await switchUserAccount(selectedDistrictId, userProfile.account); // Send ID to backend
+      updateCurrentAccountInProfile(selectedDistrictId); // Update context with ID
       toast({ title: "Account Switched", description: `Successfully switched to account ID: ${selectedDistrictId}. Reloading...` });
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      setTimeout(() => window.location.reload(), 1500);
     } catch (err: any) {
       toast({ variant: "destructive", title: "Account Switch Failed", description: err.message || "Could not switch accounts." });
     } finally {
@@ -95,129 +96,115 @@ const AccountSwitcher: React.FC = () => {
 
   if (!isSuperAdmin) return null;
 
-  // userProfile.account stores the ID of the currently active district.
   const currentSelectedValue = userProfile?.account || "";
 
   return (
     <DropdownMenuGroup>
       <DropdownMenuLabel className="flex items-center gap-2">
-        <Building className="h-4 w-4" />
-        Switch Account
+        <Building className="h-4 w-4" /> Switch Account (ID)
       </DropdownMenuLabel>
       <DropdownMenuSeparator />
       {isLoadingDistricts ? (
-        <div className="px-2 py-1.5">
-          <Skeleton className="h-6 w-full my-1" />
-           <Skeleton className="h-6 w-full my-1" />
-        </div>
+        <div className="px-2 py-1.5 space-y-1"><Skeleton className="h-6 w-full" /><Skeleton className="h-6 w-full" /></div>
       ) : districts.length > 0 ? (
-        <DropdownMenuRadioGroup
-          value={currentSelectedValue}
-          onValueChange={handleAccountSwitch}
-          disabled={isSwitchingAccount}
-        >
+        <DropdownMenuRadioGroup value={currentSelectedValue} onValueChange={handleAccountSwitch} disabled={isSwitchingAccount}>
           {districts.map((district) => (
-            <DropdownMenuRadioItem
-              key={district.id}
-              value={district.id} // Value for selection is the district's ID
-              className="cursor-pointer"
-              disabled={isSwitchingAccount || district.id === userProfile?.account}
-            >
-              {district.id} {/* Display district.id as requested */}
+            <DropdownMenuRadioItem key={district.id} value={district.id} className="cursor-pointer" disabled={isSwitchingAccount || district.id === userProfile?.account}>
+              {district.id}
               {district.id === userProfile?.account && <Check className="ml-auto h-4 w-4" />}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
-      ) : (
-         <DropdownMenuItem disabled>No other accounts available.</DropdownMenuItem>
-      )}
+      ) : ( <DropdownMenuItem disabled>No other accounts available.</DropdownMenuItem> )}
       {isSwitchingAccount && <DropdownMenuItem disabled>Switching...</DropdownMenuItem>}
        <DropdownMenuSeparator />
     </DropdownMenuGroup>
   );
 };
 
+interface AppHeaderProps {
+  navItems: NavItem[];
+}
 
-export function AppHeader() {
+export function AppHeader({ navItems }: AppHeaderProps) {
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const { user, userProfile, customClaims, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const { layoutMode, isMobileViewForLayout } = useLayout();
+  const { toggleSidebar: toggleMobileSidebar } = useSidebar(); // For mobile sheet
+  const pathname = usePathname();
 
   const isDark = mounted && resolvedTheme === "dark";
   const isSuperAdmin = !authLoading && (userProfile?.permission === 'superAdmin' || customClaims?.superAdmin === true);
 
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => setMounted(true), []);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      toast({ title: "Logged Out" });
       router.push('/auth');
     } catch (error: any) {
       toast({ variant: "destructive", title: "Logout Failed", description: error.message });
     }
   };
 
+  const renderTopNavItems = () => (
+    <nav className="hidden md:flex items-center space-x-1">
+      {navItems.map(item => {
+        const IconComponent = iconMap[item.icon] || iconMap.Default;
+        return (
+          <Button key={item.href} variant={pathname === item.href ? "secondary" : "ghost"} size="sm" asChild>
+            <Link href={item.href} className="flex items-center gap-2 px-3 py-2">
+              <IconComponent className="h-4 w-4" />
+              {item.label}
+            </Link>
+          </Button>
+        );
+      })}
+    </nav>
+  );
+
   return (
-    <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 px-6 backdrop-blur-sm">
-      <SidebarTrigger className="md:hidden" />
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 px-4 sm:px-6 backdrop-blur-sm">
+      {/* Mobile Sidebar Trigger: Always show for mobile, regardless of layout mode */}
+      {isMobileViewForLayout && (
+         <Button variant="ghost" size="icon" onClick={toggleMobileSidebar} aria-label="Open menu">
+           <Menu className="h-5 w-5" />
+         </Button>
+      )}
+      {/* Desktop Sidebar Trigger: Only for standard layout and not mobile */}
+      {layoutMode === "standard" && !isMobileViewForLayout && <SidebarTrigger className="hidden md:flex" />}
+
       <div className="flex-1">
         {isSuperAdmin && userProfile?.account && (
-            <div className="text-sm text-muted-foreground">
-                Current Account: <span className="font-semibold text-primary">{userProfile.account}</span>
-            </div>
+          <div className="text-xs sm:text-sm text-muted-foreground">
+            Account: <span className="font-semibold text-primary">{userProfile.account}</span>
+          </div>
         )}
+        {layoutMode === "topNav" && !isMobileViewForLayout && renderTopNavItems()}
       </div>
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Toggle Theme"
-          onClick={() => {
-            if (mounted && resolvedTheme) {
-              setTheme(resolvedTheme === "dark" ? "light" : "dark");
-            }
-          }}
-        >
-          <Sun
-            className={cn(
-              "h-5 w-5 transition-all",
-              isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100"
-            )}
-            suppressHydrationWarning={true}
-          />
-          <Moon
-            className={cn(
-              "absolute h-5 w-5 transition-all",
-              isDark ? "rotate-0 scale-100" : "rotate-90 scale-0"
-            )}
-            suppressHydrationWarning={true}
-          />
-          <span className="sr-only">Toggle theme</span>
+
+      <div className="flex items-center gap-2 sm:gap-4">
+        <Button variant="ghost" size="icon" aria-label="Toggle Theme" onClick={() => setTheme(isDark ? "light" : "dark")}>
+          <Sun className={cn("h-5 w-5 transition-all", isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100")} />
+          <Moon className={cn("absolute h-5 w-5 transition-all", isDark ? "rotate-0 scale-100" : "rotate-90 scale-0")} />
         </Button>
         <Button variant="ghost" size="icon" aria-label="Notifications">
             <Bell className="h-5 w-5" />
-            <span className="sr-only">Notifications</span>
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="h-9 w-9">
-                {user ? (
-                  <AvatarImage src={user.photoURL || `https://placehold.co/40x40.png?text=${user.email?.[0]?.toUpperCase() || 'U'}`} alt="User Avatar" data-ai-hint="user avatar" />
-                ) : (
-                  <AvatarImage src="https://placehold.co/40x40.png" alt="Guest Avatar" data-ai-hint="guest avatar" />
-                )}
+                <AvatarImage src={user?.photoURL || `https://placehold.co/40x40.png?text=${user?.email?.[0]?.toUpperCase() || 'U'}`} alt="User Avatar" data-ai-hint="user avatar" />
                 <AvatarFallback>{user ? (userProfile?.displayName?.[0] || user.email?.[0]?.toUpperCase() || 'U') : 'G'}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64 max-h-[70vh] overflow-y-auto">
+          <DropdownMenuContent align="end" className="w-64 max-h-[var(--dropdown-max-h,70vh)] overflow-y-auto">
             {user ? (
               <>
                 <DropdownMenuLabel>
@@ -226,24 +213,17 @@ export function AppHeader() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {isSuperAdmin && <AccountSwitcher />}
-                <DropdownMenuItem asChild><Link href="/settings">Profile</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/settings">Profile & Settings</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                  <LogOutIcon className="mr-2 h-4 w-4" />
-                  Log out
+                  <LogOutIcon className="mr-2 h-4 w-4" /> Log out
                 </DropdownMenuItem>
               </>
             ) : (
               <>
                 <DropdownMenuLabel>Guest</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/auth">
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Login / Sign Up
-                  </Link>
-                </DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/auth"><LogIn className="mr-2 h-4 w-4" /> Login / Sign Up</Link></DropdownMenuItem>
               </>
             )}
           </DropdownMenuContent>
@@ -252,4 +232,3 @@ export function AppHeader() {
     </header>
   );
 }
-

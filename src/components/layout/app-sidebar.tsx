@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import type React from 'react';
 import {
   Sidebar,
   SidebarHeader,
@@ -11,46 +12,45 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
-  useSidebar, 
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/icons/logo";
 import {
-  LayoutDashboard,
-  Map,
-  ClipboardList,
-  Camera,
-  FileCheck2,
-  FilePieChart,
-  Palette,
-  Settings,
-  MessageSquare, // Added for Messaging
-  LogOut as LogOutIcon,
-  PanelLeftClose, 
-  PanelLeftOpen,  
+  LayoutDashboard, Map, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, Settings, MessageSquare,
+  LogOut as LogOutIcon, PanelLeftClose, PanelLeftOpen, Home, Users, BarChart2, Briefcase, Shield, BookOpen
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/context/auth-context";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
+import { useLayout } from "@/context/layout-context";
+import { cn } from "@/lib/utils";
 
-const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/map", label: "Campus Map", icon: Map },
-  { href: "/assessment-forms", label: "Assignments", icon: ClipboardList },
-  { href: "/photo-analysis", label: "Photo Analysis", icon: Camera },
-  { href: "/policy-analysis", label: "Policy Analysis", icon: FileCheck2 },
-  { href: "/reports", label: "Report Studio", icon: FilePieChart },
-  { href: "/messaging", label: "Messaging", icon: MessageSquare }, // Added Messaging
-  { href: "/theming", label: "Theming", icon: Palette },
-];
+// Icon mapping
+const iconMap: { [key: string]: React.ElementType } = {
+  LayoutDashboard, Map, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, Settings, MessageSquare,
+  Home, Users, BarChart2, Briefcase, Shield, BookOpen,
+  Default: LayoutDashboard, // Fallback icon
+};
 
-export function AppSidebar() {
+interface NavItem {
+  href: string;
+  label: string;
+  icon: string; // Icon name as string
+}
+
+interface AppSidebarProps {
+  navItems: NavItem[];
+}
+
+export function AppSidebar({ navItems }: AppSidebarProps) {
   const pathname = usePathname();
   const sidebarContext = useSidebar();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const { layoutMode, isMobileViewForLayout } = useLayout();
 
   const handleLogout = async () => {
     try {
@@ -66,52 +66,78 @@ export function AppSidebar() {
     return null;
   }
 
+  // For TopNav layout on desktop, sidebar is not rendered.
+  // For mobile, it's handled by Sheet in AppHeader.
+  if (layoutMode === "topNav" && !isMobileViewForLayout) {
+    return null;
+  }
+  
+  const isMinimalIconModeDesktop = layoutMode === "minimalIcon" && !isMobileViewForLayout;
+  const effectiveCollapsible = isMinimalIconModeDesktop ? "icon" : "icon"; // Can be "offcanvas" or "icon" from props
+  const initialSidebarState = isMinimalIconModeDesktop ? "collapsed" : sidebarContext.state;
+
+
   return (
-    <Sidebar side="left" variant="sidebar" collapsible="icon">
+    <Sidebar 
+      side="left" 
+      variant="sidebar" 
+      collapsible={effectiveCollapsible}
+      className={cn(
+        layoutMode === "topNav" && "md:hidden" // Hide on desktop for topNav
+      )}
+      // To force minimalIcon mode to stay collapsed, more advanced state management in SidebarProvider might be needed
+      // Or, we can simply hide the toggle button for that mode.
+    >
       <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2.5">
         <Logo />
       </SidebarHeader>
       <SidebarContent className="flex-grow p-2">
         <SidebarMenu>
-          {navItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
-              <Link href={item.href} passHref legacyBehavior>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === item.href}
-                  tooltip={item.label}
-                >
-                  <a>
-                    <item.icon className="h-5 w-5" />
-                    <span>{item.label}</span>
-                  </a>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          ))}
+          {navItems.map((item) => {
+            const IconComponent = iconMap[item.icon] || iconMap.Default;
+            return (
+              <SidebarMenuItem key={item.href}>
+                <Link href={item.href} passHref legacyBehavior>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.href}
+                    tooltip={item.label}
+                  >
+                    <a>
+                      <IconComponent className="h-5 w-5" />
+                      <span>{item.label}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            );
+          })}
         </SidebarMenu>
       </SidebarContent>
       <Separator className="my-2"/>
       <SidebarFooter className="p-2">
         <SidebarMenu>
-          <SidebarMenuItem className="hidden md:block"> {/* Desktop only toggle */}
-            <SidebarMenuButton
-              onClick={sidebarContext.toggleSidebar}
-              tooltip={sidebarContext.state === 'expanded' ? "Collapse sidebar" : "Expand sidebar"}
-            >
-              {sidebarContext.state === 'expanded' ? (
-                <>
-                  <PanelLeftClose className="h-5 w-5" />
-                  <span>Collapse</span>
-                </>
-              ) : (
-                <>
-                  <PanelLeftOpen className="h-5 w-5" />
-                  <span>Expand</span>
-                </>
-              )}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {/* Desktop only toggle, and hide if in minimalIcon mode on desktop */}
+          {layoutMode !== "minimalIcon" && !isMobileViewForLayout && (
+            <SidebarMenuItem className="hidden md:block">
+              <SidebarMenuButton
+                onClick={sidebarContext.toggleSidebar}
+                tooltip={initialSidebarState === 'expanded' ? "Collapse sidebar" : "Expand sidebar"}
+              >
+                {initialSidebarState === 'expanded' ? (
+                  <>
+                    <PanelLeftClose className="h-5 w-5" />
+                    <span>Collapse</span>
+                  </>
+                ) : (
+                  <>
+                    <PanelLeftOpen className="h-5 w-5" />
+                    <span>Expand</span>
+                  </>
+                )}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           {user && ( 
             <SidebarMenuItem>
               <Link href="/settings" passHref legacyBehavior>
