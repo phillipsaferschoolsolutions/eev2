@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
-import { usePathname } from "next/navigation"; // Ensure usePathname is imported if used for redirect
+import { usePathname } from "next/navigation"; 
 
 const sampleTemplates = [
   { id: "env1", name: "Environmental Safety Checklist", description: "General campus environment assessment.", icon: CheckSquare },
@@ -29,7 +29,7 @@ export default function AssessmentFormsPage() {
   const [isLoadingAllAccountAssignments, setIsLoadingAllAccountAssignments] = useState(true);
   const [allAccountAssignmentsError, setAllAccountAssignmentsError] = useState<string | null>(null);
 
-  const pathname = usePathname(); // For redirect
+  const pathname = usePathname(); 
 
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
 
@@ -228,13 +228,16 @@ export default function AssessmentFormsPage() {
            {!overallLoadingMyAssignments && !myAssignmentsError && myAssignments.length > 0 && (
              <ul className="space-y-3">
                {myAssignments.map((assignment, index) => {
-                 const uniqueIdForLink = (assignment.assignmentId && typeof assignment.assignmentId === 'string' && assignment.assignmentId.trim() !== '')
-                                      ? assignment.assignmentId
-                                      : (assignment.id && typeof assignment.id === 'string' && assignment.id.trim() !== '')
-                                        ? assignment.id
-                                        : null;
+                 let uniqueIdForLink: string | null = null;
+                 if (assignment.assignmentId && typeof assignment.assignmentId === 'string' && assignment.assignmentId.trim() !== '') {
+                     uniqueIdForLink = assignment.assignmentId;
+                 } else if (assignment.id && typeof assignment.id === 'string' && assignment.id.trim() !== '') {
+                     uniqueIdForLink = assignment.id;
+                 } else if (assignment.assessmentName && typeof assignment.assessmentName === 'string' && assignment.assessmentName.trim() !== '') {
+                     uniqueIdForLink = assignment.assessmentName; 
+                 }
 
-                 const keyForListItem = uniqueIdForLink || assignment.assessmentName || `my-assignment-${index}`;
+                 const keyForListItem = uniqueIdForLink || (assignment.assessmentName || `my-assignment-${index}`);
 
                  return (
                    <li key={keyForListItem} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
@@ -242,18 +245,18 @@ export default function AssessmentFormsPage() {
                        <p className="font-medium">{assignment.assessmentName || assignment.description || 'Unnamed Assignment'}</p>
                        <p className="text-xs text-muted-foreground">
                          {assignment.description ? (assignment.assessmentName ? `Desc: ${assignment.description}` : assignment.description) : `Due: ${assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}`}
-                         {!uniqueIdForLink && <span className="ml-2 text-destructive">(ID missing)</span>}
+                         {!uniqueIdForLink && <span className="ml-2 text-destructive">(ID missing for link)</span>}
                        </p>
                      </div>
                      {uniqueIdForLink ? (
                         <Button asChild variant="outline" size="sm">
-                          <Link href={`/assignments/${uniqueIdForLink}/complete`}>
-                            Complete Assignment
+                          <Link href={`/assignments/${encodeURIComponent(uniqueIdForLink)}/complete`}>
+                            Go
                           </Link>
                         </Button>
                       ) : (
                         <Button variant="outline" size="sm" disabled>
-                          Complete Assignment (ID Missing)
+                          Go (ID Missing)
                         </Button>
                       )}
                    </li>
@@ -366,6 +369,3 @@ export default function AssessmentFormsPage() {
     </div>
   );
 }
-
-
-    
