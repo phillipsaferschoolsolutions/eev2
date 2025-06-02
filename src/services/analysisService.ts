@@ -246,14 +246,14 @@ export async function getSavedReports(accountName: string): Promise<SavedReportM
 
 /**
  * Fetches widget trends data (week, month, year completions, streak).
- * Uses GET /widgets/trends from ANALYSIS_BASE_URL (or ANALYSIS_V2_BASE_URL if appropriate)
+ * Uses GET /widgets/trends from ANALYSIS_V2_BASE_URL (Updated)
  */
 export async function getWidgetTrends(accountName: string): Promise<TrendsResponse | null> {
   if (!accountName || accountName.trim() === "") {
     throw new Error("Account name is required for getWidgetTrends.");
   }
-  // Assuming the old frontend code used BASE_URL for this, sticking to it unless specified.
-  // If /assignments/widgets/trends is under analysisv2, change this.
-  const result = await authedFetch<TrendsResponse | undefined>(`${ANALYSIS_BASE_URL}/widgets/trends`, {}, accountName);
+  // Updated to use ANALYSIS_V2_BASE_URL
+  const result = await authedFetch<TrendsResponse | undefined>(`${ANALYSIS_V2_BASE_URL}/widgets/trends`, {}, accountName);
   return result || null;
 }
+
