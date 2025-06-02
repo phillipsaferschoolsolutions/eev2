@@ -13,31 +13,27 @@ import { Button } from "@/components/ui/button";
 import {
   AlertTriangle,
   CalendarDays,
-  CloudSun,
-  Newspaper,
+  Newspaper, // Kept for news modal, but card removed from main grid
   ShieldAlert,
   ListChecks,
-  Edit3,
-  FileText,
+  Edit3, // For New Assessment button
+  FileText, // For Report Incident button
   ExternalLink,
-  Info,
-  Thermometer,
-  Sunrise,
-  Sunset,
+  Info, // Kept for news modal details
   Activity,
   TrendingUp,
   Filter,
   AlertCircle,
-  Loader2, 
+  Loader2,
+  ListOrdered, // For View All Tasks button
+  Radiation, // For Initiate Lockdown
+  MessageSquare, // For Send Alert
 } from "lucide-react";
-import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import {
-  getWeatherAndLocation,
-  type WeatherLocationData,
   getAssignmentListMetadata,
-  getAssignmentById, 
+  getAssignmentById,
   type AssignmentMetadata,
   type AssignmentWithPermissions,
 } from "@/services/assignmentFunctionsService";
@@ -48,10 +44,9 @@ import {
 import type {
   WidgetSandboxData,
   SchoolsWithQuestionsResponse,
-  UserActivity, 
-  AssignmentCompletionStatus, 
+  UserActivity,
+  AssignmentCompletionStatus,
 } from "@/types/Analysis";
-import { fetchPexelsImageURL } from "@/services/pexelsService";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Alert,
@@ -64,7 +59,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  // DialogTrigger, // Removed as per user request
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -77,8 +71,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { motion } from "framer-motion";
-import { useTheme } from "next-themes";
 import { formatDisplayDateShort } from "@/lib/utils";
+import Link from "next/link"; // For "New Assessment" button
 
 const GOOGLE_NEWS_RSS_URL =
   "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
@@ -108,28 +102,6 @@ const PERIOD_OPTIONS = [
   { value: "last90days", label: "Last 90 Days" },
   { value: "alltime", label: "All Time" },
 ];
-
-const sanitizeHTML = (htmlString: string): string => {
-  if (typeof document !== "undefined") {
-    const doc = new DOMParser().parseFromString(htmlString, "text/html");
-    return doc.body.textContent || "";
-  }
-  return htmlString.replace(/<[^>]+>/g, "");
-};
-
-const formatTime = (unixTimestamp?: number): string => {
-  if (!unixTimestamp) return "N/A";
-  try {
-    const date = new Date(unixTimestamp * 1000);
-    if (isNaN(date.getTime())) return "Invalid Date";
-    return date.toLocaleTimeString([], {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  } catch (e) {
-    return "N/A";
-  }
-};
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -170,19 +142,72 @@ const heroTextVariants = {
   },
 };
 
-export default function DashboardPage() {
-  const { userProfile, loading: authLoading, profileLoading } = useAuth(); 
-  const { resolvedTheme } = useTheme();
-  const [weatherData, setWeatherData] = useState<WeatherLocationData | null>(null);
-  const [weatherLoading, setWeatherLoading] = useState(true);
-  const [weatherError, setWeatherError] = useState<string | null>(null);
+// --- New Placeholder Card Components ---
+const CriticalTasksCard: React.FC = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-xl">
+        <AlertTriangle className="h-5 w-5 text-destructive" /> Critical Tasks
+      </CardTitle>
+      <CardDescription>High-priority items needing immediate attention.</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <ul className="space-y-3 text-sm">
+        <li className="flex justify-between items-center"><span>Inspect broken fence near West Gate</span> <Button variant="link" size="sm" className="p-0 h-auto">Details</Button></li>
+        <li className="flex justify-between items-center"><span>Review fire drill report</span> <Button variant="link" size="sm" className="p-0 h-auto">Details</Button></li>
+        <li className="flex justify-between items-center"><span>Restock first-aid kit - Gym</span> <Button variant="link" size="sm" className="p-0 h-auto">Details</Button></li>
+      </ul>
+    </CardContent>
+  </Card>
+);
 
+const UpcomingEventsCard: React.FC = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-xl">
+        <CalendarDays className="h-5 w-5 text-primary" /> Upcoming Events & Drills
+      </CardTitle>
+      <CardDescription>Scheduled safety events and drills.</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <ul className="space-y-2 text-sm">
+        <li><strong>Campus Safety Workshop:</strong> Tomorrow, 10 AM</li>
+        <li><strong>Fire Drill (Block B):</strong> Oct 28, 2 PM</li>
+        <li><strong>Security Team Meeting:</strong> Nov 2, 9 AM</li>
+      </ul>
+    </CardContent>
+  </Card>
+);
+
+const EmergencyProtocolsCard: React.FC = () => (
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2 text-xl">
+        <ShieldAlert className="h-5 w-5 text-primary" /> Emergency Protocols
+      </CardTitle>
+      <CardDescription>Quick actions for emergency situations.</CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-3">
+      <Button className="w-full bg-destructive hover:bg-destructive/90">
+        <Radiation className="mr-2 h-4 w-4" /> Initiate Lockdown
+      </Button>
+      <Button variant="outline" className="w-full">
+        <FileText className="mr-2 h-4 w-4" /> Report Incident
+      </Button>
+      <Button variant="outline" className="w-full">
+        <MessageSquare className="mr-2 h-4 w-4" /> Send Alert
+      </Button>
+    </CardContent>
+  </Card>
+);
+
+
+export default function DashboardPage() {
+  const { userProfile, loading: authLoading, profileLoading } = useAuth();
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState<string | null>(null);
   const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItem | null>(null);
-
-  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const [isClientMounted, setIsClientMounted] = useState(false);
 
   const [widgetData, setWidgetData] = useState<WidgetSandboxData | null>(null);
@@ -200,57 +225,9 @@ export default function DashboardPage() {
 
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
 
-
   useEffect(() => {
     setIsClientMounted(true);
-    if (process.env.NEXT_PUBLIC_PEXEL_API_KEY) {
-      fetchPexelsImageURL("modern campus security technology", "landscape")
-        .then(setHeroImageUrl)
-    }
   }, []);
-
-  useEffect(() => {
-    const fetchWeatherData = () => {
-      if (!isClientMounted || !navigator.geolocation) {
-        if (isClientMounted) setWeatherError("Geolocation is not supported by your browser.");
-        setWeatherLoading(false);
-        return;
-      }
-      if (userProfile === undefined || authLoading || profileLoading) return;
-      if (!userProfile?.account) {
-        if (userProfile !== null) {
-          setWeatherError("User account information not available for weather data.");
-        }
-        setWeatherLoading(false);
-        return;
-      }
-      setWeatherLoading(true);
-      setWeatherError(null);
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            const data = await getWeatherAndLocation(
-              position.coords.latitude,
-              position.coords.longitude,
-              userProfile.account
-            );
-            setWeatherData(data);
-          } catch (err) {
-            setWeatherError(err instanceof Error ? err.message : "Failed to fetch weather data.");
-          } finally {
-            setWeatherLoading(false);
-          }
-        },
-        (error) => {
-          setWeatherError(`Geolocation error: ${error.message}. Please enable location services.`);
-          setWeatherLoading(false);
-        }
-      );
-    };
-    if (isClientMounted) {
-      fetchWeatherData();
-    }
-  }, [userProfile, isClientMounted, authLoading, profileLoading]);
 
   useEffect(() => {
     const fetchNewsData = async () => {
@@ -301,7 +278,7 @@ export default function DashboardPage() {
    useEffect(() => {
     if (userProfile?.account && selectedAssignmentForCommon && isClientMounted && !authLoading && !profileLoading) {
       setIsLoadingCommonResponsesAssignmentDetails(true);
-      setCommonResponsesAssignmentDetails(null); 
+      setCommonResponsesAssignmentDetails(null);
       getAssignmentById(selectedAssignmentForCommon, userProfile.account)
         .then(setCommonResponsesAssignmentDetails)
         .catch((err) => {
@@ -321,7 +298,7 @@ export default function DashboardPage() {
     ) {
       setIsLoadingCommonResponses(true);
       setCommonResponsesError(null);
-      setCommonResponsesData(null); 
+      setCommonResponsesData(null);
       getCommonResponsesForAssignment(
         selectedAssignmentForCommon,
         commonResponsesPeriod,
@@ -343,14 +320,14 @@ export default function DashboardPage() {
   ]);
 
   const renderLastCompletionsWidget = () => {
-    if (isLoadingWidgets) return <Skeleton className="h-48 w-full" />;
+    if (isLoadingWidgets) return <Skeleton className="h-full w-full min-h-[150px]" />;
     if (widgetError) return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{widgetError}</AlertDescription></Alert>;
-    
+
     const itemsToDisplay = isAdmin ? widgetData?.accountCompletions : widgetData?.userActivity;
-    if (!itemsToDisplay || itemsToDisplay.length === 0) return <p className="text-sm text-muted-foreground">No recent activity.</p>;
+    if (!itemsToDisplay || itemsToDisplay.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p>;
 
     return (
-      <ScrollArea className="h-60">
+      <ScrollArea className="h-48 xl:h-56">
         <ul className="space-y-2 pr-3">
           {itemsToDisplay.map((item: UserActivity | AssignmentCompletionStatus) => (
             <li key={item.id} className="p-3 border rounded-md hover:bg-muted/50">
@@ -361,7 +338,7 @@ export default function DashboardPage() {
                 </p>
               ) : ('status' in item &&
                 <p className="text-xs text-muted-foreground">
-                  Status: <span className={`font-semibold ${item.status === 'completed' ? 'text-green-600' : item.status === 'pending' ? 'text-yellow-600' : 'text-red-600'}`}>{item.status}</span>. 
+                  Status: <span className={`font-semibold ${item.status === 'completed' ? 'text-green-600' : item.status === 'pending' ? 'text-yellow-600' : 'text-red-600'}`}>{item.status}</span>.
                   {item.completedDate ? ` Completed: ${formatDisplayDateShort(item.completedDate)}` : ` Due: ${formatDisplayDateShort(item.dueDate)}`}
                 </p>
               )}
@@ -373,19 +350,19 @@ export default function DashboardPage() {
   };
 
   const renderStreakWidget = () => (
-    <div className="text-center">
-      <TrendingUp className="h-16 w-16 text-primary mx-auto mb-2" />
-      <p className="text-3xl font-bold">Coming Soon</p>
+    <div className="text-center flex flex-col items-center justify-center h-full">
+      <TrendingUp className="h-12 w-12 sm:h-16 sm:w-16 text-primary mx-auto mb-2" />
+      <p className="text-2xl sm:text-3xl font-bold">Coming Soon</p>
       <p className="text-sm text-muted-foreground mt-1">Track your assignment completion streak. (Backend support needed)</p>
     </div>
   );
 
   const renderCommonResponsesWidget = () => {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3 h-full flex flex-col">
         <div className="flex flex-col sm:flex-row gap-2">
            <Select value={selectedAssignmentForCommon || ""} onValueChange={setSelectedAssignmentForCommon} disabled={assignmentsForCommonResponses.length === 0 || isLoadingCommonResponses || isLoadingCommonResponsesAssignmentDetails}>
-            <SelectTrigger className="flex-grow"><SelectValue placeholder="Select an assignment..." /></SelectTrigger>
+            <SelectTrigger className="flex-grow min-w-[150px]"><SelectValue placeholder="Select an assignment..." /></SelectTrigger>
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>Assignments</SelectLabel>
@@ -396,18 +373,18 @@ export default function DashboardPage() {
             </SelectContent>
           </Select>
           <Select value={commonResponsesPeriod} onValueChange={setCommonResponsesPeriod} disabled={!selectedAssignmentForCommon || isLoadingCommonResponses || isLoadingCommonResponsesAssignmentDetails}>
-            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select period..." /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-auto min-w-[120px]"><SelectValue placeholder="Select period..." /></SelectTrigger>
             <SelectContent>
               {PERIOD_OPTIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
 
-        {(isLoadingCommonResponses || isLoadingCommonResponsesAssignmentDetails) && <Skeleton className="h-40 w-full" />}
-        {commonResponsesError && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{commonResponsesError}</AlertDescription></Alert>}
-        
+        {(isLoadingCommonResponses || isLoadingCommonResponsesAssignmentDetails) && <Skeleton className="h-40 w-full flex-grow" />}
+        {commonResponsesError && <Alert variant="destructive" className="flex-grow"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{commonResponsesError}</AlertDescription></Alert>}
+
         {commonResponsesData && commonResponsesAssignmentDetails && !isLoadingCommonResponses && !isLoadingCommonResponsesAssignmentDetails && !commonResponsesError && (
-          <ScrollArea className="h-60 pr-2">
+          <ScrollArea className="h-48 xl:h-56 pr-2 flex-grow">
             {Object.keys(commonResponsesData).length > 0 ? (
               Object.entries(commonResponsesData).map(([locationName, questions]) => (
                 <div key={locationName} className="mb-3 p-2 border rounded">
@@ -415,7 +392,7 @@ export default function DashboardPage() {
                   {Object.entries(questions).map(([questionId, answerData]) => {
                     const questionDetail = commonResponsesAssignmentDetails.questions.find(q => q.id === questionId);
                     if (questionDetail && questionDetail.component === 'schoolSelector') {
-                        return null; 
+                        return null;
                     }
                     return (
                       <div key={questionId} className="text-xs mb-1 ml-2">
@@ -437,7 +414,11 @@ export default function DashboardPage() {
             ) : ( <p className="text-sm text-muted-foreground text-center py-4">No common response data found for this selection.</p> )}
           </ScrollArea>
         )}
-        {(!selectedAssignmentForCommon || (!commonResponsesData && !isLoadingCommonResponses && !isLoadingCommonResponsesAssignmentDetails)) && <p className="text-sm text-muted-foreground text-center">{isLoadingCommonResponsesAssignmentDetails || isLoadingCommonResponses ? "Loading data..." : "Select an assignment to view common responses."}</p>}
+        {(!selectedAssignmentForCommon || (!commonResponsesData && !isLoadingCommonResponses && !isLoadingCommonResponsesAssignmentDetails)) && !commonResponsesError && (
+            <div className="flex-grow flex items-center justify-center">
+                <p className="text-sm text-muted-foreground text-center">{isLoadingCommonResponsesAssignmentDetails || isLoadingCommonResponses ? "Loading data..." : "Select an assignment to view common responses."}</p>
+            </div>
+        )}
       </div>
     );
   };
@@ -449,144 +430,47 @@ export default function DashboardPage() {
         variants={heroContainerVariants}
         initial="hidden"
         animate={isClientMounted ? "visible" : "hidden"}
-        className="w-full rounded-2xl overflow-hidden relative min-h-[150px] bg-gradient-to-br from-primary/70 to-accent/70"
-        style={{ 
-          backgroundImage: heroImageUrl ? `url(${heroImageUrl})` : undefined,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        }}
-        data-ai-hint="campus security technology"
+        className="mb-6"
       >
-        <div className={`relative z-10 p-6 sm:p-8 md:p-10 rounded-2xl text-white ${!heroImageUrl ? '' : 'bg-black/50 backdrop-blur-sm'}`}>
-          <motion.h1
-            variants={heroTextVariants}
-            className="text-3xl sm:text-4xl font-bold tracking-tight"
-          >
-            Welcome back, {userProfile?.displayName || userProfile?.name || "User"}!
-          </motion.h1>
-          <motion.p variants={heroTextVariants} className="text-base sm:text-lg mt-2 max-w-2xl">
-            Here’s your campus safety overview and actionable insights for today.
-          </motion.p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-2">
+          <div>
+            <motion.h1
+              variants={heroTextVariants}
+              className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground"
+            >
+              Welcome to EagleEyED™
+            </motion.h1>
+            <motion.p variants={heroTextVariants} className="text-base sm:text-lg mt-1 max-w-2xl text-muted-foreground">
+              Your central hub for campus safety management.
+            </motion.p>
+          </div>
+          <div className="flex gap-2 mt-4 sm:mt-0">
+            <Button variant="outline">
+              <ListOrdered className="mr-2 h-4 w-4" /> View All Tasks
+            </Button>
+            <Button asChild>
+              <Link href="/assessment-forms/new">
+                <Edit3 className="mr-2 h-4 w-4" /> New Assessment
+              </Link>
+            </Button>
+          </div>
         </div>
       </motion.div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={0}>
-          <Card>
+          <Card className="h-full flex flex-col"> {/* Ensure cards can grow */}
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-xl">
-                <CloudSun className="h-5 w-5 text-primary" /> Local Conditions
+                <Activity className="h-5 w-5 text-primary"/>Last Completions
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              {weatherLoading ? (
-                <Skeleton className="h-24 w-full" />
-              ) : weatherError ? (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Weather Error</AlertTitle>
-                  <AlertDescription>{weatherError}</AlertDescription>
-                </Alert>
-              ) : weatherData ? (
-                <div className="space-y-1">
-                  <div className="text-lg font-semibold">
-                    {weatherData.name || "Location unavailable"}
-                  </div>
-                  <div className="text-3xl">
-                    {weatherData.current?.temp !== undefined ? `${Math.round(weatherData.current.temp)}°F` : "N/A"}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {weatherData.current?.feels_like !== undefined ? `Feels like ${Math.round(weatherData.current.feels_like)}°F` : ""}
-                    {weatherData.current?.feels_like !== undefined && weatherData.current?.weather?.[0]?.description ? " — " : ""}
-                    {weatherData.current?.weather?.[0]?.description || (weatherData.current?.feels_like === undefined && weatherData.current?.temp === undefined ? "Weather conditions unavailable" : "")}
-                  </div>
-                  <div className="flex gap-2 text-xs mt-2 items-center">
-                    <Sunrise size={14} /> <span>{formatTime(weatherData.current?.sunrise)}</span>
-                    <Sunset size={14} /> <span>{formatTime(weatherData.current?.sunset)}</span>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Weather data unavailable.</p>
-              )}
-            </CardContent>
+            <CardContent className="flex-grow">{renderLastCompletionsWidget()}</CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={1}>
-          <Card className="flex flex-col h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Newspaper className="h-5 w-5 text-primary" /> School Security News
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-grow">
-              {newsLoading ? (
-                <Skeleton className="h-48 w-full" />
-              ) : newsError ? (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>News Error</AlertTitle>
-                  <AlertDescription>{newsError}</AlertDescription>
-                </Alert>
-              ) : newsItems.length > 0 ? (
-                <ScrollArea className="h-48">
-                  <ul className="space-y-2 pr-3">
-                    {newsItems.map((item) => (
-                      <li key={item.guid} className="p-2 border-b border-border/50 last:border-b-0">
-                        <button
-                          onClick={() => setSelectedNewsItem(item)}
-                          className="text-left hover:text-primary transition-colors w-full"
-                        >
-                          <h3 className="font-medium text-sm line-clamp-2">{item.title}</h3>
-                          <p className="text-xs text-muted-foreground">{new Date(item.pubDate).toLocaleDateString()}</p>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </ScrollArea>
-              ) : (
-                <p className="text-sm text-muted-foreground">No news articles found.</p>
-              )}
-            </CardContent>
-            {newsItems.length > 0 && (
-                 <CardFooter className="mt-auto">
-                    <a href="https://news.google.com/search?q=K-12+school+security" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
-                        View more on Google News <ExternalLink className="inline h-3 w-3 ml-1"/>
-                    </a>
-                </CardFooter>
-            )}
-          </Card>
-        </motion.div>
-        
-        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={2}>
-          <Card className="flex flex-col h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <ShieldAlert className="h-5 w-5 text-primary" /> Critical Alerts
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-grow">
-              <p className="text-sm text-muted-foreground">No critical alerts at this time.</p>
-            </CardContent>
-             <CardFooter>
-                <Button variant="outline" size="sm">View Alert History</Button>
-            </CardFooter>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={3}>
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                        <Activity className="h-5 w-5 text-primary"/>Recent Activity
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>{renderLastCompletionsWidget()}</CardContent>
-            </Card>
-        </motion.div>
-
-        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={4}>
-            <Card className="flex flex-col justify-center items-center min-h-[200px] h-full"> 
+            <Card className="h-full flex flex-col">
                 <CardHeader className="pb-2 pt-4">
                     <CardTitle className="flex items-center gap-2 text-xl">
                         <TrendingUp className="h-5 w-5 text-primary"/>Completion Streak
@@ -598,19 +482,30 @@ export default function DashboardPage() {
             </Card>
         </motion.div>
 
-        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={5}>
-            <Card>
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={2}>
+            <Card className="h-full flex flex-col">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-xl">
-                        <ListChecks className="h-5 w-5 text-primary"/>Common Responses
+                        <Filter className="h-5 w-5 text-primary"/>Common Responses
                     </CardTitle>
                 </CardHeader>
-                <CardContent>{renderCommonResponsesWidget()}</CardContent>
+                <CardContent className="flex-grow">{renderCommonResponsesWidget()}</CardContent>
             </Card>
         </motion.div>
 
+        {/* Placeholder cards from screenshot */}
+         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={3}>
+            <CriticalTasksCard />
+        </motion.div>
+         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={4}>
+            <UpcomingEventsCard />
+        </motion.div>
+         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={5}>
+            <EmergencyProtocolsCard />
+        </motion.div>
       </div>
 
+      {/* News Modal - Keep this logic if needed, or remove if news is not a dashboard priority based on screenshot */}
       <Dialog open={!!selectedNewsItem} onOpenChange={(open) => !open && setSelectedNewsItem(null)}>
         <DialogContent className="sm:max-w-[600px] max-h-[80vh]">
           <DialogHeader>
@@ -625,10 +520,15 @@ export default function DashboardPage() {
               dangerouslySetInnerHTML={{ __html: selectedNewsItem?.content || selectedNewsItem?.description || "" }}
             />
           </ScrollArea>
+           <CardFooter className="mt-4">
+            <Button variant="outline" asChild>
+              <a href={selectedNewsItem?.link} target="_blank" rel="noopener noreferrer">
+                Read Full Article <ExternalLink className="ml-2 h-4 w-4"/>
+              </a>
+            </Button>
+          </CardFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
-
