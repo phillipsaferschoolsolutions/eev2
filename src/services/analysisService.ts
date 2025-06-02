@@ -67,15 +67,34 @@ async function authedFetch<T>(
   }
 
   if (!response.ok) {
-    let errorData;
-    try {
-      errorData = await response.json();
-    } catch (e) {
-      errorData = { message: response.statusText || `HTTP error ${response.status}` };
+    let errorBodyText = await response.text().catch(() => "Could not retrieve error body.");
+    let errorJson;
+    let parsedMessage: string | null = null;
+
+    if (errorBodyText) {
+      try {
+        errorJson = JSON.parse(errorBodyText);
+        if (errorJson && typeof errorJson.message === 'string') {
+          parsedMessage = errorJson.message;
+        } else if (errorJson && typeof errorJson.error === 'string') { // Check for .error field
+          parsedMessage = errorJson.error;
+        } else if (errorJson && Object.keys(errorJson).length > 0) {
+          parsedMessage = JSON.stringify(errorJson); // Stringify if it's an object but no .message
+        }
+      } catch (e) {
+        // Not JSON, or JSON parsing failed
+        if (errorBodyText.length > 150) { // Avoid logging huge HTML pages as error message
+            parsedMessage = response.statusText || `Server responded with status ${response.status}`;
+        } else {
+            parsedMessage = errorBodyText || response.statusText || `Server responded with status ${response.status}`;
+        }
+      }
     }
-    console.error(`API Error ${response.status} for ${fullUrl} (analysisService):`, errorData);
+    
+    const finalErrorMessage = parsedMessage || response.statusText || `Server responded with status ${response.status}`;
+    console.error(`API Error ${response.status} for ${fullUrl} (analysisService):`, errorJson || errorBodyText);
     throw new Error(
-      `API Error: ${response.status} ${errorData?.message || response.statusText} (from ${fullUrl})`
+      `API Error: ${response.status} ${finalErrorMessage} (from ${fullUrl})`
     );
   }
 
@@ -137,8 +156,9 @@ export async function getRawResponses(
     throw new Error("Assignment ID is required for getRawResponses.");
   }
   const payload: Partial<RawResponsesPayload> = { filters }; // Backend expects filters directly
+  const encodedAssignmentId = encodeURIComponent(assignmentId);
   const result = await authedFetch<RawResponse[] | undefined>(
-    `${ANALYSIS_BASE_URL}/rawresponses/${assignmentId}`,
+    `${ANALYSIS_BASE_URL}/rawresponses/${encodedAssignmentId}`,
     {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -164,8 +184,9 @@ export async function getCommonResponsesForAssignment(
   if (!assignmentId || !period) {
     throw new Error("Assignment ID and period are required for getCommonResponsesForAssignment.");
   }
+  const encodedAssignmentId = encodeURIComponent(assignmentId);
   const result = await authedFetch<SchoolsWithQuestionsResponse | undefined>(
-    `${ANALYSIS_BASE_URL}/schoolswithquestions/${assignmentId}/${period}`,
+    `${ANALYSIS_BASE_URL}/schoolswithquestions/${encodedAssignmentId}/${period}`,
     {},
     accountName
   );
