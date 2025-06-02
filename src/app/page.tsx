@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +9,7 @@ import { useAuth } from "@/context/auth-context";
 import { getWeatherAndLocation, type WeatherLocationData } from "@/services/assignmentFunctionsService";
 import { getDashboardWidgetsSandbox, getCommonResponsesForAssignment } from "@/services/analysisService";
 import type { WidgetSandboxData, UserActivity, AssignmentCompletionStatus, SchoolsWithQuestionsResponse } from "@/types/Analysis";
-import { getAssignmentListMetadata, type AssignmentMetadata, getAssignmentById, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
+import { getAssignmentListMetadata, type AssignmentMetadata, getAssignmentById, type AssignmentWithPermissions } from "@/services/assignmentFunctionsService"; // Added getAssignmentById, AssignmentWithPermissions
 import { fetchPexelsImageURL } from "@/services/pexelsService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -549,5 +548,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
