@@ -28,9 +28,9 @@ import {
   ListOrdered,
   Radiation,
   MessageSquare,
-  Zap, 
-  Award, 
-  Flame, 
+  Zap,
+  Award,
+  Flame,
 } from "lucide-react";
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
@@ -43,14 +43,14 @@ import {
 import {
   getDashboardWidgetsSandbox,
   getCommonResponsesForAssignment,
-  getWidgetTrends, 
+  getWidgetTrends,
 } from "@/services/analysisService";
 import type {
   WidgetSandboxData,
   SchoolsWithQuestionsResponse,
-  AssignmentCompletionStatus, 
-  UserActivity, 
-  TrendsResponse, 
+  AssignmentCompletionStatus,
+  UserActivity,
+  TrendsResponse,
 } from "@/types/Analysis";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -79,7 +79,7 @@ import { motion } from "framer-motion";
 import { formatDisplayDateShort } from "@/lib/utils";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { fetchPexelsImageURL } from '@/services/pexelsService'; // Added for Hero Unit
+import { fetchPexelsImageURL } from '@/services/pexelsService';
 
 const GOOGLE_NEWS_RSS_URL =
   "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
@@ -219,7 +219,7 @@ export default function DashboardPage() {
   const [newsError, setNewsError] = useState<string | null>(null);
   const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItem | null>(null);
   const [isClientMounted, setIsClientMounted] = useState(false);
-  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null); // For Pexels Hero
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
 
   const [widgetData, setWidgetData] = useState<WidgetSandboxData | null>(null);
   const [isLoadingWidgets, setIsLoadingWidgets] = useState(true);
@@ -248,14 +248,19 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (isPhotoHeavyTheme) {
-      fetchPexelsImageURL("modern university campus", "landscape")
-        .then(url => setHeroImageUrl(url))
-        .catch(err => console.error("Failed to fetch Pexels hero image:", err));
-    } else {
-      setHeroImageUrl(null); // Clear image if not a photo-heavy theme
+    if (isClientMounted && resolvedTheme) {
+      if (resolvedTheme.startsWith(PHOTO_HEAVY_THEME_PREFIX)) {
+        fetchPexelsImageURL("modern university campus", "landscape")
+          .then(url => setHeroImageUrl(url))
+          .catch(err => {
+            console.error("Failed to fetch Pexels hero image:", err);
+            setHeroImageUrl(null);
+          });
+      } else {
+        setHeroImageUrl(null); // Clear image if not a photo-heavy theme
+      }
     }
-  }, [isPhotoHeavyTheme, resolvedTheme]);
+  }, [isClientMounted, resolvedTheme]);
 
   useEffect(() => {
     const fetchNewsData = async () => {
@@ -391,18 +396,16 @@ export default function DashboardPage() {
   const renderStreakWidget = () => {
     if (isLoadingStreak) {
       return (
-        <div className="space-y-3 p-4">
-          <Skeleton className="h-6 w-3/4 mx-auto mb-2" />
-          <div className="grid grid-cols-3 gap-2">
+        <div className="space-y-3 p-4 text-center">
+          <Skeleton className="h-6 w-3/4 mx-auto mb-3" />
+          <div className="grid grid-cols-3 gap-2 mb-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="text-center">
-                <Skeleton className="h-4 w-10 mx-auto mb-1" />
-                <Skeleton className="h-8 w-8 mx-auto" />
-              </div>
+              <div key={i} className="text-center"><Skeleton className="h-4 w-10 mx-auto mb-1" /><Skeleton className="h-8 w-8 mx-auto" /></div>
             ))}
           </div>
-          <Skeleton className="h-8 w-1/2 mx-auto mt-3 mb-1" />
-          <Skeleton className="h-4 w-2/3 mx-auto" />
+          <Skeleton className="h-10 w-10 mx-auto mb-2" />
+          <Skeleton className="h-4 w-20 mx-auto mb-1" />
+          <Skeleton className="h-6 w-32 mx-auto" />
         </div>
       );
     }
@@ -437,7 +440,9 @@ export default function DashboardPage() {
         <div className="mt-auto">
           <Award className="h-10 w-10 text-amber-500 mx-auto mb-1" />
           <p className="text-sm font-medium text-muted-foreground">Current Streak</p>
-          <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{streak || 0}</p>
+          <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{streak || 0}
+            {streak > 0 && <Flame className="inline-block h-7 w-7 ml-1 text-orange-500" />}
+          </p>
           <p className="text-xs text-muted-foreground mt-0.5 italic h-6 flex items-center justify-center">
             {streakMessage || (streak > 0 ? "Keep up the great work!" : "Let's get a streak going!")}
           </p>
@@ -517,17 +522,25 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
        <motion.div
+          key={heroImageUrl || 'no-image-hero'}
+          className="mb-6 p-8 rounded-lg shadow-xl text-center relative overflow-hidden bg-card" // bg-card as fallback
           variants={heroContainerVariants}
           initial="hidden"
           animate={isClientMounted ? "visible" : "hidden"}
-          className="mb-6 p-8 rounded-lg shadow-xl text-center relative overflow-hidden bg-card"
-          style={isPhotoHeavyTheme && heroImageUrl ? { 
-            backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${heroImageUrl})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          } : {}}
         >
-          <div className="relative z-10"> {/* Ensure text is above overlay */}
+          {isPhotoHeavyTheme && heroImageUrl && (
+            <motion.div
+              className="absolute inset-0 z-0" // z-0 to be behind text
+              style={{
+                backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${heroImageUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+              whileHover={{ scale: 1.05 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+            />
+          )}
+          <div className="relative z-10"> {/* Ensure text is above background image */}
             <div className="flex flex-col sm:flex-row justify-between items-center text-left sm:text-center">
                 <div className="flex-1 mb-4 sm:mb-0">
                     <motion.h1
@@ -571,8 +584,7 @@ export default function DashboardPage() {
 
         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={1}>
             <Card className="h-full flex flex-col">
-                {/* Removed CardHeader to give more space to renderStreakWidget content */}
-                <CardContent className="flex-grow flex items-center justify-center p-3 sm:p-4">
+                 <CardContent className="flex-grow flex items-center justify-center p-3 sm:p-4">
                     {renderStreakWidget()}
                 </CardContent>
             </Card>
@@ -600,7 +612,6 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      {/* News Items Card - Retained as per implicit inclusion in previous versions */}
       <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={6}>
         <Card className="col-span-1 xl:col-span-3">
             <CardHeader>
@@ -634,7 +645,7 @@ export default function DashboardPage() {
                         <div className="flex justify-between items-center">
                             <span className="text-xs text-muted-foreground">{formatDisplayDateShort(item.pubDate)}</span>
                             <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => setSelectedNewsItem(item)}>
-                                Read More <ExternalLink className="ml-1 h-3 w-3" />
+                                Read More
                             </Button>
                         </div>
                     </li>
@@ -672,3 +683,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
