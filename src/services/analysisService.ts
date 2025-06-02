@@ -1,3 +1,4 @@
+
 // src/services/analysisService.ts
 'use client';
 
@@ -10,10 +11,11 @@ import type {
   SchoolsWithQuestionsResponse,
   SavedReportMetadata,
   LastCompletionsResponse,
+  TrendsResponse, // Added for streak data
 } from '@/types/Analysis';
 
 const ANALYSIS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysis';
-const ANALYSIS_V2_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysisv2'; // New base URL
+const ANALYSIS_V2_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysisv2';
 
 // --- Helper to get ID Token ---
 async function getIdToken(): Promise<string | null> {
@@ -78,14 +80,14 @@ async function authedFetch<T>(
         errorJson = JSON.parse(errorBodyText);
         if (errorJson && typeof errorJson.message === 'string') {
           parsedMessage = errorJson.message;
-        } else if (errorJson && typeof errorJson.error === 'string') { // Check for .error field
+        } else if (errorJson && typeof errorJson.error === 'string') { 
           parsedMessage = errorJson.error;
         } else if (errorJson && Object.keys(errorJson).length > 0) {
-          parsedMessage = JSON.stringify(errorJson); // Stringify if it's an object but no .message
+          parsedMessage = JSON.stringify(errorJson); 
         }
       } catch (e) {
-        // Not JSON, or JSON parsing failed
-        if (errorBodyText.length > 150) { // Avoid logging huge HTML pages as error message
+        
+        if (errorBodyText.length > 150) { 
             parsedMessage = response.statusText || `Server responded with status ${response.status}`;
         } else {
             parsedMessage = errorBodyText || response.statusText || `Server responded with status ${response.status}`;
@@ -115,7 +117,6 @@ async function authedFetch<T>(
      }
   } else {
     if (textResponse) {
-      // Attempt to parse if it looks like JSON, even if content-type is wrong
       if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
         try {
           return JSON.parse(textResponse) as T;
@@ -123,9 +124,9 @@ async function authedFetch<T>(
           // Not JSON, fall through
         }
       }
-      return textResponse as any as T; // Return as text if not JSON
+      return textResponse as any as T; 
     }
-    return undefined as any as T; // Empty response
+    return undefined as any as T; 
   }
 }
 
@@ -189,15 +190,15 @@ export async function getLastCompletions(
   assignmentId,
   selectedSchool
    };
-   console.log("Calling getLastCompletions API with payload:", payload); // Log before fetch
+   console.log("Calling getLastCompletions API with payload:", payload); 
    const result = await authedFetch<LastCompletionsResponse | undefined>(
      `${ANALYSIS_V2_BASE_URL}/widgets/getlastcompletions`,
      {
-       method: 'POST', // Ensure this is POST
+       method: 'POST', 
        body: JSON.stringify(payload),
      },
      accountName);
-  console.log("Last Completions API response:", result); // Log after fetch
+  console.log("Last Completions API response:", result); 
   return result || null;
  }
  
@@ -220,7 +221,7 @@ export async function getCommonResponsesForAssignment(
   }
   const encodedAssignmentId = encodeURIComponent(assignmentId);
   const result = await authedFetch<SchoolsWithQuestionsResponse | undefined>(
-    `${ANALYSIS_V2_BASE_URL}/schoolswithquestions/${encodedAssignmentId}/${period}`, // Corrected to use ANALYSIS_V2_BASE_URL
+    `${ANALYSIS_V2_BASE_URL}/schoolswithquestions/${encodedAssignmentId}/${period}`, 
     {},
     accountName
   );
@@ -241,4 +242,18 @@ export async function getSavedReports(accountName: string): Promise<SavedReportM
     accountName
   );
   return result || [];
+}
+
+/**
+ * Fetches widget trends data (week, month, year completions, streak).
+ * Uses GET /widgets/trends from ANALYSIS_BASE_URL (or ANALYSIS_V2_BASE_URL if appropriate)
+ */
+export async function getWidgetTrends(accountName: string): Promise<TrendsResponse | null> {
+  if (!accountName || accountName.trim() === "") {
+    throw new Error("Account name is required for getWidgetTrends.");
+  }
+  // Assuming the old frontend code used BASE_URL for this, sticking to it unless specified.
+  // If /assignments/widgets/trends is under analysisv2, change this.
+  const result = await authedFetch<TrendsResponse | undefined>(`${ANALYSIS_BASE_URL}/widgets/trends`, {}, accountName);
+  return result || null;
 }

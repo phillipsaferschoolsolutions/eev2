@@ -13,23 +13,26 @@ import { Button } from "@/components/ui/button";
 import {
   AlertTriangle,
   CalendarDays,
-  Newspaper, 
+  Newspaper,
   ShieldAlert,
   ListChecks,
-  Edit3, 
-  FileText, 
+  Edit3,
+  FileText,
   ExternalLink,
-  Info, 
+  Info,
   Activity,
   TrendingUp,
   Filter,
   AlertCircle,
   Loader2,
-  ListOrdered, 
-  Radiation, 
-  MessageSquare, 
+  ListOrdered,
+  Radiation,
+  MessageSquare,
+  Zap, // For streak
+  Award, // For streak
+  Flame, // For streak count
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import {
   getAssignmentListMetadata,
@@ -40,12 +43,14 @@ import {
 import {
   getDashboardWidgetsSandbox,
   getCommonResponsesForAssignment,
+  getWidgetTrends, // Added for streak data
 } from "@/services/analysisService";
 import type {
   WidgetSandboxData,
   SchoolsWithQuestionsResponse,
-  UserActivity,
-  AssignmentCompletionStatus,
+  AssignmentCompletionStatus, // Ensure this is imported
+  UserActivity, // Ensure this is imported
+  TrendsResponse, // For streak data
 } from "@/types/Analysis";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -73,6 +78,7 @@ import {
 import { motion } from "framer-motion";
 import { formatDisplayDateShort } from "@/lib/utils";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 
 const GOOGLE_NEWS_RSS_URL =
   "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
@@ -142,7 +148,9 @@ const heroTextVariants = {
   },
 };
 
-// --- New Placeholder Card Components ---
+const PHOTO_HEAVY_THEME_PREFIX = "theme-";
+
+// --- Placeholder Card Components ---
 const CriticalTasksCard: React.FC = () => (
   <Card className="h-full flex flex-col">
     <CardHeader>
@@ -165,7 +173,7 @@ const UpcomingEventsCard: React.FC = () => (
   <Card className="h-full flex flex-col">
     <CardHeader>
       <CardTitle className="flex items-center gap-2 text-xl">
-        <CalendarDays className="h-5 w-5 text-primary" /> Upcoming Events &amp; Drills
+        <CalendarDays className="h-5 w-5 text-primary" /> Upcoming Events & Drills
       </CardTitle>
       <CardDescription>Scheduled safety events and drills.</CardDescription>
     </CardHeader>
@@ -204,6 +212,7 @@ const EmergencyProtocolsCard: React.FC = () => (
 
 export default function DashboardPage() {
   const { userProfile, loading: authLoading, profileLoading } = useAuth();
+  const { resolvedTheme } = useTheme();
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [newsError, setNewsError] = useState<string | null>(null);
@@ -223,7 +232,14 @@ export default function DashboardPage() {
   const [commonResponsesError, setCommonResponsesError] = useState<string | null>(null);
   const [commonResponsesPeriod, setCommonResponsesPeriod] = useState("last30days");
 
+  const [streakData, setStreakData] = useState<TrendsResponse | null>(null);
+  const [isLoadingStreak, setIsLoadingStreak] = useState(true);
+  const [streakError, setStreakError] = useState<string | null>(null);
+
+
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
+  const showHeroUnit = isClientMounted && resolvedTheme && resolvedTheme.startsWith(PHOTO_HEAVY_THEME_PREFIX);
+
 
   useEffect(() => {
     setIsClientMounted(true);
@@ -259,6 +275,16 @@ export default function DashboardPage() {
           setWidgetError((err as Error).message || "Could not load dashboard widgets.");
         })
         .finally(() => setIsLoadingWidgets(false));
+
+      setIsLoadingStreak(true);
+      setStreakError(null);
+      getWidgetTrends(userProfile.account)
+        .then(setStreakData)
+        .catch((err) => {
+            console.error("Error fetching streak data:", err);
+            setStreakError((err as Error).message || "Could not load streak data.");
+        })
+        .finally(() => setIsLoadingStreak(false));
     }
   }, [userProfile?.account, isClientMounted, authLoading, profileLoading]);
 
@@ -349,13 +375,56 @@ export default function DashboardPage() {
     );
   };
 
-  const renderStreakWidget = () => (
-    <div className="text-center flex flex-col items-center justify-center h-full">
-      <TrendingUp className="h-12 w-12 sm:h-16 sm:w-16 text-primary mx-auto mb-2" />
-      <p className="text-2xl sm:text-3xl font-bold">Coming Soon</p>
-      <p className="text-sm text-muted-foreground mt-1">Track your assignment completion streak. (Backend support needed)</p>
-    </div>
-  );
+  const renderStreakWidget = () => {
+    if (isLoadingStreak) {
+      return (
+        <div className="space-y-4 p-4">
+          <Skeleton className="h-8 w-3/4 mx-auto" />
+          <div className="grid grid-cols-3 gap-4">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+          <Skeleton className="h-6 w-1/2 mx-auto" />
+          <Skeleton className="h-5 w-3/4 mx-auto" />
+        </div>
+      );
+    }
+    if (streakError) return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{streakError}</AlertDescription></Alert>;
+    if (!streakData) return <p className="text-sm text-muted-foreground text-center py-4">Streak data unavailable.</p>;
+
+    const { week, month, year, streak, streakMessage } = streakData;
+
+    return (
+      <div className="text-center p-2 flex flex-col justify-between h-full">
+        <div>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Week</p>
+              <p className="text-2xl font-bold text-primary">{week || 0}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Month</p>
+              <p className="text-2xl font-bold text-primary">{month || 0}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Year</p>
+              <p className="text-2xl font-bold text-primary">{year || 0}</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-auto">
+          <Award className="h-10 w-10 text-amber-500 mx-auto mb-1" />
+          <p className="text-sm text-muted-foreground">Current Streak</p>
+          <p className="text-3xl font-bold text-amber-500">{streak || 0}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 italic h-6 flex items-center justify-center">
+            {streakMessage || "Keep it up!"}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
 
   const renderCommonResponsesWidget = () => {
     return (
@@ -426,36 +495,58 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <motion.div
-        variants={heroContainerVariants}
-        initial="hidden"
-        animate={isClientMounted ? "visible" : "hidden"}
-        className="mb-6"
-      >
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-2">
-          <div>
-            <motion.h1
-              variants={heroTextVariants}
-              className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground"
-            >
-              Welcome to EagleEyED™
-            </motion.h1>
-            <motion.p variants={heroTextVariants} className="text-base sm:text-lg mt-1 max-w-2xl text-muted-foreground">
-              Your central hub for campus safety management.
-            </motion.p>
-          </div>
-          <div className="flex gap-2 mt-4 sm:mt-0">
-            <Button variant="outline">
-              <ListOrdered className="mr-2 h-4 w-4" /> View All Tasks
-            </Button>
-            <Button asChild>
-              <Link href="/assessment-forms/new">
-                <Edit3 className="mr-2 h-4 w-4" /> New Assessment
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </motion.div>
+       {showHeroUnit ? (
+        <motion.div
+          variants={heroContainerVariants}
+          initial="hidden"
+          animate={isClientMounted ? "visible" : "hidden"}
+          className="mb-6 p-8 rounded-lg shadow-xl text-center" // Simple styling, background comes from global theme
+        >
+          <motion.h1
+            variants={heroTextVariants}
+            className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground/90" // Use foreground for visibility on photo themes
+          >
+            Welcome to EagleEyED™
+          </motion.h1>
+          <motion.p variants={heroTextVariants} className="text-lg sm:text-xl mt-2 max-w-3xl mx-auto text-foreground/80">
+            Your central hub for campus safety management.
+          </motion.p>
+        </motion.div>
+      ) : (
+         <motion.div
+            variants={heroContainerVariants}
+            initial="hidden"
+            animate={isClientMounted ? "visible" : "hidden"}
+            className="mb-6"
+          >
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-2">
+              <div>
+                <motion.h1
+                  variants={heroTextVariants}
+                  className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground"
+                >
+                  Dashboard
+                </motion.h1>
+                <motion.p variants={heroTextVariants} className="text-base sm:text-lg mt-1 max-w-2xl text-muted-foreground">
+                  Overview of your campus safety status.
+                </motion.p>
+              </div>
+              <div className="flex gap-2 mt-4 sm:mt-0">
+                <Button variant="outline" asChild>
+                  <Link href="/assessment-forms">
+                    <ListOrdered className="mr-2 h-4 w-4" /> View All Tasks
+                  </Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/assessment-forms/new">
+                    <Edit3 className="mr-2 h-4 w-4" /> New Assessment
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+      )}
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={0}>
@@ -473,7 +564,7 @@ export default function DashboardPage() {
             <Card className="h-full flex flex-col">
                 <CardHeader className="pb-2 pt-4">
                     <CardTitle className="flex items-center gap-2 text-xl">
-                        <TrendingUp className="h-5 w-5 text-primary"/>Completion Streak
+                        <Zap className="h-5 w-5 text-primary"/>Completion Trends
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-grow flex items-center justify-center">
@@ -530,3 +621,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
