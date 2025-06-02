@@ -3,14 +3,14 @@
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, CalendarDays, CloudSun, Newspaper, ShieldAlert, ListChecks, Edit3, FileText, ExternalLink, Info, Thermometer, Sunrise, Sunset, Activity, TrendingUp, Filter } from "lucide-react";
+import { AlertTriangle, CalendarDays, CloudSun, Newspaper, ShieldAlert, ListChecks, Edit3, FileText, ExternalLink, Info, Thermometer, Sunrise, Sunset, Activity, TrendingUp, Filter, AlertCircle } from "lucide-react";
 import Image from "next/image";
-import React, { useEffect, useState } from "react"; 
+import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { getWeatherAndLocation, type WeatherLocationData } from "@/services/assignmentFunctionsService";
 import { getDashboardWidgetsSandbox, getCommonResponsesForAssignment } from "@/services/analysisService";
 import type { WidgetSandboxData, UserActivity, AssignmentCompletionStatus, SchoolsWithQuestionsResponse } from "@/types/Analysis";
-import { getAssignmentListMetadata, type AssignmentMetadata } from "@/services/assignmentFunctionsService";
+import { getAssignmentListMetadata, type AssignmentMetadata, getAssignmentById, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { fetchPexelsImageURL } from "@/services/pexelsService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
-import { formatDisplayDateShort } from "@/lib/utils"; // Assuming you might create this
+import { formatDisplayDateShort } from "@/lib/utils";
 
 const GOOGLE_NEWS_RSS_URL = "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
 const RSS2JSON_API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(GOOGLE_NEWS_RSS_URL)}`;
@@ -117,13 +117,14 @@ export default function DashboardPage() {
   const [heroImageLoading, setHeroImageLoading] = useState(false);
   const [isClientMounted, setIsClientMounted] = useState(false);
 
-  // --- Dashboard Widget State (Moved from reports/page.tsx) ---
   const [widgetData, setWidgetData] = useState<WidgetSandboxData | null>(null);
   const [isLoadingWidgets, setIsLoadingWidgets] = useState(true);
   const [widgetError, setWidgetError] = useState<string | null>(null);
 
   const [assignmentsForCommonResponses, setAssignmentsForCommonResponses] = useState<AssignmentMetadata[]>([]);
   const [selectedAssignmentForCommon, setSelectedAssignmentForCommon] = useState<string | null>(null);
+  const [commonResponsesAssignmentDetails, setCommonResponsesAssignmentDetails] = useState<AssignmentWithPermissions | null>(null);
+  const [isLoadingCommonResponsesAssignmentDetails, setIsLoadingCommonResponsesAssignmentDetails] = useState(false);
   const [commonResponsesData, setCommonResponsesData] = useState<SchoolsWithQuestionsResponse | null>(null);
   const [isLoadingCommonResponses, setIsLoadingCommonResponses] = useState(false);
   const [commonResponsesError, setCommonResponsesError] = useState<string | null>(null);
@@ -217,7 +218,6 @@ export default function DashboardPage() {
     }
   }, [resolvedTheme, isClientMounted]);
 
-  // --- Widget Data Fetching (Moved from reports/page.tsx) ---
   useEffect(() => {
     if (userProfile?.account && isClientMounted) {
       setIsLoadingWidgets(true);
@@ -245,6 +245,21 @@ export default function DashboardPage() {
     }
   }, [userProfile?.account, isClientMounted, selectedAssignmentForCommon]);
 
+  // Fetch Assignment Details for Common Responses Widget
+  useEffect(() => {
+    if (userProfile?.account && selectedAssignmentForCommon && isClientMounted) {
+      setIsLoadingCommonResponsesAssignmentDetails(true);
+      setCommonResponsesAssignmentDetails(null); // Reset previous details
+      getAssignmentById(selectedAssignmentForCommon, userProfile.account)
+        .then(setCommonResponsesAssignmentDetails)
+        .catch(err => {
+          console.error("Error fetching assignment details for common responses:", err);
+          // Optionally set an error state for assignment details
+        })
+        .finally(() => setIsLoadingCommonResponsesAssignmentDetails(false));
+    }
+  }, [userProfile?.account, selectedAssignmentForCommon, isClientMounted]);
+
   useEffect(() => {
     if (userProfile?.account && selectedAssignmentForCommon && commonResponsesPeriod && isClientMounted) {
       setIsLoadingCommonResponses(true);
@@ -267,10 +282,9 @@ export default function DashboardPage() {
     { id: "protocols", title: "Emergency Protocols", description: "Quick actions for emergency situations.", icon: ShieldAlert, color: "text-accent", content: <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1"> <Button variant="destructive" className="w-full justify-start text-base p-3"><ShieldAlert className="mr-2 h-5 w-5" /> Initiate Lockdown</Button> <Button variant="outline" className="w-full justify-start text-base p-3"><FileText className="mr-2 h-5 w-5" /> Report Incident</Button> <Button variant="secondary" className="w-full justify-start text-base p-3"><Newspaper className="mr-2 h-5 w-5" /> Send Alert</Button> </div>, footer: null },
   ];
 
-  // --- Widget Rendering Functions (Moved from reports/page.tsx) ---
   const renderLastCompletionsWidget = () => {
     if (!isClientMounted || isLoadingWidgets) return <Skeleton className="h-48 w-full" />;
-    if (widgetError) return <Alert variant="destructive"><Info className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{widgetError}</AlertDescription></Alert>;
+    if (widgetError) return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{widgetError}</AlertDescription></Alert>;
     
     const itemsToDisplay = isAdmin ? widgetData?.accountCompletions : widgetData?.userActivity;
     if (!itemsToDisplay || itemsToDisplay.length === 0) return <p className="text-sm text-muted-foreground p-4 text-center">No recent activity.</p>;
@@ -330,35 +344,41 @@ export default function DashboardPage() {
           </Select>
         </div>
 
-        {isLoadingCommonResponses && <Skeleton className="h-40 w-full flex-grow" />}
-        {commonResponsesError && <Alert variant="destructive" className="flex-grow"><Info className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{commonResponsesError}</AlertDescription></Alert>}
+        {(isLoadingCommonResponses || isLoadingCommonResponsesAssignmentDetails) && <Skeleton className="h-40 w-full flex-grow" />}
+        {commonResponsesError && <Alert variant="destructive" className="flex-grow"><AlertCircle className="h-4 w-4" /><AlertTitle>Error Loading Responses</AlertTitle><AlertDescription>{commonResponsesError}</AlertDescription></Alert>}
         
-        {commonResponsesData && !isLoadingCommonResponses && !commonResponsesError && (
+        {commonResponsesData && commonResponsesAssignmentDetails && !isLoadingCommonResponses && !isLoadingCommonResponsesAssignmentDetails && !commonResponsesError && (
           <ScrollArea className="h-60 pr-2 flex-grow">
             {Object.keys(commonResponsesData).length > 0 ? (
-              Object.entries(commonResponsesData).map(([schoolName, questions]) => (
-                <div key={schoolName} className="mb-3 p-2 border rounded">
-                  <h4 className="font-semibold text-xs text-muted-foreground mb-1">{schoolName === "undefined" || schoolName === "null" ? "Overall / Unspecified" : schoolName}</h4>
-                  {Object.entries(questions).map(([questionId, answerData]) => (
-                    <div key={questionId} className="text-xs mb-1 ml-2">
-                      <p className="font-medium truncate italic">{answerData.questionLabel || `Q: ${questionId}`}</p>
-                      <ul className="list-disc list-inside ml-3 text-muted-foreground/80">
-                        {Object.entries(answerData)
-                            .filter(([key]) => key !== 'questionLabel')
-                            .sort(([, aVal], [, bVal]) => (bVal as number) - (aVal as number)) 
-                            .slice(0, 3) 
-                            .map(([answer, count]) => (
-                              <li key={answer} className="truncate">{answer || "N/A"}: {count}</li>
-                         ))}
-                      </ul>
-                    </div>
-                  ))}
+              Object.entries(commonResponsesData).map(([locationName, questions]) => (
+                <div key={locationName} className="mb-3 p-2 border rounded">
+                  <h4 className="font-semibold text-xs text-muted-foreground mb-1">{locationName === "undefined" || locationName === "null" ? "Overall / Unspecified" : locationName}</h4>
+                  {Object.entries(questions).map(([questionId, answerData]) => {
+                    const questionDetail = commonResponsesAssignmentDetails.questions.find(q => q.id === questionId);
+                    if (questionDetail && questionDetail.component === 'schoolSelector') {
+                      return null; // Skip rendering schoolSelector responses
+                    }
+                    return (
+                      <div key={questionId} className="text-xs mb-1 ml-2">
+                        <p className="font-medium truncate italic">{answerData.questionLabel || `Q: ${questionId}`}</p>
+                        <ul className="list-disc list-inside ml-3 text-muted-foreground/80">
+                          {Object.entries(answerData)
+                              .filter(([key]) => key !== 'questionLabel')
+                              .sort(([, aVal], [, bVal]) => (bVal as number) - (aVal as number)) 
+                              .slice(0, 3) 
+                              .map(([answer, count]) => (
+                                <li key={answer} className="truncate">{answer || "N/A"}: {count}</li>
+                           ))}
+                        </ul>
+                      </div>
+                    );
+                  })}
                 </div>
               ))
             ) : ( <p className="text-sm text-muted-foreground text-center py-4">No common response data for selection.</p> )}
           </ScrollArea>
         )}
-        {!selectedAssignmentForCommon && !isLoadingCommonResponses && <p className="text-sm text-muted-foreground text-center flex-grow flex items-center justify-center">Select an assignment.</p>}
+        {!selectedAssignmentForCommon && !isLoadingCommonResponses && !isLoadingCommonResponsesAssignmentDetails && <p className="text-sm text-muted-foreground text-center flex-grow flex items-center justify-center">Select an assignment.</p>}
       </div>
     );
   };
@@ -379,12 +399,12 @@ export default function DashboardPage() {
             <div className="relative h-64 md:h-80 w-full group">
               <Image
                 src={heroImageUrl}
-                fill // Changed from layout="fill"
-                style={{objectFit:"cover"}} // Added objectFit
+                fill
+                style={{objectFit:"cover"}} 
                 alt="Innovation Hub Hero Background"
                 className="transition-transform duration-500 group-hover:scale-105"
                 data-ai-hint="technology innovation abstract"
-                priority // Consider adding priority if this is LCP
+                priority
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent flex flex-col items-center justify-end text-center p-6 md:p-10">
                 <motion.h1
@@ -421,7 +441,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* New Dashboard Widgets Section */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <motion.div custom={0} variants={cardVariants} initial="hidden" animate="visible">
             <Card className="h-full flex flex-col">
@@ -481,7 +500,7 @@ export default function DashboardPage() {
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
                     </div>
                   ) : weatherError ? (
-                    <Alert variant="destructive"><Info className="h-4 w-4" /><AlertTitle>Weather Error</AlertTitle><AlertDescription>{weatherError}</AlertDescription></Alert>
+                    <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Weather Error</AlertTitle><AlertDescription>{weatherError}</AlertDescription></Alert>
                   ) : weatherData && weatherData.current && isClientMounted ? (
                     <div className="p-4 bg-muted/30 rounded-lg">
                       <div className="flex items-center gap-4"><CloudSun className="h-12 w-12 text-primary shrink-0" /><div><p className="text-2xl font-bold">{Math.round(weatherData.current.temp ?? 0)}°F, {weatherData.current.weather?.[0]?.description ?? 'N/A'}</p><p className="text-sm text-muted-foreground">Wind: {Math.round(weatherData.current.wind_speed ?? 0)}mph, Humidity: {weatherData.current.humidity ?? 0}%</p></div></div>
@@ -494,13 +513,13 @@ export default function DashboardPage() {
                     </div>
                   ) : isClientMounted ? ( <p className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg">Weather data not available or incomplete. Ensure location services are enabled and an account is active.</p> 
                   ) : (
-                    <Skeleton className="h-48 w-full" /> // Skeleton if not client mounted yet
+                    <Skeleton className="h-48 w-full" /> 
                   )}
                 </div>
                 <div>
                     <h3 className="font-semibold mb-2">Campus Safety News</h3>
                     {newsLoading ? ( <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-                    ) : newsError ? ( <Alert variant="destructive"><Info className="h-4 w-4" /><AlertTitle>News Error</AlertTitle><AlertDescription>{newsError}</AlertDescription></Alert>
+                    ) : newsError ? ( <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>News Error</AlertTitle><AlertDescription>{newsError}</AlertDescription></Alert>
                     ) : newsItems.length > 0 ? (
                         <ScrollArea className="h-[200px] pr-3">
                             <ul className="space-y-2 text-sm">
@@ -531,3 +550,4 @@ export default function DashboardPage() {
   );
 }
 
+    
