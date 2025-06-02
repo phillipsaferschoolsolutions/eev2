@@ -64,7 +64,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
+  // DialogTrigger, // Removed as per user request
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -403,10 +403,10 @@ export default function DashboardPage() {
           </Select>
         </div>
 
-        {isLoadingCommonResponses && <Skeleton className="h-40 w-full" />}
+        {(isLoadingCommonResponses || isLoadingCommonResponsesAssignmentDetails) && <Skeleton className="h-40 w-full" />}
         {commonResponsesError && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{commonResponsesError}</AlertDescription></Alert>}
         
-        {commonResponsesData && commonResponsesAssignmentDetails && !isLoadingCommonResponses && !commonResponsesError && (
+        {commonResponsesData && commonResponsesAssignmentDetails && !isLoadingCommonResponses && !isLoadingCommonResponsesAssignmentDetails && !commonResponsesError && (
           <ScrollArea className="h-60 pr-2">
             {Object.keys(commonResponsesData).length > 0 ? (
               Object.entries(commonResponsesData).map(([locationName, questions]) => (
@@ -437,7 +437,7 @@ export default function DashboardPage() {
             ) : ( <p className="text-sm text-muted-foreground text-center py-4">No common response data found for this selection.</p> )}
           </ScrollArea>
         )}
-        {(!selectedAssignmentForCommon || isLoadingCommonResponsesAssignmentDetails) && !isLoadingCommonResponses && <p className="text-sm text-muted-foreground text-center">{isLoadingCommonResponsesAssignmentDetails ? "Loading assignment details..." : "Select an assignment to view common responses."}</p>}
+        {(!selectedAssignmentForCommon || (!commonResponsesData && !isLoadingCommonResponses && !isLoadingCommonResponsesAssignmentDetails)) && <p className="text-sm text-muted-foreground text-center">{isLoadingCommonResponsesAssignmentDetails || isLoadingCommonResponses ? "Loading data..." : "Select an assignment to view common responses."}</p>}
       </div>
     );
   };
@@ -533,15 +533,13 @@ export default function DashboardPage() {
                   <ul className="space-y-2 pr-3">
                     {newsItems.map((item) => (
                       <li key={item.guid} className="p-2 border-b border-border/50 last:border-b-0">
-                        <DialogTrigger asChild>
-                          <button
-                            onClick={() => setSelectedNewsItem(item)}
-                            className="text-left hover:text-primary transition-colors w-full"
-                          >
-                            <h3 className="font-medium text-sm line-clamp-2">{item.title}</h3>
-                            <p className="text-xs text-muted-foreground">{new Date(item.pubDate).toLocaleDateString()}</p>
-                          </button>
-                        </DialogTrigger>
+                        <button
+                          onClick={() => setSelectedNewsItem(item)}
+                          className="text-left hover:text-primary transition-colors w-full"
+                        >
+                          <h3 className="font-medium text-sm line-clamp-2">{item.title}</h3>
+                          <p className="text-xs text-muted-foreground">{new Date(item.pubDate).toLocaleDateString()}</p>
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -633,3 +631,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
