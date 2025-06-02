@@ -3,18 +3,26 @@
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, CalendarDays, CloudSun, Newspaper, ShieldAlert, ListChecks, Edit3, FileText, ExternalLink, Info, Thermometer, Sunrise, Sunset } from "lucide-react";
+import { AlertTriangle, CalendarDays, CloudSun, Newspaper, ShieldAlert, ListChecks, Edit3, FileText, ExternalLink, Info, Thermometer, Sunrise, Sunset, Activity, TrendingUp, Filter } from "lucide-react";
 import Image from "next/image";
-import React, { useEffect, useState } from "react"; // Ensure React is imported if not already
+import React, { useEffect, useState } from "react"; 
 import { useAuth } from "@/context/auth-context";
 import { getWeatherAndLocation, type WeatherLocationData } from "@/services/assignmentFunctionsService";
+import { getDashboardWidgetsSandbox, getCommonResponsesForAssignment } from "@/services/analysisService";
+import type { WidgetSandboxData, UserActivity, AssignmentCompletionStatus, SchoolsWithQuestionsResponse } from "@/types/Analysis";
+import { getAssignmentListMetadata, type AssignmentMetadata } from "@/services/assignmentFunctionsService";
 import { fetchPexelsImageURL } from "@/services/pexelsService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
+import { formatDisplayDateShort } from "@/lib/utils"; // Assuming you might create this
+
+const GOOGLE_NEWS_RSS_URL = "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
+const RSS2JSON_API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(GOOGLE_NEWS_RSS_URL)}`;
 
 interface NewsItem {
   title: string;
@@ -32,8 +40,13 @@ interface RssResponse {
   items: NewsItem[];
 }
 
-const GOOGLE_NEWS_RSS_URL = "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
-const RSS2JSON_API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(GOOGLE_NEWS_RSS_URL)}`;
+const PERIOD_OPTIONS = [
+  { value: "last7days", label: "Last 7 Days" },
+  { value: "last30days", label: "Last 30 Days" },
+  { value: "last90days", label: "Last 90 Days" },
+  { value: "alltime", label: "All Time" },
+];
+
 
 const sanitizeHTML = (htmlString: string): string => {
   if (typeof document !== 'undefined') {
@@ -104,6 +117,20 @@ export default function DashboardPage() {
   const [heroImageLoading, setHeroImageLoading] = useState(false);
   const [isClientMounted, setIsClientMounted] = useState(false);
 
+  // --- Dashboard Widget State (Moved from reports/page.tsx) ---
+  const [widgetData, setWidgetData] = useState<WidgetSandboxData | null>(null);
+  const [isLoadingWidgets, setIsLoadingWidgets] = useState(true);
+  const [widgetError, setWidgetError] = useState<string | null>(null);
+
+  const [assignmentsForCommonResponses, setAssignmentsForCommonResponses] = useState<AssignmentMetadata[]>([]);
+  const [selectedAssignmentForCommon, setSelectedAssignmentForCommon] = useState<string | null>(null);
+  const [commonResponsesData, setCommonResponsesData] = useState<SchoolsWithQuestionsResponse | null>(null);
+  const [isLoadingCommonResponses, setIsLoadingCommonResponses] = useState(false);
+  const [commonResponsesError, setCommonResponsesError] = useState<string | null>(null);
+  const [commonResponsesPeriod, setCommonResponsesPeriod] = useState("last30days");
+
+  const isAdmin = userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
+
   useEffect(() => {
     setIsClientMounted(true);
   }, []);
@@ -111,8 +138,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchWeatherData = () => {
-      if (!navigator.geolocation) {
-        setWeatherError("Geolocation is not supported by your browser.");
+      if (!isClientMounted || !navigator.geolocation) {
+        if (isClientMounted) setWeatherError("Geolocation is not supported by your browser.");
         setWeatherLoading(false);
         return;
       }
@@ -149,8 +176,10 @@ export default function DashboardPage() {
         }
       );
     };
-    fetchWeatherData();
-  }, [userProfile]);
+    if (isClientMounted) {
+      fetchWeatherData();
+    }
+  }, [userProfile, isClientMounted]);
 
   useEffect(() => {
     const fetchNewsData = async () => {
@@ -188,11 +217,151 @@ export default function DashboardPage() {
     }
   }, [resolvedTheme, isClientMounted]);
 
+  // --- Widget Data Fetching (Moved from reports/page.tsx) ---
+  useEffect(() => {
+    if (userProfile?.account && isClientMounted) {
+      setIsLoadingWidgets(true);
+      setWidgetError(null);
+      getDashboardWidgetsSandbox(userProfile.account)
+        .then(setWidgetData)
+        .catch(err => {
+          console.error("Error fetching widget data:", err);
+          setWidgetError((err as Error).message || "Could not load dashboard widgets.");
+        })
+        .finally(() => setIsLoadingWidgets(false));
+    }
+  }, [userProfile?.account, isClientMounted]);
+
+  useEffect(() => {
+    if (userProfile?.account && isClientMounted) {
+      getAssignmentListMetadata(userProfile.account)
+        .then(data => {
+          setAssignmentsForCommonResponses(data || []);
+          if (data && data.length > 0 && !selectedAssignmentForCommon) {
+            setSelectedAssignmentForCommon(data[0].id);
+          }
+        })
+        .catch(err => console.error("Error fetching assignment list for common responses:", err));
+    }
+  }, [userProfile?.account, isClientMounted, selectedAssignmentForCommon]);
+
+  useEffect(() => {
+    if (userProfile?.account && selectedAssignmentForCommon && commonResponsesPeriod && isClientMounted) {
+      setIsLoadingCommonResponses(true);
+      setCommonResponsesError(null);
+      setCommonResponsesData(null);
+      getCommonResponsesForAssignment(selectedAssignmentForCommon, commonResponsesPeriod, userProfile.account)
+        .then(setCommonResponsesData)
+        .catch(err => {
+          console.error("Error fetching common responses:", err);
+          setCommonResponsesError((err as Error).message || "Could not load common response data.");
+        })
+        .finally(() => setIsLoadingCommonResponses(false));
+    }
+  }, [userProfile?.account, selectedAssignmentForCommon, commonResponsesPeriod, isClientMounted]);
+
+
   const dashboardCards = [
     { id: "tasks", title: "Critical Tasks", description: "High-priority items needing immediate attention.", icon: AlertTriangle, color: "text-destructive", content: <ul className="space-y-3"> <li className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors"><span>Inspect broken fence near West Gate</span><Button variant="ghost" size="sm">Details</Button></li> <li className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors"><span>Review fire drill report</span><Button variant="ghost" size="sm">Details</Button></li> <li className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors"><span>Restock first-aid kit - Gym</span><Button variant="ghost" size="sm">Details</Button></li> </ul>, footer: <Button variant="outline" className="w-full">View All Critical Tasks</Button> },
     { id: "events", title: "Upcoming Events & Drills", description: "Scheduled safety events and drills.", icon: CalendarDays, color: "text-primary", content: <ul className="space-y-3"> <li className="p-2 rounded-md"><strong>Campus Safety Workshop:</strong> Tomorrow, 10 AM</li> <li className="p-2 rounded-md"><strong>Fire Drill (Block B):</strong> Oct 28, 2 PM</li> <li className="p-2 rounded-md"><strong>Security Team Meeting:</strong> Nov 2, 9 AM</li> </ul>, footer: <Button variant="outline" className="w-full">View Calendar</Button> },
     { id: "protocols", title: "Emergency Protocols", description: "Quick actions for emergency situations.", icon: ShieldAlert, color: "text-accent", content: <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1"> <Button variant="destructive" className="w-full justify-start text-base p-3"><ShieldAlert className="mr-2 h-5 w-5" /> Initiate Lockdown</Button> <Button variant="outline" className="w-full justify-start text-base p-3"><FileText className="mr-2 h-5 w-5" /> Report Incident</Button> <Button variant="secondary" className="w-full justify-start text-base p-3"><Newspaper className="mr-2 h-5 w-5" /> Send Alert</Button> </div>, footer: null },
   ];
+
+  // --- Widget Rendering Functions (Moved from reports/page.tsx) ---
+  const renderLastCompletionsWidget = () => {
+    if (!isClientMounted || isLoadingWidgets) return <Skeleton className="h-48 w-full" />;
+    if (widgetError) return <Alert variant="destructive"><Info className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{widgetError}</AlertDescription></Alert>;
+    
+    const itemsToDisplay = isAdmin ? widgetData?.accountCompletions : widgetData?.userActivity;
+    if (!itemsToDisplay || itemsToDisplay.length === 0) return <p className="text-sm text-muted-foreground p-4 text-center">No recent activity.</p>;
+
+    return (
+      <ScrollArea className="h-60">
+        <ul className="space-y-2 pr-3">
+          {itemsToDisplay.map((item: UserActivity | AssignmentCompletionStatus) => (
+            <li key={item.id} className="p-3 border rounded-md hover:bg-muted/50">
+              <p className="font-medium text-sm truncate">{item.assessmentName}</p>
+              {isAdmin && 'totalCompleted' in item ? (
+                <p className="text-xs text-muted-foreground">
+                  {item.totalCompleted}/{item.totalAssigned} completed. Last: {formatDisplayDateShort(item.lastCompletionDate)}
+                </p>
+              ) : ('status' in item &&
+                <p className="text-xs text-muted-foreground">
+                  Status: <span className={`font-semibold ${item.status === 'completed' ? 'text-green-600' : item.status === 'pending' ? 'text-yellow-600' : 'text-red-600'}`}>{item.status}</span>. 
+                  {item.completedDate ? ` Completed: ${formatDisplayDateShort(item.completedDate)}` : ` Due: ${formatDisplayDateShort(item.dueDate)}`}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      </ScrollArea>
+    );
+  };
+
+  const renderStreakWidget = () => (
+    <div className="text-center p-4 flex flex-col items-center justify-center h-full">
+      <TrendingUp className="h-16 w-16 text-primary mx-auto mb-2" />
+      <p className="text-3xl font-bold">Coming Soon</p>
+      <p className="text-sm text-muted-foreground mt-1">Track your assignment completion streak. (Backend support needed)</p>
+    </div>
+  );
+
+  const renderCommonResponsesWidget = () => {
+    if (!isClientMounted) return <Skeleton className="h-64 w-full" />;
+    return (
+      <div className="space-y-3 h-full flex flex-col">
+        <div className="flex flex-col sm:flex-row gap-2">
+           <Select value={selectedAssignmentForCommon || ""} onValueChange={setSelectedAssignmentForCommon}>
+            <SelectTrigger className="flex-grow"><SelectValue placeholder="Select assignment..." /></SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectLabel>Assignments</SelectLabel>
+                {assignmentsForCommonResponses.length > 0 ? assignmentsForCommonResponses.map(a => (
+                  <SelectItem key={a.id} value={a.id}>{a.assessmentName}</SelectItem>
+                )) : <SelectItem value="no-assign" disabled>No assignments</SelectItem>}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <Select value={commonResponsesPeriod} onValueChange={setCommonResponsesPeriod}>
+            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select period..." /></SelectTrigger>
+            <SelectContent>
+              {PERIOD_OPTIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {isLoadingCommonResponses && <Skeleton className="h-40 w-full flex-grow" />}
+        {commonResponsesError && <Alert variant="destructive" className="flex-grow"><Info className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{commonResponsesError}</AlertDescription></Alert>}
+        
+        {commonResponsesData && !isLoadingCommonResponses && !commonResponsesError && (
+          <ScrollArea className="h-60 pr-2 flex-grow">
+            {Object.keys(commonResponsesData).length > 0 ? (
+              Object.entries(commonResponsesData).map(([schoolName, questions]) => (
+                <div key={schoolName} className="mb-3 p-2 border rounded">
+                  <h4 className="font-semibold text-xs text-muted-foreground mb-1">{schoolName === "undefined" || schoolName === "null" ? "Overall / Unspecified" : schoolName}</h4>
+                  {Object.entries(questions).map(([questionId, answerData]) => (
+                    <div key={questionId} className="text-xs mb-1 ml-2">
+                      <p className="font-medium truncate italic">{answerData.questionLabel || `Q: ${questionId}`}</p>
+                      <ul className="list-disc list-inside ml-3 text-muted-foreground/80">
+                        {Object.entries(answerData)
+                            .filter(([key]) => key !== 'questionLabel')
+                            .sort(([, aVal], [, bVal]) => (bVal as number) - (aVal as number)) 
+                            .slice(0, 3) 
+                            .map(([answer, count]) => (
+                              <li key={answer} className="truncate">{answer || "N/A"}: {count}</li>
+                         ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ))
+            ) : ( <p className="text-sm text-muted-foreground text-center py-4">No common response data for selection.</p> )}
+          </ScrollArea>
+        )}
+        {!selectedAssignmentForCommon && !isLoadingCommonResponses && <p className="text-sm text-muted-foreground text-center flex-grow flex items-center justify-center">Select an assignment.</p>}
+      </div>
+    );
+  };
 
 
   return (
@@ -210,11 +379,12 @@ export default function DashboardPage() {
             <div className="relative h-64 md:h-80 w-full group">
               <Image
                 src={heroImageUrl}
-                layout="fill"
-                objectFit="cover"
+                fill // Changed from layout="fill"
+                style={{objectFit:"cover"}} // Added objectFit
                 alt="Innovation Hub Hero Background"
                 className="transition-transform duration-500 group-hover:scale-105"
                 data-ai-hint="technology innovation abstract"
+                priority // Consider adding priority if this is LCP
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent flex flex-col items-center justify-end text-center p-6 md:p-10">
                 <motion.h1
@@ -251,9 +421,32 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* New Dashboard Widgets Section */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <motion.div custom={0} variants={cardVariants} initial="hidden" animate="visible">
+            <Card className="h-full flex flex-col">
+              <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary"/>Last Completions</CardTitle></CardHeader>
+              <CardContent className="flex-grow">{renderLastCompletionsWidget()}</CardContent>
+            </Card>
+          </motion.div>
+          <motion.div custom={1} variants={cardVariants} initial="hidden" animate="visible">
+            <Card className="h-full flex flex-col">
+              <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-green-500"/>Streak</CardTitle></CardHeader>
+              <CardContent className="flex-grow">{renderStreakWidget()}</CardContent>
+            </Card>
+          </motion.div>
+          <motion.div custom={2} variants={cardVariants} initial="hidden" animate="visible">
+            <Card className="h-full flex flex-col">
+              <CardHeader><CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5 text-purple-500"/>Common Responses</CardTitle></CardHeader>
+              <CardContent className="flex-grow">{renderCommonResponsesWidget()}</CardContent>
+            </Card>
+          </motion.div>
+      </div>
+
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {dashboardCards.map((card, index) => (
-          <motion.div key={card.id} custom={index} variants={cardVariants} initial="hidden" animate="visible" className="lg:col-span-1">
+          <motion.div key={card.id} custom={index + 3} variants={cardVariants} initial="hidden" animate="visible" className="lg:col-span-1">
             <Card className="h-full flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -270,7 +463,7 @@ export default function DashboardPage() {
           </motion.div>
         ))}
 
-        <motion.div custom={dashboardCards.length} variants={cardVariants} initial="hidden" animate="visible" className="md:col-span-2 lg:col-span-3">
+        <motion.div custom={dashboardCards.length + 3} variants={cardVariants} initial="hidden" animate="visible" className="md:col-span-2 lg:col-span-3">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -282,14 +475,14 @@ export default function DashboardPage() {
               <CardContent className="grid gap-6 md:grid-cols-2">
                 <div>
                   <h3 className="font-semibold mb-2">Weather: {weatherData?.name || (weatherLoading ? "Loading..." : "Unavailable")}</h3>
-                  {weatherLoading ? (
+                  {weatherLoading && isClientMounted ? (
                     <div className="p-4 bg-muted/30 rounded-lg space-y-3">
                         <div className="flex items-center gap-4"><Skeleton className="h-12 w-12 rounded-full" /><div><Skeleton className="h-7 w-32 mb-1" /><Skeleton className="h-4 w-48" /></div></div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
                     </div>
                   ) : weatherError ? (
                     <Alert variant="destructive"><Info className="h-4 w-4" /><AlertTitle>Weather Error</AlertTitle><AlertDescription>{weatherError}</AlertDescription></Alert>
-                  ) : weatherData && weatherData.current ? (
+                  ) : weatherData && weatherData.current && isClientMounted ? (
                     <div className="p-4 bg-muted/30 rounded-lg">
                       <div className="flex items-center gap-4"><CloudSun className="h-12 w-12 text-primary shrink-0" /><div><p className="text-2xl font-bold">{Math.round(weatherData.current.temp ?? 0)}°F, {weatherData.current.weather?.[0]?.description ?? 'N/A'}</p><p className="text-sm text-muted-foreground">Wind: {Math.round(weatherData.current.wind_speed ?? 0)}mph, Humidity: {weatherData.current.humidity ?? 0}%</p></div></div>
                       <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -299,7 +492,10 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-1.5"><Sunset className="h-4 w-4 text-muted-foreground shrink-0" /><span>Sunset: <strong>{formatTime(weatherData.current.sunset)}</strong></span></div>
                       </div>
                     </div>
-                  ) : ( <p className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg">Weather data not available or incomplete. Ensure location services are enabled and an account is active.</p> )}
+                  ) : isClientMounted ? ( <p className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg">Weather data not available or incomplete. Ensure location services are enabled and an account is active.</p> 
+                  ) : (
+                    <Skeleton className="h-48 w-full" /> // Skeleton if not client mounted yet
+                  )}
                 </div>
                 <div>
                     <h3 className="font-semibold mb-2">Campus Safety News</h3>
@@ -334,3 +530,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
