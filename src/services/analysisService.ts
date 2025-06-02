@@ -44,14 +44,14 @@ async function authedFetch<T>(
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   } else {
-    console.warn(`analysisService.authedFetch: No token available for endpoint: ${fullUrl}`);
+    console.warn(`[CRITICAL] analysisService.authedFetch: No Authorization token available for endpoint: ${fullUrl}. This will likely cause API errors.`);
   }
 
   const trimmedAccountName = accountName?.trim();
   if (trimmedAccountName) {
     headers.set('account', trimmedAccountName);
   } else {
-     console.warn(`analysisService.authedFetch: 'account' header NOT SET for URL: ${fullUrl} because accountName was:`, accountName);
+     console.warn(`[CRITICAL] analysisService.authedFetch: 'account' header NOT SET for URL: ${fullUrl} because accountName parameter was: '${accountName}'. This may cause API errors if the endpoint requires an account context.`);
   }
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
@@ -81,14 +81,13 @@ async function authedFetch<T>(
         errorJson = JSON.parse(errorBodyText);
         if (errorJson && typeof errorJson.message === 'string') {
           parsedMessage = errorJson.message;
-        } else if (errorJson && typeof errorJson.error === 'string') { 
+        } else if (errorJson && typeof errorJson.error === 'string') {
           parsedMessage = errorJson.error;
         } else if (errorJson && Object.keys(errorJson).length > 0) {
-          parsedMessage = JSON.stringify(errorJson); 
+          parsedMessage = JSON.stringify(errorJson);
         }
       } catch (e) {
-        
-        if (errorBodyText.length > 150) { 
+        if (errorBodyText.length > 150) {
             parsedMessage = response.statusText || `Server responded with status ${response.status}`;
         } else {
             parsedMessage = errorBodyText || response.statusText || `Server responded with status ${response.status}`;
@@ -125,9 +124,9 @@ async function authedFetch<T>(
           // Not JSON, fall through
         }
       }
-      return textResponse as any as T; 
+      return textResponse as any as T;
     }
-    return undefined as any as T; 
+    return undefined as any as T;
   }
 }
 
@@ -159,7 +158,7 @@ export async function getRawResponses(
   if (!assignmentId) {
     throw new Error("Assignment ID is required for getRawResponses.");
   }
-  const payload: Partial<RawResponsesPayload> = { filters }; 
+  const payload: Partial<RawResponsesPayload> = { filters };
   const encodedAssignmentId = encodeURIComponent(assignmentId);
   const result = await authedFetch<RawResponse[] | undefined>(
     `${ANALYSIS_BASE_URL}/rawresponses/${encodedAssignmentId}`,
@@ -191,15 +190,15 @@ export async function getLastCompletions(
   assignmentId,
   selectedSchool
    };
-   console.log("Calling getLastCompletions API with payload:", payload); 
+   console.log("Calling getLastCompletions API with payload:", payload);
    const result = await authedFetch<LastCompletionsResponse | undefined>(
      `${ANALYSIS_V2_BASE_URL}/widgets/getlastcompletions`,
      {
-       method: 'POST', 
+       method: 'POST',
        body: JSON.stringify(payload),
      },
      accountName);
-  console.log("Last Completions API response:", result); 
+  console.log("Last Completions API response:", result);
   return result || null;
  }
  
@@ -211,7 +210,7 @@ export async function getLastCompletions(
  */
 export async function getCommonResponsesForAssignment(
   assignmentId: string,
-  period: string, 
+  period: string,
   accountName: string
 ): Promise<SchoolsWithQuestionsResponse | null> {
   if (!accountName || accountName.trim() === "") {
@@ -222,7 +221,7 @@ export async function getCommonResponsesForAssignment(
   }
   const encodedAssignmentId = encodeURIComponent(assignmentId);
   const result = await authedFetch<SchoolsWithQuestionsResponse | undefined>(
-    `${ANALYSIS_V2_BASE_URL}/schoolswithquestions/${encodedAssignmentId}/${period}`, 
+    `${ANALYSIS_V2_BASE_URL}/schoolswithquestions/${encodedAssignmentId}/${period}`,
     {},
     accountName
   );
@@ -253,8 +252,8 @@ export async function getWidgetTrends(accountName: string): Promise<TrendsRespon
   if (!accountName || accountName.trim() === "") {
     throw new Error("Account name is required for getWidgetTrends.");
   }
-  // Uses the WIDGETS_BASE_URL and the corrected path /trends
   const result = await authedFetch<TrendsResponse | undefined>(`${WIDGETS_BASE_URL}/trends`, {}, accountName);
   return result || null;
 }
 
+    

@@ -7,7 +7,6 @@ import type { User } from 'firebase/auth';
 import type { District } from '@/types/Admin';
 import type { UserProfile } from '@/types/User';
 
-// IMPORTANT: Replace this with the actual base URL for your admin actions Cloud Functions
 const ADMIN_ACTIONS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/adminActions';
 
 // --- Helper to get ID Token ---
@@ -36,14 +35,14 @@ async function authedFetch<T>(
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   } else {
-    console.warn(`authedFetch (adminActions): No token available for endpoint: ${fullUrl}`);
+    console.warn(`[CRITICAL] authedFetch (adminActionsService): No Authorization token available for endpoint: ${fullUrl}. This will likely cause API errors.`);
   }
 
   const trimmedAccountName = currentAccountName?.trim();
   if (trimmedAccountName) {
     headers.set('account', trimmedAccountName);
   } else {
-    console.warn(`authedFetch (adminActions): 'account' header NOT SET for URL: ${fullUrl} because currentAccountName was:`, currentAccountName);
+    console.warn(`[CRITICAL] authedFetch (adminActionsService): 'account' header NOT SET for URL: ${fullUrl} because currentAccountName parameter was: '${currentAccountName}'. This may cause API errors if the endpoint requires an account context.`);
   }
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
@@ -57,7 +56,7 @@ async function authedFetch<T>(
       headers,
     });
   } catch (networkError: any) {
-    console.error(`Network error for ${fullUrl}:`, networkError);
+    console.error(`Network error for ${fullUrl} (adminActionsService):`, networkError);
     let errorMessage = `Network Error: Could not connect to the server (${networkError.message || 'Failed to fetch'}). `;
     errorMessage += `Please check your internet connection. If the issue persists, it might be a CORS configuration problem on the server or the server endpoint (${fullUrl}) might be down or incorrect.`;
     throw new Error(errorMessage);
@@ -70,7 +69,7 @@ async function authedFetch<T>(
     } catch (e) {
       errorData = { message: response.statusText || `HTTP error ${response.status}` };
     }
-    console.error(`API Error ${response.status} for ${fullUrl}:`, errorData);
+    console.error(`API Error ${response.status} for ${fullUrl} (adminActionsService):`, errorData);
     throw new Error(
       `API Error: ${response.status} ${errorData?.message || response.statusText}`
     );
@@ -86,12 +85,11 @@ async function authedFetch<T>(
      try {
         return JSON.parse(textResponse) as T;
      } catch (e) {
-        console.error(`authedFetch (adminActions): Failed to parse JSON for ${fullUrl}. Error: ${e}. Response text: ${textResponse}`);
+        console.error(`authedFetch (adminActionsService): Failed to parse JSON for ${fullUrl}. Error: ${e}. Response text: ${textResponse}`);
         throw new Error(`API Error: Malformed JSON response from ${fullUrl}.`);
      }
   } else {
     if (textResponse) {
-      // Attempt to parse if it looks like JSON, even if content-type is wrong
       if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
         try {
           return JSON.parse(textResponse) as T;
@@ -123,7 +121,7 @@ interface SwitchAccountPayload {
 
 interface SwitchAccountResponse {
   message: string;
-  updatedProfile?: Partial<UserProfile>; 
+  updatedProfile?: Partial<UserProfile>;
 }
 
 /**
@@ -145,3 +143,5 @@ export async function switchUserAccount(newAccountName: string, currentAccountNa
     body: JSON.stringify(payload),
   }, currentAccountNameForHeader);
 }
+
+    

@@ -27,10 +27,10 @@ export interface AssignmentQuestion {
   aiDeficiencyCheck?: boolean; // For open-ended: flag to use AI to check for deficiency
   criticality?: 'low' | 'medium' | 'high';
   // Placeholder for future per-question assignment
-  assignedTo?: { 
+  assignedTo?: {
     users?: string[]; // User IDs or emails
     sites?: string[]; // Site IDs or names
-    jobTitles?: string[]; 
+    jobTitles?: string[];
   };
 }
 
@@ -144,14 +144,6 @@ export interface CompletedByMeResponse {
   completedAssignments: CompletedByMeItem[];
 }
 
-export interface TrendsResponse {
-  week: number;
-  month: number;
-  year: number;
-  streak: number;
-  streakMessage: string;
-}
-
 export interface SaveDataResponse {
   message: string;
 }
@@ -201,23 +193,19 @@ async function authedFetch<T>(
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   } else {
-    console.warn(`authedFetch: No token available for endpoint: ${fullUrl}`);
+    console.warn(`[CRITICAL] authedFetch (assignmentFunctionsService): No Authorization token available for endpoint: ${fullUrl}. This will likely cause API errors.`);
   }
 
   const trimmedAccountName = accountName?.trim();
   if (trimmedAccountName) {
     headers.set('account', trimmedAccountName);
-    // console.log(`[authedFetch DEBUG] Set 'account' header to: ${trimmedAccountName} for URL: ${fullUrl}`);
   } else {
-    // console.warn(`[authedFetch DEBUG] 'account' header NOT SET for URL: ${fullUrl} because accountName was:`, accountName);
+    console.warn(`[CRITICAL] authedFetch (assignmentFunctionsService): 'account' header NOT SET for URL: ${fullUrl} because accountName parameter was: '${accountName}'. This may cause API errors if the endpoint requires an account context.`);
   }
-
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
     headers.set('Content-Type', 'application/json');
   }
-
-  // console.log(`[authedFetch DEBUG] Making API call to ${fullUrl} with headers:`, Object.fromEntries(headers.entries()));
 
   let response;
   try {
@@ -226,12 +214,11 @@ async function authedFetch<T>(
       headers,
     });
   } catch (networkError: any) {
-    console.error(`Network error for ${fullUrl}:`, networkError);
+    console.error(`Network error for ${fullUrl} (assignmentFunctionsService):`, networkError);
     let errorMessage = `Network Error: Could not connect to the server (${networkError.message || 'Failed to fetch'}). `;
     errorMessage += `Please check your internet connection. If the issue persists, it might be a CORS configuration problem on the server or the server endpoint (${fullUrl}) might be down or incorrect.`;
     throw new Error(errorMessage);
   }
-
 
   if (!response.ok) {
     let errorData;
@@ -240,7 +227,7 @@ async function authedFetch<T>(
     } catch (e) {
       errorData = { message: response.statusText || `HTTP error ${response.status}` };
     }
-    console.error(`API Error ${response.status} for ${fullUrl}:`, errorData);
+    console.error(`API Error ${response.status} for ${fullUrl} (assignmentFunctionsService):`, errorData);
     throw new Error(
       `API Error: ${response.status} ${errorData?.message || response.statusText}`
     );
@@ -261,7 +248,7 @@ async function authedFetch<T>(
           return JSON.parse(textResponse) as T;
         }
       } catch (e) {
-         console.error(`authedFetch: Failed to parse non-JSON text response from ${fullUrl} as JSON despite structure match. Error: ${e}`);
+         console.error(`authedFetch (assignmentFunctionsService): Failed to parse non-JSON text response from ${fullUrl} as JSON despite structure match. Error: ${e}`);
       }
       return textResponse as any as T;
     }
@@ -275,7 +262,6 @@ async function authedFetch<T>(
  * 1. GET /
  * Returns full assignment content for a given account.
  * Account name is passed in the 'account' header.
- * Note: Changed `content` to `questions` in FullAssignment for consistency. Backend might still use `content`.
  */
 export async function getAllAssignmentsWithContent(accountName: string): Promise<FullAssignment[]> {
   const trimmedAccountName = accountName?.trim();
@@ -364,10 +350,9 @@ export async function submitCompletedAssignment(
   if (!trimmedAccountName) {
     throw new Error('Account name is required and cannot be empty for submitting an assignment.');
   }
-  // Uses the new V2 base URL
   return authedFetch<CompletedAssignmentResponse>(`${ASSIGNMENTS_V2_BASE_URL}/completed/${assignmentDocId}`, {
     method: 'PUT',
-    body: formDataPayload, // Content-Type will be set by browser for FormData
+    body: formDataPayload,
   }, trimmedAccountName);
 }
 
@@ -539,19 +524,6 @@ export async function getAssignmentsCompletedByMe(accountName: string): Promise<
 }
 
 /**
- * 15. GET /widgets/trends
- * Account header is likely needed.
- */
-export async function getWidgetTrends(accountName: string): Promise<TrendsResponse | null> {
-  const trimmedAccountName = accountName?.trim();
-  if (!trimmedAccountName) {
-     throw new Error('Account name is required and cannot be empty for getWidgetTrends.');
-  }
-  const result = await authedFetch<TrendsResponse | undefined>(`${BASE_URL}/widgets/trends`, {}, trimmedAccountName);
-  return result || null;
-}
-
-/**
  * 19. POST /save_data/:id (multipart form-data)
  * Account header may or may not be needed.
  */
@@ -592,3 +564,5 @@ export async function savePendingSubmission(assignmentId: string, payload: Draft
     body: JSON.stringify(payload),
   }, trimmedAccountName);
 }
+
+    
