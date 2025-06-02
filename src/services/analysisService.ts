@@ -16,7 +16,7 @@ import type {
 
 const ANALYSIS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysis';
 const ANALYSIS_V2_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysisv2';
-const WIDGETS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/widgets';
+const WIDGETS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/widgets'; // Corrected base URL for widgets
 
 // --- Helper to get ID Token ---
 async function getIdToken(): Promise<string | null> {
@@ -81,13 +81,14 @@ async function authedFetch<T>(
         errorJson = JSON.parse(errorBodyText);
         if (errorJson && typeof errorJson.message === 'string') {
           parsedMessage = errorJson.message;
-        } else if (errorJson && typeof errorJson.error === 'string') {
+        } else if (errorJson && typeof errorJson.error === 'string') { // Check for .error field
           parsedMessage = errorJson.error;
         } else if (errorJson && Object.keys(errorJson).length > 0) {
-          parsedMessage = JSON.stringify(errorJson);
+          parsedMessage = JSON.stringify(errorJson); // Fallback to stringifying the whole object
         }
       } catch (e) {
-        if (errorBodyText.length > 150) {
+        // If parsing fails, use the raw text if it's short, otherwise a generic message
+        if (errorBodyText.length > 150) { // Avoid very long HTML error pages in the message
             parsedMessage = response.statusText || `Server responded with status ${response.status}`;
         } else {
             parsedMessage = errorBodyText || response.statusText || `Server responded with status ${response.status}`;
@@ -96,7 +97,7 @@ async function authedFetch<T>(
     }
     
     const finalErrorMessage = parsedMessage || response.statusText || `Server responded with status ${response.status}`;
-    console.error(`API Error ${response.status} for ${fullUrl} (analysisService):`, errorJson || errorBodyText);
+    console.error(`API Error ${response.status} for ${fullUrl} (analysisService):`, errorJson || errorBodyText); // Log original error structure
     throw new Error(
       `API Error: ${response.status} ${finalErrorMessage} (from ${fullUrl})`
     );
@@ -116,6 +117,7 @@ async function authedFetch<T>(
         throw new Error(`API Error: Malformed JSON response from ${fullUrl}.`);
      }
   } else {
+    // Attempt to parse if it looks like JSON, otherwise return as text
     if (textResponse) {
       if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
         try {
@@ -124,22 +126,23 @@ async function authedFetch<T>(
           // Not JSON, fall through
         }
       }
-      return textResponse as any as T;
+      return textResponse as any as T; // Return as text if not JSON or parse failed
     }
-    return undefined as any as T;
+    return undefined as any as T; // Empty response
   }
 }
 
 
 /**
  * Fetches dashboard widget data (user activity or account completions).
- * Uses GET /widgets/sandbox from ANALYSIS_BASE_URL
+ * Uses GET /sandbox from WIDGETS_BASE_URL
  */
 export async function getDashboardWidgetsSandbox(accountName: string): Promise<WidgetSandboxData | null> {
   if (!accountName || accountName.trim() === "") {
     throw new Error("Account name is required for getDashboardWidgetsSandbox.");
   }
-  const result = await authedFetch<WidgetSandboxData | undefined>(`${ANALYSIS_BASE_URL}/widgets/sandbox`, {}, accountName);
+  // Ensure this uses the WIDGETS_BASE_URL and the /sandbox path
+  const result = await authedFetch<WidgetSandboxData | undefined>(`${WIDGETS_BASE_URL}/sandbox`, {}, accountName);
   return result || null;
 }
 
@@ -252,6 +255,7 @@ export async function getWidgetTrends(accountName: string): Promise<TrendsRespon
   if (!accountName || accountName.trim() === "") {
     throw new Error("Account name is required for getWidgetTrends.");
   }
+  // Corrected to use WIDGETS_BASE_URL and /trends path
   const result = await authedFetch<TrendsResponse | undefined>(`${WIDGETS_BASE_URL}/trends`, {}, accountName);
   return result || null;
 }
