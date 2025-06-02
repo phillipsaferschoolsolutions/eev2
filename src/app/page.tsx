@@ -13,21 +13,21 @@ import { Button } from "@/components/ui/button";
 import {
   AlertTriangle,
   CalendarDays,
-  Newspaper, // Kept for news modal, but card removed from main grid
+  Newspaper, 
   ShieldAlert,
   ListChecks,
-  Edit3, // For New Assessment button
-  FileText, // For Report Incident button
+  Edit3, 
+  FileText, 
   ExternalLink,
-  Info, // Kept for news modal details
+  Info, 
   Activity,
   TrendingUp,
   Filter,
   AlertCircle,
   Loader2,
-  ListOrdered, // For View All Tasks button
-  Radiation, // For Initiate Lockdown
-  MessageSquare, // For Send Alert
+  ListOrdered, 
+  Radiation, 
+  MessageSquare, 
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
@@ -72,7 +72,7 @@ import {
 } from "@/components/ui/select";
 import { motion } from "framer-motion";
 import { formatDisplayDateShort } from "@/lib/utils";
-import Link from "next/link"; // For "New Assessment" button
+import Link from "next/link";
 
 const GOOGLE_NEWS_RSS_URL =
   "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
@@ -144,14 +144,14 @@ const heroTextVariants = {
 
 // --- New Placeholder Card Components ---
 const CriticalTasksCard: React.FC = () => (
-  <Card>
+  <Card className="h-full flex flex-col">
     <CardHeader>
       <CardTitle className="flex items-center gap-2 text-xl">
         <AlertTriangle className="h-5 w-5 text-destructive" /> Critical Tasks
       </CardTitle>
       <CardDescription>High-priority items needing immediate attention.</CardDescription>
     </CardHeader>
-    <CardContent>
+    <CardContent className="flex-grow">
       <ul className="space-y-3 text-sm">
         <li className="flex justify-between items-center"><span>Inspect broken fence near West Gate</span> <Button variant="link" size="sm" className="p-0 h-auto">Details</Button></li>
         <li className="flex justify-between items-center"><span>Review fire drill report</span> <Button variant="link" size="sm" className="p-0 h-auto">Details</Button></li>
@@ -162,14 +162,14 @@ const CriticalTasksCard: React.FC = () => (
 );
 
 const UpcomingEventsCard: React.FC = () => (
-  <Card>
+  <Card className="h-full flex flex-col">
     <CardHeader>
       <CardTitle className="flex items-center gap-2 text-xl">
-        <CalendarDays className="h-5 w-5 text-primary" /> Upcoming Events & Drills
+        <CalendarDays className="h-5 w-5 text-primary" /> Upcoming Events &amp; Drills
       </CardTitle>
       <CardDescription>Scheduled safety events and drills.</CardDescription>
     </CardHeader>
-    <CardContent>
+    <CardContent className="flex-grow">
       <ul className="space-y-2 text-sm">
         <li><strong>Campus Safety Workshop:</strong> Tomorrow, 10 AM</li>
         <li><strong>Fire Drill (Block B):</strong> Oct 28, 2 PM</li>
@@ -180,14 +180,14 @@ const UpcomingEventsCard: React.FC = () => (
 );
 
 const EmergencyProtocolsCard: React.FC = () => (
-  <Card>
+  <Card className="h-full flex flex-col">
     <CardHeader>
       <CardTitle className="flex items-center gap-2 text-xl">
         <ShieldAlert className="h-5 w-5 text-primary" /> Emergency Protocols
       </CardTitle>
       <CardDescription>Quick actions for emergency situations.</CardDescription>
     </CardHeader>
-    <CardContent className="space-y-3">
+    <CardContent className="space-y-3 flex-grow flex flex-col justify-center">
       <Button className="w-full bg-destructive hover:bg-destructive/90">
         <Radiation className="mr-2 h-4 w-4" /> Initiate Lockdown
       </Button>
@@ -414,7 +414,7 @@ export default function DashboardPage() {
             ) : ( <p className="text-sm text-muted-foreground text-center py-4">No common response data found for this selection.</p> )}
           </ScrollArea>
         )}
-        {(!selectedAssignmentForCommon || (!commonResponsesData && !isLoadingCommonResponses && !isLoadingCommonResponsesAssignmentDetails)) && !commonResponsesError && (
+        {(!selectedAssignmentForCommon || (!commonResponsesData && !isLoadingCommonResponses && !isLoadingCommonResponsesAssignmentDetails && !commonResponsesAssignmentDetails)) && !commonResponsesError && (
             <div className="flex-grow flex items-center justify-center">
                 <p className="text-sm text-muted-foreground text-center">{isLoadingCommonResponsesAssignmentDetails || isLoadingCommonResponses ? "Loading data..." : "Select an assignment to view common responses."}</p>
             </div>
@@ -459,7 +459,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={0}>
-          <Card className="h-full flex flex-col"> {/* Ensure cards can grow */}
+          <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-xl">
                 <Activity className="h-5 w-5 text-primary"/>Last Completions
@@ -493,8 +493,7 @@ export default function DashboardPage() {
             </Card>
         </motion.div>
 
-        {/* Placeholder cards from screenshot */}
-         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={3}>
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={3}>
             <CriticalTasksCard />
         </motion.div>
          <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={4}>
@@ -505,7 +504,6 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      {/* News Modal - Keep this logic if needed, or remove if news is not a dashboard priority based on screenshot */}
       <Dialog open={!!selectedNewsItem} onOpenChange={(open) => !open && setSelectedNewsItem(null)}>
         <DialogContent className="sm:max-w-[600px] max-h-[80vh]">
           <DialogHeader>
