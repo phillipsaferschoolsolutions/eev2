@@ -12,6 +12,7 @@ import type {
 } from '@/types/Analysis';
 
 const ANALYSIS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysis';
+const ANALYSIS_V2_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysisv2'; // New base URL
 
 // --- Helper to get ID Token ---
 async function getIdToken(): Promise<string | null> {
@@ -130,7 +131,7 @@ async function authedFetch<T>(
 
 /**
  * Fetches dashboard widget data (user activity or account completions).
- * Uses GET /widgets/sandbox
+ * Uses GET /widgets/sandbox from ANALYSIS_BASE_URL
  */
 export async function getDashboardWidgetsSandbox(accountName: string): Promise<WidgetSandboxData | null> {
   if (!accountName || accountName.trim() === "") {
@@ -142,7 +143,7 @@ export async function getDashboardWidgetsSandbox(accountName: string): Promise<W
 
 /**
  * Fetches raw completion responses for a specific assignment, potentially with filters.
- * Uses POST /rawresponses/:assignmentId
+ * Uses POST /rawresponses/:assignmentId from ANALYSIS_BASE_URL
  */
 export async function getRawResponses(
   assignmentId: string,
@@ -155,7 +156,7 @@ export async function getRawResponses(
   if (!assignmentId) {
     throw new Error("Assignment ID is required for getRawResponses.");
   }
-  const payload: Partial<RawResponsesPayload> = { filters }; // Backend expects filters directly
+  const payload: Partial<RawResponsesPayload> = { filters }; 
   const encodedAssignmentId = encodeURIComponent(assignmentId);
   const result = await authedFetch<RawResponse[] | undefined>(
     `${ANALYSIS_BASE_URL}/rawresponses/${encodedAssignmentId}`,
@@ -171,11 +172,11 @@ export async function getRawResponses(
 
 /**
  * Fetches response tallies by question for each school in an assignment.
- * Uses GET /schoolswithquestions/:assignmentId/:period
+ * Uses GET /schoolswithquestions/:assignmentId/:period from ANALYSIS_V2_BASE_URL
  */
 export async function getCommonResponsesForAssignment(
   assignmentId: string,
-  period: string, // e.g., "last7days", "last30days", "alltime"
+  period: string, 
   accountName: string
 ): Promise<SchoolsWithQuestionsResponse | null> {
   if (!accountName || accountName.trim() === "") {
@@ -186,7 +187,7 @@ export async function getCommonResponsesForAssignment(
   }
   const encodedAssignmentId = encodeURIComponent(assignmentId);
   const result = await authedFetch<SchoolsWithQuestionsResponse | undefined>(
-    `${ANALYSIS_BASE_URL}/schoolswithquestions/${encodedAssignmentId}/${period}`,
+    `${ANALYSIS_V2_BASE_URL}/schoolswithquestions/${encodedAssignmentId}/${period}`, // Corrected to use ANALYSIS_V2_BASE_URL
     {},
     accountName
   );
@@ -195,7 +196,7 @@ export async function getCommonResponsesForAssignment(
 
 /**
  * Fetches a list of previously generated/saved reports for the current account.
- * Uses GET /reporting
+ * Uses GET /reporting from ANALYSIS_BASE_URL
  */
 export async function getSavedReports(accountName: string): Promise<SavedReportMetadata[]> {
   if (!accountName || accountName.trim() === "") {
@@ -208,6 +209,3 @@ export async function getSavedReports(accountName: string): Promise<SavedReportM
   );
   return result || [];
 }
-
-// Placeholder for other analysis functions mentioned in the JSON
-// e.g., getCompletionsToday, getCompletedResponses, getSingleResponseData, etc.
