@@ -1,28 +1,92 @@
 
 "use client";
 
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, CalendarDays, CloudSun, Newspaper, ShieldAlert, ListChecks, Edit3, FileText, ExternalLink, Info, Thermometer, Sunrise, Sunset, Activity, TrendingUp, Filter, AlertCircle } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarDays,
+  CloudSun,
+  Newspaper,
+  ShieldAlert,
+  ListChecks,
+  Edit3,
+  FileText,
+  ExternalLink,
+  Info,
+  Thermometer,
+  Sunrise,
+  Sunset,
+  Activity,
+  TrendingUp,
+  Filter,
+  AlertCircle,
+  Loader2, // Added for consistency if used
+} from "lucide-react";
 import Image from "next/image";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
-import { getWeatherAndLocation, type WeatherLocationData } from "@/services/assignmentFunctionsService";
-import { getDashboardWidgetsSandbox, getCommonResponsesForAssignment } from "@/services/analysisService";
-import type { WidgetSandboxData, UserActivity, AssignmentCompletionStatus, SchoolsWithQuestionsResponse } from "@/types/Analysis";
-import { getAssignmentListMetadata, type AssignmentMetadata, getAssignmentById, type AssignmentWithPermissions } from "@/services/assignmentFunctionsService";
+import {
+  getWeatherAndLocation,
+  type WeatherLocationData,
+  getAssignmentListMetadata,
+  getAssignmentById, // Added for fetching assignment details
+  type AssignmentMetadata,
+  type AssignmentWithPermissions,
+} from "@/services/assignmentFunctionsService";
+import {
+  getDashboardWidgetsSandbox,
+  getCommonResponsesForAssignment,
+  // getLastCompletions, // This was moved to be part of getDashboardWidgetsSandbox or another call
+} from "@/services/analysisService";
+import type {
+  WidgetSandboxData,
+  SchoolsWithQuestionsResponse,
+  UserActivity, // Added
+  AssignmentCompletionStatus, // Added
+} from "@/types/Analysis";
 import { fetchPexelsImageURL } from "@/services/pexelsService";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  // DialogFooter, // Not used in current news modal
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import { formatDisplayDateShort } from "@/lib/utils";
 
-const GOOGLE_NEWS_RSS_URL = "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
-const RSS2JSON_API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(GOOGLE_NEWS_RSS_URL)}`;
+const GOOGLE_NEWS_RSS_URL =
+  "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
+const RSS2JSON_API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(
+  GOOGLE_NEWS_RSS_URL
+)}`;
 
 interface NewsItem {
   title: string;
@@ -47,18 +111,26 @@ const PERIOD_OPTIONS = [
   { value: "alltime", label: "All Time" },
 ];
 
-
 const sanitizeHTML = (htmlString: string): string => {
-  if (typeof document !== 'undefined') {
-    const doc = new DOMParser().parseFromString(htmlString, 'text/html');
+  if (typeof document !== "undefined") {
+    const doc = new DOMParser().parseFromString(htmlString, "text/html");
     return doc.body.textContent || "";
   }
-  return htmlString.replace(/<[^>]+>/g, '');
+  return htmlString.replace(/<[^>]+>/g, "");
 };
 
 const formatTime = (unixTimestamp?: number): string => {
-  if (!unixTimestamp) return 'N/A';
-  return new Date(unixTimestamp * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (!unixTimestamp) return "N/A";
+  try {
+    const date = new Date(unixTimestamp * 1000);
+    if (isNaN(date.getTime())) return "Invalid Date";
+    return date.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch (e) {
+    return "N/A";
+  }
 };
 
 const cardVariants = {
@@ -78,7 +150,7 @@ const heroContainerVariants = {
   hidden: { opacity: 0, height: 0 },
   visible: {
     opacity: 1,
-    height: 'auto',
+    height: "auto",
     transition: {
       duration: 0.7,
       ease: "easeInOut",
@@ -100,9 +172,8 @@ const heroTextVariants = {
   },
 };
 
-
 export default function DashboardPage() {
-  const { userProfile } = useAuth();
+  const { userProfile, loading: authLoading, profileLoading } = useAuth(); // Added authLoading, profileLoading
   const { resolvedTheme } = useTheme();
   const [weatherData, setWeatherData] = useState<WeatherLocationData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
@@ -114,7 +185,7 @@ export default function DashboardPage() {
   const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItem | null>(null);
 
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
-  const [heroImageLoading, setHeroImageLoading] = useState(false);
+  // const [heroImageLoading, setHeroImageLoading] = useState(false); // Not currently used directly for loading indicator
   const [isClientMounted, setIsClientMounted] = useState(false);
 
   const [widgetData, setWidgetData] = useState<WidgetSandboxData | null>(null);
@@ -130,12 +201,18 @@ export default function DashboardPage() {
   const [commonResponsesError, setCommonResponsesError] = useState<string | null>(null);
   const [commonResponsesPeriod, setCommonResponsesPeriod] = useState("last30days");
 
-  const isAdmin = userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
+  const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
+
 
   useEffect(() => {
     setIsClientMounted(true);
+    if (process.env.NEXT_PUBLIC_PEXEL_API_KEY) {
+      // setHeroImageLoading(true); // Can uncomment if a loading spinner for hero is desired
+      fetchPexelsImageURL("modern campus security technology", "landscape")
+        .then(setHeroImageUrl)
+        // .finally(() => setHeroImageLoading(false)); // Can uncomment
+    }
   }, []);
-
 
   useEffect(() => {
     const fetchWeatherData = () => {
@@ -144,8 +221,7 @@ export default function DashboardPage() {
         setWeatherLoading(false);
         return;
       }
-      if (userProfile === undefined) return; 
-
+      if (userProfile === undefined || authLoading || profileLoading) return;
       if (!userProfile?.account) {
         if (userProfile !== null) {
           setWeatherError("User account information not available for weather data.");
@@ -153,7 +229,6 @@ export default function DashboardPage() {
         setWeatherLoading(false);
         return;
       }
-
       setWeatherLoading(true);
       setWeatherError(null);
       navigator.geolocation.getCurrentPosition(
@@ -180,7 +255,7 @@ export default function DashboardPage() {
     if (isClientMounted) {
       fetchWeatherData();
     }
-  }, [userProfile, isClientMounted]);
+  }, [userProfile, isClientMounted, authLoading, profileLoading]);
 
   useEffect(() => {
     const fetchNewsData = async () => {
@@ -202,92 +277,83 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (isClientMounted && resolvedTheme === 'theme-innovation-hub') {
-      setHeroImageLoading(true);
-      fetchPexelsImageURL("abstract technology future dark blue", "landscape")
-        .then(url => {
-          setHeroImageUrl(url);
-          setHeroImageLoading(false);
-        })
-        .catch(err => {
-          console.error("Failed to load hero image for Innovation Hub:", err);
-          setHeroImageLoading(false);
-        });
-    } else {
-      setHeroImageUrl(null); 
-    }
-  }, [resolvedTheme, isClientMounted]);
-
-  useEffect(() => {
-    if (userProfile?.account && isClientMounted) {
+    if (userProfile?.account && isClientMounted && !authLoading && !profileLoading) {
       setIsLoadingWidgets(true);
       setWidgetError(null);
       getDashboardWidgetsSandbox(userProfile.account)
         .then(setWidgetData)
-        .catch(err => {
+        .catch((err) => {
           console.error("Error fetching widget data:", err);
           setWidgetError((err as Error).message || "Could not load dashboard widgets.");
         })
         .finally(() => setIsLoadingWidgets(false));
     }
-  }, [userProfile?.account, isClientMounted]);
+  }, [userProfile?.account, isClientMounted, authLoading, profileLoading]);
 
   useEffect(() => {
-    if (userProfile?.account && isClientMounted) {
+    if (userProfile?.account && isClientMounted && !authLoading && !profileLoading) {
       getAssignmentListMetadata(userProfile.account)
-        .then(data => {
+        .then((data) => {
           setAssignmentsForCommonResponses(data || []);
           if (data && data.length > 0 && !selectedAssignmentForCommon) {
             setSelectedAssignmentForCommon(data[0].id);
           }
         })
-        .catch(err => console.error("Error fetching assignment list for common responses:", err));
+        .catch((err) => console.error("Error fetching assignment list:", err));
     }
-  }, [userProfile?.account, isClientMounted, selectedAssignmentForCommon]);
+  }, [userProfile?.account, isClientMounted, authLoading, profileLoading, selectedAssignmentForCommon]);
 
-  // Fetch Assignment Details for Common Responses Widget
-  useEffect(() => {
-    if (userProfile?.account && selectedAssignmentForCommon && isClientMounted) {
+   useEffect(() => {
+    if (userProfile?.account && selectedAssignmentForCommon && isClientMounted && !authLoading && !profileLoading) {
       setIsLoadingCommonResponsesAssignmentDetails(true);
-      setCommonResponsesAssignmentDetails(null); // Reset previous details
+      setCommonResponsesAssignmentDetails(null); // Reset before fetching
       getAssignmentById(selectedAssignmentForCommon, userProfile.account)
         .then(setCommonResponsesAssignmentDetails)
-        .catch(err => {
+        .catch((err) => {
           console.error("Error fetching assignment details for common responses:", err);
-          // Optionally set an error state for assignment details
+          // Optionally set an error state for this specific fetch
         })
         .finally(() => setIsLoadingCommonResponsesAssignmentDetails(false));
     }
-  }, [userProfile?.account, selectedAssignmentForCommon, isClientMounted]);
+  }, [userProfile?.account, selectedAssignmentForCommon, isClientMounted, authLoading, profileLoading]);
+
 
   useEffect(() => {
-    if (userProfile?.account && selectedAssignmentForCommon && commonResponsesPeriod && isClientMounted) {
+    if (
+      userProfile?.account &&
+      selectedAssignmentForCommon &&
+      commonResponsesPeriod &&
+      isClientMounted && !authLoading && !profileLoading
+    ) {
       setIsLoadingCommonResponses(true);
       setCommonResponsesError(null);
-      setCommonResponsesData(null);
-      getCommonResponsesForAssignment(selectedAssignmentForCommon, commonResponsesPeriod, userProfile.account)
+      setCommonResponsesData(null); // Reset before fetching
+      getCommonResponsesForAssignment(
+        selectedAssignmentForCommon,
+        commonResponsesPeriod,
+        userProfile.account
+      )
         .then(setCommonResponsesData)
-        .catch(err => {
+        .catch((err) => {
           console.error("Error fetching common responses:", err);
           setCommonResponsesError((err as Error).message || "Could not load common response data.");
         })
         .finally(() => setIsLoadingCommonResponses(false));
     }
-  }, [userProfile?.account, selectedAssignmentForCommon, commonResponsesPeriod, isClientMounted]);
-
-
-  const dashboardCards = [
-    { id: "tasks", title: "Critical Tasks", description: "High-priority items needing immediate attention.", icon: AlertTriangle, color: "text-destructive", content: <ul className="space-y-3"> <li className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors"><span>Inspect broken fence near West Gate</span><Button variant="ghost" size="sm">Details</Button></li> <li className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors"><span>Review fire drill report</span><Button variant="ghost" size="sm">Details</Button></li> <li className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors"><span>Restock first-aid kit - Gym</span><Button variant="ghost" size="sm">Details</Button></li> </ul>, footer: <Button variant="outline" className="w-full">View All Critical Tasks</Button> },
-    { id: "events", title: "Upcoming Events & Drills", description: "Scheduled safety events and drills.", icon: CalendarDays, color: "text-primary", content: <ul className="space-y-3"> <li className="p-2 rounded-md"><strong>Campus Safety Workshop:</strong> Tomorrow, 10 AM</li> <li className="p-2 rounded-md"><strong>Fire Drill (Block B):</strong> Oct 28, 2 PM</li> <li className="p-2 rounded-md"><strong>Security Team Meeting:</strong> Nov 2, 9 AM</li> </ul>, footer: <Button variant="outline" className="w-full">View Calendar</Button> },
-    { id: "protocols", title: "Emergency Protocols", description: "Quick actions for emergency situations.", icon: ShieldAlert, color: "text-accent", content: <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1"> <Button variant="destructive" className="w-full justify-start text-base p-3"><ShieldAlert className="mr-2 h-5 w-5" /> Initiate Lockdown</Button> <Button variant="outline" className="w-full justify-start text-base p-3"><FileText className="mr-2 h-5 w-5" /> Report Incident</Button> <Button variant="secondary" className="w-full justify-start text-base p-3"><Newspaper className="mr-2 h-5 w-5" /> Send Alert</Button> </div>, footer: null },
-  ];
+  }, [
+    userProfile?.account,
+    selectedAssignmentForCommon,
+    commonResponsesPeriod,
+    isClientMounted,
+    authLoading, profileLoading
+  ]);
 
   const renderLastCompletionsWidget = () => {
-    if (!isClientMounted || isLoadingWidgets) return <Skeleton className="h-48 w-full" />;
+    if (isLoadingWidgets) return <Skeleton className="h-48 w-full" />;
     if (widgetError) return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{widgetError}</AlertDescription></Alert>;
     
     const itemsToDisplay = isAdmin ? widgetData?.accountCompletions : widgetData?.userActivity;
-    if (!itemsToDisplay || itemsToDisplay.length === 0) return <p className="text-sm text-muted-foreground p-4 text-center">No recent activity.</p>;
+    if (!itemsToDisplay || itemsToDisplay.length === 0) return <p className="text-sm text-muted-foreground">No recent activity.</p>;
 
     return (
       <ScrollArea className="h-60">
@@ -313,7 +379,7 @@ export default function DashboardPage() {
   };
 
   const renderStreakWidget = () => (
-    <div className="text-center p-4 flex flex-col items-center justify-center h-full">
+    <div className="text-center">
       <TrendingUp className="h-16 w-16 text-primary mx-auto mb-2" />
       <p className="text-3xl font-bold">Coming Soon</p>
       <p className="text-sm text-muted-foreground mt-1">Track your assignment completion streak. (Backend support needed)</p>
@@ -321,22 +387,21 @@ export default function DashboardPage() {
   );
 
   const renderCommonResponsesWidget = () => {
-    if (!isClientMounted) return <Skeleton className="h-64 w-full" />;
     return (
-      <div className="space-y-3 h-full flex flex-col">
+      <div className="space-y-3">
         <div className="flex flex-col sm:flex-row gap-2">
-           <Select value={selectedAssignmentForCommon || ""} onValueChange={setSelectedAssignmentForCommon}>
-            <SelectTrigger className="flex-grow"><SelectValue placeholder="Select assignment..." /></SelectTrigger>
+           <Select value={selectedAssignmentForCommon || ""} onValueChange={setSelectedAssignmentForCommon} disabled={assignmentsForCommonResponses.length === 0 || isLoadingCommonResponses || isLoadingCommonResponsesAssignmentDetails}>
+            <SelectTrigger className="flex-grow"><SelectValue placeholder="Select an assignment..." /></SelectTrigger>
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>Assignments</SelectLabel>
                 {assignmentsForCommonResponses.length > 0 ? assignmentsForCommonResponses.map(a => (
                   <SelectItem key={a.id} value={a.id}>{a.assessmentName}</SelectItem>
-                )) : <SelectItem value="no-assign" disabled>No assignments</SelectItem>}
+                )) : <SelectItem value="no-assign" disabled>No assignments found</SelectItem>}
               </SelectGroup>
             </SelectContent>
           </Select>
-          <Select value={commonResponsesPeriod} onValueChange={setCommonResponsesPeriod}>
+          <Select value={commonResponsesPeriod} onValueChange={setCommonResponsesPeriod} disabled={!selectedAssignmentForCommon || isLoadingCommonResponses || isLoadingCommonResponsesAssignmentDetails}>
             <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select period..." /></SelectTrigger>
             <SelectContent>
               {PERIOD_OPTIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
@@ -344,19 +409,19 @@ export default function DashboardPage() {
           </Select>
         </div>
 
-        {(isLoadingCommonResponses || isLoadingCommonResponsesAssignmentDetails) && <Skeleton className="h-40 w-full flex-grow" />}
-        {commonResponsesError && <Alert variant="destructive" className="flex-grow"><AlertCircle className="h-4 w-4" /><AlertTitle>Error Loading Responses</AlertTitle><AlertDescription>{commonResponsesError}</AlertDescription></Alert>}
+        {isLoadingCommonResponses && <Skeleton className="h-40 w-full" />}
+        {commonResponsesError && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{commonResponsesError}</AlertDescription></Alert>}
         
-        {commonResponsesData && commonResponsesAssignmentDetails && !isLoadingCommonResponses && !isLoadingCommonResponsesAssignmentDetails && !commonResponsesError && (
-          <ScrollArea className="h-60 pr-2 flex-grow">
+        {commonResponsesData && commonResponsesAssignmentDetails && !isLoadingCommonResponses && !commonResponsesError && (
+          <ScrollArea className="h-60 pr-2">
             {Object.keys(commonResponsesData).length > 0 ? (
               Object.entries(commonResponsesData).map(([locationName, questions]) => (
                 <div key={locationName} className="mb-3 p-2 border rounded">
-                  <h4 className="font-semibold text-xs text-muted-foreground mb-1">{locationName === "undefined" || locationName === "null" ? "Overall / Unspecified" : locationName}</h4>
+                  <h4 className="font-semibold text-xs text-muted-foreground mb-1">{locationName === "undefined" || locationName === "null" ? "Overall / Unspecified Location" : locationName}</h4>
                   {Object.entries(questions).map(([questionId, answerData]) => {
                     const questionDetail = commonResponsesAssignmentDetails.questions.find(q => q.id === questionId);
                     if (questionDetail && questionDetail.component === 'schoolSelector') {
-                      return null; // Skip rendering schoolSelector responses
+                        return null; // Filter out schoolSelector components
                     }
                     return (
                       <div key={questionId} className="text-xs mb-1 ml-2">
@@ -364,8 +429,8 @@ export default function DashboardPage() {
                         <ul className="list-disc list-inside ml-3 text-muted-foreground/80">
                           {Object.entries(answerData)
                               .filter(([key]) => key !== 'questionLabel')
-                              .sort(([, aVal], [, bVal]) => (bVal as number) - (aVal as number)) 
-                              .slice(0, 3) 
+                              .sort(([, aVal], [, bVal]) => (bVal as number) - (aVal as number))
+                              .slice(0, 3)
                               .map(([answer, count]) => (
                                 <li key={answer} className="truncate">{answer || "N/A"}: {count}</li>
                            ))}
@@ -375,10 +440,10 @@ export default function DashboardPage() {
                   })}
                 </div>
               ))
-            ) : ( <p className="text-sm text-muted-foreground text-center py-4">No common response data for selection.</p> )}
+            ) : ( <p className="text-sm text-muted-foreground text-center py-4">No common response data found for this selection.</p> )}
           </ScrollArea>
         )}
-        {!selectedAssignmentForCommon && !isLoadingCommonResponses && !isLoadingCommonResponsesAssignmentDetails && <p className="text-sm text-muted-foreground text-center flex-grow flex items-center justify-center">Select an assignment.</p>}
+        {(!selectedAssignmentForCommon || isLoadingCommonResponsesAssignmentDetails) && !isLoadingCommonResponses && <p className="text-sm text-muted-foreground text-center">{isLoadingCommonResponsesAssignmentDetails ? "Loading assignment details..." : "Select an assignment to view common responses."}</p>}
       </div>
     );
   };
@@ -386,168 +451,209 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {isClientMounted && resolvedTheme === 'theme-innovation-hub' && (
-        <motion.div
-          variants={heroContainerVariants}
-          initial="hidden"
-          animate="visible"
-          className="mb-8 rounded-xl overflow-hidden shadow-2xl"
-        >
-          {heroImageLoading ? (
-            <Skeleton className="h-64 md:h-80 w-full" />
-          ) : heroImageUrl ? (
-            <div className="relative h-64 md:h-80 w-full group">
-              <Image
-                src={heroImageUrl}
-                fill
-                style={{objectFit:"cover"}} 
-                alt="Innovation Hub Hero Background"
-                className="transition-transform duration-500 group-hover:scale-105"
-                data-ai-hint="technology innovation abstract"
-                priority
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent flex flex-col items-center justify-end text-center p-6 md:p-10">
-                <motion.h1
-                  variants={heroTextVariants}
-                  className="text-3xl md:text-5xl font-bold text-white mb-2 shadow-md"
-                >
-                  Innovate. Secure. Protect.
-                </motion.h1>
-                <motion.p
-                  variants={heroTextVariants}
-                  className="text-lg md:text-xl text-gray-200 mb-4 shadow-sm"
-                >
-                  Leveraging technology for a safer campus environment.
-                </motion.p>
-              </div>
-            </div>
-          ) : (
-             <div className="h-64 md:h-80 w-full bg-gradient-to-br from-sky-700 to-indigo-800 flex flex-col items-center justify-center text-center p-6 md:p-10">
-                <motion.h1 variants={heroTextVariants} className="text-3xl md:text-5xl font-bold text-white mb-2">Innovation Hub</motion.h1>
-                <motion.p variants={heroTextVariants} className="text-lg md:text-xl text-gray-200">Advanced Safety Solutions.</motion.p>
-            </div>
-          )}
+      {/* Hero Section */}
+      <motion.div
+        variants={heroContainerVariants}
+        initial="hidden"
+        animate={isClientMounted ? "visible" : "hidden"}
+        className="w-full rounded-2xl overflow-hidden relative min-h-[150px] bg-gradient-to-br from-primary/70 to-accent/70"
+        style={{ 
+          backgroundImage: heroImageUrl ? `url(${heroImageUrl})` : undefined,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}
+        data-ai-hint="campus security technology"
+      >
+        <div className={`relative z-10 p-6 sm:p-8 md:p-10 rounded-2xl text-white ${!heroImageUrl ? '' : 'bg-black/50 backdrop-blur-sm'}`}>
+          <motion.h1
+            variants={heroTextVariants}
+            className="text-3xl sm:text-4xl font-bold tracking-tight"
+          >
+            Welcome back, {userProfile?.displayName || userProfile?.name || "User"}!
+          </motion.h1>
+          <motion.p variants={heroTextVariants} className="text-base sm:text-lg mt-2 max-w-2xl">
+            Here’s your campus safety overview and actionable insights for today.
+          </motion.p>
+        </div>
+      </motion.div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {/* Weather Card */}
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={0}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <CloudSun className="h-5 w-5 text-primary" /> Local Conditions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {weatherLoading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : weatherError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Weather Error</AlertTitle>
+                  <AlertDescription>{weatherError}</AlertDescription>
+                </Alert>
+              ) : weatherData ? (
+                <div className="space-y-1">
+                  <div className="text-lg font-semibold">
+                    {weatherData.name || "Location unavailable"}
+                  </div>
+                  <div className="text-3xl">
+                    {weatherData.current?.temp !== undefined ? `${Math.round(weatherData.current.temp)}°F` : "N/A"}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {weatherData.current?.feels_like !== undefined ? `Feels like ${Math.round(weatherData.current.feels_like)}°F` : ""}
+                    {weatherData.current?.feels_like !== undefined && weatherData.current?.weather?.[0]?.description ? " — " : ""}
+                    {weatherData.current?.weather?.[0]?.description || (weatherData.current?.feels_like === undefined && weatherData.current?.temp === undefined ? "Weather conditions unavailable" : "")}
+                  </div>
+                  <div className="flex gap-2 text-xs mt-2 items-center">
+                    <Sunrise size={14} /> <span>{formatTime(weatherData.current?.sunrise)}</span>
+                    <Sunset size={14} /> <span>{formatTime(weatherData.current?.sunset)}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Weather data unavailable.</p>
+              )}
+            </CardContent>
+          </Card>
         </motion.div>
-      )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome to EagleEyED<sup>TM</sup></h1>
-          <p className="text-muted-foreground">Your central hub for campus safety management.</p>
-        </div>
-        <div className="flex gap-2">
-            <Button><ListChecks className="mr-2 h-4 w-4" /> View All Tasks</Button>
-            <Button variant="outline"><Edit3 className="mr-2 h-4 w-4" /> New Assessment</Button>
-        </div>
-      </div>
+        {/* News Card */}
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={1}>
+          <Card className="flex flex-col h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Newspaper className="h-5 w-5 text-primary" /> School Security News
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-grow">
+              {newsLoading ? (
+                <Skeleton className="h-48 w-full" />
+              ) : newsError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>News Error</AlertTitle>
+                  <AlertDescription>{newsError}</AlertDescription>
+                </Alert>
+              ) : newsItems.length > 0 ? (
+                <ScrollArea className="h-48">
+                  <ul className="space-y-2 pr-3">
+                    {newsItems.map((item) => (
+                      <li key={item.guid} className="p-2 border-b border-border/50 last:border-b-0">
+                        <DialogTrigger asChild>
+                          <button
+                            onClick={() => setSelectedNewsItem(item)}
+                            className="text-left hover:text-primary transition-colors w-full"
+                          >
+                            <h3 className="font-medium text-sm line-clamp-2">{item.title}</h3>
+                            <p className="text-xs text-muted-foreground">{new Date(item.pubDate).toLocaleDateString()}</p>
+                          </button>
+                        </DialogTrigger>
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollArea>
+              ) : (
+                <p className="text-sm text-muted-foreground">No news articles found.</p>
+              )}
+            </CardContent>
+            {newsItems.length > 0 && (
+                 <CardFooter className="mt-auto">
+                    <a href="https://news.google.com/search?q=K-12+school+security" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+                        View more on Google News <ExternalLink className="inline h-3 w-3 ml-1"/>
+                    </a>
+                </CardFooter>
+            )}
+          </Card>
+        </motion.div>
+        
+        {/* Placeholder/Info Card */}
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={2}>
+          <Card className="flex flex-col h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <ShieldAlert className="h-5 w-5 text-primary" /> Critical Alerts
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-grow">
+              <p className="text-sm text-muted-foreground">No critical alerts at this time.</p>
+              {/* This could be populated with real alert data */}
+            </CardContent>
+             <CardFooter>
+                <Button variant="outline" size="sm">View Alert History</Button>
+            </CardFooter>
+          </Card>
+        </motion.div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <motion.div custom={0} variants={cardVariants} initial="hidden" animate="visible">
-            <Card className="h-full flex flex-col">
-              <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary"/>Last Completions</CardTitle></CardHeader>
-              <CardContent className="flex-grow">{renderLastCompletionsWidget()}</CardContent>
-            </Card>
-          </motion.div>
-          <motion.div custom={1} variants={cardVariants} initial="hidden" animate="visible">
-            <Card className="h-full flex flex-col">
-              <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-green-500"/>Streak</CardTitle></CardHeader>
-              <CardContent className="flex-grow">{renderStreakWidget()}</CardContent>
-            </Card>
-          </motion.div>
-          <motion.div custom={2} variants={cardVariants} initial="hidden" animate="visible">
-            <Card className="h-full flex flex-col">
-              <CardHeader><CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5 text-purple-500"/>Common Responses</CardTitle></CardHeader>
-              <CardContent className="flex-grow">{renderCommonResponsesWidget()}</CardContent>
-            </Card>
-          </motion.div>
-      </div>
-
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {dashboardCards.map((card, index) => (
-          <motion.div key={card.id} custom={index + 3} variants={cardVariants} initial="hidden" animate="visible" className="lg:col-span-1">
-            <Card className="h-full flex flex-col">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <card.icon className={`h-6 w-6 ${card.color}`} />
-                  {card.title}
-                </CardTitle>
-                <CardDescription>{card.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                {card.content}
-              </CardContent>
-              {card.footer && <CardFooter>{card.footer}</CardFooter>}
-            </Card>
-          </motion.div>
-        ))}
-
-        <motion.div custom={dashboardCards.length + 3} variants={cardVariants} initial="hidden" animate="visible" className="md:col-span-2 lg:col-span-3">
+        {/* Last Completions Widget */}
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={3}>
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CloudSun className="h-6 w-6 text-yellow-500" />
-                  Local Weather & News
-                </CardTitle>
-                <CardDescription>Stay informed about local conditions.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-6 md:grid-cols-2">
-                <div>
-                  <h3 className="font-semibold mb-2">Weather: {weatherData?.name || (weatherLoading ? "Loading..." : "Unavailable")}</h3>
-                  {weatherLoading && isClientMounted ? (
-                    <div className="p-4 bg-muted/30 rounded-lg space-y-3">
-                        <div className="flex items-center gap-4"><Skeleton className="h-12 w-12 rounded-full" /><div><Skeleton className="h-7 w-32 mb-1" /><Skeleton className="h-4 w-48" /></div></div>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /></div>
-                    </div>
-                  ) : weatherError ? (
-                    <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Weather Error</AlertTitle><AlertDescription>{weatherError}</AlertDescription></Alert>
-                  ) : weatherData && weatherData.current && isClientMounted ? (
-                    <div className="p-4 bg-muted/30 rounded-lg">
-                      <div className="flex items-center gap-4"><CloudSun className="h-12 w-12 text-primary shrink-0" /><div><p className="text-2xl font-bold">{Math.round(weatherData.current.temp ?? 0)}°F, {weatherData.current.weather?.[0]?.description ?? 'N/A'}</p><p className="text-sm text-muted-foreground">Wind: {Math.round(weatherData.current.wind_speed ?? 0)}mph, Humidity: {weatherData.current.humidity ?? 0}%</p></div></div>
-                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                        <div className="flex items-center gap-1.5"><Thermometer className="h-4 w-4 text-muted-foreground shrink-0" /><span>Feels like: <strong>{Math.round(weatherData.current.feels_like ?? 0)}°F</strong></span></div>
-                        <div className="flex items-center gap-1.5"><Info className="h-4 w-4 text-muted-foreground shrink-0" /><span>UV Index: <strong>{weatherData.current.uvi ?? 'N/A'}</strong></span></div>
-                        <div className="flex items-center gap-1.5"><Sunrise className="h-4 w-4 text-muted-foreground shrink-0" /><span>Sunrise: <strong>{formatTime(weatherData.current.sunrise)}</strong></span></div>
-                        <div className="flex items-center gap-1.5"><Sunset className="h-4 w-4 text-muted-foreground shrink-0" /><span>Sunset: <strong>{formatTime(weatherData.current.sunset)}</strong></span></div>
-                      </div>
-                    </div>
-                  ) : isClientMounted ? ( <p className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg">Weather data not available or incomplete. Ensure location services are enabled and an account is active.</p> 
-                  ) : (
-                    <Skeleton className="h-48 w-full" /> 
-                  )}
-                </div>
-                <div>
-                    <h3 className="font-semibold mb-2">Campus Safety News</h3>
-                    {newsLoading ? ( <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-                    ) : newsError ? ( <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>News Error</AlertTitle><AlertDescription>{newsError}</AlertDescription></Alert>
-                    ) : newsItems.length > 0 ? (
-                        <ScrollArea className="h-[200px] pr-3">
-                            <ul className="space-y-2 text-sm">
-                                {newsItems.map((item) => (
-                                    <li key={item.guid} className="hover:bg-muted/50 p-2 rounded-md transition-colors">
-                                        <Dialog onOpenChange={(open) => !open && setSelectedNewsItem(null)}>
-                                            <DialogTrigger asChild><button className="text-left w-full" onClick={() => setSelectedNewsItem(item)}><span className="font-medium text-primary hover:underline block truncate">{item.title}</span><span className="text-xs text-muted-foreground">{new Date(item.pubDate).toLocaleDateString()}</span></button></DialogTrigger>
-                                            {selectedNewsItem?.guid === item.guid && (
-                                            <DialogContent className="sm:max-w-[625px]">
-                                                <DialogHeader><DialogTitle>{selectedNewsItem.title}</DialogTitle><DialogDescription>Published: {new Date(selectedNewsItem.pubDate).toLocaleString()}</DialogDescription></DialogHeader>
-                                                <ScrollArea className="max-h-[50vh] pr-4"><div className="text-sm text-muted-foreground py-4 whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: sanitizeHTML(selectedNewsItem.content || selectedNewsItem.description || "No content available.") }} /></ScrollArea>
-                                                <DialogFooter><Button variant="outline" asChild><a href={selectedNewsItem.link} target="_blank" rel="noopener noreferrer">Read Full Article <ExternalLink className="ml-2 h-4 w-4" /></a></Button></DialogFooter>
-                                            </DialogContent>
-                                            )}
-                                        </Dialog>
-                                    </li>
-                                ))}
-                            </ul>
-                        </ScrollArea>
-                    ) : ( <p className="text-sm text-muted-foreground">No news articles found.</p> )}
-                    <Button variant="link" className="mt-2 px-0" asChild><a href="https://news.google.com/search?q=K-12%20school%20security%20OR%20school%20cybersecurity&hl=en-US&gl=US&ceid=US%3Aen" target="_blank" rel="noopener noreferrer">View all on Google News <ExternalLink className="ml-1 h-3 w-3" /></a></Button>
-                </div>
-              </CardContent>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                        <Activity className="h-5 w-5 text-primary"/>Recent Activity
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>{renderLastCompletionsWidget()}</CardContent>
             </Card>
         </motion.div>
+
+        {/* Streak Widget */}
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={4}>
+            <Card className="flex flex-col justify-center items-center min-h-[200px] h-full"> {/* Ensure consistent height */}
+                <CardHeader className="pb-2 pt-4">
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                        <TrendingUp className="h-5 w-5 text-primary"/>Completion Streak
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-grow flex items-center justify-center">
+                    {renderStreakWidget()}
+                </CardContent>
+            </Card>
+        </motion.div>
+
+        {/* Common Responses Widget */}
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={5}>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                        <ListChecks className="h-5 w-5 text-primary"/>Common Responses
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>{renderCommonResponsesWidget()}</CardContent>
+            </Card>
+        </motion.div>
+
       </div>
+
+      {/* News Item Modal/Dialog */}
+      <Dialog open={!!selectedNewsItem} onOpenChange={(open) => !open && setSelectedNewsItem(null)}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="text-xl line-clamp-2">{selectedNewsItem?.title}</DialogTitle>
+            <DialogDescription>
+              {selectedNewsItem?.pubDate && new Date(selectedNewsItem.pubDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div
+              className="prose prose-sm dark:prose-invert max-w-none"
+              dangerouslySetInnerHTML={{ __html: selectedNewsItem?.content || selectedNewsItem?.description || "" }}
+            />
+          </ScrollArea>
+          {/* <DialogFooter className="mt-4">
+            <Button asChild variant="default">
+              <a href={selectedNewsItem?.link} target="_blank" rel="noopener noreferrer">
+                Read Full Article <ExternalLink className="h-4 w-4 ml-2" />
+              </a>
+            </Button>
+          </DialogFooter> */}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
 
-    

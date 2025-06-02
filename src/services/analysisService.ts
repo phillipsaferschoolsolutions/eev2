@@ -9,6 +9,7 @@ import type {
   RawResponsesPayload,
   SchoolsWithQuestionsResponse,
   SavedReportMetadata,
+  LastCompletionsResponse,
 } from '@/types/Analysis';
 
 const ANALYSIS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysis';
@@ -168,6 +169,38 @@ export async function getRawResponses(
   );
   return result || [];
 }
+
+/**
+ * Fetches the last few completions for a specific assignment and school.
+ * Uses GET /widgets/getlastcompletions from ANALYSIS_V2_BASE_URL
+ */
+export async function getLastCompletions(
+  accountName: string,
+  assignmentId: string,
+  selectedSchool: string
+ ): Promise<LastCompletionsResponse | null> {
+  if (!accountName || accountName.trim() === "") {
+  throw new Error("Account name is required for getLastCompletions.");
+   }
+  if (!assignmentId || !selectedSchool) {
+  throw new Error("Assignment ID and selected school are required for getLastCompletions.");
+   }
+   const payload = {
+  assignmentId,
+  selectedSchool
+   };
+   console.log("Calling getLastCompletions API with payload:", payload); // Log before fetch
+   const result = await authedFetch<LastCompletionsResponse | undefined>(
+     `${ANALYSIS_V2_BASE_URL}/widgets/getlastcompletions`,
+     {
+       method: 'POST', // Ensure this is POST
+       body: JSON.stringify(payload),
+     },
+     accountName);
+  console.log("Last Completions API response:", result); // Log after fetch
+  return result || null;
+ }
+ 
 
 
 /**
