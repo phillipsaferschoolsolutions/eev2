@@ -28,7 +28,7 @@ import {
   TrendingUp,
   Filter,
   AlertCircle,
-  Loader2, // Added for consistency if used
+  Loader2, 
 } from "lucide-react";
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
@@ -37,20 +37,19 @@ import {
   getWeatherAndLocation,
   type WeatherLocationData,
   getAssignmentListMetadata,
-  getAssignmentById, // Added for fetching assignment details
+  getAssignmentById, 
   type AssignmentMetadata,
   type AssignmentWithPermissions,
 } from "@/services/assignmentFunctionsService";
 import {
   getDashboardWidgetsSandbox,
   getCommonResponsesForAssignment,
-  // getLastCompletions, // This was moved to be part of getDashboardWidgetsSandbox or another call
 } from "@/services/analysisService";
 import type {
   WidgetSandboxData,
   SchoolsWithQuestionsResponse,
-  UserActivity, // Added
-  AssignmentCompletionStatus, // Added
+  UserActivity, 
+  AssignmentCompletionStatus, 
 } from "@/types/Analysis";
 import { fetchPexelsImageURL } from "@/services/pexelsService";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -65,7 +64,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  // DialogFooter, // Not used in current news modal
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -173,7 +171,7 @@ const heroTextVariants = {
 };
 
 export default function DashboardPage() {
-  const { userProfile, loading: authLoading, profileLoading } = useAuth(); // Added authLoading, profileLoading
+  const { userProfile, loading: authLoading, profileLoading } = useAuth(); 
   const { resolvedTheme } = useTheme();
   const [weatherData, setWeatherData] = useState<WeatherLocationData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(true);
@@ -185,7 +183,6 @@ export default function DashboardPage() {
   const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItem | null>(null);
 
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
-  // const [heroImageLoading, setHeroImageLoading] = useState(false); // Not currently used directly for loading indicator
   const [isClientMounted, setIsClientMounted] = useState(false);
 
   const [widgetData, setWidgetData] = useState<WidgetSandboxData | null>(null);
@@ -207,10 +204,8 @@ export default function DashboardPage() {
   useEffect(() => {
     setIsClientMounted(true);
     if (process.env.NEXT_PUBLIC_PEXEL_API_KEY) {
-      // setHeroImageLoading(true); // Can uncomment if a loading spinner for hero is desired
       fetchPexelsImageURL("modern campus security technology", "landscape")
         .then(setHeroImageUrl)
-        // .finally(() => setHeroImageLoading(false)); // Can uncomment
     }
   }, []);
 
@@ -306,12 +301,11 @@ export default function DashboardPage() {
    useEffect(() => {
     if (userProfile?.account && selectedAssignmentForCommon && isClientMounted && !authLoading && !profileLoading) {
       setIsLoadingCommonResponsesAssignmentDetails(true);
-      setCommonResponsesAssignmentDetails(null); // Reset before fetching
+      setCommonResponsesAssignmentDetails(null); 
       getAssignmentById(selectedAssignmentForCommon, userProfile.account)
         .then(setCommonResponsesAssignmentDetails)
         .catch((err) => {
           console.error("Error fetching assignment details for common responses:", err);
-          // Optionally set an error state for this specific fetch
         })
         .finally(() => setIsLoadingCommonResponsesAssignmentDetails(false));
     }
@@ -327,7 +321,7 @@ export default function DashboardPage() {
     ) {
       setIsLoadingCommonResponses(true);
       setCommonResponsesError(null);
-      setCommonResponsesData(null); // Reset before fetching
+      setCommonResponsesData(null); 
       getCommonResponsesForAssignment(
         selectedAssignmentForCommon,
         commonResponsesPeriod,
@@ -421,7 +415,7 @@ export default function DashboardPage() {
                   {Object.entries(questions).map(([questionId, answerData]) => {
                     const questionDetail = commonResponsesAssignmentDetails.questions.find(q => q.id === questionId);
                     if (questionDetail && questionDetail.component === 'schoolSelector') {
-                        return null; // Filter out schoolSelector components
+                        return null; 
                     }
                     return (
                       <div key={questionId} className="text-xs mb-1 ml-2">
@@ -451,7 +445,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Hero Section */}
       <motion.div
         variants={heroContainerVariants}
         initial="hidden"
@@ -477,9 +470,7 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* Main Content Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {/* Weather Card */}
         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={0}>
           <Card>
             <CardHeader>
@@ -521,7 +512,6 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
 
-        {/* News Card */}
         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={1}>
           <Card className="flex flex-col h-full">
             <CardHeader>
@@ -570,7 +560,6 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
         
-        {/* Placeholder/Info Card */}
         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={2}>
           <Card className="flex flex-col h-full">
             <CardHeader>
@@ -580,7 +569,6 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="flex-grow">
               <p className="text-sm text-muted-foreground">No critical alerts at this time.</p>
-              {/* This could be populated with real alert data */}
             </CardContent>
              <CardFooter>
                 <Button variant="outline" size="sm">View Alert History</Button>
@@ -588,7 +576,6 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
 
-        {/* Last Completions Widget */}
         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={3}>
             <Card>
                 <CardHeader>
@@ -600,9 +587,8 @@ export default function DashboardPage() {
             </Card>
         </motion.div>
 
-        {/* Streak Widget */}
         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={4}>
-            <Card className="flex flex-col justify-center items-center min-h-[200px] h-full"> {/* Ensure consistent height */}
+            <Card className="flex flex-col justify-center items-center min-h-[200px] h-full"> 
                 <CardHeader className="pb-2 pt-4">
                     <CardTitle className="flex items-center gap-2 text-xl">
                         <TrendingUp className="h-5 w-5 text-primary"/>Completion Streak
@@ -614,7 +600,6 @@ export default function DashboardPage() {
             </Card>
         </motion.div>
 
-        {/* Common Responses Widget */}
         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={5}>
             <Card>
                 <CardHeader>
@@ -628,7 +613,6 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* News Item Modal/Dialog */}
       <Dialog open={!!selectedNewsItem} onOpenChange={(open) => !open && setSelectedNewsItem(null)}>
         <DialogContent className="sm:max-w-[600px] max-h-[80vh]">
           <DialogHeader>
@@ -643,17 +627,9 @@ export default function DashboardPage() {
               dangerouslySetInnerHTML={{ __html: selectedNewsItem?.content || selectedNewsItem?.description || "" }}
             />
           </ScrollArea>
-          {/* <DialogFooter className="mt-4">
-            <Button asChild variant="default">
-              <a href={selectedNewsItem?.link} target="_blank" rel="noopener noreferrer">
-                Read Full Article <ExternalLink className="h-4 w-4 ml-2" />
-              </a>
-            </Button>
-          </DialogFooter> */}
         </DialogContent>
       </Dialog>
 
     </div>
   );
 }
-
