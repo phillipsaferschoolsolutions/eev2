@@ -28,9 +28,9 @@ import {
   ListOrdered,
   Radiation,
   MessageSquare,
-  Zap, // For streak
-  Award, // For streak
-  Flame, // For streak count
+  Zap, 
+  Award, 
+  Flame, 
 } from "lucide-react";
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
@@ -43,14 +43,14 @@ import {
 import {
   getDashboardWidgetsSandbox,
   getCommonResponsesForAssignment,
-  getWidgetTrends, // Added for streak data
+  getWidgetTrends, 
 } from "@/services/analysisService";
 import type {
   WidgetSandboxData,
   SchoolsWithQuestionsResponse,
-  AssignmentCompletionStatus, // Ensure this is imported
-  UserActivity, // Ensure this is imported
-  TrendsResponse, // For streak data
+  AssignmentCompletionStatus, 
+  UserActivity, 
+  TrendsResponse, 
 } from "@/types/Analysis";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -79,6 +79,7 @@ import { motion } from "framer-motion";
 import { formatDisplayDateShort } from "@/lib/utils";
 import Link from "next/link";
 import { useTheme } from "next-themes";
+import { fetchPexelsImageURL } from '@/services/pexelsService'; // Added for Hero Unit
 
 const GOOGLE_NEWS_RSS_URL =
   "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
@@ -218,6 +219,7 @@ export default function DashboardPage() {
   const [newsError, setNewsError] = useState<string | null>(null);
   const [selectedNewsItem, setSelectedNewsItem] = useState<NewsItem | null>(null);
   const [isClientMounted, setIsClientMounted] = useState(false);
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null); // For Pexels Hero
 
   const [widgetData, setWidgetData] = useState<WidgetSandboxData | null>(null);
   const [isLoadingWidgets, setIsLoadingWidgets] = useState(true);
@@ -238,12 +240,22 @@ export default function DashboardPage() {
 
 
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
-  const showHeroUnit = isClientMounted && resolvedTheme && resolvedTheme.startsWith(PHOTO_HEAVY_THEME_PREFIX);
+  const isPhotoHeavyTheme = isClientMounted && resolvedTheme && resolvedTheme.startsWith(PHOTO_HEAVY_THEME_PREFIX);
 
 
   useEffect(() => {
     setIsClientMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isPhotoHeavyTheme) {
+      fetchPexelsImageURL("modern university campus", "landscape")
+        .then(url => setHeroImageUrl(url))
+        .catch(err => console.error("Failed to fetch Pexels hero image:", err));
+    } else {
+      setHeroImageUrl(null); // Clear image if not a photo-heavy theme
+    }
+  }, [isPhotoHeavyTheme, resolvedTheme]);
 
   useEffect(() => {
     const fetchNewsData = async () => {
@@ -309,6 +321,7 @@ export default function DashboardPage() {
         .then(setCommonResponsesAssignmentDetails)
         .catch((err) => {
           console.error("Error fetching assignment details for common responses:", err);
+          setCommonResponsesAssignmentDetails(null); // Reset on error
         })
         .finally(() => setIsLoadingCommonResponsesAssignmentDetails(false));
     }
@@ -378,47 +391,55 @@ export default function DashboardPage() {
   const renderStreakWidget = () => {
     if (isLoadingStreak) {
       return (
-        <div className="space-y-4 p-4">
-          <Skeleton className="h-8 w-3/4 mx-auto" />
-          <div className="grid grid-cols-3 gap-4">
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
+        <div className="space-y-3 p-4">
+          <Skeleton className="h-6 w-3/4 mx-auto mb-2" />
+          <div className="grid grid-cols-3 gap-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="text-center">
+                <Skeleton className="h-4 w-10 mx-auto mb-1" />
+                <Skeleton className="h-8 w-8 mx-auto" />
+              </div>
+            ))}
           </div>
-          <Skeleton className="h-6 w-1/2 mx-auto" />
-          <Skeleton className="h-5 w-3/4 mx-auto" />
+          <Skeleton className="h-8 w-1/2 mx-auto mt-3 mb-1" />
+          <Skeleton className="h-4 w-2/3 mx-auto" />
         </div>
       );
     }
-    if (streakError) return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{streakError}</AlertDescription></Alert>;
-    if (!streakData) return <p className="text-sm text-muted-foreground text-center py-4">Streak data unavailable.</p>;
+    if (streakError) {
+      return <Alert variant="destructive" className="m-2"><AlertCircle className="h-4 w-4" /><AlertTitle>Streak Error</AlertTitle><AlertDescription>{streakError}</AlertDescription></Alert>;
+    }
+    if (!streakData) {
+      return <p className="text-sm text-muted-foreground text-center p-4">Streak data unavailable.</p>;
+    }
 
     const { week, month, year, streak, streakMessage } = streakData;
 
     return (
       <div className="text-center p-2 flex flex-col justify-between h-full">
         <div>
-          <div className="grid grid-cols-3 gap-2 mb-3">
+          <CardTitle className="text-xl font-semibold mb-3 text-foreground/90">Completion Trends</CardTitle>
+          <div className="grid grid-cols-3 gap-2 mb-4">
             <div>
-              <p className="text-xs text-muted-foreground">Week</p>
+              <p className="text-xs font-medium text-muted-foreground">WEEK</p>
               <p className="text-2xl font-bold text-primary">{week || 0}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Month</p>
+              <p className="text-xs font-medium text-muted-foreground">MONTH</p>
               <p className="text-2xl font-bold text-primary">{month || 0}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Year</p>
+              <p className="text-xs font-medium text-muted-foreground">YEAR</p>
               <p className="text-2xl font-bold text-primary">{year || 0}</p>
             </div>
           </div>
         </div>
         <div className="mt-auto">
           <Award className="h-10 w-10 text-amber-500 mx-auto mb-1" />
-          <p className="text-sm text-muted-foreground">Current Streak</p>
-          <p className="text-3xl font-bold text-amber-500">{streak || 0}</p>
+          <p className="text-sm font-medium text-muted-foreground">Current Streak</p>
+          <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{streak || 0}</p>
           <p className="text-xs text-muted-foreground mt-0.5 italic h-6 flex items-center justify-center">
-            {streakMessage || "Keep it up!"}
+            {streakMessage || (streak > 0 ? "Keep up the great work!" : "Let's get a streak going!")}
           </p>
         </div>
       </div>
@@ -495,57 +516,45 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-       {showHeroUnit ? (
-        <motion.div
+       <motion.div
           variants={heroContainerVariants}
           initial="hidden"
           animate={isClientMounted ? "visible" : "hidden"}
-          className="mb-6 p-8 rounded-lg shadow-xl text-center" // Simple styling, background comes from global theme
+          className="mb-6 p-8 rounded-lg shadow-xl text-center relative overflow-hidden bg-card"
+          style={isPhotoHeavyTheme && heroImageUrl ? { 
+            backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${heroImageUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          } : {}}
         >
-          <motion.h1
-            variants={heroTextVariants}
-            className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground/90" // Use foreground for visibility on photo themes
-          >
-            Welcome to EagleEyED™
-          </motion.h1>
-          <motion.p variants={heroTextVariants} className="text-lg sm:text-xl mt-2 max-w-3xl mx-auto text-foreground/80">
-            Your central hub for campus safety management.
-          </motion.p>
-        </motion.div>
-      ) : (
-         <motion.div
-            variants={heroContainerVariants}
-            initial="hidden"
-            animate={isClientMounted ? "visible" : "hidden"}
-            className="mb-6"
-          >
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-2">
-              <div>
-                <motion.h1
-                  variants={heroTextVariants}
-                  className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground"
-                >
-                  Dashboard
-                </motion.h1>
-                <motion.p variants={heroTextVariants} className="text-base sm:text-lg mt-1 max-w-2xl text-muted-foreground">
-                  Overview of your campus safety status.
-                </motion.p>
-              </div>
-              <div className="flex gap-2 mt-4 sm:mt-0">
-                <Button variant="outline" asChild>
-                  <Link href="/assessment-forms">
-                    <ListOrdered className="mr-2 h-4 w-4" /> View All Tasks
-                  </Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/assessment-forms/new">
-                    <Edit3 className="mr-2 h-4 w-4" /> New Assessment
-                  </Link>
-                </Button>
-              </div>
+          <div className="relative z-10"> {/* Ensure text is above overlay */}
+            <div className="flex flex-col sm:flex-row justify-between items-center text-left sm:text-center">
+                <div className="flex-1 mb-4 sm:mb-0">
+                    <motion.h1
+                    variants={heroTextVariants}
+                    className={`text-4xl sm:text-5xl font-bold tracking-tight ${isPhotoHeavyTheme ? 'text-white drop-shadow-md' : 'text-foreground'}`}
+                    >
+                    Welcome to EagleEyED™
+                    </motion.h1>
+                    <motion.p variants={heroTextVariants} className={`text-lg sm:text-xl mt-2 max-w-3xl ${isPhotoHeavyTheme ? 'text-gray-200 drop-shadow-sm' : 'text-muted-foreground'}`}>
+                    Your central hub for campus safety management.
+                    </motion.p>
+                </div>
+                <div className="flex gap-2 sm:ml-6 shrink-0">
+                    <Button variant={isPhotoHeavyTheme ? "secondary" : "outline"} asChild size="lg">
+                        <Link href="/assessment-forms">
+                            <ListOrdered className="mr-2 h-5 w-5" /> View Tasks
+                        </Link>
+                    </Button>
+                    <Button variant={isPhotoHeavyTheme ? "default" : "default"} asChild size="lg">
+                        <Link href="/assessment-forms/new">
+                            <Edit3 className="mr-2 h-5 w-5" /> New Assessment
+                        </Link>
+                    </Button>
+                </div>
             </div>
-          </motion.div>
-      )}
+          </div>
+        </motion.div>
 
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -562,12 +571,8 @@ export default function DashboardPage() {
 
         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={1}>
             <Card className="h-full flex flex-col">
-                <CardHeader className="pb-2 pt-4">
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                        <Zap className="h-5 w-5 text-primary"/>Completion Trends
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="flex-grow flex items-center justify-center">
+                {/* Removed CardHeader to give more space to renderStreakWidget content */}
+                <CardContent className="flex-grow flex items-center justify-center p-3 sm:p-4">
                     {renderStreakWidget()}
                 </CardContent>
             </Card>
@@ -595,6 +600,52 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
+      {/* News Items Card - Retained as per implicit inclusion in previous versions */}
+      <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={6}>
+        <Card className="col-span-1 xl:col-span-3">
+            <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-xl">
+                <Newspaper className="h-5 w-5 text-primary" /> School Security News
+            </CardTitle>
+            <CardDescription>Latest updates relevant to K-12 school security and cybersecurity.</CardDescription>
+            </CardHeader>
+            <CardContent>
+            {newsLoading && (
+                <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-start space-x-3 p-2 rounded-md">
+                    <Skeleton className="h-16 w-24 rounded" />
+                    <div className="flex-1 space-y-1">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                        <Skeleton className="h-3 w-1/4" />
+                    </div>
+                    </div>
+                ))}
+                </div>
+            )}
+            {newsError && <Alert variant="destructive"><AlertCircle className="h-4 w-4"/><AlertTitle>News Error</AlertTitle><AlertDescription>{newsError}</AlertDescription></Alert>}
+            {!newsLoading && !newsError && newsItems.length > 0 && (
+                <ul className="space-y-3">
+                {newsItems.map((item) => (
+                    <li key={item.guid} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <h3 className="font-semibold mb-1 text-sm leading-tight">{item.title}</h3>
+                        <p className="text-xs text-muted-foreground mb-2 line-clamp-2" dangerouslySetInnerHTML={{ __html: item.description.replace(/<img[^>]*>/g,"") }}/>
+                        <div className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">{formatDisplayDateShort(item.pubDate)}</span>
+                            <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => setSelectedNewsItem(item)}>
+                                Read More <ExternalLink className="ml-1 h-3 w-3" />
+                            </Button>
+                        </div>
+                    </li>
+                ))}
+                </ul>
+            )}
+            </CardContent>
+        </Card>
+      </motion.div>
+
+
       <Dialog open={!!selectedNewsItem} onOpenChange={(open) => !open && setSelectedNewsItem(null)}>
         <DialogContent className="sm:max-w-[600px] max-h-[80vh]">
           <DialogHeader>
@@ -621,4 +672,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

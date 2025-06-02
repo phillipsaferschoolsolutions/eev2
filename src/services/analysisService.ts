@@ -11,11 +11,12 @@ import type {
   SchoolsWithQuestionsResponse,
   SavedReportMetadata,
   LastCompletionsResponse,
-  TrendsResponse, // Added for streak data
+  TrendsResponse,
 } from '@/types/Analysis';
 
 const ANALYSIS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysis';
 const ANALYSIS_V2_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysisv2';
+const WIDGETS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/widgets'; // New base URL for widgets service
 
 // --- Helper to get ID Token ---
 async function getIdToken(): Promise<string | null> {
@@ -246,13 +247,13 @@ export async function getSavedReports(accountName: string): Promise<SavedReportM
 
 /**
  * Fetches widget trends data (week, month, year completions, streak).
- * Uses GET /widgets/widgets/trends from ANALYSIS_V2_BASE_URL
+ * Uses GET /widgets/widgets/trends from WIDGETS_BASE_URL
  */
 export async function getWidgetTrends(accountName: string): Promise<TrendsResponse | null> {
   if (!accountName || accountName.trim() === "") {
     throw new Error("Account name is required for getWidgetTrends.");
   }
-  const result = await authedFetch<TrendsResponse | undefined>(`${ANALYSIS_V2_BASE_URL}/widgets/widgets/trends`, {}, accountName);
+  // Uses the new WIDGETS_BASE_URL and the corrected path
+  const result = await authedFetch<TrendsResponse | undefined>(`${WIDGETS_BASE_URL}/widgets/trends`, {}, accountName);
   return result || null;
 }
-
