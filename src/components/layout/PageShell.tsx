@@ -13,6 +13,7 @@ export const mainNavItems = [
   { href: "/", label: "Dashboard", icon: "LayoutDashboard" },
   { href: "/map", label: "Campus Map", icon: "Map" },
   { href: "/assessment-forms", label: "Assignments", icon: "ClipboardList" },
+  { href: "/resources", label: "Resources", icon: "FolderKanban" }, // Added Resources link
   { href: "/photo-analysis", label: "Photo Analysis", icon: "Camera" },
   { href: "/policy-analysis", label: "Policy Analysis", icon: "FileCheck2" },
   { href: "/reports", label: "Report Studio", icon: "FilePieChart" },
@@ -69,3 +70,5 @@ export function PageShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+    
