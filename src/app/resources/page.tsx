@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { UploadCloud, FileText, Search, Filter, Info, Mic, PlayIcon, PauseIcon, Trash2, Brain, Loader2, Radio, Users, Globe, Versions, Download } from "lucide-react";
+import { UploadCloud, FileText, Search, Filter, Info, Mic, PlayIcon, PauseIcon, Trash2, Brain, Loader2, Radio, Users, Globe, History, Download } from "lucide-react"; // Changed Versions to History
 import { Slider } from "@/components/ui/slider";
 import { Progress as ShadProgress } from "@/components/ui/progress";
 import type { ResourceDocument, AccessControlPayload } from "@/types/Resource";
@@ -26,9 +26,8 @@ import {
   getResourceDocuments, 
   addAudioNoteToResource, 
   updateResourcePermissions,
-  generateResourceSummary // Import the new service function
+  generateResourceSummary
 } from "@/services/resourceService"; 
-import { summarizeDocument } from "@/ai/flows/summarize-document-flow"; // Assuming direct client-side call for now, or via service
 
 const MAX_AUDIO_RECORDING_MS = 30000; // 30 seconds
 
@@ -121,18 +120,9 @@ export default function ResourcesPage() {
   const handleGenerateSummary = async (docId: string, docName: string, storagePath?: string) => {
     if (!userProfile?.account) return;
 
-    // Optimistically update UI
     setDocuments(prevDocs => prevDocs.map(d => d.id === docId ? { ...d, summaryGenerating: true, geminiSummary: "Generating..." } : d));
 
     try {
-      // In a real scenario, you'd pass the document content or storagePath to the backend,
-      // which then calls the Genkit flow.
-      // For now, let's simulate a client-side call to the Genkit flow if it directly handles text.
-      // This is NOT ideal for large files or if sensitive data is involved.
-      // A backend endpoint that orchestrates this is better.
-      
-      // Placeholder: Assuming generateResourceSummary service function will call backend.
-      // Backend will need to fetch the file content from storagePath if not directly provided.
       const summary = await generateResourceSummary(docId, userProfile.account); 
 
       setDocuments(prevDocs => prevDocs.map(d => d.id === docId ? { ...d, geminiSummary: summary, summaryGenerating: false } : d));
@@ -145,9 +135,31 @@ export default function ResourcesPage() {
   };
 
 
-  // --- Audio Recording and Playback Logic (adapted from complete-assignment page) ---
-  const requestMicPermission = async () => { /* ... (same as complete page) ... */ return true; };
-  const playChime = (type: 'start' | 'stop') => { /* ... (same as complete page) ... */ };
+  const requestMicPermission = async () => { 
+    if (hasMicPermission) return true;
+    setMicPermissionError(null);
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      setHasMicPermission(true);
+      return true;
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      const permErrorMsg = 'Microphone permission denied. Please enable it in your browser settings.';
+      setMicPermissionError(permErrorMsg);
+      setHasMicPermission(false);
+      toast({ variant: 'destructive', title: 'Microphone Access Denied', description: permErrorMsg });
+      return false;
+    }
+  };
+  const playChime = (type: 'start' | 'stop') => { 
+     try {
+        const audioFile = type === 'start' ? '/audio/start-chime.mp3' : '/audio/stop-chime.mp3';
+        const chime = new Audio(audioFile);
+        chime.play().catch(e => console.warn(`Chime play error: ${(e as Error).message}`));
+    } catch (e) {
+        console.warn(`Could not play chime: ${e}`);
+    }
+  };
 
   const handleStartRecording = async (resourceId: string) => {
     const permissionGranted = await requestMicPermission();
@@ -178,12 +190,11 @@ export default function ResourcesPage() {
         stream.getTracks().forEach(track => track.stop());
         if (maxRecordingTimerRef.current) clearTimeout(maxRecordingTimerRef.current);
 
-        // Attempt to upload immediately (backend needed)
         if (userProfile?.account && audioBlob) {
             setAudioNotes(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, isUploading: true } }));
             try {
                 const downloadURL = await addAudioNoteToResource(resourceId, audioBlob, userProfile.account);
-                setAudioNotes(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, downloadURL, isUploading: false, url: downloadURL } })); // Use downloadURL for playback
+                setAudioNotes(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, downloadURL, isUploading: false, url: downloadURL } })); 
                 toast({ title: "Audio Note Saved", description: `Note for document ID ${resourceId} saved.`});
             } catch (uploadError) {
                 console.error("Audio upload error:", uploadError);
@@ -213,10 +224,9 @@ export default function ResourcesPage() {
     if (maxRecordingTimerRef.current) clearTimeout(maxRecordingTimerRef.current);
   };
   
-  const removeAudioNote = (resourceId: string) => { /* ... (similar to complete page, ensure URL.revokeObjectURL if blob URL) ... */ 
+  const removeAudioNote = (resourceId: string) => { 
     const note = audioNotes[resourceId];
     if (note?.url && note.url.startsWith('blob:')) URL.revokeObjectURL(note.url);
-    // TODO: Add backend call to delete stored audio if note.downloadURL exists
     setAudioNotes(prev => ({ ...prev, [resourceId]: undefined }));
     setAudioPlayerStates(prev => ({ ...prev, [resourceId]: { isPlaying: false, currentTime: 0, duration: 0 } }));
     if (audioRefs.current[resourceId]) {
@@ -226,13 +236,41 @@ export default function ResourcesPage() {
     }
   };
 
-  const togglePlayPause = async (resourceId: string) => { /* ... (same as complete page) ... */ };
-  const handleAudioTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement, Event>, resourceId: string) => { /* ... */ };
-  const handleAudioLoadedMetadata = (e: React.SyntheticEvent<HTMLAudioElement, Event>, resourceId: string) => { /* ... */ };
-  const handleAudioEnded = (resourceId: string) => { /* ... */ };
-  const formatAudioTime = (timeInSeconds: number) => { /* ... */ return "0:00"; };
+  const togglePlayPause = async (resourceId: string) => {
+    const audio = audioRefs.current[resourceId];
+    const noteUrl = audioNotes[resourceId]?.downloadURL || audioNotes[resourceId]?.url;
 
-  // --- End Audio Logic ---
+    if (!audio || !noteUrl) return;
+    try {
+      if (audio.paused) {
+        if (audio.currentSrc !== noteUrl) audio.src = noteUrl;
+        await audio.play();
+        setAudioPlayerStates(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, isPlaying: true } }));
+      } else {
+        audio.pause();
+        setAudioPlayerStates(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, isPlaying: false } }));
+      }
+    } catch (error) { console.error("Playback error:", error); }
+  };
+
+  const handleAudioTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement, Event>, resourceId: string) => {
+    const audio = e.currentTarget;
+    setAudioPlayerStates(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, currentTime: audio.currentTime } }));
+  };
+  const handleAudioLoadedMetadata = (e: React.SyntheticEvent<HTMLAudioElement, Event>, resourceId: string) => {
+    const audio = e.currentTarget;
+    setAudioPlayerStates(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, duration: audio.duration } }));
+  };
+  const handleAudioEnded = (resourceId: string) => {
+    setAudioPlayerStates(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, isPlaying: false, currentTime: 0 } }));
+  };
+  const formatAudioTime = (timeInSeconds: number) => {
+     if (isNaN(timeInSeconds) || !isFinite(timeInSeconds) || timeInSeconds < 0) return "0:00";
+     const minutes = Math.floor(timeInSeconds / 60);
+     const seconds = Math.floor(timeInSeconds % 60);
+     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
 
   const filteredDocuments = documents.filter(doc =>
     doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -363,17 +401,24 @@ export default function ResourcesPage() {
                         )}
                       </TableCell>
                        <TableCell>
-                        <div className="w-40 space-y-1"> {/* Constrain width */}
-                          {audioNotes[doc.id]?.url && !audioNotes[doc.id]?.isUploading && !audioNotes[doc.id]?.error && (
+                        <div className="w-40 space-y-1">
+                          {(audioNotes[doc.id]?.downloadURL || audioNotes[doc.id]?.url) && !audioNotes[doc.id]?.isUploading && !audioNotes[doc.id]?.error && (
                             <div className="flex items-center gap-1">
-                              <Button type="button" variant="outline" size="icon" onClick={() => togglePlayPause(doc.id)} className="h-7 w-7 shrink-0 rounded-full" disabled={!audioNotes[doc.id]?.url || audioNotes[doc.id]?.isUploading}><PlayIcon className="h-3 w-3" /></Button>
-                              <Slider defaultValue={[0]} max={audioPlayerStates[doc.id]?.duration || 1} step={0.1} className="w-full h-1 [&>span]:h-1 [&_[role=slider]]:h-2 [&_[role=slider]]:w-2" disabled />
+                              <Button type="button" variant="outline" size="icon" onClick={() => togglePlayPause(doc.id)} className="h-7 w-7 shrink-0 rounded-full" disabled={audioNotes[doc.id]?.isUploading}>
+                                {audioPlayerStates[doc.id]?.isPlaying ? <PauseIcon className="h-3 w-3"/> : <PlayIcon className="h-3 w-3" />}
+                              </Button>
+                              <Slider value={[audioPlayerStates[doc.id]?.currentTime || 0]} max={audioPlayerStates[doc.id]?.duration || 1} step={0.1} className="w-full h-1 [&>span]:h-1 [&_[role=slider]]:h-2 [&_[role=slider]]:w-2" disabled={audioNotes[doc.id]?.isUploading} 
+                                onValueChange={(value) => {
+                                  if (audioRefs.current[doc.id]) audioRefs.current[doc.id]!.currentTime = value[0];
+                                  setAudioPlayerStates(prev => ({...prev, [doc.id]: {...prev[doc.id]!, currentTime: value[0]}}));
+                                }}
+                              />
                               <Button type="button" variant="ghost" size="icon" className="text-destructive h-6 w-6 shrink-0" onClick={() => removeAudioNote(doc.id)}><Trash2 className="h-3 w-3" /></Button>
                             </div>
                           )}
                           {audioNotes[doc.id]?.isUploading && <ShadProgress value={0} className="h-1 w-full animate-pulse" />}
                           {audioNotes[doc.id]?.error && <p className="text-xs text-destructive">{audioNotes[doc.id]?.error}</p>}
-                           {!audioNotes[doc.id]?.url && !audioNotes[doc.id]?.isUploading && !audioNotes[doc.id]?.error && (
+                           {!audioNotes[doc.id]?.downloadURL && !audioNotes[doc.id]?.url && !audioNotes[doc.id]?.isUploading && !audioNotes[doc.id]?.error && (
                             <Button
                               type="button" variant={isRecordingResourceId === doc.id ? "destructive" : "outline"} size="xs"
                               onMouseDown={() => handleStartRecording(doc.id)} onMouseUp={() => handleStopRecording(doc.id, true)}
@@ -385,13 +430,13 @@ export default function ResourcesPage() {
                             </Button>
                           )}
                           {micPermissionError && isRecordingResourceId === doc.id && <p className="text-xs text-destructive">{micPermissionError}</p>}
-                           <audio ref={(el) => {audioRefs.current[doc.id] = el}} onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, doc.id)} onTimeUpdate={(e) => handleAudioTimeUpdate(e, doc.id)} onEnded={() => handleAudioEnded(doc.id)} className="hidden" />
+                           <audio ref={(el) => {audioRefs.current[doc.id] = el}} onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, doc.id)} onTimeUpdate={(e) => handleAudioTimeUpdate(e, doc.id)} onEnded={() => handleAudioEnded(doc.id)} className="hidden" src={audioNotes[doc.id]?.downloadURL || audioNotes[doc.id]?.url} />
                         </div>
                       </TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7" title="Download (Soon)" disabled><Download className="h-4 w-4"/></Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" title="Permissions (Soon)" disabled><Users className="h-4 w-4"/></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Versions (Soon)" disabled><Versions className="h-4 w-4"/></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Versions (Soon)" disabled><History className="h-4 w-4"/></Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -409,6 +454,3 @@ export default function ResourcesPage() {
     </div>
   );
 }
-
-
-    
