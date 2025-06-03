@@ -28,9 +28,9 @@ import {
   ListOrdered,
   Radiation,
   MessageSquare,
-  Zap,
-  Award,
-  Flame,
+  Zap, // Added Zap from previous request
+  Award, // Added for Streak
+  Flame, // Added for Streak
 } from "lucide-react";
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
@@ -64,6 +64,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -249,7 +250,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (isClientMounted && resolvedTheme) {
-      if (resolvedTheme.startsWith(PHOTO_HEAVY_THEME_PREFIX)) {
+      if (isPhotoHeavyTheme) {
         fetchPexelsImageURL("modern university campus", "landscape")
           .then(url => setHeroImageUrl(url))
           .catch(err => {
@@ -260,7 +261,7 @@ export default function DashboardPage() {
         setHeroImageUrl(null); // Clear image if not a photo-heavy theme
       }
     }
-  }, [isClientMounted, resolvedTheme]);
+  }, [isClientMounted, resolvedTheme, isPhotoHeavyTheme]);
 
   useEffect(() => {
     const fetchNewsData = async () => {
@@ -396,9 +397,9 @@ export default function DashboardPage() {
   const renderStreakWidget = () => {
     if (isLoadingStreak) {
       return (
-        <div className="space-y-3 p-4 text-center">
+        <div className="space-y-3 p-4 text-center flex flex-col items-center justify-center h-full">
           <Skeleton className="h-6 w-3/4 mx-auto mb-3" />
-          <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="grid grid-cols-3 gap-2 mb-4 w-full max-w-xs">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="text-center"><Skeleton className="h-4 w-10 mx-auto mb-1" /><Skeleton className="h-8 w-8 mx-auto" /></div>
             ))}
@@ -437,10 +438,11 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-        <div className="mt-auto">
-          <Award className="h-10 w-10 text-amber-500 mx-auto mb-1" />
+        <div className="mt-auto flex flex-col items-center justify-center"> {/* Centering streak info */}
+          <Award className="h-10 w-10 text-amber-500 mb-1" />
           <p className="text-sm font-medium text-muted-foreground">Current Streak</p>
-          <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{streak || 0}
+          <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 flex items-center">
+            {streak || 0}
             {streak > 0 && <Flame className="inline-block h-7 w-7 ml-1 text-orange-500" />}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5 italic h-6 flex items-center justify-center">
@@ -455,7 +457,7 @@ export default function DashboardPage() {
   const renderCommonResponsesWidget = () => {
     return (
       <div className="space-y-3 h-full flex flex-col">
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 flex-wrap"> {/* Added flex-wrap */}
            <Select value={selectedAssignmentForCommon || ""} onValueChange={setSelectedAssignmentForCommon} disabled={assignmentsForCommonResponses.length === 0 || isLoadingCommonResponses || isLoadingCommonResponsesAssignmentDetails}>
             <SelectTrigger className="flex-grow min-w-[150px]"><SelectValue placeholder="Select an assignment..." /></SelectTrigger>
             <SelectContent>
@@ -468,7 +470,7 @@ export default function DashboardPage() {
             </SelectContent>
           </Select>
           <Select value={commonResponsesPeriod} onValueChange={setCommonResponsesPeriod} disabled={!selectedAssignmentForCommon || isLoadingCommonResponses || isLoadingCommonResponsesAssignmentDetails}>
-            <SelectTrigger className="w-full sm:w-auto min-w-[120px]"><SelectValue placeholder="Select period..." /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select period..." /></SelectTrigger> {/* Adjusted width */}
             <SelectContent>
               {PERIOD_OPTIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
             </SelectContent>
@@ -522,26 +524,22 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
        <motion.div
-          key={heroImageUrl || 'no-image-hero'}
-          className="mb-6 p-8 rounded-lg shadow-xl text-center relative overflow-hidden bg-card" // bg-card as fallback
+          key={isPhotoHeavyTheme && heroImageUrl ? heroImageUrl : 'no-image-hero'}
+          className="mb-6 p-8 rounded-lg shadow-xl text-center relative overflow-hidden bg-card"
           variants={heroContainerVariants}
           initial="hidden"
           animate={isClientMounted ? "visible" : "hidden"}
         >
           {isPhotoHeavyTheme && heroImageUrl && (
             <motion.div
-              className="absolute inset-0 z-0" // z-0 to be behind text
-              style={{
-                backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${heroImageUrl})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
+              className="absolute inset-0 z-0 bg-cover bg-center"
+              style={{ backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${heroImageUrl})` }}
               whileHover={{ scale: 1.05 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
             />
           )}
-          <div className="relative z-10"> {/* Ensure text is above background image */}
-            <div className="flex flex-col sm:flex-row justify-between items-center text-left sm:text-center">
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row justify-between items-center text-left sm:text-left">
                 <div className="flex-1 mb-4 sm:mb-0">
                     <motion.h1
                     variants={heroTextVariants}
@@ -553,7 +551,7 @@ export default function DashboardPage() {
                     Your central hub for campus safety management.
                     </motion.p>
                 </div>
-                <div className="flex gap-2 sm:ml-6 shrink-0">
+                <div className="flex gap-2 sm:ml-6 shrink-0 mt-4 sm:mt-0">
                     <Button variant={isPhotoHeavyTheme ? "secondary" : "outline"} asChild size="lg">
                         <Link href="/assessment-forms">
                             <ListOrdered className="mr-2 h-5 w-5" /> View Tasks
