@@ -28,9 +28,9 @@ import {
   ListOrdered,
   Radiation,
   MessageSquare,
-  Zap, // Added Zap from previous request
-  Award, // Added for Streak
-  Flame, // Added for Streak
+  Zap,
+  Award, 
+  Flame,
 } from "lucide-react";
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
@@ -64,7 +64,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
+  // DialogTrigger, // No longer needed here
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -239,10 +239,8 @@ export default function DashboardPage() {
   const [isLoadingStreak, setIsLoadingStreak] = useState(true);
   const [streakError, setStreakError] = useState<string | null>(null);
 
-
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
   const isPhotoHeavyTheme = isClientMounted && resolvedTheme && resolvedTheme.startsWith(PHOTO_HEAVY_THEME_PREFIX);
-
 
   useEffect(() => {
     setIsClientMounted(true);
@@ -258,7 +256,7 @@ export default function DashboardPage() {
             setHeroImageUrl(null);
           });
       } else {
-        setHeroImageUrl(null); // Clear image if not a photo-heavy theme
+        setHeroImageUrl(null);
       }
     }
   }, [isClientMounted, resolvedTheme, isPhotoHeavyTheme]);
@@ -327,7 +325,7 @@ export default function DashboardPage() {
         .then(setCommonResponsesAssignmentDetails)
         .catch((err) => {
           console.error("Error fetching assignment details for common responses:", err);
-          setCommonResponsesAssignmentDetails(null); // Reset on error
+          setCommonResponsesAssignmentDetails(null);
         })
         .finally(() => setIsLoadingCommonResponsesAssignmentDetails(false));
     }
@@ -420,8 +418,8 @@ export default function DashboardPage() {
     const { week, month, year, streak, streakMessage } = streakData;
 
     return (
-      <div className="text-center p-2 flex flex-col justify-between h-full">
-        <div>
+      <div className="text-center p-2 flex flex-col h-full"> {/* Outer container, no justify-between */}
+        <div> {/* Top part: Title and W/M/Y counts */}
           <CardTitle className="text-xl font-semibold mb-3 text-foreground/90">Completion Trends</CardTitle>
           <div className="grid grid-cols-3 gap-2 mb-4">
             <div>
@@ -438,15 +436,16 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-        <div className="mt-auto flex flex-col items-center justify-center"> {/* Centering streak info */}
+        {/* This div will now take the remaining space and center its content */}
+        <div className="flex-grow flex flex-col items-center justify-center"> {/* Streak info */}
           <Award className="h-10 w-10 text-amber-500 mb-1" />
           <p className="text-sm font-medium text-muted-foreground">Current Streak</p>
           <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 flex items-center">
             {streak || 0}
-            {streak > 0 && <Flame className="inline-block h-7 w-7 ml-1 text-orange-500" />}
+            {(streak || 0) > 0 && <Flame className="inline-block h-7 w-7 ml-1 text-orange-500" />}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5 italic h-6 flex items-center justify-center">
-            {streakMessage || (streak > 0 ? "Keep up the great work!" : "Let's get a streak going!")}
+            {streakMessage || ((streak || 0) > 0 ? "Keep up the great work!" : "Let's get a streak going!")}
           </p>
         </div>
       </div>
@@ -457,7 +456,7 @@ export default function DashboardPage() {
   const renderCommonResponsesWidget = () => {
     return (
       <div className="space-y-3 h-full flex flex-col">
-        <div className="flex flex-col sm:flex-row gap-2 flex-wrap"> {/* Added flex-wrap */}
+        <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
            <Select value={selectedAssignmentForCommon || ""} onValueChange={setSelectedAssignmentForCommon} disabled={assignmentsForCommonResponses.length === 0 || isLoadingCommonResponses || isLoadingCommonResponsesAssignmentDetails}>
             <SelectTrigger className="flex-grow min-w-[150px]"><SelectValue placeholder="Select an assignment..." /></SelectTrigger>
             <SelectContent>
@@ -470,7 +469,7 @@ export default function DashboardPage() {
             </SelectContent>
           </Select>
           <Select value={commonResponsesPeriod} onValueChange={setCommonResponsesPeriod} disabled={!selectedAssignmentForCommon || isLoadingCommonResponses || isLoadingCommonResponsesAssignmentDetails}>
-            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select period..." /></SelectTrigger> {/* Adjusted width */}
+            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select period..." /></SelectTrigger>
             <SelectContent>
               {PERIOD_OPTIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
             </SelectContent>
@@ -530,12 +529,14 @@ export default function DashboardPage() {
           initial="hidden"
           animate={isClientMounted ? "visible" : "hidden"}
         >
-          {isPhotoHeavyTheme && heroImageUrl && (
+           {isPhotoHeavyTheme && heroImageUrl && (
             <motion.div
               className="absolute inset-0 z-0 bg-cover bg-center"
-              style={{ backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${heroImageUrl})` }}
+              style={{ 
+                backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${heroImageUrl})`,
+              }}
               whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
             />
           )}
           <div className="relative z-10">
