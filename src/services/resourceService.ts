@@ -94,7 +94,7 @@ async function authedFetch<T>(
  */
 export async function uploadResourceDocument(formData: FormData, accountId: string): Promise<ResourceDocument> {
   // The backend will extract metadata from formData fields if needed.
-  return authedFetch<ResourceDocument>(`${RESOURCES_BASE_URL}/`, {
+  return authedFetch<ResourceDocument>(`${RESOURCES_BASE_URL}/upload`, { // Changed to /upload
     method: 'POST',
     body: formData, // FormData automatically sets Content-Type to multipart/form-data
   }, accountId);
@@ -162,5 +162,3 @@ export async function generateResourceSummary(resourceId: string, accountId: str
 // export async function updateResourceDocument(resourceId: string, updates: Partial<ResourceDocument>, accountId: string): Promise<void> { /* ... */ }
 // export async function deleteResourceDocument(resourceId: string, accountId: string): Promise<void> { /* ... */ }
 // export async function getResourceDocumentVersions(resourceId: string, accountId: string): Promise<any[]> { /* ... */ return []; }
-
-    
