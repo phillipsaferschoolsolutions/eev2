@@ -80,6 +80,7 @@ import { formatDisplayDateShort } from "@/lib/utils";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { fetchPexelsImageURL } from '@/services/pexelsService';
+import { Badge } from "@/components/ui/badge"; // Added Badge import
 
 const GOOGLE_NEWS_RSS_URL =
   "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
@@ -116,6 +117,7 @@ const COMPLETION_PERIOD_OPTIONS = [
   { value: "last90days", label: "Last 90 Days" },
   { value: "alltime", label: "All Time" },
 ];
+const ALL_ASSIGNMENTS_FILTER_KEY = "__all-assignments__";
 
 const heroContainerVariants = {
   hidden: { opacity: 0, height: 0 },
@@ -344,14 +346,14 @@ export default function DashboardPage() {
             setStreakError((err as Error).message || "Could not load streak data.");
         })
         .finally(() => setIsLoadingStreak(false));
-    } else { // Optionally reset state when account is not available
+    } else { 
         setStreakData(null);
     }
   }, [userProfile?.account]);
 
   useEffect(() => {
     if (userProfile?.account) {
-        getAssignmentListMetadata(userProfile.account) // Added this line
+        getAssignmentListMetadata(userProfile.account) 
         .then((data) => {
           setLastCompletionsAssignments(data || []);
         })
@@ -384,7 +386,7 @@ export default function DashboardPage() {
           setCommonResponsesAssignmentDetails(null);
         })
         .finally(() => setIsLoadingCommonResponsesAssignmentDetails(false));
-    } // No else needed, as this depends on selectedAssignmentForCommon
+    } 
   }, [userProfile?.account, selectedAssignmentForCommon, isClientMounted, authLoading, profileLoading]);
 
 
@@ -418,7 +420,6 @@ export default function DashboardPage() {
   ]);
 
   useEffect(() => {
-    // Only fetch if account and period are available
     if (userProfile?.account && lastCompletionsPeriod) {
       setIsLoadingLastCompletions(true);
       setLastCompletionsError(null);
@@ -426,7 +427,7 @@ export default function DashboardPage() {
       getLastCompletions(
         userProfile.account,
         undefined, 
-        selectedAssignmentForCompletions, // Pass null or string ID
+        selectedAssignmentForCompletions, 
         lastCompletionsPeriod
       )
       .then(setLastCompletionsData)
@@ -436,14 +437,14 @@ export default function DashboardPage() {
       })
       .finally(() => setIsLoadingLastCompletions(false));
     } else {
-        setLastCompletionsData(null); // Clear data if conditions aren't met
+        setLastCompletionsData(null); 
     }
   }, [userProfile?.account, selectedAssignmentForCompletions, lastCompletionsPeriod, isClientMounted, authLoading, profileLoading]);
 
 
   const renderLastCompletionsWidget = () => {
     const itemsToDisplay = lastCompletionsData || [];
-    const ALL_ASSIGNMENTS_FILTER_KEY = "__all-assignments__";
+    
     return (
       <>
         <div className="flex flex-col sm:flex-row gap-2 flex-wrap h-full">
@@ -491,17 +492,33 @@ export default function DashboardPage() {
           <ScrollArea className="h-48 xl:h-56">
             <ul className="space-y-2 pr-3">
               {itemsToDisplay.map((item: UserActivity | AssignmentCompletionStatus) => (
-                <li key={item.id} className="p-3 border rounded-md hover:bg-muted/50">
-                  <p className="font-medium text-sm truncate">{item.assessmentName}</p>
-                  {isAdmin && 'totalCompleted' in item ? (
-                    <p className="text-xs text-muted-foreground">
-                      {item.totalCompleted}/{item.totalAssigned} completed. Last: {formatDisplayDateShort(item.lastCompletionDate)}
-                    </p>
-                  ) : ('status' in item &&
-                    <p className="text-xs text-muted-foreground">
-                      Status: <span className={`font-semibold ${item.status === 'completed' ? 'text-green-600' : item.status === 'pending' ? 'text-yellow-600' : 'text-red-600'}`}>{item.status}</span>.
-                      {item.completedDate ? ` Completed: ${formatDisplayDateShort(item.completedDate)}` : ` Due: ${formatDisplayDateShort(item.dueDate)}`}
-                    </p>
+                <li key={item.id} className="p-3 border rounded-md hover:bg-muted/50 flex flex-col gap-1.5">
+                  <p className="font-semibold text-sm truncate">{item.assessmentName}</p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    {isAdmin && 'totalCompleted' in item ? (
+                      <>
+                        <span>Progress: {item.totalCompleted}/{item.totalAssigned}</span>
+                        {item.lastCompletionDate && <span>Last: {formatDisplayDateShort(item.lastCompletionDate)}</span>}
+                      </>
+                    ) : ('status' in item &&
+                      <>
+                        <span>Status: <Badge variant={item.status === 'completed' ? 'default' : item.status === 'pending' ? 'secondary' : 'outline'} className="text-xs px-1.5 py-0.5 h-auto leading-none">{item.status}</Badge></span>
+                        {item.completedDate ? (
+                          <span>Completed: {formatDisplayDateShort(item.completedDate)}</span>
+                        ) : (
+                          item.dueDate && <span>Due: {formatDisplayDateShort(item.dueDate)}</span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  {'status' in item && item.status === 'pending' ? (
+                    <Link href={`/assignments/${item.id}/complete`} className="mt-1 text-xs text-primary hover:underline self-start font-medium">
+                      Complete Task
+                    </Link>
+                  ) : (
+                    <Link href={`/assignments/${item.id}/details`} className="mt-1 text-xs text-primary hover:underline self-start font-medium">
+                      View Details
+                    </Link>
                   )}
                 </li>
               ))}
