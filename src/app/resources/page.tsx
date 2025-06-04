@@ -91,7 +91,7 @@ export default function ResourcesPage() {
   }, [userProfile?.account, toast]);
 
   useEffect(() => {
-    if (userProfile?.account && !authLoading && !profileLoading) {
+    if (userProfile?.account) { // Only proceed if userProfile.account is truthy
       fetchDocuments();
     }
   }, [userProfile?.account, authLoading, profileLoading, fetchDocuments]);

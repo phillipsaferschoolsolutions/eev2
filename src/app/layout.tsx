@@ -2,15 +2,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
-import { ThemeProvider } from "next-themes"; 
-import { AuthProvider } from "@/context/auth-context";
-import { LayoutProvider } from "@/context/layout-context";
-import { PageShell } from "@/components/layout/PageShell";
 import React from "react";
-import { ThemeBackgroundSetter } from "@/components/layout/ThemeBackgroundSetter"; 
+import { ClientAppShell } from '@/components/layout/ClientAppShell'; // Changed import
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,20 +21,8 @@ export const metadata: Metadata = {
   description: "Comprehensive campus safety and security management platform.",
 };
 
-const THEME_IDS = [
-  'light', 'dark', 'corporate-blue', 'matrix', 'desert-light', 'ocean-deep',
-  'spring-meadow', 'slate-contrast', 'high-contrast-dark', 'high-contrast-light',
-  'solar-flare-light', 'solar-flare-dark', 'nebula-night-light', 'nebula-night-dark',
-  'emerald-forest-light', 'emerald-forest-dark', 'cyber-city-light', 'cyber-city-dark',
-  'arctic-horizon-light', 'arctic-horizon-dark', 'volcanic-glow-light', 'volcanic-glow-dark',
-  'coral-reef-light', 'coral-reef-dark', 'retro-funk-light', 'retro-funk-dark',
-  'urban-jungle-light', 'urban-jungle-dark', 'vintage-paper-light', 'vintage-paper-dark',
-  'digital-dreams-light', 'digital-dreams-dark', 'crystal-frost-light', 'crystal-frost-dark',
-  'ethereal-veil-light', 'ethereal-veil-dark', 'chromatic-glaze-light', 'chromatic-glaze-dark',
-  'theme-nature-embrace', 'theme-guardian-shield', 'theme-tranquil-library', 
-  'theme-innovation-hub', 'theme-campus-serenity', 'theme-fortress-stone', 'theme-digital-citadel'
-];
-
+// THEME_IDS array is now managed within ClientAppShell.tsx to keep it client-side
+// If it were needed by metadata or other server components here, it would need to be defined here or imported.
 
 export default function RootLayout({
   children,
@@ -56,24 +38,8 @@ export default function RootLayout({
           "antialiased font-sans"
         )}
       >
-        <AuthProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem={false}
-            themes={THEME_IDS}
-          >
-            <LayoutProvider>
-              <SidebarProvider>
-                <ThemeBackgroundSetter /> 
-                <PageShell>{children}</PageShell>
-                <Toaster />
-              </SidebarProvider>
-            </LayoutProvider>
-          </ThemeProvider>
-        </AuthProvider>
+        <ClientAppShell>{children}</ClientAppShell>
       </body>
     </html>
   );
 }
-

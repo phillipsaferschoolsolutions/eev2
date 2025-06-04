@@ -334,7 +334,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (userProfile?.account && isClientMounted && !authLoading && !profileLoading) {
+    if (userProfile?.account) {
       setIsLoadingStreak(true);
       setStreakError(null);
       getWidgetTrends(userProfile.account)
@@ -344,12 +344,14 @@ export default function DashboardPage() {
             setStreakError((err as Error).message || "Could not load streak data.");
         })
         .finally(() => setIsLoadingStreak(false));
+    } else { // Optionally reset state when account is not available
+        setStreakData(null);
     }
-  }, [userProfile?.account, isClientMounted, authLoading, profileLoading]);
+  }, [userProfile?.account]);
 
   useEffect(() => {
-    if (userProfile?.account && isClientMounted && !authLoading && !profileLoading) {
-      getAssignmentListMetadata(userProfile.account)
+    if (userProfile?.account) {
+        getAssignmentListMetadata(userProfile.account) // Added this line
         .then((data) => {
           setLastCompletionsAssignments(data || []);
         })
@@ -365,11 +367,14 @@ export default function DashboardPage() {
           }
         })
         .catch((err) => console.error("Error fetching assignment list:", err));
+    } else {
+        setLastCompletionsAssignments([]);
+        setAssignmentsForCommonResponses([]);
     }
-  }, [userProfile?.account, isClientMounted, authLoading, profileLoading, selectedAssignmentForCommon]);
+  }, [userProfile?.account, selectedAssignmentForCommon, isClientMounted, authLoading, profileLoading]);
 
    useEffect(() => {
-    if (userProfile?.account && selectedAssignmentForCommon && isClientMounted && !authLoading && !profileLoading) {
+    if (userProfile?.account && selectedAssignmentForCommon) {
       setIsLoadingCommonResponsesAssignmentDetails(true);
       setCommonResponsesAssignmentDetails(null);
       getAssignmentById(selectedAssignmentForCommon, userProfile.account)
@@ -379,7 +384,7 @@ export default function DashboardPage() {
           setCommonResponsesAssignmentDetails(null);
         })
         .finally(() => setIsLoadingCommonResponsesAssignmentDetails(false));
-    }
+    } // No else needed, as this depends on selectedAssignmentForCommon
   }, [userProfile?.account, selectedAssignmentForCommon, isClientMounted, authLoading, profileLoading]);
 
 
@@ -388,7 +393,7 @@ export default function DashboardPage() {
       userProfile?.account &&
       selectedAssignmentForCommon &&
       commonResponsesPeriod &&
-      isClientMounted && !authLoading && !profileLoading
+      isClientMounted
     ) {
       setIsLoadingCommonResponses(true);
       setCommonResponsesError(null);
@@ -410,14 +415,13 @@ export default function DashboardPage() {
     selectedAssignmentForCommon,
     commonResponsesPeriod,
     isClientMounted,
-    authLoading, profileLoading
   ]);
 
   useEffect(() => {
-    if (userProfile?.account && isClientMounted && !authLoading && !profileLoading && lastCompletionsPeriod) {
+    // Only fetch if account and period are available
+    if (userProfile?.account && lastCompletionsPeriod) {
       setIsLoadingLastCompletions(true);
       setLastCompletionsError(null);
-      setLastCompletionsData(null);
 
       getLastCompletions(
         userProfile.account,
@@ -431,6 +435,8 @@ export default function DashboardPage() {
         setLastCompletionsError((err as Error).message || "Could not load last completions data.");
       })
       .finally(() => setIsLoadingLastCompletions(false));
+    } else {
+        setLastCompletionsData(null); // Clear data if conditions aren't met
     }
   }, [userProfile?.account, selectedAssignmentForCompletions, lastCompletionsPeriod, isClientMounted, authLoading, profileLoading]);
 
@@ -798,3 +804,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

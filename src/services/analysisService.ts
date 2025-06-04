@@ -15,7 +15,7 @@ import type {
   CompletedAssignmentSummary, // Assuming you have a type for completed assignment summaries
 } from '@/types/Analysis';
 
-const ANALYSIS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysis';
+const ANALYSIS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysisv2';
 const ANALYSIS_V2_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysisv2';
 const WIDGETS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/widgets'; // Corrected base URL for widgets
 

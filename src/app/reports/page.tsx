@@ -80,7 +80,7 @@ export default function ReportStudioPage() {
 
   // Fetch data for Dashboard widgets
   useEffect(() => {
-    if (userProfile?.account && activeTab === 'dashboard') {
+    if (userProfile?.account && activeTab === 'dashboard' && !authLoading && !profileLoading) {
       setIsLoadingWidgets(true);
       setWidgetError(null);
       getDashboardWidgetsSandbox(userProfile.account)
@@ -91,10 +91,10 @@ export default function ReportStudioPage() {
         })
         .finally(() => setIsLoadingWidgets(false));
     }
-  }, [userProfile?.account, activeTab]);
+  }, [userProfile?.account, activeTab, authLoading, profileLoading]);
 
   // Fetch assignments for dropdowns (Common Responses widget & Report Explorer filter)
-  useEffect(() => {
+ useEffect(() => {
     if (userProfile?.account) {
       getAssignmentListMetadata(userProfile.account)
         .then(data => {
@@ -112,11 +112,11 @@ export default function ReportStudioPage() {
         .catch(err => console.error("Error fetching assignment list:", err));
 
       getLocationsForLookup(userProfile.account)
-        .then(setAvailableLocations)
-        .catch(err => console.error("Error fetching locations:", err));
+      .then(setAvailableLocations)
+      .catch(err => console.error("Error fetching locations:", err));
     }
   }, [userProfile?.account, selectedAssignmentForCommon, reportFilters.selectedAssignmentId]);
-  
+
   // Fetch common responses when selected assignment or period changes
   useEffect(() => {
     if (userProfile?.account && selectedAssignmentForCommon && commonResponsesPeriod && activeTab === 'dashboard') {
@@ -131,11 +131,11 @@ export default function ReportStudioPage() {
         })
         .finally(() => setIsLoadingCommonResponses(false));
     }
-  }, [userProfile?.account, selectedAssignmentForCommon, commonResponsesPeriod, activeTab]);
+  }, [userProfile?.account, selectedAssignmentForCommon, commonResponsesPeriod, activeTab, authLoading, profileLoading]);
 
 
   // Fetch assignment details (questions) when selected assignment for raw responses changes
-   useEffect(() => {
+ useEffect(() => {
     if (reportFilters.selectedAssignmentId && userProfile?.account) {
       setIsLoadingAssignmentDetails(true);
       getAssignmentById(reportFilters.selectedAssignmentId, userProfile.account)
@@ -151,7 +151,7 @@ export default function ReportStudioPage() {
     } else {
       setSelectedAssignmentDetails(null);
     }
-  }, [reportFilters.selectedAssignmentId, userProfile?.account, toast]);
+  }, [reportFilters.selectedAssignmentId, userProfile?.account, authLoading, profileLoading, toast]);
 
 
   const handleFetchRawResponses = useCallback(async () => {
@@ -182,7 +182,7 @@ export default function ReportStudioPage() {
       setRawResponsesError(err.message || "Could not load raw responses.");
       setRawResponses([]);
     } finally {
-      setIsLoadingRawResponses(false);
+ setIsLoadingRawResponses(false);
     }
   }, [isAdmin, reportFilters, userProfile?.account]);
 
@@ -190,7 +190,7 @@ export default function ReportStudioPage() {
   useEffect(() => {
     if (activeTab === 'reportExplorer' && isAdmin && reportFilters.selectedAssignmentId) {
       handleFetchRawResponses();
-    }
+ }
   }, [activeTab, isAdmin, reportFilters, handleFetchRawResponses]);
 
 
