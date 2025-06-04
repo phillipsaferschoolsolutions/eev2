@@ -55,7 +55,10 @@ async function authedFetch<T>(
     response = await fetch(fullUrl, { ...options, headers });
   } catch (networkError: any) {
     console.error(`Network error for ${fullUrl} (resourceService):`, networkError);
-    throw new Error(`Network Error: Could not connect. (${networkError.message || 'Failed to fetch'})`);
+    let detailedMessage = `Network Error: Could not connect to ${fullUrl}. (${networkError.message || 'Failed to fetch'}). `;
+    detailedMessage += "This could be due to a network issue, the backend service not being available, or a CORS policy blocking the request. ";
+    detailedMessage += "Please ensure the backend function is deployed correctly and CORS is configured if necessary.";
+    throw new Error(detailedMessage);
   }
 
   if (!response.ok) {

@@ -475,7 +475,7 @@ export default function DashboardPage() {
         </div>
 
         {(isLoadingLastCompletions) && <Skeleton className="h-40 w-full flex-grow" />}
-        {lastCompletionsError && <Alert variant="destructive" className="flex-grow"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{lastCompletionsError}</AlertDescription></Alert>}
+        {lastCompletionsError && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{lastCompletionsError}</AlertDescription></Alert>}
         {!isLoadingLastCompletions && !lastCompletionsError && itemsToDisplay.length === 0 && (
           <div className="flex-grow flex items-center justify-center">
             <p className="text-sm text-muted-foreground text-center">No completions found for this selection.</p>

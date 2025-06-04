@@ -71,7 +71,11 @@ export default function ResourcesPage() {
   });
 
   const fetchDocuments = useCallback(async () => {
-    if (!userProfile?.account) return;
+    if (!userProfile?.account) {
+      setDocumentsError("Account information is not available.");
+      setIsLoadingDocuments(false);
+      return;
+    }
     setIsLoadingDocuments(true);
     setDocumentsError(null);
     try {
