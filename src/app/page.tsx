@@ -64,7 +64,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  // DialogTrigger, // No longer needed here
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -418,8 +417,8 @@ export default function DashboardPage() {
     const { week, month, year, streak, streakMessage } = streakData;
 
     return (
-      <div className="text-center p-2 flex flex-col h-full"> {/* Outer container, no justify-between */}
-        <div> {/* Top part: Title and W/M/Y counts */}
+      <div className="text-center p-2 flex flex-col h-full">
+        <div> 
           <CardTitle className="text-xl font-semibold mb-3 text-foreground/90">Completion Trends</CardTitle>
           <div className="grid grid-cols-3 gap-2 mb-4">
             <div>
@@ -436,8 +435,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-        {/* This div will now take the remaining space and center its content */}
-        <div className="flex-grow flex flex-col items-center justify-center"> {/* Streak info */}
+        <div className="flex-grow flex flex-col items-center justify-center"> 
           <Award className="h-10 w-10 text-amber-500 mb-1" />
           <p className="text-sm font-medium text-muted-foreground">Current Streak</p>
           <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 flex items-center">
@@ -522,14 +520,15 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-       <motion.div
+      {isClientMounted ? (
+        <motion.div
           key={isPhotoHeavyTheme && heroImageUrl ? heroImageUrl : 'no-image-hero'}
           className="mb-6 p-8 rounded-lg shadow-xl text-center relative overflow-hidden bg-card"
           variants={heroContainerVariants}
           initial="hidden"
-          animate={isClientMounted ? "visible" : "hidden"}
+          animate="visible"
         >
-           {isPhotoHeavyTheme && heroImageUrl && (
+          {isPhotoHeavyTheme && heroImageUrl && (
             <motion.div
               className="absolute inset-0 z-0 bg-cover bg-center"
               style={{ 
@@ -567,6 +566,11 @@ export default function DashboardPage() {
             </div>
           </div>
         </motion.div>
+      ) : (
+         <div className="mb-6 p-8 rounded-lg shadow-xl bg-card">
+            <Skeleton className="h-36 w-full" />
+         </div>
+      )}
 
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -683,3 +687,5 @@ export default function DashboardPage() {
   );
 }
 
+
+    
