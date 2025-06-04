@@ -422,7 +422,7 @@ export default function DashboardPage() {
       getLastCompletions(
         userProfile.account,
         undefined, 
-        selectedAssignmentForCompletions || undefined, 
+        selectedAssignmentForCompletions, // Pass null or string ID
         lastCompletionsPeriod
       )
       .then(setLastCompletionsData)
@@ -437,18 +437,32 @@ export default function DashboardPage() {
 
   const renderLastCompletionsWidget = () => {
     const itemsToDisplay = lastCompletionsData || [];
-     return (
-      <div className="space-y-3 h-full flex flex-col">
-         <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
-           <Select value={selectedAssignmentForCompletions || ""} onValueChange={setSelectedAssignmentForCompletions} disabled={lastCompletionsAssignments.length === 0 || isLoadingLastCompletions}>
-            <SelectTrigger className="flex-grow min-w-[150px]"><SelectValue placeholder="All Assignments" /></SelectTrigger>
+    const ALL_ASSIGNMENTS_FILTER_KEY = "__all-assignments__";
+    return (
+      <>
+        <div className="flex flex-col sm:flex-row gap-2 flex-wrap h-full">
+          <Select
+            value={selectedAssignmentForCompletions ?? ALL_ASSIGNMENTS_FILTER_KEY}
+            onValueChange={(value) => {
+              setSelectedAssignmentForCompletions(value === ALL_ASSIGNMENTS_FILTER_KEY ? null : value);
+            }}
+            disabled={isLoadingLastCompletions}
+          >
+            <SelectTrigger className="flex-grow min-w-[150px]">
+              <SelectValue placeholder="Select Assignment" />
+            </SelectTrigger>
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>Assignments</SelectLabel>
-                 <SelectItem value="">All Assignments</SelectItem> 
-                {lastCompletionsAssignments.length > 0 ? lastCompletionsAssignments.map(a => (
+                <SelectItem value={ALL_ASSIGNMENTS_FILTER_KEY}>All Assignments</SelectItem>
+                {lastCompletionsAssignments.map(a => (
                   <SelectItem key={a.id} value={a.id}>{a.assessmentName}</SelectItem>
-                )) : <SelectItem value="no-assign" disabled>No assignments found</SelectItem>}
+                ))}
+                {lastCompletionsAssignments.length === 0 && !isLoadingLastCompletions && (
+                  <SelectItem value="no-specific-assignments-available" disabled>
+                    No specific assignments available
+                  </SelectItem>
+                )}
               </SelectGroup>
             </SelectContent>
           </Select>
@@ -460,35 +474,35 @@ export default function DashboardPage() {
           </Select>
         </div>
 
-      {(isLoadingLastCompletions) && <Skeleton className="h-40 w-full flex-grow" />}
-      {lastCompletionsError && <Alert variant="destructive" className="flex-grow"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{lastCompletionsError}</AlertDescription></Alert>}
-      {!isLoadingLastCompletions && !lastCompletionsError && itemsToDisplay.length === 0 && (
-         <div className="flex-grow flex items-center justify-center">
-           <p className="text-sm text-muted-foreground text-center">No completions found for this selection.</p>
-         </div>
-      )}
-      {!isLoadingLastCompletions && !lastCompletionsError && itemsToDisplay.length > 0 && (
-        <ScrollArea className="h-48 xl:h-56">
-          <ul className="space-y-2 pr-3">
-            {itemsToDisplay.map((item: UserActivity | AssignmentCompletionStatus) => (
-              <li key={item.id} className="p-3 border rounded-md hover:bg-muted/50">
-                <p className="font-medium text-sm truncate">{item.assessmentName}</p>
-                {isAdmin && 'totalCompleted' in item ? (
-                  <p className="text-xs text-muted-foreground">
-                    {item.totalCompleted}/{item.totalAssigned} completed. Last: {formatDisplayDateShort(item.lastCompletionDate)}
-                  </p>
-                ) : ('status' in item &&
-                  <p className="text-xs text-muted-foreground">
-                    Status: <span className={`font-semibold ${item.status === 'completed' ? 'text-green-600' : item.status === 'pending' ? 'text-yellow-600' : 'text-red-600'}`}>{item.status}</span>.
-                    {item.completedDate ? ` Completed: ${formatDisplayDateShort(item.completedDate)}` : ` Due: ${formatDisplayDateShort(item.dueDate)}`}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </ScrollArea>
-      )}
-      </div>
+        {(isLoadingLastCompletions) && <Skeleton className="h-40 w-full flex-grow" />}
+        {lastCompletionsError && <Alert variant="destructive" className="flex-grow"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{lastCompletionsError}</AlertDescription></Alert>}
+        {!isLoadingLastCompletions && !lastCompletionsError && itemsToDisplay.length === 0 && (
+          <div className="flex-grow flex items-center justify-center">
+            <p className="text-sm text-muted-foreground text-center">No completions found for this selection.</p>
+          </div>
+        )}
+        {!isLoadingLastCompletions && !lastCompletionsError && itemsToDisplay.length > 0 && (
+          <ScrollArea className="h-48 xl:h-56">
+            <ul className="space-y-2 pr-3">
+              {itemsToDisplay.map((item: UserActivity | AssignmentCompletionStatus) => (
+                <li key={item.id} className="p-3 border rounded-md hover:bg-muted/50">
+                  <p className="font-medium text-sm truncate">{item.assessmentName}</p>
+                  {isAdmin && 'totalCompleted' in item ? (
+                    <p className="text-xs text-muted-foreground">
+                      {item.totalCompleted}/{item.totalAssigned} completed. Last: {formatDisplayDateShort(item.lastCompletionDate)}
+                    </p>
+                  ) : ('status' in item &&
+                    <p className="text-xs text-muted-foreground">
+                      Status: <span className={`font-semibold ${item.status === 'completed' ? 'text-green-600' : item.status === 'pending' ? 'text-yellow-600' : 'text-red-600'}`}>{item.status}</span>.
+                      {item.completedDate ? ` Completed: ${formatDisplayDateShort(item.completedDate)}` : ` Due: ${formatDisplayDateShort(item.dueDate)}`}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </ScrollArea>
+        )}
+      </>
     );
   };
 
