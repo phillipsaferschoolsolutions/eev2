@@ -110,19 +110,6 @@ const PERIOD_OPTIONS = [
   { value: "alltime", label: "All Time" },
 ];
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: i * 0.1,
-      duration: 0.5,
-      ease: "easeInOut",
-    },
-  }),
-};
-
 const heroContainerVariants = {
   hidden: { opacity: 0, height: 0 },
   visible: {
@@ -246,17 +233,72 @@ export default function DashboardPage() {
 
   const isPhotoHeavyTheme = isClientMounted && resolvedTheme && resolvedTheme.startsWith(PHOTO_HEAVY_THEME_PREFIX);
 
+  // Theme-aware card animation variants
+  const cardVariants = {
+    hidden: ({ theme }: { theme?: string }) => {
+      let yOffset = 25;
+      let scale = 0.95;
+      if (theme && (theme.includes('matrix') || theme.includes('cyber') || theme.includes('digital') || theme.includes('citadel'))) {
+        yOffset = 15;
+        scale = 0.97;
+      } else if (theme && (theme.includes('nature') || theme.includes('spring') || theme.includes('forest') || theme.includes('serenity') || theme.includes('meadow') || theme.includes('reef'))) {
+        yOffset = 40;
+        scale = 0.92;
+      }
+      return { opacity: 0, y: yOffset, scale: scale };
+    },
+    visible: ({ index, theme }: { index: number; theme?: string }) => {
+      let duration = 0.5;
+      let ease: any = [0.42, 0, 0.58, 1]; // Default easeInOut
+      let delayFactor = 0.09;
+
+      if (theme && (theme.includes('matrix') || theme.includes('cyber') || theme.includes('digital') || theme.includes('citadel') || theme.includes('slate'))) {
+        duration = 0.4;
+        ease = "easeOut";
+        delayFactor = 0.07;
+      } else if (theme && (theme.includes('nature') || theme.includes('spring') || theme.includes('forest') || theme.includes('serenity') || theme.includes('meadow') || theme.includes('reef') || theme.includes('ocean') || theme.includes('vintage'))) {
+        duration = 0.65;
+        ease = "circOut"; 
+        delayFactor = 0.11;
+      } else if (theme && (theme.includes('solar') || theme.includes('volcanic') || theme.includes('funk'))) {
+        duration = 0.55;
+        ease = [0.68, -0.55, 0.27, 1.55]; // "backOut" like ease
+        delayFactor = 0.08;
+      }
+
+
+      return {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        transition: {
+          delay: index * delayFactor,
+          duration: duration,
+          ease: ease,
+        },
+      };
+    },
+  };
+
+
   useEffect(() => {
     if (isClientMounted && resolvedTheme) {
       if (isPhotoHeavyTheme) {
-        fetchPexelsImageURL("modern university campus", "landscape")
+        let pexelsQuery = "modern university campus"; // Default
+        if (resolvedTheme.includes("nature") || resolvedTheme.includes("forest") || resolvedTheme.includes("meadow")) pexelsQuery = "lush forest canopy peaceful";
+        else if (resolvedTheme.includes("guardian") || resolvedTheme.includes("fortress") || resolvedTheme.includes("citadel")) pexelsQuery = "abstract security shield metallic architecture";
+        else if (resolvedTheme.includes("library") || resolvedTheme.includes("vintage")) pexelsQuery = "quiet library bookshelf calm study";
+        else if (resolvedTheme.includes("innovation") || resolvedTheme.includes("cyber") || resolvedTheme.includes("digital")) pexelsQuery = "futuristic city technology bright sky";
+        else if (resolvedTheme.includes("serenity") || resolvedTheme.includes("arctic") || resolvedTheme.includes("crystal")) pexelsQuery = "calm serene landscape clear sky";
+        
+        fetchPexelsImageURL(pexelsQuery, "landscape")
           .then(url => setHeroImageUrl(url))
           .catch(err => {
             console.error("Failed to fetch Pexels hero image:", err);
-            setHeroImageUrl(null); // Fallback if Pexels fails
+            setHeroImageUrl(null); 
           });
       } else {
-        setHeroImageUrl(null); // Clear image if not a photo-heavy theme
+        setHeroImageUrl(null); 
       }
     }
   }, [isClientMounted, resolvedTheme, isPhotoHeavyTheme]);
@@ -523,42 +565,39 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {isClientMounted ? (
         <motion.div
-          key={isPhotoHeavyTheme && heroImageUrl ? heroImageUrl : 'no-image-hero'}
           className="mb-6 p-8 rounded-lg shadow-xl text-center relative overflow-hidden bg-card"
           variants={heroContainerVariants}
           initial="hidden"
           animate="visible"
         >
-          {isPhotoHeavyTheme && heroImageUrl && (
-            <motion.div
-              className="absolute inset-0 z-0 bg-cover bg-center"
-              style={{ 
-                backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${heroImageUrl})`,
-              }}
-              whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.5, ease: "easeInOut" }}
-            />
-          )}
+          <motion.div
+            className="absolute inset-0 z-0 bg-cover bg-center"
+            style={{ 
+              backgroundImage: isPhotoHeavyTheme && heroImageUrl ? `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${heroImageUrl})` : undefined,
+              backgroundColor: !isPhotoHeavyTheme ? 'hsl(var(--card))' : undefined, // Ensure card background if no image
+            }}
+            whileHover={isPhotoHeavyTheme && heroImageUrl ? { scale: 1.03, transition: { duration: 0.4, ease: "circOut" } } : {}}
+          />
           <div className="relative z-10">
             <div className="flex flex-col sm:flex-row justify-between items-center text-left sm:text-left">
                 <div className="flex-1 mb-4 sm:mb-0">
                     <motion.h1
                     variants={heroTextVariants}
-                    className={`text-4xl sm:text-5xl font-bold tracking-tight ${isPhotoHeavyTheme ? 'text-white drop-shadow-md' : 'text-foreground'}`}
+                    className={`text-4xl sm:text-5xl font-bold tracking-tight ${isPhotoHeavyTheme && heroImageUrl ? 'text-white drop-shadow-md' : 'text-foreground'}`}
                     >
                     Welcome to EagleEyED™
                     </motion.h1>
-                    <motion.p variants={heroTextVariants} className={`text-lg sm:text-xl mt-2 max-w-3xl ${isPhotoHeavyTheme ? 'text-gray-200 drop-shadow-sm' : 'text-muted-foreground'}`}>
+                    <motion.p variants={heroTextVariants} className={`text-lg sm:text-xl mt-2 max-w-3xl ${isPhotoHeavyTheme && heroImageUrl ? 'text-gray-200 drop-shadow-sm' : 'text-muted-foreground'}`}>
                     Your central hub for campus safety management.
                     </motion.p>
                 </div>
                 <div className="flex gap-2 sm:ml-6 shrink-0 mt-4 sm:mt-0">
-                    <Button variant={isPhotoHeavyTheme ? "secondary" : "outline"} asChild size="lg">
+                    <Button variant={(isPhotoHeavyTheme && heroImageUrl) ? "secondary" : "outline"} asChild size="lg">
                         <Link href="/assessment-forms">
                             <ListOrdered className="mr-2 h-5 w-5" /> View Tasks
                         </Link>
                     </Button>
-                    <Button variant={isPhotoHeavyTheme ? "default" : "default"} asChild size="lg">
+                    <Button variant={(isPhotoHeavyTheme && heroImageUrl) ? "default" : "default"} asChild size="lg">
                         <Link href="/assessment-forms/new">
                             <Edit3 className="mr-2 h-5 w-5" /> New Assessment
                         </Link>
@@ -575,7 +614,7 @@ export default function DashboardPage() {
 
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={0}>
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 0, theme: resolvedTheme}}>
           <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-xl">
@@ -586,7 +625,7 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
 
-        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={1}>
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 1, theme: resolvedTheme}}>
             <Card className="h-full flex flex-col">
                  <CardContent className="flex-grow flex items-center justify-center p-3 sm:p-4">
                     {renderStreakWidget()}
@@ -594,7 +633,7 @@ export default function DashboardPage() {
             </Card>
         </motion.div>
 
-        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={2}>
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 2, theme: resolvedTheme}}>
             <Card className="h-full flex flex-col">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-xl">
@@ -605,18 +644,18 @@ export default function DashboardPage() {
             </Card>
         </motion.div>
 
-        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={3}>
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 3, theme: resolvedTheme}}>
             <CriticalTasksCard />
         </motion.div>
-         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={4}>
+         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 4, theme: resolvedTheme}}>
             <UpcomingEventsCard />
         </motion.div>
-         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={5}>
+         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 5, theme: resolvedTheme}}>
             <EmergencyProtocolsCard />
         </motion.div>
       </div>
 
-      <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={6}>
+      <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 6, theme: resolvedTheme}}>
         <Card className="col-span-1 xl:col-span-3">
             <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl">
@@ -687,6 +726,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-
-    
