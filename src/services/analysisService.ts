@@ -12,6 +12,7 @@ import type {
   SavedReportMetadata,
   LastCompletionsResponse,
   TrendsResponse,
+  CompletedAssignmentSummary, // Assuming you have a type for completed assignment summaries
 } from '@/types/Analysis';
 
 const ANALYSIS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysis';
@@ -175,35 +176,31 @@ export async function getRawResponses(
 }
 
 /**
- * Fetches the last few completions for a specific assignment and school.
- * Uses GET /widgets/getlastcompletions from ANALYSIS_V2_BASE_URL
+ * Fetches the last few completed assignments using a Collection Group Query.
+ * Calls the new Firebase Cloud Function 'getCompletedAssignments'.
  */
 export async function getLastCompletions(
   accountName: string,
-  assignmentId: string,
-  selectedSchool: string
- ): Promise<LastCompletionsResponse | null> {
+  accountId?: string, // Use optional accountId as per the new function
+  assignmentId?: string, // Optional assignmentId for filtering
+  timePeriod?: string // Optional timePeriod for filtering
+): Promise<CompletedAssignmentSummary[] | null> { // Return array of summaries
   if (!accountName || accountName.trim() === "") {
-  throw new Error("Account name is required for getLastCompletions.");
-   }
-  if (!assignmentId || !selectedSchool) {
-  throw new Error("Assignment ID and selected school are required for getLastCompletions.");
-   }
-   const payload = {
-  assignmentId,
-  selectedSchool
-   };
-   console.log("Calling getLastCompletions API with payload:", payload);
-   const result = await authedFetch<LastCompletionsResponse | undefined>(
-     `${ANALYSIS_V2_BASE_URL}/widgets/getlastcompletions`,
-     {
-       method: 'POST',
-       body: JSON.stringify(payload),
-     },
-     accountName);
-  console.log("Last Completions API response:", result);
+    throw new Error("Account name is required for getLastCompletions.");
+  }
+
+  const queryParams = new URLSearchParams();
+  if (accountId) queryParams.append('accountId', accountId);
+  if (assignmentId) queryParams.append('assignmentId', assignmentId);
+  if (timePeriod) queryParams.append('timePeriod', timePeriod);
+
+  const url = `${WIDGETS_BASE_URL}/completed-assignments?${queryParams.toString()}`;
+
+  console.log("Calling getCompletedAssignments API at:", url);
+  const result = await authedFetch<CompletedAssignmentSummary[] | undefined>(url, {}, accountName);
+  console.log("Completed Assignments API response:", result);
   return result || null;
- }
+}
  
 
 
