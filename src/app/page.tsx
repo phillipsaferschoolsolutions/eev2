@@ -239,11 +239,12 @@ export default function DashboardPage() {
   const [streakError, setStreakError] = useState<string | null>(null);
 
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
-  const isPhotoHeavyTheme = isClientMounted && resolvedTheme && resolvedTheme.startsWith(PHOTO_HEAVY_THEME_PREFIX);
-
+  
   useEffect(() => {
     setIsClientMounted(true);
   }, []);
+
+  const isPhotoHeavyTheme = isClientMounted && resolvedTheme && resolvedTheme.startsWith(PHOTO_HEAVY_THEME_PREFIX);
 
   useEffect(() => {
     if (isClientMounted && resolvedTheme) {
@@ -252,10 +253,10 @@ export default function DashboardPage() {
           .then(url => setHeroImageUrl(url))
           .catch(err => {
             console.error("Failed to fetch Pexels hero image:", err);
-            setHeroImageUrl(null);
+            setHeroImageUrl(null); // Fallback if Pexels fails
           });
       } else {
-        setHeroImageUrl(null);
+        setHeroImageUrl(null); // Clear image if not a photo-heavy theme
       }
     }
   }, [isClientMounted, resolvedTheme, isPhotoHeavyTheme]);
