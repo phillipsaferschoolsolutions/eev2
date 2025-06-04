@@ -44,9 +44,9 @@ import {
   getDashboardWidgetsSandbox,
   getCommonResponsesForAssignment,
   getWidgetTrends,
+  getLastCompletions, // Import the new function
 } from "@/services/analysisService";
 import type {
-  WidgetSandboxData,
   SchoolsWithQuestionsResponse,
   AssignmentCompletionStatus,
   UserActivity,
@@ -104,6 +104,13 @@ interface RssResponse {
 }
 
 const PERIOD_OPTIONS = [
+  { value: "last7days", label: "Last 7 Days" },
+  { value: "last30days", label: "Last 30 Days" },
+  { value: "last90days", label: "Last 90 Days" },
+  { value: "alltime", label: "All Time" },
+];
+
+const COMPLETION_PERIOD_OPTIONS = [
   { value: "last7days", label: "Last 7 Days" },
   { value: "last30days", label: "Last 30 Days" },
   { value: "last90days", label: "Last 90 Days" },
@@ -208,10 +215,6 @@ export default function DashboardPage() {
   const [isClientMounted, setIsClientMounted] = useState(false);
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
 
-  const [widgetData, setWidgetData] = useState<WidgetSandboxData | null>(null);
-  const [isLoadingWidgets, setIsLoadingWidgets] = useState(true);
-  const [widgetError, setWidgetError] = useState<string | null>(null);
-
   const [assignmentsForCommonResponses, setAssignmentsForCommonResponses] = useState<AssignmentMetadata[]>([]);
   const [selectedAssignmentForCommon, setSelectedAssignmentForCommon] = useState<string | null>(null);
   const [commonResponsesAssignmentDetails, setCommonResponsesAssignmentDetails] = useState<AssignmentWithPermissions | null>(null);
@@ -225,6 +228,14 @@ export default function DashboardPage() {
   const [isLoadingStreak, setIsLoadingStreak] = useState(true);
   const [streakError, setStreakError] = useState<string | null>(null);
 
+  const [lastCompletionsAssignments, setLastCompletionsAssignments] = useState<AssignmentMetadata[]>([]);
+  const [selectedAssignmentForCompletions, setSelectedAssignmentForCompletions] = useState<string | null>(null);
+  const [lastCompletionsPeriod, setLastCompletionsPeriod] = useState("last30days");
+  const [lastCompletionsData, setLastCompletionsData] = useState<AssignmentCompletionStatus[] | null>(null);
+  const [isLoadingLastCompletions, setIsLoadingLastCompletions] = useState(true);
+  const [lastCompletionsError, setLastCompletionsError] = useState<string | null>(null);
+
+
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
   
   useEffect(() => {
@@ -233,40 +244,40 @@ export default function DashboardPage() {
 
   const isPhotoHeavyTheme = isClientMounted && resolvedTheme && resolvedTheme.startsWith(PHOTO_HEAVY_THEME_PREFIX);
 
-  // Theme-aware card animation variants
   const cardVariants = {
     hidden: ({ theme }: { theme?: string }) => {
       let yOffset = 25;
       let scale = 0.95;
-      if (theme && (theme.includes('matrix') || theme.includes('cyber') || theme.includes('digital') || theme.includes('citadel'))) {
-        yOffset = 15;
-        scale = 0.97;
-      } else if (theme && (theme.includes('nature') || theme.includes('spring') || theme.includes('forest') || theme.includes('serenity') || theme.includes('meadow') || theme.includes('reef'))) {
-        yOffset = 40;
-        scale = 0.92;
+      let opacity = 0;
+      if (theme?.includes('matrix') || theme?.includes('cyber') || theme?.includes('digital') || theme?.includes('citadel') || theme?.includes('slate') || theme?.includes('guardian') || theme?.includes('fortress')) {
+        yOffset = 10;
+        scale = 0.98;
+        opacity = 0.3;
+      } else if (theme?.includes('nature') || theme?.includes('spring') || theme?.includes('forest') || theme?.includes('serenity') || theme?.includes('meadow') || theme?.includes('reef') || theme?.includes('library')) {
+        yOffset = 45;
+        scale = 0.90;
+        opacity = 0;
       }
-      return { opacity: 0, y: yOffset, scale: scale };
+      return { opacity, y: yOffset, scale };
     },
     visible: ({ index, theme }: { index: number; theme?: string }) => {
       let duration = 0.5;
       let ease: any = [0.42, 0, 0.58, 1]; // Default easeInOut
       let delayFactor = 0.09;
 
-      if (theme && (theme.includes('matrix') || theme.includes('cyber') || theme.includes('digital') || theme.includes('citadel') || theme.includes('slate'))) {
-        duration = 0.4;
+      if (theme?.includes('matrix') || theme?.includes('cyber') || theme?.includes('digital') || theme?.includes('citadel') || theme?.includes('slate') || theme?.includes('guardian') || theme?.includes('fortress')) {
+        duration = 0.35;
         ease = "easeOut";
-        delayFactor = 0.07;
-      } else if (theme && (theme.includes('nature') || theme.includes('spring') || theme.includes('forest') || theme.includes('serenity') || theme.includes('meadow') || theme.includes('reef') || theme.includes('ocean') || theme.includes('vintage'))) {
-        duration = 0.65;
+        delayFactor = 0.06;
+      } else if (theme?.includes('nature') || theme?.includes('spring') || theme?.includes('forest') || theme?.includes('serenity') || theme?.includes('meadow') || theme?.includes('reef') || theme?.includes('library') || theme?.includes('ocean') || theme?.includes('vintage')) {
+        duration = 0.7;
         ease = "circOut"; 
-        delayFactor = 0.11;
-      } else if (theme && (theme.includes('solar') || theme.includes('volcanic') || theme.includes('funk'))) {
-        duration = 0.55;
-        ease = [0.68, -0.55, 0.27, 1.55]; // "backOut" like ease
-        delayFactor = 0.08;
+        delayFactor = 0.12;
+      } else if (theme?.includes('solar') || theme?.includes('volcanic') || theme?.includes('funk') || theme?.includes('innovation')) {
+        duration = 0.6;
+        ease = [0.68, -0.6, 0.27, 1.65]; // "backOut" with more oomph
+        delayFactor = 0.07;
       }
-
-
       return {
         opacity: 1,
         y: 0,
@@ -284,7 +295,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (isClientMounted && resolvedTheme) {
       if (isPhotoHeavyTheme) {
-        let pexelsQuery = "modern university campus"; // Default
+        let pexelsQuery = "modern university campus"; 
         if (resolvedTheme.includes("nature") || resolvedTheme.includes("forest") || resolvedTheme.includes("meadow")) pexelsQuery = "lush forest canopy peaceful";
         else if (resolvedTheme.includes("guardian") || resolvedTheme.includes("fortress") || resolvedTheme.includes("citadel")) pexelsQuery = "abstract security shield metallic architecture";
         else if (resolvedTheme.includes("library") || resolvedTheme.includes("vintage")) pexelsQuery = "quiet library bookshelf calm study";
@@ -324,16 +335,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (userProfile?.account && isClientMounted && !authLoading && !profileLoading) {
-      setIsLoadingWidgets(true);
-      setWidgetError(null);
-      getDashboardWidgetsSandbox(userProfile.account)
-        .then(setWidgetData)
-        .catch((err) => {
-          console.error("Error fetching widget data:", err);
-          setWidgetError((err as Error).message || "Could not load dashboard widgets.");
-        })
-        .finally(() => setIsLoadingWidgets(false));
-
       setIsLoadingStreak(true);
       setStreakError(null);
       getWidgetTrends(userProfile.account)
@@ -347,6 +348,14 @@ export default function DashboardPage() {
   }, [userProfile?.account, isClientMounted, authLoading, profileLoading]);
 
   useEffect(() => {
+    if (userProfile?.account && isClientMounted && !authLoading && !profileLoading) {
+      getAssignmentListMetadata(userProfile.account)
+        .then((data) => {
+          setLastCompletionsAssignments(data || []);
+        })
+        .catch((err) => console.error("Error fetching assignment list for last completions:", err));
+    }
+
     if (userProfile?.account && isClientMounted && !authLoading && !profileLoading) {
       getAssignmentListMetadata(userProfile.account)
         .then((data) => {
@@ -404,33 +413,82 @@ export default function DashboardPage() {
     authLoading, profileLoading
   ]);
 
+  useEffect(() => {
+    if (userProfile?.account && isClientMounted && !authLoading && !profileLoading && lastCompletionsPeriod) {
+      setIsLoadingLastCompletions(true);
+      setLastCompletionsError(null);
+      setLastCompletionsData(null);
+
+      getLastCompletions(
+        userProfile.account,
+        undefined, 
+        selectedAssignmentForCompletions || undefined, 
+        lastCompletionsPeriod
+      )
+      .then(setLastCompletionsData)
+      .catch((err) => {
+        console.error("Error fetching last completions:", err);
+        setLastCompletionsError((err as Error).message || "Could not load last completions data.");
+      })
+      .finally(() => setIsLoadingLastCompletions(false));
+    }
+  }, [userProfile?.account, selectedAssignmentForCompletions, lastCompletionsPeriod, isClientMounted, authLoading, profileLoading]);
+
+
   const renderLastCompletionsWidget = () => {
-    if (isLoadingWidgets) return <Skeleton className="h-full w-full min-h-[150px]" />;
-    if (widgetError) return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{widgetError}</AlertDescription></Alert>;
+    const itemsToDisplay = lastCompletionsData || [];
+     return (
+      <div className="space-y-3 h-full flex flex-col">
+         <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+           <Select value={selectedAssignmentForCompletions || ""} onValueChange={setSelectedAssignmentForCompletions} disabled={lastCompletionsAssignments.length === 0 || isLoadingLastCompletions}>
+            <SelectTrigger className="flex-grow min-w-[150px]"><SelectValue placeholder="All Assignments" /></SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectLabel>Assignments</SelectLabel>
+                 <SelectItem value="">All Assignments</SelectItem> 
+                {lastCompletionsAssignments.length > 0 ? lastCompletionsAssignments.map(a => (
+                  <SelectItem key={a.id} value={a.id}>{a.assessmentName}</SelectItem>
+                )) : <SelectItem value="no-assign" disabled>No assignments found</SelectItem>}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <Select value={lastCompletionsPeriod} onValueChange={setLastCompletionsPeriod} disabled={isLoadingLastCompletions}>
+            <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select period..." /></SelectTrigger>
+            <SelectContent>
+              {COMPLETION_PERIOD_OPTIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
 
-    const itemsToDisplay = isAdmin ? widgetData?.accountCompletions : widgetData?.userActivity;
-    if (!itemsToDisplay || itemsToDisplay.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p>;
-
-    return (
-      <ScrollArea className="h-48 xl:h-56">
-        <ul className="space-y-2 pr-3">
-          {itemsToDisplay.map((item: UserActivity | AssignmentCompletionStatus) => (
-            <li key={item.id} className="p-3 border rounded-md hover:bg-muted/50">
-              <p className="font-medium text-sm truncate">{item.assessmentName}</p>
-              {isAdmin && 'totalCompleted' in item ? (
-                <p className="text-xs text-muted-foreground">
-                  {item.totalCompleted}/{item.totalAssigned} completed. Last: {formatDisplayDateShort(item.lastCompletionDate)}
-                </p>
-              ) : ('status' in item &&
-                <p className="text-xs text-muted-foreground">
-                  Status: <span className={`font-semibold ${item.status === 'completed' ? 'text-green-600' : item.status === 'pending' ? 'text-yellow-600' : 'text-red-600'}`}>{item.status}</span>.
-                  {item.completedDate ? ` Completed: ${formatDisplayDateShort(item.completedDate)}` : ` Due: ${formatDisplayDateShort(item.dueDate)}`}
-                </p>
-              )}
-            </li>
-          ))}
-        </ul>
-      </ScrollArea>
+      {(isLoadingLastCompletions) && <Skeleton className="h-40 w-full flex-grow" />}
+      {lastCompletionsError && <Alert variant="destructive" className="flex-grow"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{lastCompletionsError}</AlertDescription></Alert>}
+      {!isLoadingLastCompletions && !lastCompletionsError && itemsToDisplay.length === 0 && (
+         <div className="flex-grow flex items-center justify-center">
+           <p className="text-sm text-muted-foreground text-center">No completions found for this selection.</p>
+         </div>
+      )}
+      {!isLoadingLastCompletions && !lastCompletionsError && itemsToDisplay.length > 0 && (
+        <ScrollArea className="h-48 xl:h-56">
+          <ul className="space-y-2 pr-3">
+            {itemsToDisplay.map((item: UserActivity | AssignmentCompletionStatus) => (
+              <li key={item.id} className="p-3 border rounded-md hover:bg-muted/50">
+                <p className="font-medium text-sm truncate">{item.assessmentName}</p>
+                {isAdmin && 'totalCompleted' in item ? (
+                  <p className="text-xs text-muted-foreground">
+                    {item.totalCompleted}/{item.totalAssigned} completed. Last: {formatDisplayDateShort(item.lastCompletionDate)}
+                  </p>
+                ) : ('status' in item &&
+                  <p className="text-xs text-muted-foreground">
+                    Status: <span className={`font-semibold ${item.status === 'completed' ? 'text-green-600' : item.status === 'pending' ? 'text-yellow-600' : 'text-red-600'}`}>{item.status}</span>.
+                    {item.completedDate ? ` Completed: ${formatDisplayDateShort(item.completedDate)}` : ` Due: ${formatDisplayDateShort(item.dueDate)}`}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </ScrollArea>
+      )}
+      </div>
     );
   };
 
@@ -574,7 +632,7 @@ export default function DashboardPage() {
             className="absolute inset-0 z-0 bg-cover bg-center"
             style={{ 
               backgroundImage: isPhotoHeavyTheme && heroImageUrl ? `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${heroImageUrl})` : undefined,
-              backgroundColor: !isPhotoHeavyTheme ? 'hsl(var(--card))' : undefined, // Ensure card background if no image
+              backgroundColor: !isPhotoHeavyTheme ? 'hsl(var(--card))' : undefined,
             }}
             whileHover={isPhotoHeavyTheme && heroImageUrl ? { scale: 1.03, transition: { duration: 0.4, ease: "circOut" } } : {}}
           />
