@@ -26,13 +26,13 @@ import { getDistrictsForSuperAdmin, switchUserAccount } from "@/services/adminAc
 import type { District } from "@/types/Admin";
 import { 
   Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check, Menu,
-  LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon, Settings, FolderKanban
+  LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon, Settings, FolderKanban, FileText
 } from "lucide-react";
 
 
 // Icon mapping (consistent with PageShell for navItems)
 const iconMap: { [key: string]: React.ElementType } = {
-  LayoutDashboard, Map: MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare: MessageSquareIcon, Settings, FolderKanban, // Added FolderKanban
+  LayoutDashboard, Map: MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare: MessageSquareIcon, Settings, FolderKanban, FileText, // Added FileText
   Default: LayoutDashboard,
 };
 
@@ -239,5 +239,3 @@ export function AppHeader({ navItems }: AppHeaderProps) {
     </header>
   );
 }
-
-    

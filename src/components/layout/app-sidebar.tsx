@@ -17,7 +17,7 @@ import {
 import { Logo } from "@/components/icons/logo";
 import {
   LayoutDashboard, Map, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, Settings, MessageSquare,
-  LogOut as LogOutIcon, PanelLeftClose, PanelLeftOpen, Home, Users, BarChart2, Briefcase, Shield, BookOpen, FolderKanban
+  LogOut as LogOutIcon, PanelLeftClose, PanelLeftOpen, Home, Users, BarChart2, Briefcase, Shield, BookOpen, FolderKanban, FileText
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/context/auth-context";
@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 
 // Icon mapping
 const iconMap: { [key: string]: React.ElementType } = {
-  LayoutDashboard, Map, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, Settings, MessageSquare, FolderKanban, // Added FolderKanban
+  LayoutDashboard, Map, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, Settings, MessageSquare, FolderKanban, FileText, // Added FileText
   Home, Users, BarChart2, Briefcase, Shield, BookOpen,
   Default: LayoutDashboard, // Fallback icon
 };
@@ -170,5 +170,3 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
     </Sidebar>
   );
 }
-
-    
