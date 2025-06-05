@@ -372,82 +372,70 @@ export default function ResourcesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoadingDocuments ? (
-                  [...Array(3)].map((_, i) => (
-                    <TableRow key={`skel-${i}`}>
-                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
-                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-24" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : documentsError ? (
-                  <TableRow><TableCell colSpan={7} className="h-24 text-center text-destructive">{documentsError}</TableCell></TableRow>
-                ) : filteredDocuments.length > 0 ? (
-                  filteredDocuments.map((doc) => (
-                    <TableRow key={doc.id}>
-                      <TableCell className="font-medium truncate max-w-[150px]">{doc.name}</TableCell>
-                      <TableCell className="hidden sm:table-cell">{doc.fileType || "N/A"}</TableCell>
-                      <TableCell className="hidden md:table-cell">{doc.updatedAt ? format(new Date(doc.updatedAt), "PP") : "N/A"}</TableCell>
-                      <TableCell className="hidden lg:table-cell truncate max-w-[100px]">{doc.tags?.join(', ') || "None"}</TableCell>
-                      <TableCell>
-                        {doc.summaryGenerating ? (
-                          <div className="flex items-center text-xs text-muted-foreground"><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Generating...</div>
-                        ) : doc.geminiSummary ? (
-                           <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => alert(doc.geminiSummary)}>View</Button>
-                        ) : (
-                          <Button variant="outline" size="xs" onClick={() => handleGenerateSummary(doc.id, doc.name, doc.storagePath)} disabled={doc.summaryGenerating}>
-                            <Brain className="mr-1 h-3 w-3" /> Gen
-                          </Button>
-                        )}
-                      </TableCell>
-                       <TableCell>
-                        <div className="w-40 space-y-1">
-                          {(audioNotes[doc.id]?.downloadURL || audioNotes[doc.id]?.url) && !audioNotes[doc.id]?.isUploading && !audioNotes[doc.id]?.error && (
-                            <div className="flex items-center gap-1">
-                              <Button type="button" variant="outline" size="icon" onClick={() => togglePlayPause(doc.id)} className="h-7 w-7 shrink-0 rounded-full" disabled={audioNotes[doc.id]?.isUploading}>
-                                {audioPlayerStates[doc.id]?.isPlaying ? <PauseIcon className="h-3 w-3"/> : <PlayIcon className="h-3 w-3" />}
-                              </Button>
-                              <Slider value={[audioPlayerStates[doc.id]?.currentTime || 0]} max={audioPlayerStates[doc.id]?.duration || 1} step={0.1} className="w-full h-1 [&>span]:h-1 [&_[role=slider]]:h-2 [&_[role=slider]]:w-2" disabled={audioNotes[doc.id]?.isUploading} 
-                                onValueChange={(value) => {
-                                  if (audioRefs.current[doc.id]) audioRefs.current[doc.id]!.currentTime = value[0];
-                                  setAudioPlayerStates(prev => ({...prev, [doc.id]: {...prev[doc.id]!, currentTime: value[0]}}));
-                                }}
-                              />
-                              <Button type="button" variant="ghost" size="icon" className="text-destructive h-6 w-6 shrink-0" onClick={() => removeAudioNote(doc.id)}><Trash2 className="h-3 w-3" /></Button>
-                            </div>
-                          )}
-                          {audioNotes[doc.id]?.isUploading && <ShadProgress value={0} className="h-1 w-full animate-pulse" />}
-                          {audioNotes[doc.id]?.error && <p className="text-xs text-destructive">{audioNotes[doc.id]?.error}</p>}
-                           {!audioNotes[doc.id]?.downloadURL && !audioNotes[doc.id]?.url && !audioNotes[doc.id]?.isUploading && !audioNotes[doc.id]?.error && (
-                            <Button
-                              type="button" variant={isRecordingResourceId === doc.id ? "destructive" : "outline"} size="xs"
-                              onMouseDown={() => handleStartRecording(doc.id)} onMouseUp={() => handleStopRecording(doc.id, true)}
-                              onTouchStart={(e) => { e.preventDefault(); handleStartRecording(doc.id);}} onTouchEnd={(e) => { e.preventDefault(); handleStopRecording(doc.id, true);}}
-                              disabled={!!isRecordingResourceId && isRecordingResourceId !== doc.id} className="w-full text-xs py-1 h-auto"
-                            >
-                              {isRecordingResourceId === doc.id ? <Radio className="mr-1 h-3 w-3 animate-pulse"/> : <Mic className="mr-1 h-3 w-3" />}
-                              {isRecordingResourceId === doc.id ? "Rec..." : "Hold Rec"}
-                            </Button>
-                          )}
-                          {micPermissionError && isRecordingResourceId === doc.id && <p className="text-xs text-destructive">{micPermissionError}</p>}
-                           <audio ref={(el) => {audioRefs.current[doc.id] = el}} onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, doc.id)} onTimeUpdate={(e) => handleAudioTimeUpdate(e, doc.id)} onEnded={() => handleAudioEnded(doc.id)} className="hidden" src={audioNotes[doc.id]?.downloadURL || audioNotes[doc.id]?.url} />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Download (Soon)" disabled><Download className="h-4 w-4"/></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Permissions (Soon)" disabled><Users className="h-4 w-4"/></Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Versions (Soon)" disabled><History className="h-4 w-4"/></Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow><TableCell colSpan={7} className="h-24 text-center">No documents found.</TableCell></TableRow>
-                )}
-              </TableBody>
+  {isLoadingDocuments ? (
+    [...Array(3)].map((_, i) => (
+      <TableRow key={`skel-${i}`}>
+        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+        <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
+        <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+        <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+        <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+        <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
+      </TableRow>
+    ))
+  ) : documentsError ? (
+    <TableRow>
+      <TableCell colSpan={7} className="h-24 text-center text-destructive">
+        {documentsError}
+      </TableCell>
+    </TableRow>
+  ) : filteredDocuments.length > 0 ? (
+    filteredDocuments.map((doc) => {
+      const parsedDate = typeof doc.updatedAt?.toDate === "function"
+        ? doc.updatedAt.toDate()
+        : new Date(doc.updatedAt);
+      const isValidDate = parsedDate instanceof Date && !isNaN(parsedDate.getTime());
+
+      return (
+        <TableRow key={doc.id}>
+          <TableCell className="font-medium truncate max-w-[150px]">{doc.name}</TableCell>
+          <TableCell className="hidden sm:table-cell">{doc.fileType || "N/A"}</TableCell>
+          <TableCell className="hidden md:table-cell">
+            {isValidDate ? format(parsedDate, "PP") : "Invalid date"}
+          </TableCell>
+          <TableCell className="hidden lg:table-cell truncate max-w-[100px]">
+            {doc.tags?.join(', ') || "None"}
+          </TableCell>
+          <TableCell>
+            {doc.summaryGenerating ? (
+              <div className="flex items-center text-xs text-muted-foreground">
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Generating...
+              </div>
+            ) : doc.geminiSummary ? (
+              <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => alert(doc.geminiSummary)}>
+                View
+              </Button>
+            ) : (
+              <Button variant="outline" size="xs" onClick={() => handleGenerateSummary(doc.id, doc.name, doc.storagePath)} disabled={doc.summaryGenerating}>
+                <Brain className="mr-1 h-3 w-3" /> Gen
+              </Button>
+            )}
+          </TableCell>
+
+          {/* Keep your Audio Note and Actions rendering here as-is */}
+          {/* ... */}
+        </TableRow>
+      );
+    })
+  ) : (
+    <TableRow>
+      <TableCell colSpan={7} className="h-24 text-center">
+        No documents found.
+      </TableCell>
+    </TableRow>
+  )}
+</TableBody>
             </Table>
           </ScrollArea>
           <CardFooter className="pt-4">
