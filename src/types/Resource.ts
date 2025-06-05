@@ -25,6 +25,7 @@ export interface ResourceDocument {
   tags?: string[];
   
   storagePath: string; // Path in Firebase Storage
+  downloadURL?: string; // Direct URL to view/download the file
   fileName: string; // Original file name
   fileType: string; // MIME type or simple type like 'PDF', 'Word'
   fileSize: number; // In bytes

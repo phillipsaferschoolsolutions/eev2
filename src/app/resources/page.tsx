@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { UploadCloud, FileText, Search, Filter, Info, Mic, PlayIcon, PauseIcon, Trash2, Brain, Loader2, Radio, Users, Globe, History, Download } from "lucide-react"; // Changed Versions to History
+import { UploadCloud, FileText, Search, Filter, Info, Mic, PlayIcon, PauseIcon, Trash2, Brain, Loader2, Radio, Users, Globe, History, Download, Eye as EyeIcon } from "lucide-react"; // Changed Versions to History, Added EyeIcon
 import { Slider } from "@/components/ui/slider";
 import { Progress as ShadProgress } from "@/components/ui/progress";
 import type { ResourceDocument, AccessControlPayload } from "@/types/Resource";
@@ -28,6 +28,7 @@ import {
   updateResourcePermissions,
   generateResourceSummary
 } from "@/services/resourceService"; 
+import Link from "next/link";
 
 const MAX_AUDIO_RECORDING_MS = 30000; // 30 seconds
 
@@ -368,74 +369,129 @@ export default function ResourcesPage() {
                   <TableHead className="hidden lg:table-cell">Tags</TableHead>
                   <TableHead>Summary</TableHead>
                   <TableHead>Audio Note</TableHead>
+                  <TableHead className="text-right">View</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-  {isLoadingDocuments ? (
-    [...Array(3)].map((_, i) => (
-      <TableRow key={`skel-${i}`}>
-        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-        <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
-        <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
-        <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
-        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-        <TableCell><Skeleton className="h-8 w-24" /></TableCell>
-        <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
-      </TableRow>
-    ))
-  ) : documentsError ? (
-    <TableRow>
-      <TableCell colSpan={7} className="h-24 text-center text-destructive">
-        {documentsError}
-      </TableCell>
-    </TableRow>
-  ) : filteredDocuments.length > 0 ? (
-    filteredDocuments.map((doc) => {
-      const parsedDate = typeof doc.updatedAt?.toDate === "function"
-        ? doc.updatedAt.toDate()
-        : new Date(doc.updatedAt);
-      const isValidDate = parsedDate instanceof Date && !isNaN(parsedDate.getTime());
+                {isLoadingDocuments ? (
+                  [...Array(3)].map((_, i) => (
+                    <TableRow key={`skel-${i}`}>
+                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-12 ml-auto" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : documentsError ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center text-destructive">
+                      {documentsError}
+                    </TableCell>
+                  </TableRow>
+                ) : filteredDocuments.length > 0 ? (
+                  filteredDocuments.map((doc) => {
+                    const parsedDate = typeof doc.updatedAt?.toDate === "function"
+                      ? doc.updatedAt.toDate()
+                      : new Date(doc.updatedAt as string); // Added 'as string' to satisfy TS if updatedAt might not be a Timestamp-like object
+                    const isValidDate = parsedDate instanceof Date && !isNaN(parsedDate.getTime());
 
-      return (
-        <TableRow key={doc.id}>
-          <TableCell className="font-medium truncate max-w-[150px]">{doc.name}</TableCell>
-          <TableCell className="hidden sm:table-cell">{doc.fileType || "N/A"}</TableCell>
-          <TableCell className="hidden md:table-cell">
-            {isValidDate ? format(parsedDate, "PP") : "Invalid date"}
-          </TableCell>
-          <TableCell className="hidden lg:table-cell truncate max-w-[100px]">
-            {doc.tags?.join(', ') || "None"}
-          </TableCell>
-          <TableCell>
-            {doc.summaryGenerating ? (
-              <div className="flex items-center text-xs text-muted-foreground">
-                <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Generating...
-              </div>
-            ) : doc.geminiSummary ? (
-              <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => alert(doc.geminiSummary)}>
-                View
-              </Button>
-            ) : (
-              <Button variant="outline" size="xs" onClick={() => handleGenerateSummary(doc.id, doc.name, doc.storagePath)} disabled={doc.summaryGenerating}>
-                <Brain className="mr-1 h-3 w-3" /> Gen
-              </Button>
-            )}
-          </TableCell>
-
-          {/* Keep your Audio Note and Actions rendering here as-is */}
-          {/* ... */}
-        </TableRow>
-      );
-    })
-  ) : (
-    <TableRow>
-      <TableCell colSpan={7} className="h-24 text-center">
-        No documents found.
-      </TableCell>
-    </TableRow>
-  )}
-</TableBody>
+                    return (
+                      <TableRow key={doc.id}>
+                        <TableCell className="font-medium truncate max-w-[150px]">{doc.name}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{doc.fileType || "N/A"}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {isValidDate ? format(parsedDate, "PP") : "Invalid date"}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell truncate max-w-[100px]">
+                          {doc.tags?.join(', ') || "None"}
+                        </TableCell>
+                        <TableCell>
+                          {doc.summaryGenerating ? (
+                            <div className="flex items-center text-xs text-muted-foreground">
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Generating...
+                            </div>
+                          ) : doc.geminiSummary ? (
+                            <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => alert(doc.geminiSummary)}>
+                              View
+                            </Button>
+                          ) : (
+                            <Button variant="outline" size="xs" onClick={() => handleGenerateSummary(doc.id, doc.name, doc.storagePath)} disabled={doc.summaryGenerating}>
+                              <Brain className="mr-1 h-3 w-3" /> Gen
+                            </Button>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                        {/* Audio Note UI */}
+                        {micPermissionError && isRecordingResourceId === doc.id && <Alert variant="destructive" className="text-xs p-1"><AlertDescription>{micPermissionError}</AlertDescription></Alert>}
+                        {audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.storagePath ? ( // Check existing persisted notes or new local recording
+                            <div className="flex items-center gap-1">
+                            <audio
+                                ref={(el) => {audioRefs.current[doc.id] = el}}
+                                onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, doc.id)}
+                                onTimeUpdate={(e) => handleAudioTimeUpdate(e, doc.id)}
+                                onEnded={() => handleAudioEnded(doc.id)}
+                                className="hidden"
+                                src={audioNotes[doc.id]?.downloadURL || audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.storagePath}
+                            />
+                            <Button type="button" variant="ghost" size="icon" onClick={() => togglePlayPause(doc.id)} className="h-7 w-7" disabled={audioNotes[doc.id]?.isUploading}>
+                                {audioPlayerStates[doc.id]?.isPlaying ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
+                            </Button>
+                            <Slider value={[audioPlayerStates[doc.id]?.currentTime || 0]} max={audioPlayerStates[doc.id]?.duration || 1} step={0.1} className="w-16 h-1" disabled={audioNotes[doc.id]?.isUploading}/>
+                            <Button type="button" variant="ghost" size="icon" className="text-destructive h-7 w-7" onClick={() => removeAudioNote(doc.id)} disabled={audioNotes[doc.id]?.isUploading}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                            </div>
+                        ) : (
+                            <Button
+                            type="button"
+                            variant={isRecordingResourceId === doc.id ? "destructive" : "outline"}
+                            size="xs"
+                            onMouseDown={() => handleStartRecording(doc.id)}
+                            onMouseUp={() => handleStopRecording(doc.id)}
+                            onTouchStart={(e) => { e.preventDefault(); handleStartRecording(doc.id);}}
+                            onTouchEnd={(e) => { e.preventDefault(); handleStopRecording(doc.id);}}
+                            disabled={!!isRecordingResourceId && isRecordingResourceId !== doc.id || audioNotes[doc.id]?.isUploading}
+                            className="text-xs px-1.5 py-0.5 h-auto"
+                            >
+                            {isRecordingResourceId === doc.id ? <Radio className="mr-1 h-3 w-3 animate-pulse"/> : <Mic className="mr-1 h-3 w-3" />}
+                            {isRecordingResourceId === doc.id ? 'Rec...' : 'Note'}
+                            </Button>
+                        )}
+                        {audioNotes[doc.id]?.isUploading && <Loader2 className="h-3 w-3 animate-spin" />}
+                        {audioNotes[doc.id]?.error && <span className="text-xs text-destructive">Error</span>}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {doc.downloadURL ? (
+                            <Button asChild variant="outline" size="xs" className="text-xs px-1.5 py-0.5 h-auto">
+                              <Link href={doc.downloadURL} target="_blank" rel="noopener noreferrer">
+                                <EyeIcon className="mr-1 h-3 w-3" /> View
+                              </Link>
+                            </Button>
+                          ) : (
+                            <Button variant="outline" size="xs" disabled className="text-xs px-1.5 py-0.5 h-auto">
+                             <EyeIcon className="mr-1 h-3 w-3" /> View
+                            </Button>
+                          )}
+                        </TableCell>
+                         <TableCell className="text-right">
+                            <Button variant="ghost" size="xs" disabled className="text-xs px-1.5 py-0.5 h-auto">Manage</Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center">
+                      No documents found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
             </Table>
           </ScrollArea>
           <CardFooter className="pt-4">
