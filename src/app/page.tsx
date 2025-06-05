@@ -80,7 +80,7 @@ import { formatDisplayDateShort } from "@/lib/utils";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { fetchPexelsImageURL } from '@/services/pexelsService';
-import { Badge } from "@/components/ui/badge"; // Added Badge import
+import { Badge } from "@/components/ui/badge";
 
 const GOOGLE_NEWS_RSS_URL =
   "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
@@ -426,7 +426,7 @@ export default function DashboardPage() {
 
       getLastCompletions(
         userProfile.account,
- userProfile.account,
+        userProfile.account, // Passing account as accountId for the API call
         selectedAssignmentForCompletions, 
         lastCompletionsPeriod
       )
@@ -447,7 +447,7 @@ export default function DashboardPage() {
     
     return (
       <>
-        <div className="flex flex-col sm:flex-row gap-2 flex-wrap h-full">
+        <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
           <Select
             value={selectedAssignmentForCompletions ?? ALL_ASSIGNMENTS_FILTER_KEY}
             onValueChange={(value) => {
@@ -480,11 +480,26 @@ export default function DashboardPage() {
             </SelectContent>
           </Select>
         </div>
-        {/* Move Skeleton inside the main container or ensure it occupies its own space */}
-        {(isLoadingLastCompletions) && <div className="flex-grow"><Skeleton className="h-40 w-full h-full" /></div>}
-        {lastCompletionsError && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{lastCompletionsError}</AlertDescription></Alert>}
+
+        {isLoadingLastCompletions && (
+          <div className="space-y-3 h-48 xl:h-56 overflow-y-auto">
+            {[...Array(3)].map((_, i) => (
+              <div key={`lc-skeleton-${i}`} className="p-3 border rounded-md">
+                <Skeleton className="h-4 w-3/4 mb-2" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            ))}
+          </div>
+        )}
+        {lastCompletionsError && !isLoadingLastCompletions && (
+            <Alert variant="destructive" className="flex-grow">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{lastCompletionsError}</AlertDescription>
+            </Alert>
+        )}
         {!isLoadingLastCompletions && !lastCompletionsError && itemsToDisplay.length === 0 && (
-          <div className="flex-grow flex items-center justify-center">
+          <div className="flex-grow flex items-center justify-center h-48 xl:h-56">
             <p className="text-sm text-muted-foreground text-center">No completions found for this selection.</p>
           </div>
         )}
@@ -716,7 +731,9 @@ export default function DashboardPage() {
                 <Activity className="h-5 w-5 text-primary"/>Last Completions
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex-grow">{renderLastCompletionsWidget()}</CardContent>
+            <CardContent className="flex-grow flex flex-col space-y-3">
+                {renderLastCompletionsWidget()}
+            </CardContent>
           </Card>
         </motion.div>
 
