@@ -1,3 +1,4 @@
+widgetsApp.js
 widgetsApp.get('/completed-assignments', async (req, res) => {
   const accountId = req.query.accountId;
   const assignmentId = req.query.assignmentId;
@@ -23,16 +24,20 @@ widgetsApp.get('/completed-assignments', async (req, res) => {
       let startTime;
 
       switch (timePeriod) {
-        case 'last 7 days':
+        case 'last7days':
           startTime = new Date(now.setDate(now.getDate() - 7));
           break;
-        case 'last 30 days':
+        case 'last30days':
           startTime = new Date(now.setDate(now.getDate() - 30));
           break;
-        case 'last 1 year':
-          startTime = new Date(now.setFullYear(now.getFullYear() - 1));
+        case 'last90days':
+          startTime = new Date(now.setDate(now.getDate() - 90));
+          break;
+        case 'alltime':
+          //If alltime, we don't want to filter by time
           break;
         default:
+          console.warn('Invalid time period provided:', timePeriod);
           // Optionally handle invalid time periods or ignore
           break;
       }

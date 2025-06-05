@@ -225,7 +225,8 @@ export default function ReportStudioPage() {
       return [...baseRow, ...questionResponses].map(String).map(field => `"${field.replace(/"/g, '""')}"`).join(',');
     });
 
-    return [headers.join(','), ...rows].join('\n');
+    return [headers.join(','), ...rows].join('
+');
   };
 
   const handleExportCSV = () => {
@@ -277,7 +278,7 @@ export default function ReportStudioPage() {
     if (!itemsToDisplay || itemsToDisplay.length === 0) return <p className="text-sm text-muted-foreground">No recent activity.</p>;
 
     return (
-      <ScrollArea className="h-60">
+      <ScrollArea className="h-60 pt-0">
         <ul className="space-y-2 pr-3">
           {itemsToDisplay.map((item: UserActivity | AssignmentCompletionStatus) => (
             <li key={item.id} className="p-3 border rounded-md hover:bg-muted/50">
@@ -534,7 +535,7 @@ export default function ReportStudioPage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <Card className="lg:col-span-1">
               <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary"/>Last Completions</CardTitle></CardHeader>
-              <CardContent>{renderLastCompletionsWidget()}</CardContent>
+              <CardContent className="p-0 pt-0">{renderLastCompletionsWidget()}</CardContent>
             </Card>
             <Card className="lg:col-span-1">
               <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-green-500"/>Streak</CardTitle></CardHeader>

@@ -1,4 +1,3 @@
-
 // src/services/analysisService.ts
 'use client';
 
@@ -74,7 +73,7 @@ async function authedFetch<T>(
 
   if (!response.ok) {
     let errorBodyText = await response.text().catch(() => "Could not retrieve error body.");
-    let errorJson;
+    let errorJson: any;
     let parsedMessage: string | null = null;
 
     if (errorBodyText) {
@@ -82,14 +81,16 @@ async function authedFetch<T>(
         errorJson = JSON.parse(errorBodyText);
         if (errorJson && typeof errorJson.message === 'string') {
           parsedMessage = errorJson.message;
-        } else if (errorJson && typeof errorJson.error === 'string') { // Check for .error field
+        } else if (errorJson && typeof errorJson.error === 'string') { 
           parsedMessage = errorJson.error;
-        } else if (errorJson && Object.keys(errorJson).length > 0) {
-          parsedMessage = JSON.stringify(errorJson); // Fallback to stringifying the whole object
+        } else if (errorJson && typeof errorJson === 'object' && Object.keys(errorJson).length > 0) {
+          parsedMessage = JSON.stringify(errorJson); 
+        } else if (errorJson && typeof errorJson === 'object' && Object.keys(errorJson).length === 0) {
+          // If errorJson is an empty object, but errorBodyText was not, prefer errorBodyText for the message
+          parsedMessage = (errorBodyText && errorBodyText !== '{}') ? errorBodyText : response.statusText || `Server responded with status ${response.status}`;
         }
       } catch (e) {
-        // If parsing fails, use the raw text if it's short, otherwise a generic message
-        if (errorBodyText.length > 150) { // Avoid very long HTML error pages in the message
+        if (errorBodyText.length > 150) { 
             parsedMessage = response.statusText || `Server responded with status ${response.status}`;
         } else {
             parsedMessage = errorBodyText || response.statusText || `Server responded with status ${response.status}`;
@@ -98,7 +99,17 @@ async function authedFetch<T>(
     }
     
     const finalErrorMessage = parsedMessage || response.statusText || `Server responded with status ${response.status}`;
-    console.error(`API Error ${response.status} for ${fullUrl} (analysisService):`, errorJson || errorBodyText); // Log original error structure
+    
+    // Determine what to log as the error object
+    let loggedErrorDetail = errorJson;
+    if (errorJson && typeof errorJson === 'object' && Object.keys(errorJson).length === 0 && errorBodyText && errorBodyText !== '{}') {
+        loggedErrorDetail = errorBodyText; 
+    } else if (!errorJson && errorBodyText) {
+        loggedErrorDetail = errorBodyText;
+    }
+
+    console.error(`API Error ${response.status} for ${fullUrl} (analysisService):`, loggedErrorDetail || "Empty or unparseable error response body");
+    
     throw new Error(
       `API Error: ${response.status} ${finalErrorMessage} (from ${fullUrl})`
     );
@@ -197,9 +208,14 @@ export async function getLastCompletions(
   const url = `${WIDGETS_BASE_URL}/completed-assignments?${queryParams.toString()}`;
 
   console.log("Calling getCompletedAssignments API at:", url);
-  const result = await authedFetch<CompletedAssignmentSummary[] | undefined>(url, {}, accountName);
-  console.log("Completed Assignments API response:", result);
-  return result || null;
+  try {
+    const result = await authedFetch<CompletedAssignmentSummary[] | undefined>(url, {}, accountName);
+    console.log("Completed Assignments API response:", result);
+    return result || null;
+  } catch (error: any) {
+    console.error("Error in getLastCompletions:", error);
+    return null;
+  }
 }
  
 

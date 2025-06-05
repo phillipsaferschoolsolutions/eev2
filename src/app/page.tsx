@@ -426,7 +426,7 @@ export default function DashboardPage() {
 
       getLastCompletions(
         userProfile.account,
-        undefined, 
+ userProfile.account,
         selectedAssignmentForCompletions, 
         lastCompletionsPeriod
       )
@@ -480,8 +480,8 @@ export default function DashboardPage() {
             </SelectContent>
           </Select>
         </div>
-
-        {(isLoadingLastCompletions) && <Skeleton className="h-40 w-full flex-grow" />}
+        {/* Move Skeleton inside the main container or ensure it occupies its own space */}
+        {(isLoadingLastCompletions) && <div className="flex-grow"><Skeleton className="h-40 w-full h-full" /></div>}
         {lastCompletionsError && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{lastCompletionsError}</AlertDescription></Alert>}
         {!isLoadingLastCompletions && !lastCompletionsError && itemsToDisplay.length === 0 && (
           <div className="flex-grow flex items-center justify-center">
