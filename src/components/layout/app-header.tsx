@@ -144,13 +144,21 @@ const WeatherDisplay: React.FC = () => {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           if (!isMounted) return;
+
+          if (!userProfile?.account) {
+            if (isMounted) {
+              setError("Account info unavailable for weather");
+              setLoading(false);
+            }
+            return;
+          }
+
           const { latitude, longitude } = position.coords;
           try {
-            const data = await getWeatherAndLocation(latitude, longitude, userProfile?.account);
+            const data = await getWeatherAndLocation(latitude, longitude, userProfile.account);
             if (isMounted) {
               setWeatherData(data);
               if (!data) {
-                // If API returns null/undefined without throwing, set a generic unavailable message
                 setError("Weather data service returned no data.");
               }
             }
@@ -184,10 +192,8 @@ const WeatherDisplay: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [userProfile?.account]);
+  }, [userProfile?.account]); // Added userProfile?.account as dependency
 
-  // Always render the container div, content changes based on state
-  // Use "min-w-[Xpx]" to reserve some space to prevent layout shifts
   return (
     <div className="flex items-center text-xs text-muted-foreground min-w-[120px] sm:min-w-[150px]" title={error || (weatherData ? `${weatherData.current?.weather?.[0]?.description || ''} in ${weatherData.name}` : "Weather information")}>
       {loading && <Skeleton className="h-5 w-full" />}
@@ -208,7 +214,7 @@ const WeatherDisplay: React.FC = () => {
       {!loading && !error && !weatherData && (
         <>
           <AlertCircle className="h-4 w-4 mr-1 text-yellow-500 shrink-0" />
-          <span>Weather data pending...</span>
+          <span className="truncate">Weather data pending...</span>
         </>
       )}
     </div>
