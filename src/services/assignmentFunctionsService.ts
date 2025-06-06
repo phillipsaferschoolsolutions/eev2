@@ -165,6 +165,7 @@ export interface PostPendingResponse {
 
 const BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/assignments';
 const ASSIGNMENTS_V2_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/assignmentsv2';
+const WIDGETS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/widgets';
 
 
 // --- Helper to get ID Token ---
@@ -394,12 +395,12 @@ export async function getAssignmentsByLocation(payload: ByLocationPayload, accou
 
 
 /**
- * 6. GET /header/:lat/:lng (This now uses ASSIGNMENTS_V2_BASE_URL)
+ * 6. GET /header/:lat/:lng (This now uses WIDGETS_BASE_URL)
  * Returns current weather + reverse-geolocation for user’s location.
  * Account header may or may not be needed depending on backend.
  */
 export async function getWeatherAndLocation(lat: number, lng: number, accountName?: string): Promise<WeatherLocationData | null> {
-    const result = await authedFetch<WeatherLocationData | undefined>(`${ASSIGNMENTS_V2_BASE_URL}/header/${lat}/${lng}`, {}, accountName);
+    const result = await authedFetch<WeatherLocationData | undefined>(`${WIDGETS_BASE_URL}/header/${lat}/${lng}`, {}, accountName);
     return result || null;
 }
 
