@@ -24,11 +24,11 @@ import { cn } from "@/lib/utils";
 import { useLayout } from "@/context/layout-context";
 import { getDistrictsForSuperAdmin, switchUserAccount } from "@/services/adminActionsService";
 import type { District } from "@/types/Admin";
-import { getWeatherAndLocation, type WeatherLocationData } from "@/services/assignmentFunctionsService"; // Added
+import { getWeatherAndLocation, type WeatherLocationData } from "@/services/assignmentFunctionsService";
 import { 
   Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check, Menu,
   LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon, Settings, FolderKanban, FileText,
-  Thermometer, AlertCircle, MapPin as LocationIcon // Added Thermometer, AlertCircle, LocationIcon
+  Thermometer, AlertCircle, MapPin as LocationIcon 
 } from "lucide-react";
 
 
@@ -133,26 +133,38 @@ const WeatherDisplay: React.FC = () => {
   const [weatherData, setWeatherData] = useState<WeatherLocationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { userProfile } = useAuth(); // Get userProfile for accountName
+  const { userProfile } = useAuth();
 
   useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    setError(null);
+
     if (typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
+          if (!isMounted) return;
           const { latitude, longitude } = position.coords;
           try {
-            // Pass userProfile.account if available, it's optional in getWeatherAndLocation
             const data = await getWeatherAndLocation(latitude, longitude, userProfile?.account);
-            setWeatherData(data);
-            setError(null);
+            if (isMounted) {
+              setWeatherData(data);
+              if (!data) {
+                // If API returns null/undefined without throwing, set a generic unavailable message
+                setError("Weather data service returned no data.");
+              }
+            }
           } catch (apiError: any) {
-            console.error("Failed to fetch weather data:", apiError);
-            setError("Weather unavailable");
+            if (isMounted) {
+              console.error("Failed to fetch weather data:", apiError);
+              setError("Weather API unavailable");
+            }
           } finally {
-            setLoading(false);
+            if (isMounted) setLoading(false);
           }
         },
         (geoError) => {
+          if (!isMounted) return;
           console.error("Geolocation error:", geoError);
           if (geoError.code === geoError.PERMISSION_DENIED) {
             setError("Location access denied");
@@ -161,39 +173,46 @@ const WeatherDisplay: React.FC = () => {
           }
           setLoading(false);
         },
-        { timeout: 10000 } // Optional: add a timeout
+        { timeout: 10000 }
       );
     } else {
-      setError("Geolocation not supported");
-      setLoading(false);
+      if (isMounted) {
+        setError("Geolocation not supported");
+        setLoading(false);
+      }
     }
-  }, [userProfile?.account]); // Re-fetch if account changes, though lat/long are primary drivers
+    return () => {
+      isMounted = false;
+    };
+  }, [userProfile?.account]);
 
-  if (loading) {
-    return <Skeleton className="h-5 w-28 hidden sm:block" />;
-  }
-
-  if (error) {
-    return (
-      <div className="hidden sm:flex items-center text-xs text-muted-foreground" title={error}>
-        <AlertCircle className="h-4 w-4 mr-1 text-destructive" />
-        <span>Weather N/A</span>
-      </div>
-    );
-  }
-
-  if (weatherData && weatherData.current && weatherData.name) {
-    return (
-      <div className="hidden sm:flex items-center text-xs text-muted-foreground gap-1.5" title={`${weatherData.current.weather?.[0]?.description || ''} in ${weatherData.name}`}>
-        <Thermometer className="h-4 w-4 text-primary" />
-        <span>{Math.round(weatherData.current.temp)}°C</span>
-        <LocationIcon className="h-4 w-4 text-primary" />
-        <span className="truncate max-w-[100px]">{weatherData.name}</span>
-      </div>
-    );
-  }
-
-  return null;
+  // Always render the container div, content changes based on state
+  // Use "min-w-[Xpx]" to reserve some space to prevent layout shifts
+  return (
+    <div className="flex items-center text-xs text-muted-foreground min-w-[120px] sm:min-w-[150px]" title={error || (weatherData ? `${weatherData.current?.weather?.[0]?.description || ''} in ${weatherData.name}` : "Weather information")}>
+      {loading && <Skeleton className="h-5 w-full" />}
+      {!loading && error && (
+        <>
+          <AlertCircle className="h-4 w-4 mr-1 text-destructive shrink-0" />
+          <span className="truncate">{error === "Weather API unavailable" || error === "Weather data service returned no data." ? "Weather N/A" : error}</span>
+        </>
+      )}
+      {!loading && !error && weatherData && weatherData.current && weatherData.name && (
+        <div className="flex items-center gap-1.5 truncate">
+          <Thermometer className="h-4 w-4 text-primary shrink-0" />
+          <span className="font-medium">{Math.round(weatherData.current.temp)}°C</span>
+          <LocationIcon className="h-4 w-4 text-primary shrink-0" />
+          <span className="truncate">{weatherData.name}</span>
+        </div>
+      )}
+      {!loading && !error && !weatherData && (
+        <>
+          <AlertCircle className="h-4 w-4 mr-1 text-yellow-500 shrink-0" />
+          <span>Weather data pending...</span>
+        </>
+      )}
+    </div>
+  );
 };
 
 
@@ -243,7 +262,7 @@ export function AppHeader({ navItems }: AppHeaderProps) {
   );
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 px-4 sm:px-6 backdrop-blur-sm">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 px-4 sm:px-6 backdrop-blur-sm shrink-0">
       {isMobileViewForLayout && (
          <Button variant="ghost" size="icon" onClick={toggleMobileSidebar} aria-label="Open menu">
            <Menu className="h-5 w-5" />
@@ -260,8 +279,8 @@ export function AppHeader({ navItems }: AppHeaderProps) {
         {layoutMode === "topNav" && !isMobileViewForLayout && renderTopNavItems()}
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3"> {/* Adjusted gap for weather */}
-        <WeatherDisplay /> {/* Added WeatherDisplay component */}
+      <div className="flex items-center gap-2">
+        <WeatherDisplay />
         <Button variant="ghost" size="icon" aria-label="Toggle Theme" onClick={() => setTheme(isDark ? "light" : "dark")}>
           <Sun className={cn("h-5 w-5 transition-all", isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100")} />
           <Moon className={cn("absolute h-5 w-5 transition-all", isDark ? "rotate-0 scale-100" : "rotate-90 scale-0")} />
@@ -306,4 +325,4 @@ export function AppHeader({ navItems }: AppHeaderProps) {
     </header>
   );
 }
-    
+
