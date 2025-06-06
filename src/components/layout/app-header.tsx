@@ -135,64 +135,89 @@ const WeatherDisplay: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const { userProfile } = useAuth();
 
+  console.log("[WeatherDisplay] Component mounting or re-rendering. Initial state: loading=", loading, "error=", error, "weatherData=", !!weatherData);
+
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
-    setError(null);
+    console.log("[WeatherDisplay] useEffect triggered. Account:", userProfile?.account);
 
-    if (!userProfile?.account) {
-      if (isMounted) {
-        setError("Account info unavailable");
-        setLoading(false);
+    const fetchWeather = async () => {
+      if (!isMounted) return;
+      setLoading(true);
+      setError(null);
+      console.log("[WeatherDisplay] useEffect - Setting loading to true, error to null.");
+
+      if (!userProfile?.account) {
+        if (isMounted) {
+          setError("Account info unavailable for weather");
+          setLoading(false);
+          console.log("[WeatherDisplay] useEffect - Error: Account info unavailable. Loading set to false.");
+        }
+        return;
       }
-      return;
-    }
 
-    if (typeof window !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          if (!isMounted) return;
-          const { latitude, longitude } = position.coords;
-          try {
-            const data = await getWeatherAndLocation(latitude, longitude, userProfile.account);
-            if (isMounted) {
-              if (data && data.name && data.current) { // Check for essential data
-                setWeatherData(data);
-              } else {
-                setError("Weather data incomplete"); // More specific error if API returns partial/no data
+      if (typeof window !== 'undefined' && navigator.geolocation) {
+        console.log("[WeatherDisplay] useEffect - Attempting geolocation.");
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            if (!isMounted) return;
+            const { latitude, longitude } = position.coords;
+            console.log("[WeatherDisplay] useEffect - Geolocation success. Lat:", latitude, "Lng:", longitude);
+            try {
+              const data = await getWeatherAndLocation(latitude, longitude, userProfile.account);
+              if (isMounted) {
+                if (data && data.name && data.current) {
+                  setWeatherData(data);
+                  console.log("[WeatherDisplay] useEffect - API success. WeatherData set:", data);
+                } else {
+                  setError("Weather data incomplete from API");
+                  console.log("[WeatherDisplay] useEffect - API returned incomplete data.");
+                }
+                setLoading(false);
+                console.log("[WeatherDisplay] useEffect - Loading set to false after API call.");
+              }
+            } catch (apiError: any) {
+              if (isMounted) {
+                console.error("[WeatherDisplay] useEffect - API call failed:", apiError);
+                setError(apiError.message || "Weather API error");
+                setLoading(false);
+                console.log("[WeatherDisplay] useEffect - Error set due to API failure. Loading set to false.");
               }
             }
-          } catch (apiError: any) {
-            if (isMounted) {
-              console.error("Failed to fetch weather data:", apiError);
-              setError(apiError.message || "Weather API error");
+          },
+          (geoError) => {
+            if (!isMounted) return;
+            console.error("[WeatherDisplay] useEffect - Geolocation error:", geoError);
+            let geoErrorMessage = "Location unavailable";
+            if (geoError.code === geoError.PERMISSION_DENIED) {
+              geoErrorMessage = "Location access denied";
             }
-          } finally {
-            if (isMounted) setLoading(false);
-          }
-        },
-        (geoError) => {
-          if (!isMounted) return;
-          console.error("Geolocation error:", geoError);
-          let geoErrorMessage = "Location unavailable";
-          if (geoError.code === geoError.PERMISSION_DENIED) {
-            geoErrorMessage = "Location access denied";
-          }
-          setError(geoErrorMessage);
+            setError(geoErrorMessage);
+            setLoading(false);
+            console.log("[WeatherDisplay] useEffect - Error set due to geolocation failure. Loading set to false.");
+          },
+          { timeout: 10000 }
+        );
+      } else {
+        if (isMounted) {
+          setError("Geolocation not supported");
           setLoading(false);
-        },
-        { timeout: 10000 }
-      );
-    } else {
-      if (isMounted) {
-        setError("Geolocation not supported");
-        setLoading(false);
+          console.log("[WeatherDisplay] useEffect - Geolocation not supported. Loading set to false.");
+        }
       }
-    }
-    return () => { isMounted = false; };
-  }, [userProfile?.account]); // Effect runs when account info changes
+    };
+
+    fetchWeather();
+
+    return () => {
+      console.log("[WeatherDisplay] useEffect cleanup. isMounted set to false.");
+      isMounted = false;
+    };
+  }, [userProfile?.account]);
+
 
   if (loading) {
+    console.log("[WeatherDisplay] Render: Loading state.");
     return (
       <div className="flex items-center justify-center text-xs min-w-[120px] sm:min-w-[150px] h-8 px-2 rounded" title="Loading weather...">
         <Skeleton className="h-5 w-full" />
@@ -201,20 +226,21 @@ const WeatherDisplay: React.FC = () => {
   }
 
   if (error) {
+    console.log("[WeatherDisplay] Render: Error state -", error);
     return (
       <div
-        data-testid="weather-widget-error" // For easier inspection
-        className="flex items-center justify-center text-xs min-w-[120px] sm:min-w-[150px] h-auto p-2 rounded bg-destructive/20 text-destructive border border-destructive/50" // More prominent error styling
-        title={`Weather Error: ${error || "Unknown weather error"}`}
+        data-testid="weather-widget-error"
+        className="flex items-center justify-center text-xs min-w-[120px] sm:min-w-[150px] h-auto p-2 rounded bg-destructive/20 text-destructive border border-destructive/50"
+        title={`Weather Error: ${error}`}
       >
         <AlertCircle className="h-4 w-4 mr-1.5 shrink-0" />
-        {/* Ensure error message is always visible, even if long initially */}
-        <span className="whitespace-normal break-words text-center">{error || "Unknown weather error"}</span>
+        <span className="whitespace-normal break-words text-center">{error}</span>
       </div>
     );
   }
 
   if (weatherData && weatherData.current && weatherData.name) {
+    console.log("[WeatherDisplay] Render: Success state with data.");
     return (
       <div
         className="flex items-center justify-center text-xs min-w-[120px] sm:min-w-[150px] h-8 px-2 rounded text-muted-foreground overflow-hidden"
@@ -231,8 +257,8 @@ const WeatherDisplay: React.FC = () => {
       </div>
     );
   }
-
-  // Fallback if no error, not loading, but no valid weather data
+  
+  console.log("[WeatherDisplay] Render: Fallback N/A state.");
   return (
     <div
       className="flex items-center justify-center text-xs min-w-[120px] sm:min-w-[150px] h-8 px-2 rounded text-muted-foreground bg-yellow-500/10 border border-yellow-500/50"
@@ -243,6 +269,7 @@ const WeatherDisplay: React.FC = () => {
     </div>
   );
 };
+
 
 interface AppHeaderProps {
   navItems: NavItem[];
