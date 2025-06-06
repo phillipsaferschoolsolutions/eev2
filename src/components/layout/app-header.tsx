@@ -24,15 +24,17 @@ import { cn } from "@/lib/utils";
 import { useLayout } from "@/context/layout-context";
 import { getDistrictsForSuperAdmin, switchUserAccount } from "@/services/adminActionsService";
 import type { District } from "@/types/Admin";
+import { getWeatherAndLocation, type WeatherLocationData } from "@/services/assignmentFunctionsService"; // Added
 import { 
   Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check, Menu,
-  LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon, Settings, FolderKanban, FileText
+  LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon, Settings, FolderKanban, FileText,
+  Thermometer, AlertCircle, MapPin as LocationIcon // Added Thermometer, AlertCircle, LocationIcon
 } from "lucide-react";
 
 
 // Icon mapping (consistent with PageShell for navItems)
 const iconMap: { [key: string]: React.ElementType } = {
-  LayoutDashboard, Map: MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare: MessageSquareIcon, Settings, FolderKanban, FileText, // Added FileText
+  LayoutDashboard, Map: MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare: MessageSquareIcon, Settings, FolderKanban, FileText,
   Default: LayoutDashboard,
 };
 
@@ -54,7 +56,7 @@ const AccountSwitcher: React.FC = () => {
   useEffect(() => {
     if (isSuperAdmin && userProfile?.account) {
       setIsLoadingDistricts(true);
-      getDistrictsForSuperAdmin(userProfile.account) // Pass current account for header
+      getDistrictsForSuperAdmin(userProfile.account) 
         .then(fetchedDistricts => {
           setDistricts(Array.isArray(fetchedDistricts) ? fetchedDistricts : []);
         })
@@ -79,14 +81,12 @@ const AccountSwitcher: React.FC = () => {
         toast({ variant: "destructive", title: "Switch Error", description: "No district ID selected." });
         return;
     }
-    if (selectedDistrictId === userProfile.account) return; // Already selected this account
+    if (selectedDistrictId === userProfile.account) return; 
 
     setIsSwitchingAccount(true);
     try {
-      // The backend expects the ID in the payload's 'account' field.
-      // The second argument to switchUserAccount is the current account for the header.
       await switchUserAccount(selectedDistrictId, userProfile.account); 
-      updateCurrentAccountInProfile(selectedDistrictId); // Update context with the ID
+      updateCurrentAccountInProfile(selectedDistrictId); 
       toast({ title: "Account Switched", description: `Successfully switched to account ID: ${selectedDistrictId}. Reloading...` });
       setTimeout(() => window.location.reload(), 1500);
     } catch (err: any) {
@@ -117,7 +117,7 @@ const AccountSwitcher: React.FC = () => {
               className="cursor-pointer" 
               disabled={isSwitchingAccount || district.id === userProfile?.account}
             >
-              {district.id} {/* Display district ID */}
+              {district.id} 
               {district.id === userProfile?.account && <Check className="ml-auto h-4 w-4" />}
             </DropdownMenuRadioItem>
           ))}
@@ -128,6 +128,74 @@ const AccountSwitcher: React.FC = () => {
     </DropdownMenuGroup>
   );
 };
+
+const WeatherDisplay: React.FC = () => {
+  const [weatherData, setWeatherData] = useState<WeatherLocationData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { userProfile } = useAuth(); // Get userProfile for accountName
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+            // Pass userProfile.account if available, it's optional in getWeatherAndLocation
+            const data = await getWeatherAndLocation(latitude, longitude, userProfile?.account);
+            setWeatherData(data);
+            setError(null);
+          } catch (apiError: any) {
+            console.error("Failed to fetch weather data:", apiError);
+            setError("Weather unavailable");
+          } finally {
+            setLoading(false);
+          }
+        },
+        (geoError) => {
+          console.error("Geolocation error:", geoError);
+          if (geoError.code === geoError.PERMISSION_DENIED) {
+            setError("Location access denied");
+          } else {
+            setError("Location unavailable");
+          }
+          setLoading(false);
+        },
+        { timeout: 10000 } // Optional: add a timeout
+      );
+    } else {
+      setError("Geolocation not supported");
+      setLoading(false);
+    }
+  }, [userProfile?.account]); // Re-fetch if account changes, though lat/long are primary drivers
+
+  if (loading) {
+    return <Skeleton className="h-5 w-28 hidden sm:block" />;
+  }
+
+  if (error) {
+    return (
+      <div className="hidden sm:flex items-center text-xs text-muted-foreground" title={error}>
+        <AlertCircle className="h-4 w-4 mr-1 text-destructive" />
+        <span>Weather N/A</span>
+      </div>
+    );
+  }
+
+  if (weatherData && weatherData.current && weatherData.name) {
+    return (
+      <div className="hidden sm:flex items-center text-xs text-muted-foreground gap-1.5" title={`${weatherData.current.weather?.[0]?.description || ''} in ${weatherData.name}`}>
+        <Thermometer className="h-4 w-4 text-primary" />
+        <span>{Math.round(weatherData.current.temp)}°C</span>
+        <LocationIcon className="h-4 w-4 text-primary" />
+        <span className="truncate max-w-[100px]">{weatherData.name}</span>
+      </div>
+    );
+  }
+
+  return null;
+};
+
 
 interface AppHeaderProps {
   navItems: NavItem[];
@@ -140,7 +208,7 @@ export function AppHeader({ navItems }: AppHeaderProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { layoutMode, isMobileViewForLayout } = useLayout();
-  const { toggleSidebar: toggleMobileSidebar } = useSidebar(); // For mobile sheet
+  const { toggleSidebar: toggleMobileSidebar } = useSidebar(); 
   const pathname = usePathname();
 
   const isDark = mounted && resolvedTheme === "dark";
@@ -176,13 +244,11 @@ export function AppHeader({ navItems }: AppHeaderProps) {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 px-4 sm:px-6 backdrop-blur-sm">
-      {/* Mobile Sidebar Trigger: Always show for mobile, toggle sheet */}
       {isMobileViewForLayout && (
          <Button variant="ghost" size="icon" onClick={toggleMobileSidebar} aria-label="Open menu">
            <Menu className="h-5 w-5" />
          </Button>
       )}
-      {/* Desktop Sidebar Trigger: Only for standard layout and not mobile */}
       {layoutMode === "standard" && !isMobileViewForLayout && <SidebarTrigger className="hidden md:flex" />}
 
       <div className="flex-1">
@@ -194,7 +260,8 @@ export function AppHeader({ navItems }: AppHeaderProps) {
         {layoutMode === "topNav" && !isMobileViewForLayout && renderTopNavItems()}
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-3"> {/* Adjusted gap for weather */}
+        <WeatherDisplay /> {/* Added WeatherDisplay component */}
         <Button variant="ghost" size="icon" aria-label="Toggle Theme" onClick={() => setTheme(isDark ? "light" : "dark")}>
           <Sun className={cn("h-5 w-5 transition-all", isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100")} />
           <Moon className={cn("absolute h-5 w-5 transition-all", isDark ? "rotate-0 scale-100" : "rotate-90 scale-0")} />
@@ -239,3 +306,4 @@ export function AppHeader({ navItems }: AppHeaderProps) {
     </header>
   );
 }
+    
