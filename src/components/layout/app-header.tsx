@@ -131,41 +131,41 @@ const AccountSwitcher: React.FC = () => {
 
 const WeatherDisplay: React.FC = () => {
   const [weatherData, setWeatherData] = useState<WeatherLocationData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Start loading true
   const [error, setError] = useState<string | null>(null);
   const { userProfile } = useAuth();
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
-    setError(null);
+    setLoading(true); // Ensure loading is true at the start of each effect run relevant to fetching
+    setError(null); // Reset error at the start
+
+    if (!userProfile?.account) {
+      if (isMounted) {
+        setError("Account info needed for weather");
+        setLoading(false);
+      }
+      return;
+    }
 
     if (typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           if (!isMounted) return;
 
-          if (!userProfile?.account) {
-            if (isMounted) {
-              setError("Account info unavailable for weather");
-              setLoading(false);
-            }
-            return;
-          }
-
           const { latitude, longitude } = position.coords;
           try {
             const data = await getWeatherAndLocation(latitude, longitude, userProfile.account);
             if (isMounted) {
               setWeatherData(data);
-              if (!data) {
-                setError("Weather data service returned no data.");
+              if (!data) { // If API call is successful but returns no data
+                setError("Weather data unavailable");
               }
             }
           } catch (apiError: any) {
             if (isMounted) {
               console.error("Failed to fetch weather data:", apiError);
-              setError("Weather API unavailable");
+              setError(apiError.message || "Weather API error"); // Use the actual error message from the caught error
             }
           } finally {
             if (isMounted) setLoading(false);
@@ -174,11 +174,11 @@ const WeatherDisplay: React.FC = () => {
         (geoError) => {
           if (!isMounted) return;
           console.error("Geolocation error:", geoError);
+          let geoErrorMessage = "Location unavailable";
           if (geoError.code === geoError.PERMISSION_DENIED) {
-            setError("Location access denied");
-          } else {
-            setError("Location unavailable");
+            geoErrorMessage = "Location access denied";
           }
+          setError(geoErrorMessage);
           setLoading(false);
         },
         { timeout: 10000 }
@@ -192,31 +192,45 @@ const WeatherDisplay: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [userProfile?.account]); // Added userProfile?.account as dependency
+  }, [userProfile?.account]);
 
-  return (
-    <div className="flex items-center text-xs text-muted-foreground min-w-[120px] sm:min-w-[150px]" title={error || (weatherData ? `${weatherData.current?.weather?.[0]?.description || ''} in ${weatherData.name}` : "Weather information")}>
-      {loading && <Skeleton className="h-5 w-full" />}
-      {!loading && error && (
-        <>
-          <AlertCircle className="h-4 w-4 mr-1 text-destructive shrink-0" />
-          <span className="truncate">{error === "Weather API unavailable" || error === "Weather data service returned no data." ? "Weather N/A" : error}</span>
-        </>
-      )}
-      {!loading && !error && weatherData && weatherData.current && weatherData.name && (
+  const baseClasses = "flex items-center text-xs min-w-[120px] sm:min-w-[150px] h-5 px-1 rounded";
+
+  if (loading) {
+    return (
+      <div className={cn(baseClasses, "text-muted-foreground")}>
+        <Skeleton className="h-full w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={cn(baseClasses, "text-destructive bg-destructive/10")} title={error}>
+        <AlertCircle className="h-4 w-4 mr-1 shrink-0" />
+        <span className="whitespace-nowrap overflow-hidden text-ellipsis">{error}</span>
+      </div>
+    );
+  }
+  
+  if (weatherData && weatherData.current && weatherData.name) {
+    return (
+      <div className={cn(baseClasses, "text-muted-foreground")} title={weatherData.current?.weather?.[0]?.description ? `${weatherData.current.weather[0].description} in ${weatherData.name}` : weatherData.name}>
         <div className="flex items-center gap-1.5 truncate">
           <Thermometer className="h-4 w-4 text-primary shrink-0" />
           <span className="font-medium">{Math.round(weatherData.current.temp)}°C</span>
           <LocationIcon className="h-4 w-4 text-primary shrink-0" />
           <span className="truncate">{weatherData.name}</span>
         </div>
-      )}
-      {!loading && !error && !weatherData && (
-        <>
-          <AlertCircle className="h-4 w-4 mr-1 text-yellow-500 shrink-0" />
-          <span className="truncate">Weather data pending...</span>
-        </>
-      )}
+      </div>
+    );
+  }
+
+  // Fallback if not loading, no error, but no data (e.g. API returned null successfully or data is incomplete)
+  return (
+     <div className={cn(baseClasses, "text-muted-foreground")} title="Weather data is currently not available.">
+        <AlertCircle className="h-4 w-4 mr-1 text-yellow-500 shrink-0" />
+        <span>Weather: N/A</span>
     </div>
   );
 };
@@ -331,4 +345,4 @@ export function AppHeader({ navItems }: AppHeaderProps) {
     </header>
   );
 }
-
+    
