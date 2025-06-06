@@ -131,18 +131,18 @@ const AccountSwitcher: React.FC = () => {
 
 const WeatherDisplay: React.FC = () => {
   const [weatherData, setWeatherData] = useState<WeatherLocationData | null>(null);
-  const [loading, setLoading] = useState(true); // Start loading true
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { userProfile } = useAuth();
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true); // Ensure loading is true at the start of each effect run relevant to fetching
-    setError(null); // Reset error at the start
+    setLoading(true);
+    setError(null);
 
     if (!userProfile?.account) {
       if (isMounted) {
-        setError("Account info needed for weather");
+        setError("Account info unavailable");
         setLoading(false);
       }
       return;
@@ -152,20 +152,20 @@ const WeatherDisplay: React.FC = () => {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           if (!isMounted) return;
-
           const { latitude, longitude } = position.coords;
           try {
             const data = await getWeatherAndLocation(latitude, longitude, userProfile.account);
             if (isMounted) {
-              setWeatherData(data);
-              if (!data) { // If API call is successful but returns no data
-                setError("Weather data unavailable");
+              if (data && data.name && data.current) { // Check for essential data
+                setWeatherData(data);
+              } else {
+                setError("Weather data incomplete"); // More specific error if API returns partial/no data
               }
             }
           } catch (apiError: any) {
             if (isMounted) {
               console.error("Failed to fetch weather data:", apiError);
-              setError(apiError.message || "Weather API error"); // Use the actual error message from the caught error
+              setError(apiError.message || "Weather API error");
             }
           } finally {
             if (isMounted) setLoading(false);
@@ -189,52 +189,60 @@ const WeatherDisplay: React.FC = () => {
         setLoading(false);
       }
     }
-    return () => {
-      isMounted = false;
-    };
-  }, [userProfile?.account]);
-
-  const baseClasses = "flex items-center text-xs min-w-[120px] sm:min-w-[150px] h-5 px-1 rounded";
+    return () => { isMounted = false; };
+  }, [userProfile?.account]); // Effect runs when account info changes
 
   if (loading) {
     return (
-      <div className={cn(baseClasses, "text-muted-foreground")}>
-        <Skeleton className="h-full w-full" />
+      <div className="flex items-center justify-center text-xs min-w-[120px] sm:min-w-[150px] h-8 px-2 rounded" title="Loading weather...">
+        <Skeleton className="h-5 w-full" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className={cn(baseClasses, "text-destructive bg-destructive/10")} title={error}>
-        <AlertCircle className="h-4 w-4 mr-1 shrink-0" />
-        <span className="whitespace-nowrap overflow-hidden text-ellipsis">{error}</span>
+      <div
+        data-testid="weather-widget-error" // For easier inspection
+        className="flex items-center justify-center text-xs min-w-[120px] sm:min-w-[150px] h-auto p-2 rounded bg-destructive/20 text-destructive border border-destructive/50" // More prominent error styling
+        title={`Weather Error: ${error || "Unknown weather error"}`}
+      >
+        <AlertCircle className="h-4 w-4 mr-1.5 shrink-0" />
+        {/* Ensure error message is always visible, even if long initially */}
+        <span className="whitespace-normal break-words text-center">{error || "Unknown weather error"}</span>
       </div>
     );
   }
-  
+
   if (weatherData && weatherData.current && weatherData.name) {
     return (
-      <div className={cn(baseClasses, "text-muted-foreground")} title={weatherData.current?.weather?.[0]?.description ? `${weatherData.current.weather[0].description} in ${weatherData.name}` : weatherData.name}>
-        <div className="flex items-center gap-1.5 truncate">
-          <Thermometer className="h-4 w-4 text-primary shrink-0" />
-          <span className="font-medium">{Math.round(weatherData.current.temp)}°C</span>
-          <LocationIcon className="h-4 w-4 text-primary shrink-0" />
-          <span className="truncate">{weatherData.name}</span>
+      <div
+        className="flex items-center justify-center text-xs min-w-[120px] sm:min-w-[150px] h-8 px-2 rounded text-muted-foreground overflow-hidden"
+        title={`${weatherData.current?.weather?.[0]?.description ? `${weatherData.current.weather[0].description} in ` : ''}${weatherData.name}`}
+      >
+        <div className="flex items-center gap-1.5 w-full truncate">
+          <Thermometer className="h-4 w-4 text-primary shrink-0" aria-label="Temperature" />
+          <span className="font-medium text-foreground">{Math.round(weatherData.current.temp)}°C</span>
+          <span className="flex items-center gap-0.5 truncate">
+             <LocationIcon className="h-4 w-4 text-primary shrink-0" aria-label="Location" />
+             <span className="truncate text-foreground">{weatherData.name}</span>
+          </span>
         </div>
       </div>
     );
   }
 
-  // Fallback if not loading, no error, but no data (e.g. API returned null successfully or data is incomplete)
+  // Fallback if no error, not loading, but no valid weather data
   return (
-     <div className={cn(baseClasses, "text-muted-foreground")} title="Weather data is currently not available.">
-        <AlertCircle className="h-4 w-4 mr-1 text-yellow-500 shrink-0" />
-        <span>Weather: N/A</span>
+    <div
+      className="flex items-center justify-center text-xs min-w-[120px] sm:min-w-[150px] h-8 px-2 rounded text-muted-foreground bg-yellow-500/10 border border-yellow-500/50"
+      title="Weather data is currently not available."
+    >
+       <AlertCircle className="h-4 w-4 mr-1.5 text-yellow-600 shrink-0" />
+       <span className="whitespace-nowrap overflow-hidden text-ellipsis">Weather: N/A</span>
     </div>
   );
 };
-
 
 interface AppHeaderProps {
   navItems: NavItem[];
