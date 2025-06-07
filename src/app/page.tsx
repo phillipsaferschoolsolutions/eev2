@@ -30,7 +30,7 @@ import {
   Radiation,
   MessageSquare,
   Zap,
-  Award, 
+  Award,
   Flame, 
   Sun, // Example icon for clear sky
 } from "lucide-react";
@@ -39,7 +39,7 @@ import { useAuth } from "@/context/auth-context";
 import {
   getAssignmentListMetadata,
   getAssignmentById,
-  type AssignmentMetadata,
+  type AssignmentMetadata, WeatherLocationData,
   type AssignmentWithPermissions,
 } from "@/services/assignmentFunctionsService";
 import {
@@ -240,7 +240,10 @@ export default function DashboardPage() {
   const [isLoadingLastCompletions, setIsLoadingLastCompletions] = useState(true);
   const [lastCompletionsError, setLastCompletionsError] = useState<string | null>(null);
 
-  const [weatherData, setWeatherData] = useState<any>(null); // Use a more specific type if available
+  const [userLat, setUserLat] = useState<number | null>(null);
+  const [userLng, setUserLng] = useState<number | null>(null);
+
+  const [weatherData, setWeatherData] = useState<WeatherLocationData | null>(null);
   const [isLoadingWeather, setIsLoadingWeather] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
@@ -290,7 +293,7 @@ export default function DashboardPage() {
       return {
         opacity: 1,
         y: 0,
-        scale: 1,
+        scale: 1, // Assuming a base scale of 1
         transition: {
           delay: index * delayFactor,
           duration: duration,
@@ -314,7 +317,7 @@ export default function DashboardPage() {
         fetchPexelsImageURL(pexelsQuery, "landscape")
           .then(url => setHeroImageUrl(url))
           .catch(err => {
-            console.error("Failed to fetch Pexels hero image:", err);
+            console.error("Failed to fetch Pexels hero image:", err); // Log error
             setHeroImageUrl(null); 
           });
       } else {
@@ -362,7 +365,7 @@ export default function DashboardPage() {
     if (userProfile?.account) {
         getAssignmentListMetadata(userProfile.account) 
         .then((data) => {
-          setLastCompletionsAssignments(data || []);
+          setLastCompletionsAssignments(data || []); // Ensure it's an array
         })
         .catch((err) => console.error("Error fetching assignment list for last completions:", err));
     }
@@ -448,21 +451,39 @@ export default function DashboardPage() {
     }
   }, [userProfile?.account, selectedAssignmentForCompletions, lastCompletionsPeriod, isClientMounted, authLoading, profileLoading]);
 
+  // Geolocation effect to get user's location
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLat(position.coords.latitude);
+          setUserLng(position.coords.longitude);
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          // Optionally set a default location or show a message
+          setWeatherError("Could not get your location for weather.");
+        }
+      );
+    } else {
+      setWeatherError("Geolocation is not supported by your browser.");
+    }
+  }, []); // Run only once on mount
+
   // Fetch Weather Data
   useEffect(() => {
     const loadWeather = async () => {
       setIsLoadingWeather(true);
       setWeatherError(null);
       try {
-        const data = await fetchWeather(); // Call your weather fetching service
+        const data = await fetchWeather(userLat!, userLng!); // Use non-null assertion as we check below
         setWeatherData(data);
       } catch (err) {
         setWeatherError("Could not fetch weather data.");
-        console.error("Weather fetch error:", err);
       } finally { setIsLoadingWeather(false); }
     };
-    loadWeather();
-  }, []); // Fetch weather on component mount
+ if (userLat !== null && userLng !== null) { loadWeather(); }
+  }, [userLat, userLng]); // Fetch weather when location is available
 
   const renderLastCompletionsWidget = () => {
     const itemsToDisplay = lastCompletionsData || [];
@@ -566,7 +587,7 @@ export default function DashboardPage() {
     );
   };
 
-  const renderStreakWidget = () => {
+ const renderStreakWidget = () => {
     if (isLoadingStreak) {
       return (
         <div className="space-y-3 p-4 text-center flex flex-col items-center justify-center h-full">
@@ -692,45 +713,79 @@ export default function DashboardPage() {
     );
   };
 
-  // --- New Weather Widget Card ---
- const renderWeatherWidget = () => {
-    if (isLoadingWeather) {
+ // --- New Weather Widget Card ---
+ const renderWeatherWidget = useCallback(() => {
+    if (!userLat || !userLng) {
+      return (
+        <Card className="h-full flex flex-col justify-center items-center p-4 text-center">
+            {weatherError ? (
+                <Alert variant="warning"><Info className="h-4 w-4" /><AlertTitle>Location Needed</AlertTitle><AlertDescription>{weatherError} Please enable location services in your browser.</AlertDescription></Alert>
+            ) : (
+                 <>
+                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                    <CardDescription>Getting your location for weather...</CardDescription>
+                </>
+            )}
+        </Card>
+      );
+    }
+
+    if (isLoadingWeather && (!weatherData && !weatherError)) {
  return (
       <Card className="h-full flex flex-col justify-center items-center p-4"><Skeleton className="h-32 w-full"/></Card>
  )
     }
 
-    if (weatherError) {
+    if (weatherError && !isLoadingWeather) {
       return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Weather Error</AlertTitle><AlertDescription>{weatherError}</AlertDescription></Alert>;
     }
-    if (!weatherData) {
-      return <p className="text-sm text-muted-foreground text-center p-4">Weather data unavailable.</p>;
+    if (!weatherData && !isLoadingWeather) {
+      return <p className="text-sm text-muted-foreground text-center p-4">Weather data unavailable after loading attempt.</p>;
     }
-
-    // Assuming weatherData has a structure like { name: string, main: { temp: number, feels_like: number, humidity: number }, weather: [{ description: string, icon: string }], wind: { speed: number } }
+    
+    // Ensure weatherData and its nested properties are accessed safely
     return (
       <Card className="h-full flex flex-col justify-between items-center p-4 text-center">
-        <CardHeader className="p-0 pb-3">
-           {weatherData.weather && weatherData.weather[0] && weatherData.weather[0].icon ? (
-             <img src={`http://openweathermap.org/img/wn/${weatherData.weather[0].icon}@2x.png`} alt={weatherData.weather[0].description} className="h-14 w-14 mx-auto" />
+        <CardHeader className="p-0 pb-2">
+           {weatherData?.current?.weather && weatherData.current.weather[0]?.icon ? (
+             <img src={`http://openweathermap.org/img/wn/${weatherData.current.weather[0].icon}@2x.png`} alt={weatherData.current.weather[0].description || 'Weather Icon'} className="h-16 w-16 mx-auto" />
            ) : (
              <Cloud className="h-12 w-12 text-blue-500 mx-auto" />
            )}
         </CardHeader>
         <CardContent className="p-0 flex-grow">
           <CardTitle className="text-2xl font-bold">
-             {weatherData.main && weatherData.main.temp ? `${Math.round(weatherData.main.temp)}°F` : '--°'}
+             {weatherData?.current?.temp ? `${Math.round(weatherData.current.temp)}°F` : '--°'}
           </CardTitle>
-          <CardDescription className="text-sm capitalize">{weatherData.weather && weatherData.weather[0] && weatherData.weather[0].description ? weatherData.weather[0].description : 'N/A'}</CardDescription>
-           {weatherData.name && <p className="text-xs text-muted-foreground mt-1">{weatherData.name}</p>}
+          <CardDescription className="text-sm capitalize">{weatherData?.current?.weather && weatherData.current.weather[0]?.description ? weatherData.current.weather[0].description : 'N/A'}</CardDescription>
+           {weatherData?.name && <p className="text-sm font-medium mt-0.5">{weatherData.name}</p>}
            {weatherData.main && weatherData.main.feels_like && <p className="text-xs text-muted-foreground">Feels like: {Math.round(weatherData.main.feels_like)}°F</p>}
            {weatherData.main && weatherData.main.humidity && weatherData.wind && weatherData.wind.speed && (
              <p className="text-xs text-muted-foreground mt-0.5">Humidity: {weatherData.main.humidity}% | Wind: {Math.round(weatherData.wind.speed)} mph</p>
            )}
+
+           {/* Simple 5-Day Forecast - Assuming weatherData.daily exists and is an array of forecast items */}
+           {/* This is a placeholder; the exact structure depends on the API response */}
+           {/* weatherData?.daily && Array.isArray(weatherData.daily) && weatherData.daily.length > 0 && (
+               <div className="mt-4 border-t pt-3">
+                   <h5 className="text-xs font-semibold mb-2">5-Day Forecast:</h5>
+                   <div className="grid grid-cols-5 gap-2 text-xs">
+                       {weatherData.daily.slice(0, 5).map((day, index) => (
+                           <div key={index} className="flex flex-col items-center">
+                               <p>{new Date(day.dt * 1000).toLocaleDateString('en-US', { weekday: 'short' })}</p>
+                               {day.weather && day.weather[0] && day.weather[0].icon && (
+                                   <img src={`http://openweathermap.org/img/wn/${day.weather[0].icon}@2x.png`} alt={day.weather[0].description} className="h-8 w-8" />
+                               )}
+                               <p>{Math.round(day.temp.day)}°</p>
+                           </div>
+                       ))}
+                   </div>
+               </div>
+           ) */}
         </CardContent>
       </Card>
     );
-  };
+ }, [isLoadingWeather, weatherError, weatherData, userLat, userLng]);
 
 
 

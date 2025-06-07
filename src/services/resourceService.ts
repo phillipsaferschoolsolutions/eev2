@@ -27,7 +27,7 @@ async function getIdToken(): Promise<string | null> {
 async function authedFetch<T>(
   fullUrl: string,
   options: RequestInit = {},
-  accountId?: string
+  account?: string
 ): Promise<T> {
   const token = await getIdToken();
   const headers = new Headers(options.headers || {});
@@ -38,11 +38,11 @@ async function authedFetch<T>(
     console.warn(`[CRITICAL] authedFetch (resourceService): No Authorization token available for endpoint: ${fullUrl}.`);
   }
 
-  const trimmedAccountId = accountId?.trim();
-  if (trimmedAccountId) {
-    headers.set('account', trimmedAccountId);
+  const trimmedaccount = account?.trim();
+  if (trimmedaccount) {
+    headers.set('account', trimmedaccount);
   } else {
-     console.warn(`[CRITICAL] authedFetch (resourceService): 'account' header NOT SET for URL: ${fullUrl} because accountId parameter was: '${accountId}'. This may cause API errors.`);
+     console.warn(`[CRITICAL] authedFetch (resourceService): 'account' header NOT SET for URL: ${fullUrl} because account parameter was: '${account}'. This may cause API errors.`);
   }
 
   // Automatically set Content-Type for non-FormData POST/PUT/PATCH etc.
@@ -92,22 +92,22 @@ async function authedFetch<T>(
  * Uploads a new resource document.
  * The backend should handle file storage and Firestore metadata creation.
  * @param formData FormData containing the file and metadata (name, description, tags).
- * @param accountId The account ID for associating the resource.
+ * @param account The account ID for associating the resource.
  */
-export async function uploadResourceDocument(formData: FormData, accountId: string): Promise<ResourceDocument> {
+export async function uploadResourceDocument(formData: FormData, account: string): Promise<ResourceDocument> {
   // The backend will extract metadata from formData fields if needed.
   return authedFetch<ResourceDocument>(`${RESOURCES_BASE_URL}/upload`, { // Changed to /upload
     method: 'POST',
     body: formData, // FormData automatically sets Content-Type to multipart/form-data
-  }, accountId);
+  }, account);
 }
 
 /**
  * Fetches all resource documents for a given account.
- * @param accountId The account ID to filter resources by.
+ * @param account The account ID to filter resources by.
  */
-export async function getResourceDocuments(accountId: string): Promise<ResourceDocument[]> {
-  const result = await authedFetch<ResourceDocument[] | undefined>(`${RESOURCES_BASE_URL}/`, {}, accountId);
+export async function getResourceDocuments(account: string): Promise<ResourceDocument[]> {
+  const result = await authedFetch<ResourceDocument[] | undefined>(`${RESOURCES_BASE_URL}/`, {}, account);
   return result || [];
 }
 
@@ -116,10 +116,10 @@ export async function getResourceDocuments(accountId: string): Promise<ResourceD
  * The backend should handle audio file storage and update resource metadata.
  * @param resourceId The ID of the resource document.
  * @param audioBlob The audio data as a Blob.
- * @param accountId The account ID.
+ * @param account The account ID.
  * @returns The URL of the uploaded audio note or relevant metadata.
  */
-export async function addAudioNoteToResource(resourceId: string, audioBlob: Blob, accountId: string): Promise<string> {
+export async function addAudioNoteToResource(resourceId: string, audioBlob: Blob, account: string): Promise<string> {
   const formData = new FormData();
   formData.append('audioFile', audioBlob, `audio_note_${resourceId}.webm`);
   // The backend will use resourceId from the path parameter.
@@ -127,7 +127,7 @@ export async function addAudioNoteToResource(resourceId: string, audioBlob: Blob
   const response = await authedFetch<{ downloadURL: string }>(`${RESOURCES_BASE_URL}/${resourceId}/audio`, {
     method: 'POST',
     body: formData,
-  }, accountId);
+  }, account);
   return response.downloadURL; // Assuming backend returns the download URL
 }
 
@@ -135,32 +135,32 @@ export async function addAudioNoteToResource(resourceId: string, audioBlob: Blob
  * Updates the access control permissions for a resource document.
  * @param resourceId The ID of the resource document.
  * @param permissions The new access control payload.
- * @param accountId The account ID.
+ * @param account The account ID.
  */
-export async function updateResourcePermissions(resourceId: string, permissions: AccessControlPayload, accountId: string): Promise<void> {
+export async function updateResourcePermissions(resourceId: string, permissions: AccessControlPayload, account: string): Promise<void> {
   await authedFetch<void>(`${RESOURCES_BASE_URL}/${resourceId}/permissions`, {
     method: 'PUT',
     body: JSON.stringify(permissions),
-  }, accountId);
+  }, account);
 }
 
 /**
  * Triggers Gemini summary generation for a resource document.
  * The backend will fetch the document content, call Gemini, and save the summary.
  * @param resourceId The ID of the resource document.
- * @param accountId The account ID.
+ * @param account The account ID.
  * @returns The generated summary string.
  */
-export async function generateResourceSummary(resourceId: string, accountId: string): Promise<string> {
+export async function generateResourceSummary(resourceId: string, account: string): Promise<string> {
   // This endpoint on the backend will orchestrate fetching the document, calling Genkit, and saving.
   const response = await authedFetch<{ summary: string }>(`${RESOURCES_BASE_URL}/${resourceId}/generate-summary`, {
     method: 'POST', // POST request to trigger an action
-  }, accountId);
+  }, account);
   return response.summary;
 }
 
 // Placeholder for future functions:
-// export async function getResourceDocumentById(resourceId: string, accountId: string): Promise<ResourceDocument | null> { /* ... */ return null; }
-// export async function updateResourceDocument(resourceId: string, updates: Partial<ResourceDocument>, accountId: string): Promise<void> { /* ... */ }
-// export async function deleteResourceDocument(resourceId: string, accountId: string): Promise<void> { /* ... */ }
-// export async function getResourceDocumentVersions(resourceId: string, accountId: string): Promise<any[]> { /* ... */ return []; }
+// export async function getResourceDocumentById(resourceId: string, account: string): Promise<ResourceDocument | null> { /* ... */ return null; }
+// export async function updateResourceDocument(resourceId: string, updates: Partial<ResourceDocument>, account: string): Promise<void> { /* ... */ }
+// export async function deleteResourceDocument(resourceId: string, account: string): Promise<void> { /* ... */ }
+// export async function getResourceDocumentVersions(resourceId: string, account: string): Promise<any[]> { /* ... */ return []; }

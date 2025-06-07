@@ -2,7 +2,7 @@
 "use client";
 
 import type React from 'react';
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'; // Added useCallback
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { type User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -22,7 +22,7 @@ interface AuthContextType {
   loading: boolean; 
   profileLoading: boolean; 
   claimsLoading: boolean; 
-  updateCurrentAccountInProfile: (newAccount: string) => void; // New function
+  updateCurrentAccountInProfile: (newAccount: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,15 +47,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           if (currentUser.email) {
             const profile = await getUserProfile(currentUser.email);
-            console.log("[TEMP DEBUG AuthProvider] Fetched profile from userService:", JSON.stringify(profile, null, 2)); 
+            console.log("[AuthContext] Fetched profile:", profile); 
             setUserProfile(profile);
+            // *** FIX: Save accountName to localStorage ***
+            if (profile && profile.account) {
+              localStorage.setItem('accountName', profile.account);
+            } else {
+              // Handle case where profile or account is missing
+              localStorage.removeItem('accountName');
+            }
           } else {
-            console.warn("[TEMP DEBUG AuthProvider] No currentUser.email to fetch profile.");
+            console.warn("[AuthContext] No currentUser.email to fetch profile.");
             setUserProfile(null);
+            localStorage.removeItem('accountName');
           }
         } catch (error) {
           console.error("Failed to load user profile in AuthContext", error);
           setUserProfile(null);
+          localStorage.removeItem('accountName');
         } finally {
           setProfileLoading(false);
         }
@@ -72,10 +81,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setClaimsLoading(false);
         }
       } else {
+        // *** FIX: Clear user data and localStorage on logout ***
         setUserProfile(null);
         setCustomClaims(null);
         setProfileLoading(false);
         setClaimsLoading(false);
+        localStorage.removeItem('accountName');
+        localStorage.removeItem('user'); // Also clear user if stored
       }
     });
 
@@ -85,14 +97,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateCurrentAccountInProfile = useCallback((newAccount: string) => {
     setUserProfile(prevProfile => {
       if (prevProfile) {
-        return { ...prevProfile, account: newAccount };
+        const updatedProfile = { ...prevProfile, account: newAccount };
+        // *** FIX: Update localStorage when account is changed ***
+        localStorage.setItem('accountName', newAccount);
+        return updatedProfile;
       }
       return null;
     });
-    // Note: The original snippet updated localStorage.
-    // This context currently re-fetches profile on auth change/reload.
-    // If localStorage persistence for userProfile is desired between reloads and before Firebase syncs,
-    // that logic would be added here. For now, the page reload after account switch will trigger a fresh profile fetch.
   }, []);
 
   return (
