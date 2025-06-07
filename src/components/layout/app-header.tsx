@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -24,7 +23,6 @@ import { cn } from "@/lib/utils";
 import { useLayout } from "@/context/layout-context";
 import { getDistrictsForSuperAdmin, switchUserAccount } from "@/services/adminActionsService";
 import type { District } from "@/types/Admin";
-import { getWeatherAndLocation, type WeatherLocationData } from "@/services/assignmentFunctionsService";
 import { 
   Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check, Menu,
   LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon, Settings, FolderKanban, FileText,
@@ -129,153 +127,6 @@ const AccountSwitcher: React.FC = () => {
   );
 };
 
-const WeatherDisplay: React.FC = () => {
-  const [weatherData, setWeatherData] = useState<WeatherLocationData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { userProfile } = useAuth();
-
-  useEffect(() => {
-    let isMounted = true;
-    console.log("[WeatherDisplay] Effect triggered. isMounted:", isMounted, "Account:", userProfile?.account);
-
-    const fetchWeather = async () => {
-      if (!isMounted) {
-        console.log("[WeatherDisplay] fetchWeather: Unmounted, bailing.");
-        return;
-      }
-      
-      console.log("[WeatherDisplay] fetchWeather: Starting. Setting loading=true, error=null.");
-      setLoading(true);
-      setError(null);
-
-      if (!userProfile?.account) {
-        if (isMounted) {
-          console.error("[WeatherDisplay] fetchWeather: Error - Account info unavailable for weather.");
-          setError("Account info unavailable for weather");
-          setLoading(false);
-        }
-        return;
-      }
-
-      if (typeof window !== 'undefined' && navigator.geolocation) {
-        console.log("[WeatherDisplay] fetchWeather: Attempting geolocation.");
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            if (!isMounted) {
-              console.log("[WeatherDisplay] fetchWeather (geolocation success): Unmounted, bailing.");
-              return;
-            }
-            const { latitude, longitude } = position.coords;
-            console.log("[WeatherDisplay] fetchWeather: Geolocation success. Lat:", latitude, "Lng:", longitude);
-            try {
-              const data = await getWeatherAndLocation(latitude, longitude, userProfile.account);
-              if (isMounted) {
-                if (data && data.name && data.current) {
-                  setWeatherData(data);
-                  console.log("[WeatherDisplay] fetchWeather: API success. WeatherData set:", data);
-                } else {
-                  setError("Weather data incomplete from API");
-                  console.warn("[WeatherDisplay] fetchWeather: API returned incomplete data or null.");
-                }
-                setLoading(false);
-              }
-            } catch (apiError: any) {
-              if (isMounted) {
-                console.error("[WeatherDisplay] fetchWeather: API call failed:", apiError);
-                setError(apiError.message || "Weather API unavailable");
-                setLoading(false);
-              }
-            }
-          },
-          (geoError) => {
-            if (!isMounted) {
-              console.log("[WeatherDisplay] fetchWeather (geolocation error): Unmounted, bailing.");
-              return;
-            }
-            console.error("[WeatherDisplay] fetchWeather: Geolocation error:", geoError);
-            let geoErrorMessage = "Location error";
-            if (geoError.code === geoError.PERMISSION_DENIED) {
-              geoErrorMessage = "Location access denied";
-            }
-            setError(geoErrorMessage);
-            setLoading(false);
-          },
-          { timeout: 10000, enableHighAccuracy: false }
-        );
-      } else {
-        if (isMounted) {
-          console.warn("[WeatherDisplay] fetchWeather: Geolocation not supported by browser.");
-          setError("Geolocation not supported");
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchWeather();
-
-    return () => {
-      console.log("[WeatherDisplay] Effect cleanup. Setting isMounted to false.");
-      isMounted = false;
-    };
-  }, [userProfile?.account]); // userProfile.account is the key dependency
-
-  console.log("[WeatherDisplay] Render: loading=", loading, "error=", error, "weatherData=", !!weatherData);
-
-  if (loading) {
-    console.log("[WeatherDisplay] Render: Displaying Skeleton.");
-    return (
-      <div className="flex items-center justify-center text-xs min-w-[100px] sm:min-w-[120px] h-8 px-2 rounded" title="Loading weather...">
-        <Skeleton className="h-5 w-full" />
-      </div>
-    );
-  }
-
-  if (error) {
-    console.log("[WeatherDisplay] Render: Displaying Error -", error);
-    return (
-      <div
-        data-testid="weather-widget-error"
-        className="flex items-center justify-center text-xs min-w-[120px] sm:min-w-[150px] h-auto p-2 rounded bg-destructive/20 text-destructive border border-destructive/50"
-        title={`Weather Error: ${error}`}
-      >
-        <AlertCircle className="h-4 w-4 mr-1.5 shrink-0" />
-        <span className="whitespace-normal break-words text-center">{error}</span>
-      </div>
-    );
-  }
-
-  if (weatherData && weatherData.current && weatherData.name) {
-    console.log("[WeatherDisplay] Render: Displaying Weather Data.");
-    return (
-      <div
-        className="flex items-center justify-center text-xs min-w-[120px] sm:min-w-[150px] h-8 px-2 rounded text-muted-foreground overflow-hidden"
-        title={`${weatherData.current?.weather?.[0]?.description ? `${weatherData.current.weather[0].description} in ` : ''}${weatherData.name}`}
-      >
-        <div className="flex items-center gap-1.5 w-full truncate">
-          <Thermometer className="h-4 w-4 text-primary shrink-0" aria-label="Temperature" />
-          <span className="font-medium text-foreground">{Math.round(weatherData.current.temp)}°C</span>
-          <span className="flex items-center gap-0.5 truncate">
-             <LocationIcon className="h-4 w-4 text-primary shrink-0" aria-label="Location" />
-             <span className="truncate text-foreground">{weatherData.name}</span>
-          </span>
-        </div>
-      </div>
-    );
-  }
-  
-  console.log("[WeatherDisplay] Render: Displaying Fallback N/A state (e.g. API returned empty but no error).");
-  return (
-    <div
-      className="flex items-center justify-center text-xs min-w-[120px] sm:min-w-[150px] h-8 px-2 rounded text-yellow-700 bg-yellow-500/10 border border-yellow-500/50"
-      title="Weather data is currently unavailable."
-    >
-       <AlertCircle className="h-4 w-4 mr-1.5 shrink-0" />
-       <span className="whitespace-nowrap overflow-hidden text-ellipsis">Weather: Fetch N/A</span>
-    </div>
-  );
-};
-
 
 interface AppHeaderProps {
   navItems: NavItem[];
@@ -341,7 +192,6 @@ export function AppHeader({ navItems }: AppHeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <WeatherDisplay />
         <Button variant="ghost" size="icon" aria-label="Toggle Theme" onClick={() => setTheme(isDark ? "light" : "dark")}>
           <Sun className={cn("h-5 w-5 transition-all", isDark ? "-rotate-90 scale-0" : "rotate-0 scale-100")} />
           <Moon className={cn("absolute h-5 w-5 transition-all", isDark ? "rotate-0 scale-100" : "rotate-90 scale-0")} />

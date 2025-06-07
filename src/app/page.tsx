@@ -23,6 +23,7 @@ import {
   Activity,
   TrendingUp,
   Filter,
+  Cloud,
   AlertCircle,
   Loader2,
   ListOrdered,
@@ -30,7 +31,8 @@ import {
   MessageSquare,
   Zap,
   Award, 
-  Flame,
+  Flame, 
+  Sun, // Example icon for clear sky
 } from "lucide-react";
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
@@ -80,6 +82,7 @@ import { formatDisplayDateShort } from "@/lib/utils";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { fetchPexelsImageURL } from '@/services/pexelsService';
+import { fetchWeather } from '@/services/weatherService'; // Assuming a service for fetching weather
 import { Badge } from "@/components/ui/badge";
 
 const GOOGLE_NEWS_RSS_URL =
@@ -236,6 +239,10 @@ export default function DashboardPage() {
   const [lastCompletionsData, setLastCompletionsData] = useState<AssignmentCompletionStatus[] | null>(null);
   const [isLoadingLastCompletions, setIsLoadingLastCompletions] = useState(true);
   const [lastCompletionsError, setLastCompletionsError] = useState<string | null>(null);
+
+  const [weatherData, setWeatherData] = useState<any>(null); // Use a more specific type if available
+  const [isLoadingWeather, setIsLoadingWeather] = useState(true);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
 
 
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
@@ -441,6 +448,21 @@ export default function DashboardPage() {
     }
   }, [userProfile?.account, selectedAssignmentForCompletions, lastCompletionsPeriod, isClientMounted, authLoading, profileLoading]);
 
+  // Fetch Weather Data
+  useEffect(() => {
+    const loadWeather = async () => {
+      setIsLoadingWeather(true);
+      setWeatherError(null);
+      try {
+        const data = await fetchWeather(); // Call your weather fetching service
+        setWeatherData(data);
+      } catch (err) {
+        setWeatherError("Could not fetch weather data.");
+        console.error("Weather fetch error:", err);
+      } finally { setIsLoadingWeather(false); }
+    };
+    loadWeather();
+  }, []); // Fetch weather on component mount
 
   const renderLastCompletionsWidget = () => {
     const itemsToDisplay = lastCompletionsData || [];
@@ -670,6 +692,48 @@ export default function DashboardPage() {
     );
   };
 
+  // --- New Weather Widget Card ---
+ const renderWeatherWidget = () => {
+    if (isLoadingWeather) {
+ return (
+      <Card className="h-full flex flex-col justify-center items-center p-4"><Skeleton className="h-32 w-full"/></Card>
+ )
+    }
+
+    if (weatherError) {
+      return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Weather Error</AlertTitle><AlertDescription>{weatherError}</AlertDescription></Alert>;
+    }
+    if (!weatherData) {
+      return <p className="text-sm text-muted-foreground text-center p-4">Weather data unavailable.</p>;
+    }
+
+    // Assuming weatherData has a structure like { name: string, main: { temp: number, feels_like: number, humidity: number }, weather: [{ description: string, icon: string }], wind: { speed: number } }
+    return (
+      <Card className="h-full flex flex-col justify-between items-center p-4 text-center">
+        <CardHeader className="p-0 pb-3">
+           {weatherData.weather && weatherData.weather[0] && weatherData.weather[0].icon ? (
+             <img src={`http://openweathermap.org/img/wn/${weatherData.weather[0].icon}@2x.png`} alt={weatherData.weather[0].description} className="h-14 w-14 mx-auto" />
+           ) : (
+             <Cloud className="h-12 w-12 text-blue-500 mx-auto" />
+           )}
+        </CardHeader>
+        <CardContent className="p-0 flex-grow">
+          <CardTitle className="text-2xl font-bold">
+             {weatherData.main && weatherData.main.temp ? `${Math.round(weatherData.main.temp)}°F` : '--°'}
+          </CardTitle>
+          <CardDescription className="text-sm capitalize">{weatherData.weather && weatherData.weather[0] && weatherData.weather[0].description ? weatherData.weather[0].description : 'N/A'}</CardDescription>
+           {weatherData.name && <p className="text-xs text-muted-foreground mt-1">{weatherData.name}</p>}
+           {weatherData.main && weatherData.main.feels_like && <p className="text-xs text-muted-foreground">Feels like: {Math.round(weatherData.main.feels_like)}°F</p>}
+           {weatherData.main && weatherData.main.humidity && weatherData.wind && weatherData.wind.speed && (
+             <p className="text-xs text-muted-foreground mt-0.5">Humidity: {weatherData.main.humidity}% | Wind: {Math.round(weatherData.wind.speed)} mph</p>
+           )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+
+
 
   return (
     <div className="space-y-6">
@@ -766,6 +830,14 @@ export default function DashboardPage() {
             <EmergencyProtocolsCard />
         </motion.div>
       </div>
+      
+      {/* New Weather Widget Card */}
+      <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 6, theme: resolvedTheme}}>
+          <Card className="h-full flex flex-col">
+              {renderWeatherWidget()}
+          </Card>
+      </motion.div>
+
 
       <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 6, theme: resolvedTheme}}>
         <Card className="col-span-1 xl:col-span-3">

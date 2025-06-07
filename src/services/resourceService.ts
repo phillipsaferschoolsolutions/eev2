@@ -7,7 +7,7 @@ import type { User } from 'firebase/auth';
 import type { ResourceDocument, AccessControlPayload } from '@/types/Resource';
 
 // IMPORTANT: Replace this with your actual Cloud Functions base URL for resources
-const RESOURCES_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/resources'; 
+const RESOURCES_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/resources';
 
 // --- Helper to get ID Token (consistent with other services) ---
 async function getIdToken(): Promise<string | null> {
@@ -75,17 +75,19 @@ async function authedFetch<T>(
   const contentType = response.headers.get("content-type");
   if (response.status === 204) { return undefined as any as T; }
   if (contentType && contentType.includes("application/json")) { return response.json() as Promise<T>; }
-  
-  const textResponse = await response.text();
-  if (textResponse) {
-    if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
-      try { return JSON.parse(textResponse) as T; } catch (e) { /* ignore if not json */ }
-    }
-    return textResponse as any as T; // Return as text if not clearly JSON
-  }
-  return undefined as any as T; // Empty response
-}
 
+  const textResponse = await response.text();
+  // If response is OK but not explicitly application/json, try parsing as JSON anyway.
+  // This handles cases where the backend might return JSON without the correct header.
+  if (response.ok && textResponse) {
+ try {
+ return JSON.parse(textResponse) as T;
+ } catch (e) {
+      console.warn(`Failed to parse non-JSON response as JSON for ${fullUrl}. Content-Type: ${contentType || 'none'}. Response text: ${textResponse.substring(0, 100)}...`);
+    }
+  }
+ return [] as any as T; // Default to empty array or appropriate default if response wasn't JSON and couldn't be parsed.
+}
 /**
  * Uploads a new resource document.
  * The backend should handle file storage and Firestore metadata creation.

@@ -18,6 +18,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { format, subDays } from "date-fns";
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import type { DateRange } from "react-day-picker";
 
 import { getDashboardWidgetsSandbox, getRawResponses, getCommonResponsesForAssignment } from "@/services/analysisService";
@@ -36,6 +39,12 @@ const PERIOD_OPTIONS = [
   { value: "alltime", label: "All Time" },
 ];
 
+const ItemTypes = {
+  QUESTION: 'question',
+  SUMMARY: 'summary',
+};
+
+
 const formatDisplayDateShort = (dateString?: string | Date) => {
   if (!dateString) return "N/A";
   try {
@@ -43,6 +52,9 @@ const formatDisplayDateShort = (dateString?: string | Date) => {
   } catch (e) { return String(dateString); }
 };
 
+// Initialize Firebase Functions (ensure Firebase app is initialized elsewhere)
+// const functions = getFunctions(); // Uncomment and initialize correctly if needed here, or import already initialized instance
+const functions = getFunctions(); // Assuming default Firebase app initialization
 
 export default function ReportStudioPage() {
   const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
@@ -75,8 +87,42 @@ export default function ReportStudioPage() {
   const [selectedAssignmentDetails, setSelectedAssignmentDetails] = useState<AssignmentMetadata & { questions?: any[] } | null>(null);
   const [isLoadingAssignmentDetails, setIsLoadingAssignmentDetails] = useState(false);
 
+  // --- Report Studio State ---
+  const [reportStudioData, setReportStudioData] = useState<RawResponse[]>([]);
+  const [isLoadingReportStudioData, setIsLoadingReportStudioData] = useState(false);
+  const [reportStudioError, setReportStudioError] = useState<string | null>(null);
+  const [reportSummary, setReportSummary] = useState<string | null>(null);
+  const [isLoadingReportSummary, setIsLoadingReportSummary] = useState(false);
+
 
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
+
+
+  interface DraggableItemProps {
+    type: string;
+    id: string;
+    label: string;
+}
+
+const DraggableItem: React.FC<DraggableItemProps> = ({ type, id, label }) => {
+    const [{ isDragging }, drag] = useDrag(() => ({
+        type: type,
+        item: { id, type, label },
+        collect: (monitor) => ({
+            isDragging: monitor.isDragging(),
+        }),
+    }));
+
+    return (
+        <div
+            ref={drag}
+            className={`p-2 border rounded-md bg-white text-sm mb-1 cursor-move ${isDragging ? 'opacity-50' : ''}`}
+            style={{ opacity: isDragging ? 0.5 : 1 }}
+        >
+            {label}
+        </div>
+    );
+};
 
   // Fetch data for Dashboard widgets
   useEffect(() => {
@@ -154,6 +200,29 @@ export default function ReportStudioPage() {
   }, [reportFilters.selectedAssignmentId, userProfile?.account, authLoading, profileLoading, toast]);
 
 
+  const DropArea: React.FC = () => {
+    const [{ isOver }, drop] = useDrop(() => ({
+        accept: [ItemTypes.QUESTION, ItemTypes.SUMMARY],
+        drop: (item, monitor) => {
+            console.log('Dropped item:', item); // Log dropped item for now
+            // Here you would handle adding the item to your report layout state
+        },
+        collect: (monitor) => ({
+            isOver: monitor.isOver(),
+        }),
+    }));
+
+    return (
+        <div
+            ref={drop}
+            className={`w-full h-64 border-2 border-dashed rounded-md flex items-center justify-center ${isOver ? 'bg-blue-100 border-blue-500' : 'border-gray-300 bg-gray-50'}`}
+        >
+            {isOver ? 'Drop here!' : 'Drag items here to build your report'}
+        </div>
+    );
+  };
+
+
   const handleFetchRawResponses = useCallback(async () => {
     if (!isAdmin || !reportFilters.selectedAssignmentId || !userProfile?.account) {
       setRawResponses([]);
@@ -225,8 +294,7 @@ export default function ReportStudioPage() {
       return [...baseRow, ...questionResponses].map(String).map(field => `"${field.replace(/"/g, '""')}"`).join(',');
     });
 
-    return [headers.join(','), ...rows].join('
-');
+    return [headers.join(','), ...rows].join('');
   };
 
   const handleExportCSV = () => {
@@ -247,6 +315,58 @@ export default function ReportStudioPage() {
     document.body.removeChild(link);
     toast({ title: "Export Successful", description: "CSV file download initiated." });
   };
+
+  const handleGenerateSummary = useCallback(async () => {
+    if (!isAdmin || !reportFilters.selectedAssignmentId || !userProfile?.account || reportStudioData.length === 0) {
+        if (isAdmin && !reportFilters.selectedAssignmentId) {
+             toast({ variant: "warning", title: "Action Needed", description: "Please select an assignment and load data before generating a summary." });
+        } else if (reportStudioData.length === 0) {
+             toast({ variant: "warning", title: "Action Needed", description: "No data loaded to summarize. Please apply filters and load data." });
+        }
+        return;
+    }
+
+    setIsLoadingReportSummary(true);
+    setReportSummary(null); // Clear previous summary
+    setReportStudioError(null); // Clear previous errors
+
+    const summarizeCompletedAssignmentsCallable = httpsCallable(functions, 'summarizeCompletedAssignments'); // Replace 'summarizeCompletedAssignments' with your actual function name if different
+
+    try {
+      const filtersPayload: RawResponse['filters'] = {};
+      if (reportFilters.dateRange?.from && reportFilters.dateRange.to) {
+        filtersPayload.dateRange = {
+          from: format(reportFilters.dateRange.from, "yyyy-MM-dd"),
+          to: format(reportFilters.dateRange.to, "yyyy-MM-dd"),
+        };
+      }
+      if (reportFilters.selectedLocations.length > 0) {
+        filtersPayload.locations = reportFilters.selectedLocations;
+      }
+
+      const result = await summarizeCompletedAssignmentsCallable({
+        accountId: userProfile.account,
+        assignmentId: reportFilters.selectedAssignmentId,
+        filters: filtersPayload,
+      });    // Added semicolon here
+        const summaryData = result.data as { status: string; summary?: string; message?: string };
+        if (summaryData.status === 'success') { // Added the check here
+          setReportSummary(summaryData.summary);
+          toast({ title: "Summary Generated", description: "AI summary has been generated." });
+        } else {
+          setReportStudioError(summaryData.message || 'Could not generate report summary.');
+          toast({ variant: "destructive", title: "Summary Error", description: summaryData.message || "Failed to generate AI summary." });
+        }
+
+    } catch (err: any) {
+        console.error("Error generating report summary:", err);
+        setReportStudioError(err.message || "Could not generate report summary due to an internal error.");
+         toast({ variant: "destructive", title: "Summary Error", description: err.message || "An unexpected error occurred during summarization." });
+    } finally {
+        setIsLoadingReportSummary(false);
+    }
+  }, [isAdmin, reportFilters, userProfile?.account, reportStudioData.length, toast]); // Added toast to dependencies
+
 
   if (authLoading || profileLoading) {
     return (
@@ -509,49 +629,251 @@ export default function ReportStudioPage() {
       </div>
     );
   };
+
+  const renderReportStudio = () => {
+    if (!isAdmin) return <Alert variant="default"><AlertCircle className="h-4 w-4" /><AlertTitle>Access Denied</AlertTitle><AlertDescription>This feature is available for administrators only.</AlertDescription></Alert>;
+
+    const questionColumns = selectedAssignmentDetails?.questions || [];
+
+    return (
+        <div className="space-y-4">
+            <Card className="bg-muted/30">
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2"><FileText className="h-5 w-5 text-primary"/>Report Studio</CardTitle>
+                    <CardDescription>Generate custom reports and summaries.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Filtering Options (Similar to Report Explorer) */}
+                    <div>
+                        <Label htmlFor="studio-filter-assignment">Assignment</Label>
+                        <Select value={reportFilters.selectedAssignmentId || ""} onValueChange={(val) => setReportFilters(prev => ({...prev, selectedAssignmentId: val, selectedLocations: []}))}>
+                            <SelectTrigger id="studio-filter-assignment"><SelectValue placeholder="Select an assignment..." /></SelectTrigger>
+                            <SelectContent>
+                                {availableAssignments.map(a => <SelectItem key={a.id} value={a.id}>{a.assessmentName}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <Label htmlFor="studio-date-range">Date Range</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    id="studio-date-range"
+                                    variant={"outline"}
+                                    className={`w-full justify-start text-left font-normal ${!reportFilters.dateRange && "text-muted-foreground"}`}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {reportFilters.dateRange?.from ? (
+                                    reportFilters.dateRange.to ? (
+                                        <>{format(reportFilters.dateRange.from, "LLL dd, y")} - {format(reportFilters.dateRange.to, "LLL dd, y")}</>
+                                    ) : (
+                                        format(reportFilters.dateRange.from, "LLL dd, y")
+                                    )
+                                    ) : (
+                                    <span>Pick a date range</span>
+                                    )}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    initialFocus
+                                    mode="range"
+                                    defaultMonth={reportFilters.dateRange?.from || subDays(new Date(), 30)}
+                                    selected={reportFilters.dateRange}
+                                    onSelect={(range) => setReportFilters(prev => ({...prev, dateRange: range}))}
+                                    numberOfMonths={2}
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                     <div>
+                        <Label>Locations</Label>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                    <MapPin className="mr-2 h-4 w-4" />
+                                    {reportFilters.selectedLocations.length > 0 ? `${reportFilters.selectedLocations.length} selected` : "All locations"}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[250px] p-0">
+                                <Command>
+                                    <ScrollArea className="h-48">
+                                        {availableLocations.length > 0 ? availableLocations.map((loc) => (
+                                            <div key={loc.id} className="flex items-center gap-2 p-2 hover:bg-muted/50 cursor-pointer rounded-md mx-1 my-0.5" onClick={() => handleLocationFilterChange(loc.locationName, !reportFilters.selectedLocations.includes(loc.locationName))}>
+                                                <Checkbox
+                                                    id={`studio-loc-${loc.id}`}
+                                                    checked={reportFilters.selectedLocations.includes(loc.locationName)}
+                                                    onCheckedChange={(checked) => handleLocationFilterChange(loc.locationName, !!checked)}
+                                                />
+                                                <Label htmlFor={`studio-loc-${loc.id}`} className="text-sm font-normal cursor-pointer flex-grow">{loc.locationName}</Label>
+                                            </div>
+                                        )) : <p className="p-2 text-xs text-muted-foreground text-center">No locations found.</p>}
+                                    </ScrollArea>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                    {/* Available Fields / Draggable Items */}
+                    <div className="space-y-2">
+                        <h4 className="text-md font-semibold mb-2">Available Items</h4>
+                        <ScrollArea className="h-48 border rounded-md p-2">
+                            {/* Draggable Questions */}
+                            {selectedAssignmentDetails?.questions?.map(q => (
+                                <DraggableItem key={q.id} type={ItemTypes.QUESTION} id={q.id} label={q.label || q.id} />
+                            ))}
+                            {/* Draggable Summary */}
+                            {reportSummary && <DraggableItem type={ItemTypes.SUMMARY} id="summary" label="AI Summary" />}
+                            {!selectedAssignmentDetails?.questions?.length && !reportSummary && (
+                                <p className="text-sm text-muted-foreground text-center">Load data to see available items.</p>
+                            )}
+                        </ScrollArea>
+                    </div>
+                    {/* Drop Area (Report Canvas) - Placeholder */}
+                    <div className="space-y-2">
+                        <h4 className="text-md font-semibold mb-2">Report Layout (Drag items here)</h4>
+                        <DropArea /> {/* Use the DropArea component */}
+                    </div>
+                </CardContent>
+                 <CardFooter className="flex flex-col sm:flex-row gap-2">
+                    <Button onClick={handleFetchReportStudioData} disabled={isLoadingReportStudioData || !reportFilters.selectedAssignmentId}>
+                        {isLoadingReportStudioData ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Filter className="mr-2 h-4 w-4" />}
+                        Apply Filters & Load Data
+                    </Button>
+                     {/* Button to trigger AI Summarization */}
+                    <Button
+                      onClick={handleGenerateSummary} // Use the new function
+                      disabled={isLoadingReportStudioData || isLoadingReportSummary || reportStudioData.length === 0 || !reportFilters.selectedAssignmentId} // Ensure disabled when no data or no assignment selected
+                      variant="secondary"
+                    >
+                      {isLoadingReportSummary ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <FileText className="mr-2 h-4 w-4" />}
+                      Generate AI Summary
+                    </Button>
+
+                </CardFooter>
+            </Card>
+
+            {isLoadingReportStudioData && (
+                 <div className="space-y-2 mt-4">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                </div>
+            )}
+             {reportStudioError && <Alert variant="destructive" className="mt-4"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{reportStudioError}</AlertDescription></Alert>}
+
+
+            {!isLoadingReportStudioData && !reportStudioError && reportFilters.selectedAssignmentId && (
+                reportStudioData.length > 0 && questionColumns.length > 0 ? (
+                    <Card className="mt-4">
+                       <CardHeader><CardTitle className="text-lg flex items-center gap-2"><TableIcon className="h-5 w-5"/>Loaded Data</CardTitle><CardDescription>Total records: {reportStudioData.length}</CardDescription></CardHeader>
+                       <CardContent>
+                         {/* Display Raw Data */}
+                            <ScrollArea className="max-h-[60vh] w-full">
+                                <Table className="min-w-full">
+                                    <TableHeader className="sticky top-0 bg-card/80 backdrop-blur-sm">
+                                        <TableRow>
+                                            <TableHead className="w-[100px] whitespace-nowrap">Completed By</TableHead>
+                                            <TableHead className="w-[100px] whitespace-nowrap">Date</TableHead>
+                                            <TableHead className="w-[120px] whitespace-nowrap">Location</TableHead>
+                                            {questionColumns.map(q => <TableHead key={q.id} className="whitespace-nowrap">{q.label || q.id}</TableHead>)}
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {reportStudioData.map(item => (
+                                            <TableRow key={item.id}>
+                                                <TableCell className="truncate max-w-[100px]">{item.completedBy}</TableCell>
+                                                <TableCell>{formatDisplayDateShort(item.completionDate)}</TableCell>
+                                                <TableCell className="truncate max-w-[120px]">{item.locationName}</TableCell>
+                                                {questionColumns.map(q => (
+                                                    <TableCell key={q.id} className="truncate max-w-[150px]">
+                                                        {Array.isArray(item.responses?.[q.id]) ? (item.responses[q.id] as any[]).join(', ') : String(item.responses?.[q.id] ?? '')}
+                                                    </TableCell>
+                                                ))}
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                       </CardContent>
+                    </Card>
+                ) : reportFilters.selectedAssignmentId && !isLoadingReportStudioData && reportStudioData.length === 0 && (
+                    <Card className="mt-4"><CardContent className="pt-6 text-center text-muted-foreground">No data found for the selected criteria.</CardContent></Card>
+                )
+            )}
+             {!reportFilters.selectedAssignmentId && !isLoadingReportStudioData && (
+                <Card className="mt-4"><CardContent className="pt-6 text-center text-muted-foreground">Please select an assignment and apply filters to load data.</CardContent></Card>
+             )}
+
+            {/* AI Summary Section */}
+             {isLoadingReportSummary && (
+                 <div className="space-y-2 mt-4">
+                    <Skeleton className="h-8 w-1/2" />
+                     <Skeleton className="h-20 w-full" />
+                </div>
+             )}
+            {reportSummary && !isLoadingReportSummary && (
+                <Card className="mt-4">
+                    <CardHeader><CardTitle className="text-lg flex items-center gap-2"><FileText className="h-5 w-5 text-purple-500"/>AI Summary</CardTitle></CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{reportSummary}</p>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
+    );
+  };
+
   
   // Dummy Command component for Popover content
   const Command: React.FC<{children: React.ReactNode}> = ({ children }) => <div className="p-1">{children}</div>;
 
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Analysis & Reports</h1>
-          <p className="text-lg text-muted-foreground">
-            Dashboard insights and detailed report exploration.
-          </p>
-        </div>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 md:w-1/2">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="reportExplorer">Report Explorer</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="dashboard" className="mt-6 space-y-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="lg:col-span-1">
-              <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary"/>Last Completions</CardTitle></CardHeader>
-              <CardContent className="p-0 pt-0">{renderLastCompletionsWidget()}</CardContent>
-            </Card>
-            <Card className="lg:col-span-1">
-              <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-green-500"/>Streak</CardTitle></CardHeader>
-              <CardContent>{renderStreakWidget()}</CardContent>
-            </Card>
-            <Card className="lg:col-span-1">
-              <CardHeader><CardTitle className="flex items-center gap-2"><ListChecks className="h-5 w-5 text-purple-500"/>Common Responses</CardTitle></CardHeader>
-              <CardContent>{renderCommonResponsesWidget()}</CardContent>
-            </Card>
+    <DndProvider backend={HTML5Backend}> {/* Wrap with DndProvider */}
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Analysis & Reports</h1>
+            <p className="text-lg text-muted-foreground">
+              Dashboard insights and detailed report exploration.
+            </p>
           </div>
-        </TabsContent>
+        </div>
 
-        <TabsContent value="reportExplorer" className="mt-6">
-          {renderReportExplorer()}
-        </TabsContent>
-      </Tabs>
-    </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2 md:w-1/2">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="reportExplorer">Report Explorer</TabsTrigger>
+            <TabsTrigger value="reportStudio">Report Studio</TabsTrigger> {/* New Trigger */}
+          </TabsList>
+
+          <TabsContent value="dashboard" className="mt-6 space-y-6">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <Card className="lg:col-span-1">
+                <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary"/>Last Completions</CardTitle></CardHeader>
+                <CardContent className="p-0 pt-0">{renderLastCompletionsWidget()}</CardContent>
+              </Card>
+              <Card className="lg:col-span-1">
+                <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-green-500"/>Streak</CardTitle></CardHeader>
+                <CardContent>{renderStreakWidget()}</CardContent>
+              </Card>
+              <Card className="lg:col-span-1">
+                <CardHeader><CardTitle className="flex items-center gap-2"><ListChecks className="h-5 w-5 text-purple-500"/>Common Responses</CardTitle></CardHeader>
+                <CardContent>{renderCommonResponsesWidget()}</CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="reportExplorer" className="mt-6">
+            {renderReportExplorer()}
+          </TabsContent>
+
+          <TabsContent value="reportStudio" className="mt-6">
+            {renderReportStudio()} {/* Call the new render function */}
+          </TabsContent>
+
+        </Tabs>
+      </div>
+    </DndProvider> // Close DndProvider
   );
 }
