@@ -15,6 +15,7 @@ export const mainNavItems = [
   { href: "/", label: "Dashboard", icon: "LayoutDashboard" },
   { href: "/map", label: "Campus Map", icon: "Map" },
   { href: "/assessment-forms", label: "Assignments", icon: "ClipboardList" },
+  { href: "/drill-tracking", label: "Drill Tracking", icon: "Zap" }, // Added new item
   { href: "/resources", label: "Resources", icon: "FolderKanban" },
   { href: "/photo-analysis", label: "Photo Analysis", icon: "Camera" },
   { href: "/policy-analysis", label: "Policy Analysis", icon: "FileCheck2" },

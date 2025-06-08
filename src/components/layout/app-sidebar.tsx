@@ -17,7 +17,7 @@ import {
 import { Logo } from "@/components/icons/logo";
 import {
   LayoutDashboard, Map, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, Settings, MessageSquare,
-  LogOut as LogOutIcon, PanelLeftClose, PanelLeftOpen, Home, Users, BarChart2, Briefcase, Shield, BookOpen, FolderKanban, FileText
+  LogOut as LogOutIcon, PanelLeftClose, PanelLeftOpen, Home, Users, BarChart2, Briefcase, Shield, BookOpen, FolderKanban, FileText, Zap // Added Zap
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/context/auth-context";
@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 
 // Icon mapping
 const iconMap: { [key: string]: React.ElementType } = {
-  LayoutDashboard, Map, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, Settings, MessageSquare, FolderKanban, FileText, // Added FileText
+  LayoutDashboard, Map, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, Settings, MessageSquare, FolderKanban, FileText, Zap, // Added Zap
   Home, Users, BarChart2, Briefcase, Shield, BookOpen,
   Default: LayoutDashboard, // Fallback icon
 };

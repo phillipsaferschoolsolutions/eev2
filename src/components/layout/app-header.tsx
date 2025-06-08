@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -25,14 +26,14 @@ import { getDistrictsForSuperAdmin, switchUserAccount } from "@/services/adminAc
 import type { District } from "@/types/Admin";
 import { 
   Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check, Menu,
-  LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon, Settings, FolderKanban, FileText,
+  LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon, Settings, FolderKanban, FileText, Zap, // Added Zap
   Thermometer, AlertCircle, MapPin as LocationIcon 
 } from "lucide-react";
 
 
 // Icon mapping (consistent with PageShell for navItems)
 const iconMap: { [key: string]: React.ElementType } = {
-  LayoutDashboard, Map: MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare: MessageSquareIcon, Settings, FolderKanban, FileText,
+  LayoutDashboard, Map: MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare: MessageSquareIcon, Settings, FolderKanban, FileText, Zap, // Added Zap
   Default: LayoutDashboard,
 };
 
@@ -236,4 +237,3 @@ export function AppHeader({ navItems }: AppHeaderProps) {
     </header>
   );
 }
-    
