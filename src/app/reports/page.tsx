@@ -222,6 +222,41 @@ const DraggableItem: React.FC<DraggableItemProps> = ({ type, id, label }) => {
     );
   };
 
+  const handleFetchReportStudioData = useCallback(async () => {
+    if (!isAdmin || !reportFilters.selectedAssignmentId || !userProfile?.account) {
+      setReportStudioData([]);
+      if (isAdmin && !reportFilters.selectedAssignmentId) {
+        toast({ variant: "warning", title: "Action Needed", description: "Please select an assignment to load data." });
+      }
+      return;
+    }
+  
+    setIsLoadingReportStudioData(true);
+    setReportStudioError(null);
+  
+    try {
+      const filtersPayload: RawResponse['filters'] = {};
+      if (reportFilters.dateRange?.from && reportFilters.dateRange.to) {
+        filtersPayload.dateRange = {
+          from: format(reportFilters.dateRange.from, "yyyy-MM-dd"),
+          to: format(reportFilters.dateRange.to, "yyyy-MM-dd"),
+        };
+      }
+      if (reportFilters.selectedLocations.length > 0) {
+        filtersPayload.locations = reportFilters.selectedLocations;
+      }
+  
+      const data = await getRawResponses(reportFilters.selectedAssignmentId, filtersPayload, userProfile.account);
+      setReportStudioData(data);
+    } catch (err: any) {
+      console.error("Error loading report studio data:", err);
+      setReportStudioError(err.message || "Failed to load report studio data.");
+      setReportStudioData([]);
+    } finally {
+      setIsLoadingReportStudioData(false);
+    }
+  }, [isAdmin, reportFilters, userProfile?.account]);
+
 
   const handleFetchRawResponses = useCallback(async () => {
     if (!isAdmin || !reportFilters.selectedAssignmentId || !userProfile?.account) {
