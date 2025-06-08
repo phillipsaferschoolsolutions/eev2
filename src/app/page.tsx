@@ -451,39 +451,68 @@ export default function DashboardPage() {
     }
   }, [userProfile?.account, selectedAssignmentForCompletions, lastCompletionsPeriod, isClientMounted, authLoading, profileLoading]);
 
-  // Geolocation effect to get user's location
+  // 1) On mount, try to load saved coords:
   useEffect(() => {
-    if (typeof navigator !== "undefined" && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLat(position.coords.latitude);
-          setUserLng(position.coords.longitude);
-        },
-        (error) => {
-          console.error("Geolocation error:", error);
-          // Optionally set a default location or show a message
-          setWeatherError("Could not get your location for weather.");
-        }
-      );
-    } else {
-      setWeatherError("Geolocation is not supported by your browser.");
+    if (typeof window === 'undefined') return;
+    const stored = localStorage.getItem('weatherCoords');
+    if (stored) {
+      try {
+        const { lat, lng } = JSON.parse(stored);
+        setUserLat(lat);
+        setUserLng(lng);
+      } catch {
+        localStorage.removeItem('weatherCoords');
+      }
     }
-  }, []); // Run only once on mount
+  }, []);
 
-  // Fetch Weather Data
+  // 2) Your existing requestLocation, but now also persist:
+  const requestLocation = () => {
+    if (!navigator.geolocation) {
+      setWeatherError("Geolocation not supported by your browser.");
+      return;
+    }
+    setIsLoadingWeather(true);
+    setWeatherError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setUserLat(coords.latitude);
+        setUserLng(coords.longitude);
+        // **persist** so next load picks it up:
+        localStorage.setItem(
+          'weatherCoords',
+          JSON.stringify({ lat: coords.latitude, lng: coords.longitude })
+        );
+      },
+      (geoErr) => {
+        console.error("Geolocation error:", geoErr);
+        setWeatherError("Could not determine your location.");
+        setIsLoadingWeather(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  // 3) Fetch weather whenever coords change (unchanged):
   useEffect(() => {
-    const loadWeather = async () => {
+    if (userLat == null || userLng == null) return;
+    const load = async () => {
       setIsLoadingWeather(true);
       setWeatherError(null);
       try {
-        const data = await fetchWeather(userLat!, userLng!); // Use non-null assertion as we check below
+        const data = await fetchWeather(userLat, userLng);
         setWeatherData(data);
       } catch (err) {
+        console.error("Weather fetch error:", err);
         setWeatherError("Could not fetch weather data.");
-      } finally { setIsLoadingWeather(false); }
+      } finally {
+        setIsLoadingWeather(false);
+      }
     };
- if (userLat !== null && userLng !== null) { loadWeather(); }
-  }, [userLat, userLng]); // Fetch weather when location is available
+    load();
+  }, [userLat, userLng]);
+
 
   const renderLastCompletionsWidget = () => {
     const itemsToDisplay = lastCompletionsData || [];
@@ -714,18 +743,30 @@ export default function DashboardPage() {
   };
 
  // --- New Weather Widget Card ---
- const renderWeatherWidget = useCallback(() => {
+ const renderWeatherWidget = () => {
     if (!userLat || !userLng) {
       return (
         <Card className="h-full flex flex-col justify-center items-center p-4 text-center">
-            {weatherError ? (
-                <Alert variant="warning"><Info className="h-4 w-4" /><AlertTitle>Location Needed</AlertTitle><AlertDescription>{weatherError} Please enable location services in your browser.</AlertDescription></Alert>
-            ) : (
-                 <>
-                    <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                    <CardDescription>Getting your location for weather...</CardDescription>
-                </>
-            )}
+          {weatherError ? (
+            <>
+              <Alert variant="warning">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Location Needed</AlertTitle>
+                <AlertDescription>{weatherError}</AlertDescription>
+              </Alert>
+              <Button onClick={requestLocation} className="mt-4">
+                Enable Location
+              </Button>
+            </>
+          ) : (
+            <>
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+              <CardDescription>Please enable location services to fetch weather.</CardDescription>
+              <Button onClick={requestLocation} className="mt-4">
+                Enable Location
+              </Button>
+            </>
+          )}
         </Card>
       );
     }
@@ -785,7 +826,7 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     );
- }, [isLoadingWeather, weatherError, weatherData, userLat, userLng]);
+ };
 
 
 
