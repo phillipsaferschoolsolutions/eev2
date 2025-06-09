@@ -1536,45 +1536,106 @@ export default function CompleteAssignmentPage() {
                   )}
 
                   {question.photoUpload && (
-                      <div className="mt-4 space-y-2">
-                        {/* This part remains to show the selected image */}
-                        {uploadedFileDetails[question.id] && (
-                          <div className="flex items-center justify-between p-2 border rounded-md bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
-                            <div className="flex items-center gap-2 text-green-700 dark:text-green-400 text-sm">
-                              <CheckCircle2 className="h-4 w-4"/>
-                              <Image
-                                  src={uploadedFileDetails[question.id]!.url}
-                                  alt={uploadedFileDetails[question.id]!.name}
-                                  width={32}
-                                  height={32}
-                                  className="object-cover rounded h-8 w-8"
-                                  data-ai-hint="file thumbnail"
-                              />
-                              <a href={uploadedFileDetails[question.id]?.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-[200px] sm:max-w-xs md:max-w-sm">
-                                {uploadedFileDetails[question.id]?.name}
-                              </a>
+                    <div className="mt-4 space-y-3">
+                      {/* Display for the selected/uploaded photo (no change here) */}
+                      {uploadedFileDetails[question.id] && (
+                        <div className="flex items-center justify-between p-2 border rounded-md bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
+                          <div className="flex items-center gap-2 text-green-700 dark:text-green-400 text-sm">
+                            <CheckCircle2 className="h-4 w-4"/>
+                            <Image
+                                src={uploadedFileDetails[question.id]!.url}
+                                alt={uploadedFileDetails[question.id]!.name}
+                                width={32}
+                                height={32}
+                                className="object-cover rounded h-8 w-8"
+                                data-ai-hint="file thumbnail"
+                            />
+                            <a href={uploadedFileDetails[question.id]?.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-[200px] sm:max-w-xs md:max-w-sm">
+                              {uploadedFileDetails[question.id]?.name}
+                            </a>
+                          </div>
+                          <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeUploadedFile(question.id)}>
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* If no photo is associated, show both upload options */}
+                      {!uploadedFileDetails[question.id] && (
+                        <div className="p-3 border rounded-lg bg-muted/20">
+                          
+                          {/* Option 1: Direct Upload */}
+                          <div className="space-y-2">
+                            <Label htmlFor={`${question.id}_file`} className="text-sm font-medium">
+                              Option 1: Upload a file directly
+                            </Label>
+                            <Input
+                              id={`${question.id}_file`}
+                              type="file"
+                              accept="image/*"
+                              className="bg-background"
+                              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  handleFileUpload(question.id, e.target.files[0]);
+                                }
+                              }}
+                              disabled={!!uploadProgress[question.id] && uploadProgress[question.id] > 0 && uploadProgress[question.id] < 100}
+                            />
+                          </div>
+
+                          {/* Progress and Preview for Direct Upload */}
+                          {uploadProgress[question.id] > 0 && (
+                            <div className="mt-2 space-y-1">
+                              <ShadProgress value={uploadProgress[question.id]} className="w-full h-1.5" />
+                              {uploadProgress[question.id] < 100 && <p className="text-xs text-muted-foreground text-center">Uploading...</p>}
                             </div>
-                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeUploadedFile(question.id)}>
+                          )}
+                          {imagePreviewUrls[question.id] && !uploadErrors[question.id] && (
+                            <div className="mt-2 w-fit">
+                              <Image
+                                  src={imagePreviewUrls[question.id]!}
+                                  alt="Upload preview"
+                                  width={100}
+                                  height={100}
+                                  className="object-contain rounded-md border"
+                                  data-ai-hint="upload preview"
+                              />
+                            </div>
+                          )}
+                          {uploadErrors[question.id] && (
+                            <Alert variant="destructive" className="text-xs p-2 mt-2">
                               <XCircle className="h-4 w-4" />
+                              <AlertDescription>{uploadErrors[question.id]}</AlertDescription>
+                            </Alert>
+                          )}
+
+                          {/* Separator */}
+                          <div className="relative flex items-center my-4">
+                            <div className="flex-grow border-t border-muted-foreground/30"></div>
+                            <span className="flex-shrink mx-4 text-muted-foreground text-xs font-semibold">OR</span>
+                            <div className="flex-grow border-t border-muted-foreground/30"></div>
+                          </div>
+
+                          {/* Option 2: Select from Photo Bank */}
+                          <div>
+                            <Label className="text-sm font-medium">
+                              Option 2: Select from Photo Bank
+                            </Label>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              className="w-full mt-1 bg-background"
+                              onClick={() => handleOpenPhotoBank(question.id)}
+                            >
+                              <Paperclip className="h-4 w-4 mr-2"/>
+                              Select Photo
                             </Button>
                           </div>
-                        )}
 
-                        {/* This is the NEW part: a button to open the selector, replacing the old file input */}
-                        {!uploadedFileDetails[question.id] && (
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            className="w-full"
-                            onClick={() => handleOpenPhotoBank(question.id)} // <-- UPDATE THIS LINE
-                          >
-                            <Paperclip className="h-4 w-4 mr-2"/>
-                            Select from Photo Bank
-                          </Button>
-                        )}
-                      </div>
-                    )}
-
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mt-4 border-t pt-3 space-y-2">
                      <Label className="text-xs text-muted-foreground block mb-1">Audio Note (Optional, Max {MAX_AUDIO_RECORDING_MS / 1000}s)</Label>
