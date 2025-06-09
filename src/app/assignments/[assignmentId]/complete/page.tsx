@@ -32,6 +32,14 @@ import { getLocationsForLookup, type Location } from "@/services/locationService
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Trash2, Radio, Badge, PlayIcon, PauseIcon, TimerIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 const formSchema = z.record(z.any());
@@ -105,6 +113,10 @@ export default function CompleteAssignmentPage() {
   const [uploadedFileDetails, setUploadedFileDetails] = useState<{ [questionId: string]: UploadedFileDetail | null }>({});
   const [uploadErrors, setUploadErrors] = useState<{ [questionId: string]: string | null }>({});
   const [imagePreviewUrls, setImagePreviewUrls] = useState<{ [questionId: string]: string | null }>({});
+  const [photoBankFiles, setPhotoBankFiles] = useState<UploadedFileDetail[]>([]);
+  const [photoBankUploads, setPhotoBankUploads] = useState<{ [key: string]: { progress: number; error: string | null } }>({});
+  const [isPhotoBankModalOpen, setIsPhotoBankModalOpen] = useState(false);
+  const [activeQuestionIdForPhotoBank, setActiveQuestionIdForPhotoBank] = useState<string | null>(null);
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
@@ -276,6 +288,80 @@ export default function CompleteAssignmentPage() {
       return answeredStatusFilter === 'answered' ? answered : !answered;
     });
   }, [conditionallyVisibleQuestions, selectedSection, selectedSubSection, answeredStatusFilter, allWatchedValues]);
+
+  const handlePhotoBankUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !user || !assignment) {
+      if (!user || !assignment) {
+          toast({ variant: "destructive", title: "Upload Error", description: "Cannot upload files without user and assignment context." });
+      }
+      return;
+    }
+
+    const newUploads: { [key: string]: { progress: number; error: string | null } } = {};
+    
+    Array.from(files).forEach(file => {
+      // Basic validation for each file
+      if (file.size > 5 * 1024 * 1024) {
+        newUploads[file.name] = { progress: 0, error: "File exceeds 5MB limit." };
+        return; // Skip this file
+      }
+
+      newUploads[file.name] = { progress: 0, error: null };
+
+      const storagePath = `photo_bank/${assignment.id}/${user.uid}/${Date.now()}_${file.name}`;
+      const storageRefInstance = ref(storage, storagePath);
+      const uploadTask = uploadBytesResumable(storageRefInstance, file);
+
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setPhotoBankUploads(prev => ({
+            ...prev,
+            [file.name]: { ...prev[file.name], progress, error: null }
+          }));
+        },
+        (error) => {
+          console.error(`Upload failed for ${file.name}:`, error);
+          setPhotoBankUploads(prev => ({
+            ...prev,
+            [file.name]: { ...prev[file.name], progress: 0, error: error.message }
+          }));
+        },
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            // Add the successfully uploaded file to the photoBankFiles state
+            setPhotoBankFiles(prev => [...prev, { name: file.name, url: downloadURL }]);
+            // Update the progress state to show completion and remove from "in-progress" view
+            setPhotoBankUploads(prev => {
+                const newProgress = { ...prev };
+                newProgress[file.name] = { ...newProgress[file.name], progress: 100, error: null };
+                // Optionally remove from progress tracker after a delay
+                setTimeout(() => {
+                    setPhotoBankUploads(p => {
+                        const finalProgress = {...p};
+                        delete finalProgress[file.name];
+                        return finalProgress;
+                    });
+                }, 2000);
+
+                return newProgress;
+            });
+          } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Unknown error getting URL.";
+            setPhotoBankUploads(prev => ({
+              ...prev,
+              [file.name]: { ...prev[file.name], progress: 0, error: "Failed to get file URL: " + errorMessage }
+            }));
+          }
+        }
+      );
+    });
+
+    setPhotoBankUploads(prev => ({ ...prev, ...newUploads }));
+    e.target.value = ''; // Clear the input
+  };
 
 
   useEffect(() => {
@@ -663,6 +749,32 @@ export default function CompleteAssignmentPage() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const handleOpenPhotoBank = (questionId: string) => {
+    if (photoBankFiles.length === 0) {
+      toast({
+        variant: "default",
+        title: "Photo Bank is Empty",
+        description: "Please upload photos to the Photo Bank first.",
+      });
+      return;
+    }
+    setActiveQuestionIdForPhotoBank(questionId);
+    setIsPhotoBankModalOpen(true);
+  };
+
+  const handleSelectPhotoFromBank = (photo: UploadedFileDetail) => {
+    if (!activeQuestionIdForPhotoBank) return;
+
+    // Associate the selected photo with the active question
+    setUploadedFileDetails(prev => ({
+      ...prev,
+      [activeQuestionIdForPhotoBank]: photo
+    }));
+
+    // Reset and close the modal
+    setIsPhotoBankModalOpen(false);
+    setActiveQuestionIdForPhotoBank(null);
+  };
 
   const handleFileUpload = async (questionId: string, file: File) => {
     if (!user || !assignment) {
@@ -1008,6 +1120,81 @@ export default function CompleteAssignmentPage() {
           </Card>
           <Separator className="my-6"/>
 
+          {/* Photo Bank Section */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Photo Bank</CardTitle>
+              <CardDescription>
+                Upload all your photos for this assignment here. You can then associate them with specific questions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Replace the placeholder div with this file input component */}
+              <div className="mt-4">
+                <Label 
+                  htmlFor="photo-bank-upload" 
+                  className="relative flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted"
+                >
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <Paperclip className="w-8 h-8 mb-4 text-muted-foreground" />
+                    <p className="mb-2 text-sm text-muted-foreground">
+                      <span className="font-semibold">Click to upload</span> or drag and drop
+                    </p>
+                    <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF (MAX. 5MB per file)</p>
+                  </div>
+                  <Input 
+                    id="photo-bank-upload" 
+                    type="file" 
+                    multiple 
+                    className="sr-only" 
+                    onChange={handlePhotoBankUpload} // We will create this function next
+                    accept="image/*"
+                  />
+                </Label> 
+              </div> 
+
+              {/* Display upload progress for Photo Bank */}
+              {Object.keys(photoBankUploads).length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-sm font-medium">Uploads in Progress</p>
+                  {Object.entries(photoBankUploads).map(([fileName, status]) => (
+                    <div key={fileName}>
+                      <div className="flex justify-between items-center text-sm">
+                        <p className="truncate max-w-xs">{fileName}</p>
+                        {status.progress < 100 && !status.error && <p>{Math.round(status.progress)}%</p>}
+                        {status.progress === 100 && !status.error && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                        {status.error && <XCircle className="h-4 w-4 text-destructive" />}
+                      </div>
+                      {status.error ? (
+                        <p className="text-xs text-destructive">{status.error}</p>
+                      ) : (
+                        <ShadProgress value={status.progress} className="h-1" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+
+              {/* Display uploaded photos */}
+              {photoBankFiles.length > 0 && (
+                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {photoBankFiles.map((file, index) => (
+                    <div key={index} className="relative">
+                      <Image
+                        src={file.url}
+                        alt={file.name}
+                        width={150}
+                        height={150}
+                        className="object-cover rounded-md"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             {questionsToRender.map((question, index) => (
               <Card key={question.id || index} className="p-6 bg-card/50">
@@ -1030,6 +1217,14 @@ export default function CompleteAssignmentPage() {
                         </span>
                       </div>
                     </div>
+
+                    {/* Added rendering for staticContent */}
+                    {question.component === "staticContent" && (
+                      <div className="prose dark:prose-invert max-w-none"> {/* Using prose for basic styling */}
+                        {/* Assuming static content is stored in question.options as a string */}
+                        <p>{question.options as string}</p>
+                      </div>
+                    )}
 
 
                   {['text', 'number', 'email', 'url', 'telephone', 'datetime'].includes(question.component) ? (
@@ -1341,82 +1536,45 @@ export default function CompleteAssignmentPage() {
                   )}
 
                   {question.photoUpload && (
-                    <div className="mt-4 space-y-2">
-                      <Label htmlFor={`${question.id}_file`} className="text-sm text-muted-foreground flex items-center">
-                        <Paperclip className="h-4 w-4 mr-1"/> Upload File (Optional, Max 5MB)
-                      </Label>
-                      {!uploadedFileDetails[question.id] && !uploadProgress[question.id] && (
-                        <Input
-                          id={`${question.id}_file`}
-                          type="file"
-                          accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt"
-                          className="mt-1 bg-background/80"
-                          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                            if (e.target.files && e.target.files[0]) {
-                              handleFileUpload(question.id, e.target.files[0]);
-                            }
-                          }}
-                          disabled={!!uploadProgress[question.id] && uploadProgress[question.id] > 0 && uploadProgress[question.id] < 100}
-                        />
-                      )}
-                      {uploadProgress[question.id] > 0 && uploadProgress[question.id] < 100 && (
-                        <div className="space-y-1">
-                           <ShadProgress value={uploadProgress[question.id]} className="w-full h-2" />
-                           <p className="text-xs text-muted-foreground text-center">Uploading: {Math.round(uploadProgress[question.id] || 0)}%</p>
-                        </div>
-                      )}
-                       {imagePreviewUrls[question.id] && !uploadErrors[question.id] && !uploadedFileDetails[question.id] && (
-                        <div className="mt-2 border rounded-md p-2 bg-muted/20 w-fit shadow">
-                            <Image
-                                src={imagePreviewUrls[question.id]!}
-                                alt="Upload preview"
-                                width={150}
-                                height={150}
-                                className="object-contain rounded max-h-[150px]"
-                                data-ai-hint="upload preview"
-                            />
-                        </div>
-                      )}
-                      {uploadErrors[question.id] && (
-                        <Alert variant="destructive" className="text-xs p-2">
-                           <XCircle className="h-4 w-4" />
-                          <AlertDescription>{uploadErrors[question.id]}</AlertDescription>
-                           <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs mt-1"
-                                onClick={() => {
-                                    const fileInput = document.getElementById(`${question.id}_file`) as HTMLInputElement;
-                                    if (fileInput && fileInput.files && fileInput.files[0]) {
-                                        handleFileUpload(question.id, fileInput.files[0]);
-                                    } else {
-                                        toast({variant: "destructive", title:"Retry Failed", description: "No file selected to retry."})
-                                    }
-                                }}>Retry</Button>
-                        </Alert>
-                      )}
-                      {uploadedFileDetails[question.id] && (
-                        <div className="flex items-center justify-between p-2 border rounded-md bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
-                          <div className="flex items-center gap-2 text-green-700 dark:text-green-400 text-sm">
-                            <CheckCircle2 className="h-4 w-4"/>
-                            {imagePreviewUrls[question.id] ? (
-                                <Image
-                                    src={uploadedFileDetails[question.id]!.url}
-                                    alt={uploadedFileDetails[question.id]!.name}
-                                    width={32}
-                                    height={32}
-                                    className="object-cover rounded h-8 w-8"
-                                    data-ai-hint="file thumbnail"
-                                />
-                            ): <Paperclip className="h-4 w-4" /> }
-                            <a href={uploadedFileDetails[question.id]?.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-[200px] sm:max-w-xs md:max-w-sm">
-                              {uploadedFileDetails[question.id]?.name}
-                            </a>
+                      <div className="mt-4 space-y-2">
+                        {/* This part remains to show the selected image */}
+                        {uploadedFileDetails[question.id] && (
+                          <div className="flex items-center justify-between p-2 border rounded-md bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
+                            <div className="flex items-center gap-2 text-green-700 dark:text-green-400 text-sm">
+                              <CheckCircle2 className="h-4 w-4"/>
+                              <Image
+                                  src={uploadedFileDetails[question.id]!.url}
+                                  alt={uploadedFileDetails[question.id]!.name}
+                                  width={32}
+                                  height={32}
+                                  className="object-cover rounded h-8 w-8"
+                                  data-ai-hint="file thumbnail"
+                              />
+                              <a href={uploadedFileDetails[question.id]?.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-[200px] sm:max-w-xs md:max-w-sm">
+                                {uploadedFileDetails[question.id]?.name}
+                              </a>
+                            </div>
+                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeUploadedFile(question.id)}>
+                              <XCircle className="h-4 w-4" />
+                            </Button>
                           </div>
-                          <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeUploadedFile(question.id)}>
-                            <XCircle className="h-4 w-4" />
+                        )}
+
+                        {/* This is the NEW part: a button to open the selector, replacing the old file input */}
+                        {!uploadedFileDetails[question.id] && (
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            className="w-full"
+                            onClick={() => handleOpenPhotoBank(question.id)} // <-- UPDATE THIS LINE
+                          >
+                            <Paperclip className="h-4 w-4 mr-2"/>
+                            Select from Photo Bank
                           </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        )}
+                      </div>
+                    )}
+
 
                   <div className="mt-4 border-t pt-3 space-y-2">
                      <Label className="text-xs text-muted-foreground block mb-1">Audio Note (Optional, Max {MAX_AUDIO_RECORDING_MS / 1000}s)</Label>
@@ -1543,6 +1701,41 @@ export default function CompleteAssignmentPage() {
           </form>
         </CardContent>
       </Card>
+      <Dialog open={isPhotoBankModalOpen} onOpenChange={setIsPhotoBankModalOpen}>
+        <DialogContent className="sm:max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle>Select a Photo from the Bank</DialogTitle>
+            <DialogDescription>
+              Click on a photo to associate it with the question.
+            </DialogDescription>
+          </DialogHeader>
+          {photoBankFiles.length > 0 ? (
+            <ScrollArea className="max-h-[60vh]">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+                {photoBankFiles.map((photo, index) => (
+                  <div 
+                    key={index} 
+                    className="relative aspect-square cursor-pointer group"
+                    onClick={() => handleSelectPhotoFromBank(photo)}
+                  >
+                    <Image
+                      src={photo.url}
+                      alt={photo.name}
+                      fill
+                      className="object-cover rounded-md"
+                    />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <CheckCircle2 className="h-8 w-8 text-white"/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          ) : (
+            <p className="py-8 text-center text-muted-foreground">The Photo Bank is empty. Please upload photos first.</p>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

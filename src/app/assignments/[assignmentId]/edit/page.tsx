@@ -68,6 +68,7 @@ const componentTypes = [
   { value: "multiButtonSelect", label: "Button Select (Multiple Choice)"},
   { value: "range", label: "Range Slider" },
   { value: "staticContent", label: "Text (Static Content)" },
+  { value: "staticImage", label: "Image (Static Content)" },
   { value: "photoUpload", label: "Photo Upload" },
   { value: "schoolSelector", label: "School/Site Selector" },
   // { value: "dynamicQuestion", label: "Dynamic Question (Logic-based)" },

@@ -20,6 +20,7 @@ export const mainNavItems = [
   { href: "/photo-analysis", label: "Photo Analysis", icon: "Camera" },
   { href: "/policy-analysis", label: "Policy Analysis", icon: "FileCheck2" },
   { href: "/reports", label: "Report Studio", icon: "FilePieChart" },
+  { href: "/delaware-report", label: "Delaware Report", icon: "FileText" }, // Added Delaware Report link
   { href: "/messaging", label: "Messaging", icon: "MessageSquare" },
   { href: "/theming", label: "Theming", icon: "Palette" },
 ];

@@ -130,7 +130,34 @@ export async function createDrillEvent(payload: Omit<CreateDrillEventPayload, 'a
     method: 'POST',
     body: JSON.stringify(fullPayload),
   }, accountName); // Pass accountName for the 'account' header
+} //  .createDrillEvent()
+
+/**
+ * Fetches upcoming Drill Events for a given account by calling the backend endpoint.
+ * @param accountId - The account ID for fetching drill events, used for the 'account' header.
+ * @returns A promise that resolves to an array of upcoming DrillEvent objects.
+ */
+export async function getUpcomingDrills(accountId: string): Promise<DrillEvent[]> {
+  if (!accountId || accountId.trim() === "") {
+    throw new Error("Account ID is required for getUpcomingDrills client-side call.");
+  }
+
+  // Assuming your backend endpoint for upcoming drills is /upcomingDrills
+  const url = `${DRILL_TRACKING_BASE_URL}/upcomingDrills`;
+
+  try {
+    // Using the generic authedFetch wrapper
+    const upcomingDrills = await authedFetch<DrillEvent[]>(url, {
+      method: 'GET',
+    }, accountId); // Pass accountId for the 'account' header
+
+    return upcomingDrills;
+  } catch (error) {
+    console.error("Error fetching upcoming drills:", error);
+    throw error; // Re-throw the error after logging
+  }
 }
+
 
 // Future functions:
 // export async function getDrillEvents(accountId: string): Promise<DrillEvent[]> { /* ... */ }

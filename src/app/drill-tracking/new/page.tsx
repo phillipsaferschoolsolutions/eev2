@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, Controller, type SubmitHandler } from "react-hook-form";
+import { useForm, Controller, useFieldArray, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
@@ -13,8 +13,9 @@ import type { Location } from "@/services/locationService";
 import { getLocationsForLookup } from "@/services/locationService";
 import type { CreateDrillEventPayload } from "@/services/drillTrackingService"; 
 import { createDrillEvent } from "@/services/drillTrackingService";
-import { COMMON_DRILL_TYPES, type DrillType } from "@/types/Drill"; 
-
+//import { COMMON_DRILL_TYPES, type DrillType } from "@/types/Drill"; 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PlusCircle, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,19 +31,35 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Save, CalendarIcon, AlertTriangle, Building, CheckSquare, Loader2, Info } from "lucide-react";
 
-const drillEventSchema = z.object({
-  name: z.string().min(3, { message: "Event name must be at least 3 characters." }),
+const requiredDrillSchema = z.object({
+  typeId: z.string().min(1, "Drill type is required."),
+  quantity: z.number().min(1, "Quantity must be at least 1.").default(1),
+});
+
+const newDrillEventSchema = z.object({
+  name: z.string().min(3, { message: "Drill name must be at least 3 characters." }),
   description: z.string().optional(),
   startDate: z.date({ required_error: "Start date is required." }),
   endDate: z.date({ required_error: "End date is required." }),
-  requiredDrills: z.array(z.string()).min(1, { message: "Select at least one drill type." }),
-  assignedToSites: z.array(z.string()).min(1, { message: "Select at least one site." }),
+  requiredDrills: z.array(requiredDrillSchema).min(1, "At least one required drill must be added."), // Updated to array of requiredDrillSchema
+  assignedToSites: z.array(z.string()).min(1, "At least one site must be assigned."), // Added min(1) validation
 }).refine(data => data.endDate >= data.startDate, {
   message: "End date cannot be before start date.",
   path: ["endDate"],
 });
 
-type DrillEventFormData = z.infer<typeof drillEventSchema>;
+type NewDrillEventFormData = z.infer<typeof newDrillEventSchema>;
+
+const COMMON_DRILL_TYPES = [
+  { id: "fire-drill", name: "Fire Drill", description: "Standard fire evacuation procedure." },
+  { id: "hurricane", name: "Hurricane", description: "Prepare for extreme weather events." },
+  { id: "lockdown", name: "Lockdown", description: "Secure the premises." },
+  { id: "shelter-in-place", name: "Shelter in Place", description: "Seek internal shelter." },
+  // Add other common drill types here
+];
+
+
+type DrillEventFormData = z.infer<typeof newDrillEventSchema>;
 
 export default function NewDrillEventPage() {
   const router = useRouter();
@@ -53,11 +70,11 @@ export default function NewDrillEventPage() {
   const [isLoadingLocations, setIsLoadingLocations] = useState(true);
   const [locationsError, setLocationsError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedDrillTypeIdToAdd, setSelectedDrillTypeIdToAdd] = useState<string | null>(null);
 
-  const { control, register, handleSubmit, formState: { errors }, reset, watch } = useForm<DrillEventFormData>({
-    resolver: zodResolver(drillEventSchema),
+  const { control, register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<DrillEventFormData>({
+    resolver: zodResolver(newDrillEventSchema),
     defaultValues: {
-      name: "",
       description: "",
       startDate: undefined,
       endDate: undefined,
@@ -65,6 +82,15 @@ export default function NewDrillEventPage() {
       assignedToSites: [],
     },
   });
+
+  const handleAddDrill = () => {
+    if (selectedDrillTypeIdToAdd) {
+      append({ typeId: selectedDrillTypeIdToAdd, quantity: 1 });
+      setSelectedDrillTypeIdToAdd(null); // Reset the select dropdown
+    }
+  };
+
+  const { fields, append, remove } = useFieldArray({ control, name: "requiredDrills" });
 
   useEffect(() => {
     if (!authLoading && !profileLoading && user && userProfile?.account) {
@@ -86,7 +112,7 @@ export default function NewDrillEventPage() {
     }
   }, [user, userProfile, authLoading, profileLoading, toast]);
 
-  const onSubmit: SubmitHandler<DrillEventFormData> = async (data) => {
+  const onSubmit: SubmitHandler<NewDrillEventFormData> = async (data) => {
     setIsSubmitting(true);
     if (!userProfile?.account) {
       toast({ variant: "destructive", title: "Error", description: "User account not found." });
@@ -94,38 +120,64 @@ export default function NewDrillEventPage() {
       return;
     }
 
-    const selectedDrillDetails = COMMON_DRILL_TYPES
-        .filter(drill => data.requiredDrills.includes(drill.id))
-        .map(drill => ({ typeId: drill.id, typeName: drill.name, instructions: drill.description }));
+    // Ensure dates are valid before converting to ISO string
+    if (!data.startDate || !(data.startDate instanceof Date) || isNaN(data.startDate.getTime())) {
+         toast({ variant: "destructive", title: "Validation Error", description: "Invalid start date." });
+         setIsSubmitting(false);
+         return;
+    }
+     if (!data.endDate || !(data.endDate instanceof Date) || isNaN(data.endDate.getTime())) {
+         toast({ variant: "destructive", title: "Validation Error", description: "Invalid end date." });
+         setIsSubmitting(false);
+         return;
+    }
+
 
     const payload: CreateDrillEventPayload = {
       name: data.name,
-      description: data.description || "",
-      accountId: userProfile.account,
-      startDate: format(data.startDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"), // ISO string
-      endDate: format(data.endDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),     // ISO string
-      requiredDrills: selectedDrillDetails,
-      assignedToSites: data.assignedToSites,
+      description: data.description || "", // Ensure description is a string
+      accountId: userProfile.account, // accountId will be set by the service
+      startDate: data.startDate.toISOString(), // Convert Date to ISO string
+      endDate: data.endDate.toISOString(), // Convert Date to ISO string
+      requiredDrills: data.requiredDrills, // Include the array of objects with typeId and quantity
+      assignedToSites: data.assignedToSites, // Assuming this is an array of strings
     };
 
+     // Basic validation to ensure requiredDrills and assignedToSites are not empty
+     if (!payload.requiredDrills || payload.requiredDrills.length === 0) {
+         toast({ variant: "destructive", title: "Validation Error", description: "At least one required drill must be added." });
+         setIsSubmitting(false);
+         return;
+     }
+      if (!payload.assignedToSites || payload.assignedToSites.length === 0) {
+         toast({ variant: "destructive", title: "Validation Error", description: "At least one site must be assigned." });
+         setIsSubmitting(false);
+         return;
+     }
+
+
     try {
+      // Pass the payload and accountName to the service function
       await createDrillEvent(payload, userProfile.account);
       toast({
         title: "Success",
-        description: `Drill Event "${data.name}" created successfully.`
+        description: `Drill event "${data.name}" created successfully.`
       });
-      reset();
-      router.push("/drill-tracking");
+      reset(); // Reset form after successful submission
+      router.push("/drill-tracking"); // Navigate back after submission
     } catch (error: any) {
+      console.error("Failed to create drill event:", error);
+      const errorMessage = error.message || "An unknown error occurred.";
       toast({
         variant: "destructive",
         title: "Failed to create drill event",
-        description: error.message || "An unknown error occurred."
+        description: errorMessage
       });
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   if (authLoading || profileLoading) {
     return (
@@ -150,7 +202,7 @@ export default function NewDrillEventPage() {
     );
   }
 
-  return (
+  return(
     <div className="container mx-auto py-8 px-4 space-y-6">
       <Button variant="outline" onClick={() => router.push('/drill-tracking')} className="mb-4">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Drill Tracking
@@ -228,35 +280,122 @@ export default function NewDrillEventPage() {
             <Card className="bg-muted/30">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-lg flex items-center gap-2"><CheckSquare className="h-5 w-5 text-primary"/>Required Drills</CardTitle>
-                    <CardDescription>Select one or more drills to be completed during this event window.</CardDescription>
+                    <CardDescription>Select one or more drills to be completed during this event window and specify the quantity.</CardDescription> {/* Updated description */}
                 </CardHeader>
-                <CardContent>
-                    <Controller
-                        name="requiredDrills"
-                        control={control}
-                        render={({ field }) => (
-                            <div className="space-y-2">
-                                {COMMON_DRILL_TYPES.map((drill) => (
-                                    <div key={drill.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-background/50">
-                                        <Checkbox
-                                            id={`drill-${drill.id}`}
-                                            checked={field.value?.includes(drill.id)}
-                                            onCheckedChange={(checked) => {
-                                                return checked
-                                                ? field.onChange([...(field.value || []), drill.id])
-                                                : field.onChange(field.value?.filter((value) => value !== drill.id));
-                                            }}
-                                        />
-                                        <Label htmlFor={`drill-${drill.id}`} className="font-normal flex-grow cursor-pointer">
-                                            {drill.name}
-                                            <p className="text-xs text-muted-foreground">{drill.description}</p>
-                                        </Label>
+                <CardContent className="space-y-4"> {/* Added space-y for spacing */}
+                    {/* Placeholder for rendering added drills */}
+                    {fields.length > 0 ? (
+                       <div className="space-y-3">
+                           {/* TODO: Map over fields and render added drills with quantity input and remove button */}
+                           {fields.map((field, index) => {
+                            // Find the drill details from COMMON_DRILL_TYPES based on typeId
+                            const drillDetails = COMMON_DRILL_TYPES.find(drill => drill.id === field.typeId);
+                            return (
+                                <div key={field.id} className="flex items-center justify-between p-2 border rounded-md">
+                                    <div className="flex items-center gap-2 flex-grow"> {/* Added flex-grow */}
+                                        <p className="font-medium">{drillDetails?.name || 'Unknown Drill'}</p> {/* Display drill name */}
+
+                                        {/* Quantity Increment Widget */}
+                                        <div className="flex items-center gap-1">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-6 w-6"
+                                                onClick={() => {
+                                                    // Decrement quantity, ensure it doesn't go below 1
+                                                    const currentQuantity = watch(`requiredDrills.${index}.quantity`);
+                                                    if (currentQuantity > 1) {
+                                                        setValue(`requiredDrills.${index}.quantity`, currentQuantity - 1);
+                                                    }
+                                                }}
+                                            >
+                                                <Minus className="h-3 w-3" />
+                                            </Button>
+                                            {/* Use Controller for the quantity input */}
+                                            <Controller
+                                                name={`requiredDrills.${index}.quantity`}
+                                                control={control}
+                                                render={({ field: quantityField }) => (
+                                                    <Input
+                                                        {...quantityField}
+                                                        type="number"
+                                                        min={1}
+                                                        className="w-14 text-center"
+                                                        onChange={(e) => {
+                                                            const value = parseInt(e.target.value, 10);
+                                                            if (!isNaN(value) && value >= 1) {
+                                                                quantityField.onChange(value);
+                                                            } else if (e.target.value === '') {
+                                                                quantityField.onChange(''); // Allow empty input temporarily
+                                                            }
+                                                        }}
+                                                        onBlur={(e) => {
+                                                            // On blur, if empty or invalid, set to 1
+                                                            const value = parseInt(e.target.value, 10);
+                                                            if (isNaN(value) || value < 1) {
+                                                                setValue(`requiredDrills.${index}.quantity`, 1);
+                                                            } else {
+                                                                quantityField.onChange(value); // Ensure number type on blur
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-6 w-6"
+                                                onClick={() => {
+                                                    // Increment quantity
+                                                    const currentQuantity = watch(`requiredDrills.${index}.quantity`);
+                                                    setValue(`requiredDrills.${index}.quantity`, (currentQuantity || 0) + 1);
+                                                }}
+                                            >
+                                                <Plus className="h-3 w-3" />
+                                            </Button>
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
-                        )}
-                    />
-                    {errors.requiredDrills && <p className="text-sm text-destructive mt-2">{errors.requiredDrills.message}</p>}
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => remove(index)}>Remove</Button>
+                                </div>
+                            );
+                        })}
+
+                       </div>
+                    ) : (
+                        <div className="text-center text-muted-foreground">
+                           <p>No required drills added yet.</p>
+                        </div>
+                    )}
+
+                    {/* Add Drill Section with Select */}
+                    <div className="flex items-center gap-2"> {/* Flex container for select and button */}
+                        <Label htmlFor="select-drill-type" className="sr-only">Select Drill Type</Label> {/*sr-only to hide label visually */}
+                        <Select onValueChange={(value) => setSelectedDrillTypeIdToAdd(value)} value={selectedDrillTypeIdToAdd}>
+                           <SelectTrigger id="select-drill-type" className="w-[200px]"> {/* Adjust width as needed */}
+                               <SelectValue placeholder="Select drill to add..." />
+                           </SelectTrigger>
+                           <SelectContent>
+                               {COMMON_DRILL_TYPES.map((drill) => (
+                                   <SelectItem key={drill.id} value={drill.id}>
+                                       {drill.name}
+                                   </SelectItem>
+                               ))}
+                           </SelectContent>
+                       </Select>
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleAddDrill} // Call a new handler function
+                            disabled={!selectedDrillTypeIdToAdd} // Disable if no drill type is selected
+                        >
+                            <PlusCircle className="mr-1 h-4 w-4" /> Add Drill
+                        </Button>
+                    </div>
+
                 </CardContent>
             </Card>
 
@@ -302,6 +441,12 @@ export default function NewDrillEventPage() {
                         />
                     )}
                     {errors.assignedToSites && <p className="text-sm text-destructive mt-2">{errors.assignedToSites.message}</p>}
+                  <CardFooter>
+                    <Button type="submit" className="ml-auto" disabled={isSubmitting} size="lg">
+                      <Save className="mr-2 h-5 w-5" />
+                      {isSubmitting ? "Saving Event..." : "Create Drill Event"}
+                    </Button>
+                  </CardFooter>
                 </CardContent>
             </Card>
             
@@ -311,15 +456,8 @@ export default function NewDrillEventPage() {
                 <AlertDescription className="text-sky-600 dark:text-sky-400">
                     Features like recurrence rules, calendar integration, user-specific assignments, and detailed checklists will be added in future updates.
                 </AlertDescription>
-            </Alert>
-
-          </CardContent>
-          <CardFooter>
-            <Button type="submit" className="ml-auto" disabled={isSubmitting} size="lg">
-              <Save className="mr-2 h-5 w-5" />
-              {isSubmitting ? "Saving Event..." : "Create Drill Event"}
-            </Button>
-          </CardFooter>
+            </Alert> 
+          </CardContent>         
         </form>
       </Card>
     </div>
