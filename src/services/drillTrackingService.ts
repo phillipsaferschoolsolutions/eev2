@@ -9,8 +9,8 @@ import type { DrillEvent } from '@/types/Drill'; // Assuming DrillEvent is the f
 // Define a base URL for your drill tracking Cloud Functions
 // This should match how you export your Express app in functions/index.js
 // For example, if you export `exports.drillTracking = functions.https.onRequest(drillTrackingApp);`
-// then the base URL will be `https://us-central1-YOUR-PROJECT-ID.cloudfunctions.net/drillTracking`
-const DRILL_TRACKING_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/drillTracking';
+// then the base URL will be `https://us-central1-YOUR-PROJECT-ID.cloudfunctions.net/drilltracking`
+const DRILL_TRACKING_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/drilltracking';
 
 // Payload for creating a new drill event
 export interface CreateDrillEventPayload {

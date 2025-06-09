@@ -23,7 +23,9 @@ import {
   Activity,
   TrendingUp,
   Filter,
-  Cloud,
+  Cloud, Sun, CloudRain, 
+  CloudSnow, CloudLightning, CloudFog, 
+  Thermometer, Droplets, Wind, Sunrise, Sunset, SunMoon,
   AlertCircle,
   Loader2,
   ListOrdered,
@@ -32,7 +34,6 @@ import {
   Zap,
   Award,
   Flame, 
-  Sun, // Example icon for clear sky
 } from "lucide-react";
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
@@ -84,6 +85,16 @@ import { useTheme } from "next-themes";
 import { fetchPexelsImageURL } from '@/services/pexelsService';
 import { fetchWeather } from '@/services/weatherService'; // Assuming a service for fetching weather
 import { Badge } from "@/components/ui/badge";
+
+const getWeatherIcon = (id) => {
+  if (id >= 200 && id < 300) return <CloudLightning className="text-yellow-500 h-10 w-10" />;
+  if (id >= 300 && id < 600) return <CloudRain className="text-blue-500 h-10 w-10" />;
+  if (id >= 600 && id < 700) return <CloudSnow className="text-cyan-400 h-10 w-10" />;
+  if (id >= 700 && id < 800) return <CloudFog className="text-gray-400 h-10 w-10" />;
+  if (id === 800) return <Sun className="text-yellow-400 h-10 w-10" />;
+  if (id > 800) return <Cloud className="text-sky-400 h-10 w-10" />;
+  return <SunMoon className="text-yellow-300 h-10 w-10" />;
+};
 
 const GOOGLE_NEWS_RSS_URL =
   "https://news.google.com/rss/search?q=K-12+school+security+OR+school+cybersecurity&hl=en-US&gl=US&ceid=US:en";
@@ -744,89 +755,82 @@ export default function DashboardPage() {
 
  // --- New Weather Widget Card ---
  const renderWeatherWidget = () => {
-    if (!userLat || !userLng) {
-      return (
-        <Card className="h-full flex flex-col justify-center items-center p-4 text-center">
-          {weatherError ? (
-            <>
-              <Alert variant="warning">
-                <Info className="h-4 w-4" />
-                <AlertTitle>Location Needed</AlertTitle>
-                <AlertDescription>{weatherError}</AlertDescription>
-              </Alert>
-              <Button onClick={requestLocation} className="mt-4">
-                Enable Location
-              </Button>
-            </>
-          ) : (
-            <>
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <CardDescription>Please enable location services to fetch weather.</CardDescription>
-              <Button onClick={requestLocation} className="mt-4">
-                Enable Location
-              </Button>
-            </>
-          )}
-        </Card>
-      );
-    }
-
-    if (isLoadingWeather && (!weatherData && !weatherError)) {
- return (
-      <Card className="h-full flex flex-col justify-center items-center p-4"><Skeleton className="h-32 w-full"/></Card>
- )
-    }
-
-    if (weatherError && !isLoadingWeather) {
-      return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Weather Error</AlertTitle><AlertDescription>{weatherError}</AlertDescription></Alert>;
-    }
-    if (!weatherData && !isLoadingWeather) {
-      return <p className="text-sm text-muted-foreground text-center p-4">Weather data unavailable after loading attempt.</p>;
-    }
-    
-    // Ensure weatherData and its nested properties are accessed safely
+  if (!userLat || !userLng) {
     return (
-      <Card className="h-full flex flex-col justify-between items-center p-4 text-center">
-        <CardHeader className="p-0 pb-2">
-           {weatherData?.current?.weather && weatherData.current.weather[0]?.icon ? (
-             <img src={`http://openweathermap.org/img/wn/${weatherData.current.weather[0].icon}@2x.png`} alt={weatherData.current.weather[0].description || 'Weather Icon'} className="h-16 w-16 mx-auto" />
-           ) : (
-             <Cloud className="h-12 w-12 text-blue-500 mx-auto" />
-           )}
-        </CardHeader>
-        <CardContent className="p-0 flex-grow">
-          <CardTitle className="text-2xl font-bold">
-             {weatherData?.current?.temp ? `${Math.round(weatherData.current.temp)}°F` : '--°'}
-          </CardTitle>
-          <CardDescription className="text-sm capitalize">{weatherData?.current?.weather && weatherData.current.weather[0]?.description ? weatherData.current.weather[0].description : 'N/A'}</CardDescription>
-           {weatherData?.name && <p className="text-sm font-medium mt-0.5">{weatherData.name}</p>}
-           {weatherData.main && weatherData.main.feels_like && <p className="text-xs text-muted-foreground">Feels like: {Math.round(weatherData.main.feels_like)}°F</p>}
-           {weatherData.main && weatherData.main.humidity && weatherData.wind && weatherData.wind.speed && (
-             <p className="text-xs text-muted-foreground mt-0.5">Humidity: {weatherData.main.humidity}% | Wind: {Math.round(weatherData.wind.speed)} mph</p>
-           )}
-
-           {/* Simple 5-Day Forecast - Assuming weatherData.daily exists and is an array of forecast items */}
-           {/* This is a placeholder; the exact structure depends on the API response */}
-           {/* weatherData?.daily && Array.isArray(weatherData.daily) && weatherData.daily.length > 0 && (
-               <div className="mt-4 border-t pt-3">
-                   <h5 className="text-xs font-semibold mb-2">5-Day Forecast:</h5>
-                   <div className="grid grid-cols-5 gap-2 text-xs">
-                       {weatherData.daily.slice(0, 5).map((day, index) => (
-                           <div key={index} className="flex flex-col items-center">
-                               <p>{new Date(day.dt * 1000).toLocaleDateString('en-US', { weekday: 'short' })}</p>
-                               {day.weather && day.weather[0] && day.weather[0].icon && (
-                                   <img src={`http://openweathermap.org/img/wn/${day.weather[0].icon}@2x.png`} alt={day.weather[0].description} className="h-8 w-8" />
-                               )}
-                               <p>{Math.round(day.temp.day)}°</p>
-                           </div>
-                       ))}
-                   </div>
-               </div>
-           ) */}
-        </CardContent>
+      <Card className="h-full flex flex-col justify-center items-center p-4 text-center">
+        {weatherError ? (
+          <>
+            <Alert variant="warning">
+              <Info className="h-4 w-4" />
+              <AlertTitle>Location Needed</AlertTitle>
+              <AlertDescription>{weatherError}</AlertDescription>
+            </Alert>
+            <Button onClick={requestLocation} className="mt-4">Enable Location</Button>
+          </>
+        ) : (
+          <>
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+            <CardDescription>Please enable location services to fetch weather.</CardDescription>
+            <Button onClick={requestLocation} className="mt-4">Enable Location</Button>
+          </>
+        )}
       </Card>
     );
- };
+  }
+
+  if (isLoadingWeather && (!weatherData && !weatherError)) {
+    return <Card className="h-full flex flex-col justify-center items-center p-4"><Skeleton className="h-32 w-full"/></Card>;
+  }
+
+  if (weatherError && !isLoadingWeather) {
+    return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Weather Error</AlertTitle><AlertDescription>{weatherError}</AlertDescription></Alert>;
+  }
+
+  if (!weatherData?.current) {
+    return <p className="text-sm text-muted-foreground text-center p-4">Weather data unavailable.</p>;
+  }
+
+  const current = weatherData.current;
+  const weather = current.weather?.[0];
+  const sunrise = new Date(current.sunrise * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const sunset = new Date(current.sunset * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <Card className="h-full flex flex-col justify-between p-4">
+      <div className="flex items-center gap-4 mb-2">
+        {weather ? getWeatherIcon(weather.id) : <Cloud className="h-10 w-10 text-blue-400" />}
+        <div>
+          <CardTitle className="text-3xl">{Math.round(current.temp)}°F</CardTitle>
+          <CardDescription className="capitalize">{weather?.description || 'N/A'}</CardDescription>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-4">
+        <div className="flex items-center gap-1"><Thermometer className="h-4 w-4" /> Feels like: {Math.round(current.feels_like)}°F</div>
+        <div className="flex items-center gap-1"><Droplets className="h-4 w-4" /> Humidity: {current.humidity}%</div>
+        <div className="flex items-center gap-1"><Wind className="h-4 w-4" /> Wind: {Math.round(current.wind_speed)} mph</div>
+        <div className="flex items-center gap-1"><Sun className="h-4 w-4" /> UV Index: {current.uvi}</div>
+        <div className="flex items-center gap-1"><Sunrise className="h-4 w-4" /> Sunrise: {sunrise}</div>
+        <div className="flex items-center gap-1"><Sunset className="h-4 w-4" /> Sunset: {sunset}</div>
+      </div>
+
+      {weatherData?.daily?.length >= 5 && (
+        <div className="border-t pt-3">
+          <h5 className="text-xs font-semibold mb-2">5-Day Forecast</h5>
+          <div className="grid grid-cols-5 gap-2 text-center text-xs">
+            {weatherData.daily.slice(1, 6).map((day, index) => (
+              <div key={index} className="flex flex-col items-center">
+                <p>{new Date(day.dt * 1000).toLocaleDateString('en-US', { weekday: 'short' })}</p>
+                {day.weather?.[0] && getWeatherIcon(day.weather[0].id)}
+                <p>{Math.round(day.temp.day)}°</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+};
 
 
 

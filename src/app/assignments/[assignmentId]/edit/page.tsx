@@ -43,9 +43,10 @@ const questionSchema = z.object({
 
 // Schema for the entire assignment form
 const assignmentFormSchema = z.object({
-  assessmentName: z.string().min(3, "Assessment name must be at least 3 characters."),
+  assessmentName: z.string().min(3, "Assignment name must be at least 3 characters."),
   description: z.string().optional(),
   questions: z.array(questionSchema).min(0, "At least one question is recommended."),
+  assignmentType: z.enum(["comprehensiveAssessment", "siteAssessment", "safetyPlan"]).optional(),
 });
 
 type AssignmentFormData = z.infer<typeof assignmentFormSchema>;
@@ -66,9 +67,16 @@ const componentTypes = [
   { value: "buttonSelect", label: "Button Select (Single Choice)"},
   { value: "multiButtonSelect", label: "Button Select (Multiple Choice)"},
   { value: "range", label: "Range Slider" },
+  { value: "staticContent", label: "Text (Static Content)" },
   { value: "photoUpload", label: "Photo Upload" },
   { value: "schoolSelector", label: "School/Site Selector" },
   // { value: "dynamicQuestion", label: "Dynamic Question (Logic-based)" },
+];
+
+const assignmentTypes = [
+  { value: "comprehensiveAssessment", label: "Comprehensive Assessment" },
+  { value: "siteAssessment", label: "Site Assessment" },
+  { value: "safetyPlan", label: "Safety Plan" },
 ];
 
 const parseOptionsString = (optionsStr: string | undefined): string[] => {
@@ -93,6 +101,7 @@ export default function EditAssignmentPage() {
     resolver: zodResolver(assignmentFormSchema),
     defaultValues: {
       assessmentName: "",
+      assignmentType: undefined,
       description: "",
       questions: [],
     },
@@ -128,6 +137,7 @@ export default function EditAssignmentPage() {
               ...q,
               options: Array.isArray(q.options) ? q.options.join(';') : q.options || "",
             })) || [],
+            assignmentType: fetchedAssignment.assignmentType as "comprehensiveAssessment" | "siteAssessment" | "safetyPlan" | undefined, // Map fetched type
           });
         } else {
           setError("Assignment not found or you do not have permission to access it.");
@@ -162,6 +172,7 @@ export default function EditAssignmentPage() {
         options: (q.component === 'select' || q.component === 'options' || q.component === 'checkbox') ? parseOptionsString(q.options) : q.options,
       })),
       accountSubmittedFor: userProfile.account, // Include account for context/auth on backend
+      assignmentType: data.assignmentType, // Include assignmentType in payload
     };
 
     try {
@@ -230,7 +241,29 @@ export default function EditAssignmentPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <Label htmlFor="assessmentName">Assessment Name</Label>
+              <Label htmlFor="assignmentType">Assignment Type</Label>
+              <Controller
+                name="assignmentType"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger id="assignmentType">
+                      <SelectValue placeholder="Select assignment type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assignmentTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.assignmentType && <p className="text-sm text-destructive mt-1">{errors.assignmentType.message}</p>}
+            </div>
+            <div>
+              <Label htmlFor="assessmentName">Assignment Name</Label>
               <Input id="assessmentName" {...register("assessmentName")} />
               {errors.assessmentName && <p className="text-sm text-destructive mt-1">{errors.assessmentName.message}</p>}
             </div>

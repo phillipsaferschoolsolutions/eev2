@@ -179,8 +179,10 @@ export default function AssignmentDetailsPage() {
   return (
     <div className="container mx-auto py-8 px-4 space-y-6">
       <div>
-        <Button variant="outline" onClick={() => router.back()} className="mb-4">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Assignments
+        <Button variant="outline" /* onClick={() => router.back()} */ asChild className="mb-4">
+          <Link href="/assessment-forms">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Assignments
+          </Link>
         </Button>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <h1 className="text-3xl font-bold tracking-tight">{assignment.assessmentName || "Assignment Details"}</h1>
