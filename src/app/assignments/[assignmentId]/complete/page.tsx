@@ -255,6 +255,49 @@ export default function CompleteAssignmentPage() {
     }
   };
 
+  const overallProgress = useMemo(() => {
+    const totalQuestions = conditionallyVisibleQuestions.length;
+    if (totalQuestions === 0) {
+      return 0;
+    }
+    const answeredCount = conditionallyVisibleQuestions.filter(q => isQuestionAnswered(q, allWatchedValues)).length;
+    return (answeredCount / totalQuestions) * 100;
+  }, [conditionallyVisibleQuestions, allWatchedValues]);
+
+  // Add this near your other useMemo hooks
+  const sectionProgress = useMemo(() => {
+    const progressData: Record<string, Record<string, { total: number; answered: number; progress: number }>> = {};
+
+    conditionallyVisibleQuestions.forEach(q => {
+      const sectionName = q.section || 'Uncategorized';
+      const subSectionName = q.subSection || 'General';
+
+      // Initialize section if it doesn't exist
+      if (!progressData[sectionName]) {
+        progressData[sectionName] = {};
+      }
+      // Initialize sub-section if it doesn't exist
+      if (!progressData[sectionName][subSectionName]) {
+        progressData[sectionName][subSectionName] = { total: 0, answered: 0, progress: 0 };
+      }
+
+      progressData[sectionName][subSectionName].total++;
+      if (isQuestionAnswered(q, allWatchedValues)) {
+        progressData[sectionName][subSectionName].answered++;
+      }
+    });
+
+    // Calculate progress percentage for each sub-section
+    for (const section in progressData) {
+      for (const subSection in progressData[section]) {
+        const { total, answered } = progressData[section][subSection];
+        progressData[section][subSection].progress = total > 0 ? (answered / total) * 100 : 0;
+      }
+    }
+
+    return progressData;
+  }, [conditionallyVisibleQuestions, allWatchedValues]);
+
   const availableSections = useMemo(() => {
     const sections = new Set<string>();
     conditionallyVisibleQuestions.forEach(q => {
@@ -1056,747 +1099,783 @@ export default function CompleteAssignmentPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <Card className="shadow-xl">
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold">{assignment.assessmentName || "Assignment"}</CardTitle>
-          {assignment.description && <CardDescription className="text-lg">{assignment.description}</CardDescription>}
-        </CardHeader>
-        <CardContent>
-          <Card className="mb-6 p-4 bg-muted/30">
-            <CardHeader className="p-2 pb-3">
-             <CardTitle className="text-xl flex items-center gap-2">
-                <Filter className="h-5 w-5 text-primary shrink-0"/>
-                <span className="min-w-0">Filter Questions</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-2 space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
-              <div>
-                <Label htmlFor="filter-section">Section</Label>
-                <Select value={selectedSection} onValueChange={(value) => { setSelectedSection(value); setSelectedSubSection("all"); }}>
-                  <SelectTrigger id="filter-section"><SelectValue placeholder="Filter by section..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Sections</SelectItem>
-                    {availableSections.map(sec => (
-                      <SelectItem key={sec} value={sec}>{sec === UNASSIGNED_FILTER_VALUE ? "N/A" : sec}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="filter-subsection">Sub-Section</Label>
-                <Select value={selectedSubSection} onValueChange={setSelectedSubSection} disabled={selectedSection === "all" && availableSubSections.length <= 1 && availableSubSections.every(s => s === UNASSIGNED_FILTER_VALUE) }>
-                  <SelectTrigger id="filter-subsection"><SelectValue placeholder="Filter by sub-section..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Sub-Sections</SelectItem>
-                    {availableSubSections.map(sub => (
-                      <SelectItem key={sub} value={sub}>{sub === UNASSIGNED_FILTER_VALUE ? "N/A" : sub}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Status</Label>
-                <RadioGroup
-                  value={answeredStatusFilter}
-                  onValueChange={(value: 'all' | 'answered' | 'unanswered') => setAnsweredStatusFilter(value)}
-                  className="flex flex-wrap gap-x-4 gap-y-2 pt-2"
-                >
-                  <div className="flex items-center space-x-1">
-                    <RadioGroupItem value="all" id="filter-all" />
-                    <Label htmlFor="filter-all" className="font-normal">All</Label>
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8 items-start p-4 md:p-6">
+      {/* Main Content Column */}
+      <div className="space-y-6">
+        <Card className="shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-3xl font-bold">{assignment.assessmentName || "Assignment"}</CardTitle>
+            {assignment.description && <CardDescription className="text-lg">{assignment.description}</CardDescription>}
+          </CardHeader>
+          <CardContent>
+            <Card className="mb-6 p-4 bg-muted/30">
+              <CardHeader className="p-2 pb-3">
+              <CardTitle className="text-xl flex items-center gap-2">
+                  <Filter className="h-5 w-5 text-primary shrink-0"/>
+                  <span className="min-w-0">Filter Questions</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-2 space-y-4 md:space-y-0 md:grid md:grid-cols-3 md:gap-4">
+                <div className="mb-4">
+                  <Label className="text-sm font-medium">Overall Progress</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <ShadProgress value={overallProgress} className="w-full h-2.5" />
+                    <span className="text-sm font-semibold">{Math.round(overallProgress)}%</span>
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <RadioGroupItem value="answered" id="filter-answered" />
-                    <Label htmlFor="filter-answered" className="font-normal">Answered</Label>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <RadioGroupItem value="unanswered" id="filter-unanswered" />
-                    <Label htmlFor="filter-unanswered" className="font-normal">Unanswered</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            </CardContent>
-          </Card>
-          <Separator className="my-6"/>
+                </div>
+                <div>
+                  <Label htmlFor="filter-section">Section</Label>
+                  <Select value={selectedSection} onValueChange={(value) => { setSelectedSection(value); setSelectedSubSection("all"); }}>
+                    <SelectTrigger id="filter-section"><SelectValue placeholder="Filter by section..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sections</SelectItem>
+                      {availableSections.map(sec => (
+                        <SelectItem key={sec} value={sec}>{sec === UNASSIGNED_FILTER_VALUE ? "N/A" : sec}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="filter-subsection">Sub-Section</Label>
+                  <Select value={selectedSubSection} onValueChange={setSelectedSubSection} disabled={selectedSection === "all" && availableSubSections.length <= 1 && availableSubSections.every(s => s === UNASSIGNED_FILTER_VALUE) }>
+                    <SelectTrigger id="filter-subsection"><SelectValue placeholder="Filter by sub-section..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sub-Sections</SelectItem>
+                      {availableSubSections.map(sub => (
+                        <SelectItem key={sub} value={sub}>{sub === UNASSIGNED_FILTER_VALUE ? "N/A" : sub}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <RadioGroup
+                    value={answeredStatusFilter}
+                    onValueChange={(value: 'all' | 'answered' | 'unanswered') => setAnsweredStatusFilter(value)}
+                    className="flex flex-wrap gap-x-4 gap-y-2 pt-2"
+                  >
+                    <div className="flex items-center space-x-1">
+                      <RadioGroupItem value="all" id="filter-all" />
+                      <Label htmlFor="filter-all" className="font-normal">All</Label>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <RadioGroupItem value="answered" id="filter-answered" />
+                      <Label htmlFor="filter-answered" className="font-normal">Answered</Label>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <RadioGroupItem value="unanswered" id="filter-unanswered" />
+                      <Label htmlFor="filter-unanswered" className="font-normal">Unanswered</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </CardContent>
+            </Card>
+            <Separator className="my-6"/>
 
-          {/* Photo Bank Section */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Photo Bank</CardTitle>
-              <CardDescription>
-                Upload all your photos for this assignment here. You can then associate them with specific questions.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Replace the placeholder div with this file input component */}
-              <div className="mt-4">
-                <Label 
-                  htmlFor="photo-bank-upload" 
-                  className="relative flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted"
-                >
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <Paperclip className="w-8 h-8 mb-4 text-muted-foreground" />
-                    <p className="mb-2 text-sm text-muted-foreground">
-                      <span className="font-semibold">Click to upload</span> or drag and drop
-                    </p>
-                    <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF (MAX. 5MB per file)</p>
-                  </div>
-                  <Input 
-                    id="photo-bank-upload" 
-                    type="file" 
-                    multiple 
-                    className="sr-only" 
-                    onChange={handlePhotoBankUpload} // We will create this function next
-                    accept="image/*"
-                  />
-                </Label> 
-              </div> 
+            {/* Photo Bank Section */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Photo Bank</CardTitle>
+                <CardDescription>
+                  Upload all your photos for this assignment here. You can then associate them with specific questions.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Replace the placeholder div with this file input component */}
+                <div className="mt-4">
+                  <Label 
+                    htmlFor="photo-bank-upload" 
+                    className="relative flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted"
+                  >
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Paperclip className="w-8 h-8 mb-4 text-muted-foreground" />
+                      <p className="mb-2 text-sm text-muted-foreground">
+                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF (MAX. 5MB per file)</p>
+                    </div>
+                    <Input 
+                      id="photo-bank-upload" 
+                      type="file" 
+                      multiple 
+                      className="sr-only" 
+                      onChange={handlePhotoBankUpload} // We will create this function next
+                      accept="image/*"
+                    />
+                  </Label> 
+                </div> 
 
-              {/* Display upload progress for Photo Bank */}
-              {Object.keys(photoBankUploads).length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <p className="text-sm font-medium">Uploads in Progress</p>
-                  {Object.entries(photoBankUploads).map(([fileName, status]) => (
-                    <div key={fileName}>
-                      <div className="flex justify-between items-center text-sm">
-                        <p className="truncate max-w-xs">{fileName}</p>
-                        {status.progress < 100 && !status.error && <p>{Math.round(status.progress)}%</p>}
-                        {status.progress === 100 && !status.error && <CheckCircle2 className="h-4 w-4 text-green-500" />}
-                        {status.error && <XCircle className="h-4 w-4 text-destructive" />}
+                {/* Display upload progress for Photo Bank */}
+                {Object.keys(photoBankUploads).length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-medium">Uploads in Progress</p>
+                    {Object.entries(photoBankUploads).map(([fileName, status]) => (
+                      <div key={fileName}>
+                        <div className="flex justify-between items-center text-sm">
+                          <p className="truncate max-w-xs">{fileName}</p>
+                          {status.progress < 100 && !status.error && <p>{Math.round(status.progress)}%</p>}
+                          {status.progress === 100 && !status.error && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                          {status.error && <XCircle className="h-4 w-4 text-destructive" />}
+                        </div>
+                        {status.error ? (
+                          <p className="text-xs text-destructive">{status.error}</p>
+                        ) : (
+                          <ShadProgress value={status.progress} className="h-1" />
+                        )}
                       </div>
-                      {status.error ? (
-                        <p className="text-xs text-destructive">{status.error}</p>
-                      ) : (
-                        <ShadProgress value={status.progress} className="h-1" />
+                    ))}
+                  </div>
+                )}
+
+
+                {/* Display uploaded photos */}
+                {photoBankFiles.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    {photoBankFiles.map((file, index) => (
+                      <div key={index} className="relative">
+                        <Image
+                          src={file.url}
+                          alt={file.name}
+                          width={150}
+                          height={150}
+                          className="object-cover rounded-md"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+              {questionsToRender.map((question, index) => (
+                <Card key={question.id || index} className="p-6 bg-card/50">
+                  <fieldset className="space-y-3">
+                    <Label htmlFor={question.id} className="text-lg font-semibold text-foreground">
+                      {questionsToRender.length > 0 ? `${questionsToRender.indexOf(question) + 1}` : index + 1}. {question.label}
+                      {question.required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                    <div className="text-xs text-muted-foreground space-y-1 mb-2">
+                        <div className="flex items-center">
+                          <span className="font-medium mr-1.5">Section:</span>
+                          <span className={`inline-block px-2 py-0.5 border-transparent rounded-full text-xs ${getGradientClassForText(question.section)}`}>
+                            {String(question.section || "N/A")}
+                          </span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="font-medium mr-1.5">Sub-Section:</span>
+                          <span className={`inline-block px-2 py-0.5 border-transparent rounded-full text-xs ${getGradientClassForText(question.subSection)}`}>
+                            {String(question.subSection || "N/A")}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Added rendering for staticContent */}
+                      {question.component === "staticContent" && (
+                        <div className="prose dark:prose-invert max-w-none"> {/* Using prose for basic styling */}
+                          {/* Assuming static content is stored in question.options as a string */}
+                          <p>{question.options as string}</p>
+                        </div>
                       )}
-                    </div>
-                  ))}
-                </div>
-              )}
 
 
-              {/* Display uploaded photos */}
-              {photoBankFiles.length > 0 && (
-                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {photoBankFiles.map((file, index) => (
-                    <div key={index} className="relative">
-                      <Image
-                        src={file.url}
-                        alt={file.name}
-                        width={150}
-                        height={150}
-                        className="object-cover rounded-md"
+                    {['text', 'number', 'email', 'url', 'telephone', 'datetime'].includes(question.component) ? (
+                      <Input
+                        id={question.id}
+                        type={getComponentType(question.component)}
+                        {...register(question.id, { required: question.required })}
+                        className="bg-background"
                       />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ) : null}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-            {questionsToRender.map((question, index) => (
-              <Card key={question.id || index} className="p-6 bg-card/50">
-                <fieldset className="space-y-3">
-                  <Label htmlFor={question.id} className="text-lg font-semibold text-foreground">
-                    {questionsToRender.length > 0 ? `${questionsToRender.indexOf(question) + 1}` : index + 1}. {question.label}
-                    {question.required && <span className="text-destructive ml-1">*</span>}
-                  </Label>
-                   <div className="text-xs text-muted-foreground space-y-1 mb-2">
-                      <div className="flex items-center">
-                        <span className="font-medium mr-1.5">Section:</span>
-                        <span className={`inline-block px-2 py-0.5 border-transparent rounded-full text-xs ${getGradientClassForText(question.section)}`}>
-                          {String(question.section || "N/A")}
-                        </span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="font-medium mr-1.5">Sub-Section:</span>
-                        <span className={`inline-block px-2 py-0.5 border-transparent rounded-full text-xs ${getGradientClassForText(question.subSection)}`}>
-                          {String(question.subSection || "N/A")}
-                        </span>
-                      </div>
-                    </div>
+                    {(question.component === 'date' || question.component === 'completionDate') && (
+                      <Controller
+                        name={question.id}
+                        control={control}
+                        rules={{ required: question.required }}
+                        render={({ field }) => (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full justify-start text-left font-normal bg-background",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                      />
+                    )}
 
-                    {/* Added rendering for staticContent */}
-                    {question.component === "staticContent" && (
-                      <div className="prose dark:prose-invert max-w-none"> {/* Using prose for basic styling */}
-                        {/* Assuming static content is stored in question.options as a string */}
-                        <p>{question.options as string}</p>
-                      </div>
+                    {(question.component === 'time' || question.component === 'completionTime') && (
+                      <Controller
+                          name={question.id}
+                          control={control}
+                          rules={{ required: question.required }}
+                          render={({ field }) => {
+                              const timeValue = field.value as { hour: string, minute: string, period: "AM" | "PM" } || { hour: '12', minute: '00', period: 'PM' };
+                              return (
+                                  <div className="flex items-center gap-2 bg-background p-2 rounded-md border">
+                                  <Clock className="h-5 w-5 text-muted-foreground mr-1" />
+                                  <Select
+                                      value={timeValue.hour}
+                                      onValueChange={(hour) => field.onChange({ ...timeValue, hour })}
+                                  >
+                                      <SelectTrigger className="w-[80px]"><SelectValue placeholder="HH" /></SelectTrigger>
+                                      <SelectContent>{hours12.map(h => <SelectItem key={`h-${h}`} value={h}>{h}</SelectItem>)}</SelectContent>
+                                  </Select>
+                                  <span className="font-semibold">:</span>
+                                  <Select
+                                      value={timeValue.minute}
+                                      onValueChange={(minute) => field.onChange({ ...timeValue, minute })}
+                                  >
+                                      <SelectTrigger className="w-[80px]"><SelectValue placeholder="MM" /></SelectTrigger>
+                                      <SelectContent>{minutes.map(m => <SelectItem key={`m-${m}`} value={m}>{m}</SelectItem>)}</SelectContent>
+                                  </Select>
+                                  <Select
+                                      value={timeValue.period}
+                                      onValueChange={(period: "AM" | "PM") => field.onChange({ ...timeValue, period })}
+                                  >
+                                      <SelectTrigger className="w-[90px]"><SelectValue placeholder="AM/PM" /></SelectTrigger>
+                                      <SelectContent>{amPm.map(p => <SelectItem key={`p-${p}`} value={p}>{p}</SelectItem>)}</SelectContent>
+                                  </Select>
+                                  </div>
+                              );
+                          }}
+                      />
                     )}
 
 
-                  {['text', 'number', 'email', 'url', 'telephone', 'datetime'].includes(question.component) ? (
-                    <Input
-                      id={question.id}
-                      type={getComponentType(question.component)}
-                      {...register(question.id, { required: question.required })}
-                      className="bg-background"
-                    />
-                  ) : null}
-
-                  {(question.component === 'date' || question.component === 'completionDate') && (
-                    <Controller
-                      name={question.id}
-                      control={control}
-                      rules={{ required: question.required }}
-                      render={({ field }) => (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start text-left font-normal bg-background",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      )}
-                    />
-                  )}
-
-                  {(question.component === 'time' || question.component === 'completionTime') && (
-                     <Controller
-                        name={question.id}
-                        control={control}
-                        rules={{ required: question.required }}
-                        render={({ field }) => {
-                            const timeValue = field.value as { hour: string, minute: string, period: "AM" | "PM" } || { hour: '12', minute: '00', period: 'PM' };
-                            return (
-                                <div className="flex items-center gap-2 bg-background p-2 rounded-md border">
-                                <Clock className="h-5 w-5 text-muted-foreground mr-1" />
-                                <Select
-                                    value={timeValue.hour}
-                                    onValueChange={(hour) => field.onChange({ ...timeValue, hour })}
-                                >
-                                    <SelectTrigger className="w-[80px]"><SelectValue placeholder="HH" /></SelectTrigger>
-                                    <SelectContent>{hours12.map(h => <SelectItem key={`h-${h}`} value={h}>{h}</SelectItem>)}</SelectContent>
-                                </Select>
-                                <span className="font-semibold">:</span>
-                                <Select
-                                    value={timeValue.minute}
-                                    onValueChange={(minute) => field.onChange({ ...timeValue, minute })}
-                                >
-                                    <SelectTrigger className="w-[80px]"><SelectValue placeholder="MM" /></SelectTrigger>
-                                    <SelectContent>{minutes.map(m => <SelectItem key={`m-${m}`} value={m}>{m}</SelectItem>)}</SelectContent>
-                                </Select>
-                                <Select
-                                    value={timeValue.period}
-                                    onValueChange={(period: "AM" | "PM") => field.onChange({ ...timeValue, period })}
-                                >
-                                    <SelectTrigger className="w-[90px]"><SelectValue placeholder="AM/PM" /></SelectTrigger>
-                                    <SelectContent>{amPm.map(p => <SelectItem key={`p-${p}`} value={p}>{p}</SelectItem>)}</SelectContent>
-                                </Select>
-                                </div>
-                            );
-                        }}
-                    />
-                  )}
-
-
-                  {question.component === 'textarea' && (
-                    <Textarea
-                      id={question.id}
-                      {...register(question.id, { required: question.required })}
-                      className="bg-background"
-                    />
-                  )}
-
-                  {question.component === 'options' && (
-                    <Controller
-                      name={question.id}
-                      control={control}
-                      rules={{ required: question.required }}
-                      render={({ field }) => (
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex flex-col space-y-1 bg-background p-2 rounded-md"
-                        >
-                          {parseOptions(question.options).map((option) => (
-                            <div key={option} className="flex items-center space-x-3">
-                              <RadioGroupItem value={option} id={`${question.id}-${option}`} />
-                              <Label htmlFor={`${question.id}-${option}`}>{option}</Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      )}
-                    />
-                  )}
-
-                  {question.component === 'buttonSelect' && (
-                    <Controller
-                      name={question.id}
-                      control={control}
-                      rules={{ required: question.required }}
-                      render={({ field }) => (
-                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-wrap gap-2 bg-background p-2 rounded-md">
-                           {parseOptions(question.options).map(option => (
-                                <div key={option} className="flex items-center">
-                                    <RadioGroupItem value={option} id={`${question.id}-${option}`} className="sr-only peer" />
-                                    <Label htmlFor={`${question.id}-${option}`}
-                                        className="px-3 py-2 border rounded-md cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground hover:bg-muted/50">
-                                        {option}
-                                    </Label>
-                                </div>
-                            ))}
-                        </RadioGroup>
-                      )}
-                    />
-                  )}
-
-                  {question.component === 'select' && (
-                     <Controller
-                        name={question.id}
-                        control={control}
-                        rules={{ required: question.required }}
-                        render={({ field }) => (
-                            <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value || ""}>
-                                <SelectTrigger id={question.id} className="w-full bg-background">
-                                    <SelectValue placeholder={`Select an option for "${question.label}"`} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {parseOptions(question.options).map(opt => (
-                                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        )}
-                    />
-                  )}
-
-                  {question.component === 'schoolSelector' && (
-                    <Controller
-                        name={question.id}
-                        control={control}
-                        rules={{ required: question.required }}
-                        render={({ field }) => (
-                            <div className="space-y-1">
-                                {isLoadingLocations && <Skeleton className="h-10 w-full" />}
-                                {locationsError && <Alert variant="destructive"><AlertDescription>{locationsError}</AlertDescription></Alert>}
-                                {!isLoadingLocations && !locationsError && (
-                                    <Select onValueChange={field.onChange} value={field.value || ""}>
-                                        <SelectTrigger id={question.id} className="w-full bg-background">
-                                            <SelectValue placeholder="Select a school/site..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {locations.length > 0 ? (
-                                                locations.map(loc => (
-                                                    <SelectItem key={loc.id} value={loc.locationName}>{loc.locationName}</SelectItem>
-                                                ))
-                                            ) : (
-                                                <div className="p-2 text-sm text-muted-foreground text-center">No locations found.</div>
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-                                )}
-                            </div>
-                        )}
-                    />
-                  )}
-
-                  {question.component === 'checkbox' && !question.options && (
-                     <Controller
-                        name={question.id}
-                        control={control}
-                        defaultValue={false}
-                        render={({ field }) => (
-                            <div className="flex items-center space-x-2 bg-background p-2 rounded-md">
-                                <Checkbox
-                                    id={question.id}
-                                    checked={field.value || false}
-                                    onCheckedChange={field.onChange}
-                                />
-                                <Label htmlFor={question.id} className="font-normal">Confirm</Label>
-                            </div>
-                        )}
-                    />
-                  )}
-
-                  {question.component === 'checkbox' && question.options && (
-                    <div className="space-y-2 bg-background p-2 rounded-md">
-                        {parseOptions(question.options).map(opt => (
-                            <Controller
-                                key={opt}
-                                name={`${question.id}.${opt}`}
-                                control={control}
-                                defaultValue={false}
-                                render={({ field }) => (
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id={`${question.id}-${opt}`}
-                                            checked={!!field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                        <Label htmlFor={`${question.id}-${opt}`} className="font-normal">{opt}</Label>
-                                    </div>
-                                )}
-                            />
-                        ))}
-                    </div>
-                  )}
-
-                  {(question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && (
-                    <div className="space-y-2 bg-background p-2 rounded-md">
-                        <Label className="text-sm text-muted-foreground block mb-1">Select one or more:</Label>
-                        {parseOptions(question.options).map(opt => (
-                            <Controller
-                                key={opt}
-                                name={`${question.id}.${opt}`}
-                                control={control}
-                                defaultValue={false}
-                                render={({ field }) => (
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox id={`${question.id}-${opt}`} checked={!!field.value} onCheckedChange={field.onChange} />
-                                        <Label htmlFor={`${question.id}-${opt}`} className="font-normal">{opt}</Label>
-                                    </div>
-                                )}
-                            />
-                        ))}
-                    </div>
-                  )}
-
-                  {question.component === 'range' && (
-                    <Controller
-                      name={question.id}
-                      control={control}
-                      rules={{ required: question.required }}
-                      render={({ field: { onChange, value } }) => {
-                        let min = 0, max = 100, step = 1, currentVal = value;
-                        if (typeof question.options === 'string') {
-                            question.options.split(';').forEach(optStr => {
-                                const [key, valStr] = optStr.split('=');
-                                const valNum = parseInt(valStr);
-                                if (!isNaN(valNum)) {
-                                    if (key === 'min') min = valNum;
-                                    else if (key === 'max') max = valNum;
-                                    else if (key === 'step') step = valNum;
-                                }
-                            });
-                        }
-                        if (typeof currentVal !== 'number' || isNaN(currentVal)) {
-                           currentVal = (value as number) ?? min;
-                        }
-                        currentVal = Math.max(min, Math.min(max, currentVal));
-
-                        return (
-                          <div className="space-y-2 bg-background p-3 rounded-md">
-                            <Slider
-                              id={question.id}
-                              min={min}
-                              max={max}
-                              step={step}
-                              value={[currentVal]}
-                              onValueChange={(vals) => onChange(vals[0])}
-                              className="w-[95%] mx-auto pt-2"
-                            />
-                            <p className="text-sm text-center text-muted-foreground pt-1">Value: {currentVal}</p>
-                          </div>
-                        );
-                      }}
-                    />
-                  )}
-
-                  {question.component === 'dynamicQuestion' && (
-                    <Alert variant="default" className="bg-blue-50 border-blue-200">
-                        <Building className="h-4 w-4 text-blue-600"/>
-                        <AlertTitle className="text-blue-700">Dynamic Content</AlertTitle>
-                        <AlertDescription className="text-blue-600">This section may render additional questions based on logic. (Full support coming soon)</AlertDescription>
-                    </Alert>
-                  )}
-
-                  {formErrors[question.id] && <p className="text-sm text-destructive">{formErrors[question.id]?.message as string}</p>}
-
-                  {question.comment && (
-                    <div className="mt-3">
-                      <Label htmlFor={`${question.id}_comment`} className="text-sm text-muted-foreground flex items-center">
-                        <MessageSquare className="h-4 w-4 mr-1"/> Optional Comments
-                      </Label>
+                    {question.component === 'textarea' && (
                       <Textarea
-                        id={`${question.id}_comment`}
-                        {...register(`${question.id}_comment`)}
-                        rows={2}
-                        className="mt-1 bg-background/80"
-                        placeholder="Add any comments..."
+                        id={question.id}
+                        {...register(question.id, { required: question.required })}
+                        className="bg-background"
                       />
-                    </div>
-                  )}
+                    )}
 
-                  {question.photoUpload && (
-                    <div className="mt-4 space-y-3">
-                      {/* Display for the selected/uploaded photo (no change here) */}
-                      {uploadedFileDetails[question.id] && (
-                        <div className="flex items-center justify-between p-2 border rounded-md bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
-                          <div className="flex items-center gap-2 text-green-700 dark:text-green-400 text-sm">
-                            <CheckCircle2 className="h-4 w-4"/>
-                            <Image
-                                src={uploadedFileDetails[question.id]!.url}
-                                alt={uploadedFileDetails[question.id]!.name}
-                                width={32}
-                                height={32}
-                                className="object-cover rounded h-8 w-8"
-                                data-ai-hint="file thumbnail"
-                            />
-                            <a href={uploadedFileDetails[question.id]?.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-[200px] sm:max-w-xs md:max-w-sm">
-                              {uploadedFileDetails[question.id]?.name}
-                            </a>
-                          </div>
-                          <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeUploadedFile(question.id)}>
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
+                    {question.component === 'options' && (
+                      <Controller
+                        name={question.id}
+                        control={control}
+                        rules={{ required: question.required }}
+                        render={({ field }) => (
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="flex flex-col space-y-1 bg-background p-2 rounded-md"
+                          >
+                            {parseOptions(question.options).map((option) => (
+                              <div key={option} className="flex items-center space-x-3">
+                                <RadioGroupItem value={option} id={`${question.id}-${option}`} />
+                                <Label htmlFor={`${question.id}-${option}`}>{option}</Label>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        )}
+                      />
+                    )}
 
-                      {/* If no photo is associated, show both upload options */}
-                      {!uploadedFileDetails[question.id] && (
-                        <div className="p-3 border rounded-lg bg-muted/20">
-                          
-                          {/* Option 1: Direct Upload */}
-                          <div className="space-y-2">
-                            <Label htmlFor={`${question.id}_file`} className="text-sm font-medium">
-                              Option 1: Upload a file directly
-                            </Label>
-                            <Input
-                              id={`${question.id}_file`}
-                              type="file"
-                              accept="image/*"
-                              className="bg-background"
-                              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                                if (e.target.files && e.target.files[0]) {
-                                  handleFileUpload(question.id, e.target.files[0]);
-                                }
-                              }}
-                              disabled={!!uploadProgress[question.id] && uploadProgress[question.id] > 0 && uploadProgress[question.id] < 100}
-                            />
-                          </div>
+                    {question.component === 'buttonSelect' && (
+                      <Controller
+                        name={question.id}
+                        control={control}
+                        rules={{ required: question.required }}
+                        render={({ field }) => (
+                          <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-wrap gap-2 bg-background p-2 rounded-md">
+                            {parseOptions(question.options).map(option => (
+                                  <div key={option} className="flex items-center">
+                                      <RadioGroupItem value={option} id={`${question.id}-${option}`} className="sr-only peer" />
+                                      <Label htmlFor={`${question.id}-${option}`}
+                                          className="px-3 py-2 border rounded-md cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground hover:bg-muted/50">
+                                          {option}
+                                      </Label>
+                                  </div>
+                              ))}
+                          </RadioGroup>
+                        )}
+                      />
+                    )}
 
-                          {/* Progress and Preview for Direct Upload */}
-                          {uploadProgress[question.id] > 0 && (
-                            <div className="mt-2 space-y-1">
-                              <ShadProgress value={uploadProgress[question.id]} className="w-full h-1.5" />
-                              {uploadProgress[question.id] < 100 && <p className="text-xs text-muted-foreground text-center">Uploading...</p>}
-                            </div>
+                    {question.component === 'select' && (
+                      <Controller
+                          name={question.id}
+                          control={control}
+                          rules={{ required: question.required }}
+                          render={({ field }) => (
+                              <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value || ""}>
+                                  <SelectTrigger id={question.id} className="w-full bg-background">
+                                      <SelectValue placeholder={`Select an option for "${question.label}"`} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      {parseOptions(question.options).map(opt => (
+                                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                      ))}
+                                  </SelectContent>
+                              </Select>
                           )}
-                          {imagePreviewUrls[question.id] && !uploadErrors[question.id] && (
-                            <div className="mt-2 w-fit">
+                      />
+                    )}
+
+                    {question.component === 'schoolSelector' && (
+                      <Controller
+                          name={question.id}
+                          control={control}
+                          rules={{ required: question.required }}
+                          render={({ field }) => (
+                              <div className="space-y-1">
+                                  {isLoadingLocations && <Skeleton className="h-10 w-full" />}
+                                  {locationsError && <Alert variant="destructive"><AlertDescription>{locationsError}</AlertDescription></Alert>}
+                                  {!isLoadingLocations && !locationsError && (
+                                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                                          <SelectTrigger id={question.id} className="w-full bg-background">
+                                              <SelectValue placeholder="Select a school/site..." />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                              {locations.length > 0 ? (
+                                                  locations.map(loc => (
+                                                      <SelectItem key={loc.id} value={loc.locationName}>{loc.locationName}</SelectItem>
+                                                  ))
+                                              ) : (
+                                                  <div className="p-2 text-sm text-muted-foreground text-center">No locations found.</div>
+                                              )}
+                                          </SelectContent>
+                                      </Select>
+                                  )}
+                              </div>
+                          )}
+                      />
+                    )}
+
+                    {question.component === 'checkbox' && !question.options && (
+                      <Controller
+                          name={question.id}
+                          control={control}
+                          defaultValue={false}
+                          render={({ field }) => (
+                              <div className="flex items-center space-x-2 bg-background p-2 rounded-md">
+                                  <Checkbox
+                                      id={question.id}
+                                      checked={field.value || false}
+                                      onCheckedChange={field.onChange}
+                                  />
+                                  <Label htmlFor={question.id} className="font-normal">Confirm</Label>
+                              </div>
+                          )}
+                      />
+                    )}
+
+                    {question.component === 'checkbox' && question.options && (
+                      <div className="space-y-2 bg-background p-2 rounded-md">
+                          {parseOptions(question.options).map(opt => (
+                              <Controller
+                                  key={opt}
+                                  name={`${question.id}.${opt}`}
+                                  control={control}
+                                  defaultValue={false}
+                                  render={({ field }) => (
+                                      <div className="flex items-center space-x-2">
+                                          <Checkbox
+                                              id={`${question.id}-${opt}`}
+                                              checked={!!field.value}
+                                              onCheckedChange={field.onChange}
+                                          />
+                                          <Label htmlFor={`${question.id}-${opt}`} className="font-normal">{opt}</Label>
+                                      </div>
+                                  )}
+                              />
+                          ))}
+                      </div>
+                    )}
+
+                    {(question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && (
+                      <div className="space-y-2 bg-background p-2 rounded-md">
+                          <Label className="text-sm text-muted-foreground block mb-1">Select one or more:</Label>
+                          {parseOptions(question.options).map(opt => (
+                              <Controller
+                                  key={opt}
+                                  name={`${question.id}.${opt}`}
+                                  control={control}
+                                  defaultValue={false}
+                                  render={({ field }) => (
+                                      <div className="flex items-center space-x-2">
+                                          <Checkbox id={`${question.id}-${opt}`} checked={!!field.value} onCheckedChange={field.onChange} />
+                                          <Label htmlFor={`${question.id}-${opt}`} className="font-normal">{opt}</Label>
+                                      </div>
+                                  )}
+                              />
+                          ))}
+                      </div>
+                    )}
+
+                    {question.component === 'range' && (
+                      <Controller
+                        name={question.id}
+                        control={control}
+                        rules={{ required: question.required }}
+                        render={({ field: { onChange, value } }) => {
+                          let min = 0, max = 100, step = 1, currentVal = value;
+                          if (typeof question.options === 'string') {
+                              question.options.split(';').forEach(optStr => {
+                                  const [key, valStr] = optStr.split('=');
+                                  const valNum = parseInt(valStr);
+                                  if (!isNaN(valNum)) {
+                                      if (key === 'min') min = valNum;
+                                      else if (key === 'max') max = valNum;
+                                      else if (key === 'step') step = valNum;
+                                  }
+                              });
+                          }
+                          if (typeof currentVal !== 'number' || isNaN(currentVal)) {
+                            currentVal = (value as number) ?? min;
+                          }
+                          currentVal = Math.max(min, Math.min(max, currentVal));
+
+                          return (
+                            <div className="space-y-2 bg-background p-3 rounded-md">
+                              <Slider
+                                id={question.id}
+                                min={min}
+                                max={max}
+                                step={step}
+                                value={[currentVal]}
+                                onValueChange={(vals) => onChange(vals[0])}
+                                className="w-[95%] mx-auto pt-2"
+                              />
+                              <p className="text-sm text-center text-muted-foreground pt-1">Value: {currentVal}</p>
+                            </div>
+                          );
+                        }}
+                      />
+                    )}
+
+                    {question.component === 'dynamicQuestion' && (
+                      <Alert variant="default" className="bg-blue-50 border-blue-200">
+                          <Building className="h-4 w-4 text-blue-600"/>
+                          <AlertTitle className="text-blue-700">Dynamic Content</AlertTitle>
+                          <AlertDescription className="text-blue-600">This section may render additional questions based on logic. (Full support coming soon)</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {formErrors[question.id] && <p className="text-sm text-destructive">{formErrors[question.id]?.message as string}</p>}
+
+                    {question.comment && (
+                      <div className="mt-3">
+                        <Label htmlFor={`${question.id}_comment`} className="text-sm text-muted-foreground flex items-center">
+                          <MessageSquare className="h-4 w-4 mr-1"/> Optional Comments
+                        </Label>
+                        <Textarea
+                          id={`${question.id}_comment`}
+                          {...register(`${question.id}_comment`)}
+                          rows={2}
+                          className="mt-1 bg-background/80"
+                          placeholder="Add any comments..."
+                        />
+                      </div>
+                    )}
+
+                    {question.photoUpload && (
+                      <div className="mt-4 space-y-3">
+                        {/* Display for the selected/uploaded photo (no change here) */}
+                        {uploadedFileDetails[question.id] && (
+                          <div className="flex items-center justify-between p-2 border rounded-md bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700">
+                            <div className="flex items-center gap-2 text-green-700 dark:text-green-400 text-sm">
+                              <CheckCircle2 className="h-4 w-4"/>
                               <Image
-                                  src={imagePreviewUrls[question.id]!}
-                                  alt="Upload preview"
-                                  width={100}
-                                  height={100}
-                                  className="object-contain rounded-md border"
-                                  data-ai-hint="upload preview"
+                                  src={uploadedFileDetails[question.id]!.url}
+                                  alt={uploadedFileDetails[question.id]!.name}
+                                  width={32}
+                                  height={32}
+                                  className="object-cover rounded h-8 w-8"
+                                  data-ai-hint="file thumbnail"
+                              />
+                              <a href={uploadedFileDetails[question.id]?.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-[200px] sm:max-w-xs md:max-w-sm">
+                                {uploadedFileDetails[question.id]?.name}
+                              </a>
+                            </div>
+                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => removeUploadedFile(question.id)}>
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* If no photo is associated, show both upload options */}
+                        {!uploadedFileDetails[question.id] && (
+                          <div className="p-3 border rounded-lg bg-muted/20">
+                            
+                            {/* Option 1: Direct Upload */}
+                            <div className="space-y-2">
+                              <Label htmlFor={`${question.id}_file`} className="text-sm font-medium">
+                                Option 1: Upload a file directly
+                              </Label>
+                              <Input
+                                id={`${question.id}_file`}
+                                type="file"
+                                accept="image/*"
+                                className="bg-background"
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    handleFileUpload(question.id, e.target.files[0]);
+                                  }
+                                }}
+                                disabled={!!uploadProgress[question.id] && uploadProgress[question.id] > 0 && uploadProgress[question.id] < 100}
                               />
                             </div>
-                          )}
-                          {uploadErrors[question.id] && (
-                            <Alert variant="destructive" className="text-xs p-2 mt-2">
-                              <XCircle className="h-4 w-4" />
-                              <AlertDescription>{uploadErrors[question.id]}</AlertDescription>
-                            </Alert>
-                          )}
 
-                          {/* Separator */}
-                          <div className="relative flex items-center my-4">
-                            <div className="flex-grow border-t border-muted-foreground/30"></div>
-                            <span className="flex-shrink mx-4 text-muted-foreground text-xs font-semibold">OR</span>
-                            <div className="flex-grow border-t border-muted-foreground/30"></div>
-                          </div>
+                            {/* Progress and Preview for Direct Upload */}
+                            {uploadProgress[question.id] > 0 && (
+                              <div className="mt-2 space-y-1">
+                                <ShadProgress value={uploadProgress[question.id]} className="w-full h-1.5" />
+                                {uploadProgress[question.id] < 100 && <p className="text-xs text-muted-foreground text-center">Uploading...</p>}
+                              </div>
+                            )}
+                            {imagePreviewUrls[question.id] && !uploadErrors[question.id] && (
+                              <div className="mt-2 w-fit">
+                                <Image
+                                    src={imagePreviewUrls[question.id]!}
+                                    alt="Upload preview"
+                                    width={100}
+                                    height={100}
+                                    className="object-contain rounded-md border"
+                                    data-ai-hint="upload preview"
+                                />
+                              </div>
+                            )}
+                            {uploadErrors[question.id] && (
+                              <Alert variant="destructive" className="text-xs p-2 mt-2">
+                                <XCircle className="h-4 w-4" />
+                                <AlertDescription>{uploadErrors[question.id]}</AlertDescription>
+                              </Alert>
+                            )}
 
-                          {/* Option 2: Select from Photo Bank */}
-                          <div>
-                            <Label className="text-sm font-medium">
-                              Option 2: Select from Photo Bank
-                            </Label>
-                            <Button 
-                              type="button" 
-                              variant="outline" 
-                              className="w-full mt-1 bg-background"
-                              onClick={() => handleOpenPhotoBank(question.id)}
-                            >
-                              <Paperclip className="h-4 w-4 mr-2"/>
-                              Select Photo
-                            </Button>
-                          </div>
-
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="mt-4 border-t pt-3 space-y-2">
-                     <Label className="text-xs text-muted-foreground block mb-1">Audio Note (Optional, Max {MAX_AUDIO_RECORDING_MS / 1000}s)</Label>
-                      {micPermissionError && <Alert variant="destructive" className="text-xs p-2"><XCircle className="h-4 w-4" /><AlertDescription>{micPermissionError}</AlertDescription></Alert>}
-
-                      {audioNotes[question.id]?.url && (
-                        <audio
-                            ref={(el) => {audioRefs.current[question.id] = el}}
-                            onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, question.id)}
-                            onTimeUpdate={(e) => handleAudioTimeUpdate(e, question.id)}
-                            onEnded={() => handleAudioEnded(question.id)}
-                            onPlay={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...(prev[question.id] || {currentTime:0, duration:0, isPlaying: false}), isPlaying: true}}))}
-                            onPause={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...(prev[question.id] || {currentTime:0, duration:0, isPlaying: true}), isPlaying: false}}))}
-                            className="hidden"
-                         />
-                      )}
-
-                      {audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading && !audioNotes[question.id]?.uploadError && (
-                        <div className="p-3 border rounded-lg bg-muted/50">
-                           <div className="flex items-center gap-3">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => togglePlayPause(question.id)}
-                                    className="h-10 w-10 shrink-0 rounded-full"
-                                    disabled={!audioNotes[question.id]?.url || audioNotes[question.id]?.isUploading}
-                                >
-                                    {audioPlayerStates[question.id]?.isPlaying ? <PauseIcon className="h-5 w-5" /> : <PlayIcon className="h-5 w-5" />}
-                                </Button>
-                                <div className="flex-grow space-y-1">
-                                    <Slider
-                                        value={[audioPlayerStates[question.id]?.currentTime || 0]}
-                                        max={audioPlayerStates[question.id]?.duration || 1}
-                                        step={0.1}
-                                        className="w-full h-2 [&>span]:h-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[role=slider]]:border"
-                                        disabled={!audioNotes[question.id]?.url || audioNotes[question.id]?.isUploading}
-                                    />
-                                    <div className="flex justify-between text-xs text-muted-foreground">
-                                        <span>{formatAudioTime(audioPlayerStates[question.id]?.currentTime || 0)}</span>
-                                        <span>{formatAudioTime(audioPlayerStates[question.id]?.duration || 0)}</span>
-                                    </div>
-                                </div>
-                                <Button type="button" variant="ghost" size="icon" className="text-destructive hover:text-destructive/80 shrink-0 h-8 w-8" onClick={() => removeAudioNote(question.id)}  disabled={audioNotes[question.id]?.isUploading}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
+                            {/* Separator */}
+                            <div className="relative flex items-center my-4">
+                              <div className="flex-grow border-t border-muted-foreground/30"></div>
+                              <span className="flex-shrink mx-4 text-muted-foreground text-xs font-semibold">OR</span>
+                              <div className="flex-grow border-t border-muted-foreground/30"></div>
                             </div>
-                        </div>
-                      )}
-                      {audioNotes[question.id]?.isUploading && (
-                        <div className="space-y-1 p-2 border rounded-md bg-muted/30">
-                            <ShadProgress value={audioNotes[question.id]?.uploadProgress || 0} className="w-full h-2" />
-                            <p className="text-xs text-muted-foreground text-center">Uploading Audio: {Math.round(audioNotes[question.id]?.uploadProgress || 0)}%</p>
-                        </div>
-                      )}
-                      {audioNotes[question.id]?.uploadError && (
-                         <Alert variant="destructive" className="text-xs p-2">
-                            <XCircle className="h-4 w-4" />
-                            <AlertDescription>{audioNotes[question.id]?.uploadError}</AlertDescription>
-                            <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive" onClick={() => removeAudioNote(question.id)}>Clear & Retry</Button>
-                        </Alert>
-                      )}
-                      {!audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading && !audioNotes[question.id]?.uploadError && (
-                        <Button
-                          type="button"
-                          variant={isRecordingQuestionId === question.id ? "destructive" : "outline"}
-                          size="sm"
-                          onMouseDown={() => handleStartRecording(question.id)}
-                          onMouseUp={() => handleStopRecording(question.id, true)}
-                          onTouchStart={(e) => { e.preventDefault(); handleStartRecording(question.id);}}
-                          onTouchEnd={(e) => { e.preventDefault(); handleStopRecording(question.id, true);}}
-                          disabled={isSubmitting || (!!isRecordingQuestionId && isRecordingQuestionId !== question.id)}
-                          className="w-full"
-                        >
-                          {isRecordingQuestionId === question.id ? (
-                            <>
-                              <Radio className="h-4 w-4 mr-2 animate-pulse text-red-300" /> Recording... (Release to stop)
-                            </>
-                          ) : (
-                            <>
-                              <Mic className="h-4 w-4 mr-2" /> Hold to Record Audio
-                            </>
-                          )}
-                        </Button>
-                      )}
-                  </div>
 
-                </fieldset>
-              </Card>
-            ))}
+                            {/* Option 2: Select from Photo Bank */}
+                            <div>
+                              <Label className="text-sm font-medium">
+                                Option 2: Select from Photo Bank
+                              </Label>
+                              <Button 
+                                type="button" 
+                                variant="outline" 
+                                className="w-full mt-1 bg-background"
+                                onClick={() => handleOpenPhotoBank(question.id)}
+                              >
+                                <Paperclip className="h-4 w-4 mr-2"/>
+                                Select Photo
+                              </Button>
+                            </div>
 
-            {questionsToRender.length === 0 && conditionallyVisibleQuestions.length > 0 && !isLoading && (
-                 <div className="text-center py-10">
-                    <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-lg text-muted-foreground">No questions match your current filters.</p>
-                    <p className="text-sm text-muted-foreground">Try adjusting the section, sub-section, or status filters.</p>
-                </div>
-            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-            {conditionallyVisibleQuestions.length === 0 && !isLoading && (
-                 <div className="text-center py-10">
-                    <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-lg text-muted-foreground">No questions are currently visible for this assignment.</p>
-                    <p className="text-sm text-muted-foreground">This might be due to conditional logic or an empty assignment. Try changing previous answers or adjusting filters if applicable.</p>
-                </div>
-            )}
+                    <div className="mt-4 border-t pt-3 space-y-2">
+                      <Label className="text-xs text-muted-foreground block mb-1">Audio Note (Optional, Max {MAX_AUDIO_RECORDING_MS / 1000}s)</Label>
+                        {micPermissionError && <Alert variant="destructive" className="text-xs p-2"><XCircle className="h-4 w-4" /><AlertDescription>{micPermissionError}</AlertDescription></Alert>}
 
+                        {audioNotes[question.id]?.url && (
+                          <audio
+                              ref={(el) => {audioRefs.current[question.id] = el}}
+                              onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, question.id)}
+                              onTimeUpdate={(e) => handleAudioTimeUpdate(e, question.id)}
+                              onEnded={() => handleAudioEnded(question.id)}
+                              onPlay={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...(prev[question.id] || {currentTime:0, duration:0, isPlaying: false}), isPlaying: true}}))}
+                              onPause={() => setAudioPlayerStates(prev => ({...prev, [question.id]: {...(prev[question.id] || {currentTime:0, duration:0, isPlaying: true}), isPlaying: false}}))}
+                              className="hidden"
+                          />
+                        )}
 
-            <div className="flex justify-end pt-6">
-              <Button
-                type="submit"
-                size="lg"
-                disabled={
-                    isSubmitting ||
-                    Object.values(uploadProgress).some(p => p > 0 && p < 100) ||
-                    Object.values(audioNotes).some(note => note?.isUploading) ||
-                    questionsToRender.length === 0
-                }
-              >
-                <Send className="mr-2 h-5 w-5" />
-                {isSubmitting ? "Submitting..." : "Submit Assignment"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-      <Dialog open={isPhotoBankModalOpen} onOpenChange={setIsPhotoBankModalOpen}>
-        <DialogContent className="sm:max-w-[800px]">
-          <DialogHeader>
-            <DialogTitle>Select a Photo from the Bank</DialogTitle>
-            <DialogDescription>
-              Click on a photo to associate it with the question.
-            </DialogDescription>
-          </DialogHeader>
-          {photoBankFiles.length > 0 ? (
-            <ScrollArea className="max-h-[60vh]">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
-                {photoBankFiles.map((photo, index) => (
-                  <div 
-                    key={index} 
-                    className="relative aspect-square cursor-pointer group"
-                    onClick={() => handleSelectPhotoFromBank(photo)}
-                  >
-                    <Image
-                      src={photo.url}
-                      alt={photo.name}
-                      fill
-                      className="object-cover rounded-md"
-                    />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <CheckCircle2 className="h-8 w-8 text-white"/>
+                        {audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading && !audioNotes[question.id]?.uploadError && (
+                          <div className="p-3 border rounded-lg bg-muted/50">
+                            <div className="flex items-center gap-3">
+                                  <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      onClick={() => togglePlayPause(question.id)}
+                                      className="h-10 w-10 shrink-0 rounded-full"
+                                      disabled={!audioNotes[question.id]?.url || audioNotes[question.id]?.isUploading}
+                                  >
+                                      {audioPlayerStates[question.id]?.isPlaying ? <PauseIcon className="h-5 w-5" /> : <PlayIcon className="h-5 w-5" />}
+                                  </Button>
+                                  <div className="flex-grow space-y-1">
+                                      <Slider
+                                          value={[audioPlayerStates[question.id]?.currentTime || 0]}
+                                          max={audioPlayerStates[question.id]?.duration || 1}
+                                          step={0.1}
+                                          className="w-full h-2 [&>span]:h-2 [&_[role=slider]]:h-3 [&_[role=slider]]:w-3 [&_[role=slider]]:border"
+                                          disabled={!audioNotes[question.id]?.url || audioNotes[question.id]?.isUploading}
+                                      />
+                                      <div className="flex justify-between text-xs text-muted-foreground">
+                                          <span>{formatAudioTime(audioPlayerStates[question.id]?.currentTime || 0)}</span>
+                                          <span>{formatAudioTime(audioPlayerStates[question.id]?.duration || 0)}</span>
+                                      </div>
+                                  </div>
+                                  <Button type="button" variant="ghost" size="icon" className="text-destructive hover:text-destructive/80 shrink-0 h-8 w-8" onClick={() => removeAudioNote(question.id)}  disabled={audioNotes[question.id]?.isUploading}>
+                                      <Trash2 className="h-4 w-4" />
+                                  </Button>
+                              </div>
+                          </div>
+                        )}
+                        {audioNotes[question.id]?.isUploading && (
+                          <div className="space-y-1 p-2 border rounded-md bg-muted/30">
+                              <ShadProgress value={audioNotes[question.id]?.uploadProgress || 0} className="w-full h-2" />
+                              <p className="text-xs text-muted-foreground text-center">Uploading Audio: {Math.round(audioNotes[question.id]?.uploadProgress || 0)}%</p>
+                          </div>
+                        )}
+                        {audioNotes[question.id]?.uploadError && (
+                          <Alert variant="destructive" className="text-xs p-2">
+                              <XCircle className="h-4 w-4" />
+                              <AlertDescription>{audioNotes[question.id]?.uploadError}</AlertDescription>
+                              <Button type="button" variant="ghost" size="sm" className="text-xs text-destructive" onClick={() => removeAudioNote(question.id)}>Clear & Retry</Button>
+                          </Alert>
+                        )}
+                        {!audioNotes[question.id]?.url && !audioNotes[question.id]?.isUploading && !audioNotes[question.id]?.uploadError && (
+                          <Button
+                            type="button"
+                            variant={isRecordingQuestionId === question.id ? "destructive" : "outline"}
+                            size="sm"
+                            onMouseDown={() => handleStartRecording(question.id)}
+                            onMouseUp={() => handleStopRecording(question.id, true)}
+                            onTouchStart={(e) => { e.preventDefault(); handleStartRecording(question.id);}}
+                            onTouchEnd={(e) => { e.preventDefault(); handleStopRecording(question.id, true);}}
+                            disabled={isSubmitting || (!!isRecordingQuestionId && isRecordingQuestionId !== question.id)}
+                            className="w-full"
+                          >
+                            {isRecordingQuestionId === question.id ? (
+                              <>
+                                <Radio className="h-4 w-4 mr-2 animate-pulse text-red-300" /> Recording... (Release to stop)
+                              </>
+                            ) : (
+                              <>
+                                <Mic className="h-4 w-4 mr-2" /> Hold to Record Audio
+                              </>
+                            )}
+                          </Button>
+                        )}
                     </div>
+
+                  </fieldset>
+                </Card>
+              ))}
+
+              {questionsToRender.length === 0 && conditionallyVisibleQuestions.length > 0 && !isLoading && (
+                  <div className="text-center py-10">
+                      <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-lg text-muted-foreground">No questions match your current filters.</p>
+                      <p className="text-sm text-muted-foreground">Try adjusting the section, sub-section, or status filters.</p>
+                  </div>
+              )}
+
+              {conditionallyVisibleQuestions.length === 0 && !isLoading && (
+                  <div className="text-center py-10">
+                      <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-lg text-muted-foreground">No questions are currently visible for this assignment.</p>
+                      <p className="text-sm text-muted-foreground">This might be due to conditional logic or an empty assignment. Try changing previous answers or adjusting filters if applicable.</p>
+                  </div>
+              )}
+
+
+              <div className="flex justify-end pt-6">
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={
+                      isSubmitting ||
+                      Object.values(uploadProgress).some(p => p > 0 && p < 100) ||
+                      Object.values(audioNotes).some(note => note?.isUploading) ||
+                      questionsToRender.length === 0
+                  }
+                >
+                  <Send className="mr-2 h-5 w-5" />
+                  {isSubmitting ? "Submitting..." : "Submit Assignment"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+        <Dialog open={isPhotoBankModalOpen} onOpenChange={setIsPhotoBankModalOpen}>
+          <DialogContent className="sm:max-w-[800px]">
+            <DialogHeader>
+              <DialogTitle>Select a Photo from the Bank</DialogTitle>
+              <DialogDescription>
+                Click on a photo to associate it with the question.
+              </DialogDescription>
+            </DialogHeader>
+            {photoBankFiles.length > 0 ? (
+              <ScrollArea className="max-h-[60vh]">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+                  {photoBankFiles.map((photo, index) => (
+                    <div 
+                      key={index} 
+                      className="relative aspect-square cursor-pointer group"
+                      onClick={() => handleSelectPhotoFromBank(photo)}
+                    >
+                      <Image
+                        src={photo.url}
+                        alt={photo.name}
+                        fill
+                        className="object-cover rounded-md"
+                      />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <CheckCircle2 className="h-8 w-8 text-white"/>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+              <p className="py-8 text-center text-muted-foreground">The Photo Bank is empty. Please upload photos first.</p>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+      {/* Right Sidebar for Progress (we will add this in the next step) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Section Progress</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {Object.keys(sectionProgress).length > 0 ? (
+            Object.entries(sectionProgress).map(([sectionName, subSections]) => (
+              <div key={sectionName} className="space-y-3">
+                <h4 className="font-semibold">{sectionName}</h4>
+                {Object.entries(subSections).map(([subSectionName, data]) => (
+                  <div key={subSectionName} className="text-sm">
+                    <div className="flex justify-between mb-1">
+                      <span>{subSectionName}</span>
+                      <span className="font-medium">{Math.round(data.progress)}%</span>
+                    </div>
+                    <ShadProgress value={data.progress} className="h-1.5" />
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            ))
           ) : (
-            <p className="py-8 text-center text-muted-foreground">The Photo Bank is empty. Please upload photos first.</p>
+            <p className="text-sm text-muted-foreground text-center">No sections with questions found.</p>
           )}
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }

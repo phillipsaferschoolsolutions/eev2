@@ -28,6 +28,8 @@ const questionSchema = z.object({
   id: z.string().optional(), // Backend ID, can be same as _uid for new, or actual ID for existing
   label: z.string().min(1, "Question label is required."),
   component: z.string().min(1, "Component type is required."),
+  section: z.string().optional(),
+  subSection: z.string().optional(),
   options: z.string().optional(), // Semicolon-separated
   required: z.boolean().optional(),
   comment: z.boolean().optional(),
@@ -348,6 +350,27 @@ export default function NewAssignmentPage() {
                           <Input id={`questions.${index}.label`} {...register(`questions.${index}.label` as const)} placeholder="e.g., Is the fire exit clear?"/>
                           {errors.questions?.[index]?.label && <p className="text-sm text-destructive mt-1">{errors.questions[index]?.label?.message}</p>}
                         </div>
+                        
+                        {/* Add Section and Sub-Section Inputs */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor={`questions.${index}.section`}>Section</Label>
+                            <Input 
+                              id={`questions.${index}.section`} 
+                              {...register(`questions.${index}.section`)} 
+                              placeholder="e.g., Building Exterior"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`questions.${index}.subSection`}>Sub-Section (Optional)</Label>
+                            <Input 
+                              id={`questions.${index}.subSection`} 
+                              {...register(`questions.${index}.subSection`)} 
+                              placeholder="e.g., Main Entrance"
+                            />
+                          </div>
+                        </div>
+
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
