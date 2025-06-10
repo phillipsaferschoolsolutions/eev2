@@ -27,10 +27,10 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
-import { getAssignmentById, submitCompletedAssignment, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
+import { getAssignmentById, submitCompletedAssignment, saveAssignmentDraft, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Paperclip, MessageSquare, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Trash2, Radio, Badge, PlayIcon, PauseIcon, TimerIcon } from "lucide-react";
+import { AlertTriangle, Paperclip, MessageSquare, Save, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Trash2, Radio, Badge, PlayIcon, PauseIcon, TimerIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
@@ -883,6 +883,47 @@ export default function CompleteAssignmentPage() {
     const fileInput = document.getElementById(`${questionId}_file`) as HTMLInputElement;
     if (fileInput) fileInput.value = "";
   };
+
+  const handleSaveDraft = async () => {
+    if (!userProfile?.account || !assignmentId) {
+        toast({ variant: "destructive", title: "Cannot Save Draft", description: "User account or assignment ID is missing." });
+        return;
+    }
+
+    // Use getValues() to get the current form state without triggering validation
+    const draftData = getValues();
+    
+    const dataToSave = {
+      formValues: draftData,
+      uploadedFileDetails: uploadedFileDetails,
+      audioNotes: audioNotes,
+      savedAt: new Date().toISOString(),
+    };
+
+    setIsSubmitting(true); // Disable buttons while saving
+    toast({ title: "Saving Draft...", description: "Please wait." });
+
+    try {
+      // Call the new service function
+      await saveAssignmentDraft(assignmentId, dataToSave, userProfile.account);
+      
+      toast({
+        title: "Draft Saved Successfully",
+        description: "Your progress has been saved.",
+      });
+    } catch (error: any) {
+      console.error("Failed to save draft:", error);
+      toast({
+        variant: "destructive",
+        title: "Error Saving Draft",
+        description: error.message || "An unknown error occurred.",
+      });
+    } finally {
+      setIsSubmitting(false); // Re-enable buttons
+    }
+  };
+
+
 
 
   const onSubmit: SubmitHandler<FormDataSchema> = async (data) => {
@@ -1797,6 +1838,18 @@ export default function CompleteAssignmentPage() {
 
 
               <div className="flex justify-end pt-6">
+                {/* Add this Button for saving drafts, next to the submit button */}
+                  <Button
+                    type="button" // Use type="button" to prevent form submission
+                    variant="outline" // Use a different style to distinguish from the main submit button
+                    size="lg"
+                    onClick={handleSaveDraft} // We will create this function next
+                    disabled={isSubmitting} // Disable when a submission is in progress
+                  >
+                    <Save className="mr-2 h-5 w-5" /> {/* Using a Save icon */}
+                    Save Draft
+                  </Button>
+
                 <Button
                   type="submit"
                   size="lg"

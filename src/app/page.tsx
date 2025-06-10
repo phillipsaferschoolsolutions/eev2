@@ -9,6 +9,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
   AlertTriangle,
@@ -40,6 +48,7 @@ import { useAuth } from "@/context/auth-context";
 import {
   getAssignmentListMetadata,
   getAssignmentById,
+  getLastCompletions,  
   type AssignmentMetadata, WeatherLocationData,
   type AssignmentWithPermissions,
 } from "@/services/assignmentFunctionsService";
@@ -47,7 +56,6 @@ import {
   getDashboardWidgetsSandbox,
   getCommonResponsesForAssignment,
   getWidgetTrends,
-  getLastCompletions, // Import the new function
 } from "@/services/analysisService";
 import type {
   SchoolsWithQuestionsResponse,
@@ -85,6 +93,7 @@ import { useTheme } from "next-themes";
 import { fetchPexelsImageURL } from '@/services/pexelsService';
 import { fetchWeather } from '@/services/weatherService'; // Assuming a service for fetching weather
 import { Badge } from "@/components/ui/badge";
+import { getLocationsForLookup, type Location } from "@/services/locationService";
 
 const getWeatherIcon = (id) => {
   if (id >= 200 && id < 300) return <CloudLightning className="text-yellow-500 h-10 w-10" />;
@@ -247,6 +256,8 @@ export default function DashboardPage() {
   const [lastCompletionsAssignments, setLastCompletionsAssignments] = useState<AssignmentMetadata[]>([]);
   const [selectedAssignmentForCompletions, setSelectedAssignmentForCompletions] = useState<string | null>(null);
   const [lastCompletionsPeriod, setLastCompletionsPeriod] = useState("last30days");
+  const [selectedSchoolForCompletions, setSelectedSchoolForCompletions] = useState<string | null>(null);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [lastCompletionsData, setLastCompletionsData] = useState<AssignmentCompletionStatus[] | null>(null);
   const [isLoadingLastCompletions, setIsLoadingLastCompletions] = useState(true);
   const [lastCompletionsError, setLastCompletionsError] = useState<string | null>(null);
@@ -396,7 +407,21 @@ export default function DashboardPage() {
     }
   }, [userProfile?.account, selectedAssignmentForCommon, isClientMounted, authLoading, profileLoading]);
 
-   useEffect(() => {
+  useEffect(() => {
+    // Fetches locations once the user's account is known
+    if (userProfile?.account) {
+      getLocationsForLookup(userProfile.account)
+        .then(data => {
+          setLocations(data || []);
+        })
+        .catch(err => {
+          console.error("Failed to fetch locations for widget:", err);
+          // You could set an error state here if needed
+        });
+    }
+  }, [userProfile?.account]);
+
+  useEffect(() => {
     if (userProfile?.account && selectedAssignmentForCommon) {
       setIsLoadingCommonResponsesAssignmentDetails(true);
       setCommonResponsesAssignmentDetails(null);
@@ -441,26 +466,31 @@ export default function DashboardPage() {
   ]);
 
   useEffect(() => {
-    if (userProfile?.account && lastCompletionsPeriod) {
+    // Only run if all required filters are selected
+    if (userProfile?.account && lastCompletionsPeriod && selectedAssignmentForCompletions && selectedSchoolForCompletions) {
       setIsLoadingLastCompletions(true);
       setLastCompletionsError(null);
 
       getLastCompletions(
         userProfile.account,
-        userProfile.account, // Passing account as accountId for the API call
-        selectedAssignmentForCompletions, 
-        lastCompletionsPeriod
+        selectedAssignmentForCompletions,
+        selectedSchoolForCompletions // Pass the selected school
       )
-      .then(setLastCompletionsData)
+      .then(data => {
+        console.log("Last Completions Data Received:", data); // Log the data to the console
+        setLastCompletionsData(data);
+      })
       .catch((err) => {
         console.error("Error fetching last completions:", err);
         setLastCompletionsError((err as Error).message || "Could not load last completions data.");
       })
       .finally(() => setIsLoadingLastCompletions(false));
     } else {
-        setLastCompletionsData(null); 
+      // If any filter is missing, clear the existing data
+      setLastCompletionsData([]);
+      setIsLoadingLastCompletions(false);
     }
-  }, [userProfile?.account, selectedAssignmentForCompletions, lastCompletionsPeriod, isClientMounted, authLoading, profileLoading]);
+  }, [userProfile?.account, selectedAssignmentForCompletions, lastCompletionsPeriod, selectedSchoolForCompletions]); // Updated dependency array
 
   // 1) On mount, try to load saved coords:
   useEffect(() => {
@@ -526,8 +556,33 @@ export default function DashboardPage() {
 
 
   const renderLastCompletionsWidget = () => {
+    
+    // We will add pagination state and logic here in a future step
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 1;
+
     const itemsToDisplay = lastCompletionsData || [];
     
+    // Pagination Logic
+    const totalPages = Math.ceil(itemsToDisplay.length / itemsPerPage);
+    const paginatedItems = itemsToDisplay.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+
+    const handleNextPage = () => {
+      if (currentPage < totalPages) {
+        setCurrentPage(currentPage + 1);
+      }
+    };
+
+    const handlePrevPage = () => {
+      if (currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      }
+    };
+
+
     return (
       <>
         <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
@@ -535,6 +590,7 @@ export default function DashboardPage() {
             value={selectedAssignmentForCompletions ?? ALL_ASSIGNMENTS_FILTER_KEY}
             onValueChange={(value) => {
               setSelectedAssignmentForCompletions(value === ALL_ASSIGNMENTS_FILTER_KEY ? null : value);
+              setCurrentPage(1); // Reset to first page on filter change
             }}
             disabled={isLoadingLastCompletions}
           >
@@ -556,7 +612,32 @@ export default function DashboardPage() {
               </SelectGroup>
             </SelectContent>
           </Select>
-          <Select value={lastCompletionsPeriod} onValueChange={setLastCompletionsPeriod} disabled={isLoadingLastCompletions}>
+          <Select
+            value={selectedSchoolForCompletions || ''}
+            onValueChange={(value) => {
+              setSelectedSchoolForCompletions(value);
+              setCurrentPage(1); // Reset page on new selection
+            }}
+            disabled={isLoadingLastCompletions || locations.length === 0}
+          >
+            <SelectTrigger className="flex-grow min-w-[150px]">
+              <SelectValue placeholder="Select School" />
+            </SelectTrigger>
+            <SelectContent>
+              {locations.length > 0 ? (
+                locations.map(loc => (
+                  <SelectItem key={loc.id} value={loc.locationName}>
+                    {loc.locationName}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="no-locations" disabled>
+                  No locations available
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+          <Select value={lastCompletionsPeriod} onValueChange={(value) => { setLastCompletionsPeriod(value); setCurrentPage(1); }} disabled={isLoadingLastCompletions}>
             <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Select period..." /></SelectTrigger>
             <SelectContent>
               {COMPLETION_PERIOD_OPTIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
@@ -565,17 +646,20 @@ export default function DashboardPage() {
         </div>
 
         {isLoadingLastCompletions && (
-          <div className="space-y-3 h-48 xl:h-56 overflow-y-auto">
-            {[...Array(3)].map((_, i) => (
-              <div key={`lc-skeleton-${i}`} className="p-3 border rounded-md">
-                <Skeleton className="h-4 w-3/4 mb-2" />
-                <Skeleton className="h-3 w-1/2" />
+          <div className="space-y-2 mt-2">
+            {[...Array(itemsPerPage)].map((_, i) => (
+              <div key={`lc-skeleton-${i}`} className="flex items-center justify-between p-2 rounded-md">
+                <div className="flex-grow space-y-1">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+                <Skeleton className="h-8 w-16" />
               </div>
             ))}
           </div>
         )}
         {lastCompletionsError && !isLoadingLastCompletions && (
-            <Alert variant="destructive" className="flex-grow">
+            <Alert variant="destructive" className="flex-grow mt-2">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>{lastCompletionsError}</AlertDescription>
@@ -587,41 +671,59 @@ export default function DashboardPage() {
           </div>
         )}
         {!isLoadingLastCompletions && !lastCompletionsError && itemsToDisplay.length > 0 && (
-          <ScrollArea className="h-48 xl:h-56">
-            <ul className="space-y-2 pr-3">
-              {itemsToDisplay.map((item: UserActivity | AssignmentCompletionStatus) => (
-                <li key={item.id} className="p-3 border rounded-md hover:bg-muted/50 flex flex-col gap-1.5">
-                  <p className="font-semibold text-sm truncate">{item.assessmentName}</p>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    {isAdmin && 'totalCompleted' in item ? (
-                      <>
-                        <span>Progress: {item.totalCompleted}/{item.totalAssigned}</span>
-                        {item.lastCompletionDate && <span>Last: {formatDisplayDateShort(item.lastCompletionDate)}</span>}
-                      </>
-                    ) : ('status' in item &&
-                      <>
-                        <span>Status: <Badge variant={item.status === 'completed' ? 'default' : item.status === 'pending' ? 'secondary' : 'outline'} className="text-xs px-1.5 py-0.5 h-auto leading-none">{item.status}</Badge></span>
-                        {item.completedDate ? (
-                          <span>Completed: {formatDisplayDateShort(item.completedDate)}</span>
-                        ) : (
-                          item.dueDate && <span>Due: {formatDisplayDateShort(item.dueDate)}</span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  {'status' in item && item.status === 'pending' ? (
-                    <Link href={`/assignments/${item.id}/complete`} className="mt-1 text-xs text-primary hover:underline self-start font-medium">
-                      Complete Task
-                    </Link>
-                  ) : (
-                    <Link href={`/assignments/${item.id}/details`} className="mt-1 text-xs text-primary hover:underline self-start font-medium">
-                      View Details
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </ScrollArea>
+          <>
+            <div className="mt-2 border rounded-md min-h-[210px]">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Assignment</TableHead>
+                            <TableHead>Completed By</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {paginatedItems.map((item) => (
+                            <TableRow key={item.id}>
+                                <TableCell className="font-medium truncate max-w-[150px]">{item.assignmentId}</TableCell>
+                                <TableCell className="truncate max-w-[120px]">{item.completedBy}</TableCell>
+                                <TableCell>
+                                  {item.submittedTimeServer && item.submittedTimeServer.toDate 
+                                    ? formatDisplayDateShort(item.submittedTimeServer.toDate()) 
+                                    : 'N/A'}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <Button asChild variant="outline" size="sm">
+                                        <Link href={`/assignments/${item.assignmentId}/completions/${item.id}`}>View</Link>
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+             <div className="flex items-center justify-end space-x-2 py-2">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrevPage}
+                    disabled={currentPage === 1}
+                >
+                    Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                >
+                    Next
+                </Button>
+            </div>
+           </>
         )}
       </>
     );

@@ -325,6 +325,7 @@ export async function getAssignmentById(id: string, accountName: string): Promis
   return result || null;
 }
 
+
 /**
  * 18. POST /createassignment
  * Body: Full assignment object + questions array
@@ -398,6 +399,115 @@ export async function submitCompletedAssignment(
     body: formDataPayload,
   });
 }
+
+/**
+ * Saves a draft of a completed assignment.
+ * @param assignmentId The ID of the assignment being drafted.
+ * @param draftData The data to be saved as a draft.
+ * @param accountName The account associated with this action.
+ * @returns A promise that resolves with the server's response.
+ */
+export async function saveAssignmentDraft(assignmentId: string, draftData: any, accountName: string): Promise<any> {
+  if (!assignmentId) {
+    throw new Error("Assignment ID is required to save a draft.");
+  }
+  if (!accountName) {
+    throw new Error("Account name is required to save a draft.");
+  }
+
+  // We'll use a new endpoint for drafts, e.g., /assignments/draft/:id
+  // This will be a PUT request to update or create the draft.
+  const url = `${ASSIGNMENTS_V2_BASE_URL}/draft/${assignmentId}`;
+
+  return authedFetch<any>(url, {
+    method: 'PUT',
+    body: JSON.stringify(draftData),
+  });
+}
+
+/**
+ * Gets all saved drafts for the current user.
+ * @param accountName The account associated with this action.
+ * @returns A promise that resolves to an array of draft objects.
+ */
+export async function getMyDrafts(accountName: string): Promise<any[]> {
+  if (!accountName) {
+    throw new Error("Account name is required to get drafts.");
+  }
+
+  // This will call a new endpoint to list all of a user's drafts
+  const url = `${ASSIGNMENTS_V2_BASE_URL}/drafts`; 
+
+  const result = await authedFetch<any[]>(url, {
+    method: 'GET',
+  });
+  return result || [];
+}
+
+/**
+ * Deletes a specific assignment draft for the current user.
+ * @param assignmentId The ID of the parent assignment.
+ * @param draftId The ID of the draft document in the 'pending' subcollection.
+ * @param accountName The account associated with this action.
+ * @returns A promise that resolves when the deletion is successful.
+ */
+export async function deleteAssignmentDraft(assignmentId: string, draftId: string, accountName: string): Promise<void> {
+  if (!assignmentId || !draftId) {
+    throw new Error("Both Assignment ID and Draft ID are required to delete a draft.");
+  }
+  if (!accountName) {
+    throw new Error("Account name is required to delete a draft.");
+  }
+
+  // This will call a new endpoint to delete a specific draft
+  const url = `${ASSIGNMENTS_V2_BASE_URL}/draft/${assignmentId}/${draftId}`;
+
+  return authedFetch<void>(url, {
+    method: 'DELETE',
+  });
+}
+
+/**
+ * Fetches the most recent completions for a given assignment and school.
+ * @param accountId The account to filter completions by.
+ * @param assignmentId The specific assignment ID to filter by.
+ * @param selectedSchool The school to filter completions by.
+ * @returns A promise that resolves to an array of completion objects.
+ */
+export async function getLastCompletions(
+  accountId: string, 
+  assignmentId: string, 
+  selectedSchool: string
+): Promise<any[]> {
+  if (!accountId || !assignmentId || !selectedSchool) {
+    throw new Error("Account ID, Assignment ID, and Selected School are required to fetch last completions.");
+  }
+
+  // CORRECTED: Use the correct endpoint URL
+  const url = `${WIDGETS_BASE_URL}/getlastcompletions`;
+
+  try {
+    // CORRECTED: Use a POST request with a body
+    const response = await authedFetch<{ status?: string; data?: any[]; completions?: any[] }>(url, {
+      method: 'POST',
+      body: JSON.stringify({ assignmentId, selectedSchool }),
+    });
+
+    // Handle both { data: [...] } and { completions: [...] } wrapper objects
+    if (response && Array.isArray(response.data)) {
+      return response.data;
+    } else if (response && Array.isArray(response.completions)) {
+        return response.completions;
+    } else {
+      console.warn("getLastCompletions returned an unexpected response format:", response);
+      return [];
+    }
+  } catch (error) {
+    console.error("Error in getLastCompletions service function:", error);
+    throw error;
+  }
+}
+
 
 
 /**
