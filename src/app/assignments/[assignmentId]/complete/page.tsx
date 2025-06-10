@@ -27,7 +27,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
-import { getAssignmentById, submitCompletedAssignment, saveAssignmentDraft, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
+import { getAssignmentById, getAssignmentDraft, submitCompletedAssignment, saveAssignmentDraft, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Paperclip, MessageSquare, Save, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Trash2, Radio, Badge, PlayIcon, PauseIcon, TimerIcon } from "lucide-react";
@@ -432,17 +432,39 @@ export default function CompleteAssignmentPage() {
       return;
     }
 
-    async function fetchAssignment() {
+    async function fetchAssignmentAndDraft() {
       setIsLoading(true);
       setError(null);
       try {
+        // Step 1: Fetch the main assignment structure
         const fetchedAssignment = await getAssignmentById(assignmentId, userProfile!.account);
-        if (fetchedAssignment) {
-          setAssignment(fetchedAssignment);
-          const defaultVals: FieldValues = {};
-          const initialAudioPlayerStates: Record<string, AudioPlayerState> = {};
-          const now = new Date();
+        if (!fetchedAssignment) {
+          setError("Assignment not found or you do not have permission to access it.");
+          toast({ variant: "destructive", title: "Error", description: "Assignment not found." });
+          setIsLoading(false);
+          return;
+        }
+        setAssignment(fetchedAssignment);
+
+        // Step 2: Try to fetch the user's draft for this assignment
+        const draftData = await getAssignmentDraft(assignmentId, userProfile.account);
+        
+        const defaultVals: FieldValues = {};
+        
+        if (draftData) {
+          // If a draft exists, use its data to populate the form
+          toast({ title: "Draft Loaded", description: "Your previous progress has been restored." });
           
+          // Populate form fields from the draft
+          reset(draftData.formValues || {});
+
+          // Restore uploaded file details and audio notes from the draft
+          setUploadedFileDetails(draftData.uploadedFileDetails || {});
+          setAudioNotes(draftData.audioNotes || {});
+
+        } else {
+          // If no draft exists, set up the form with default values
+          const now = new Date();
           fetchedAssignment.questions.forEach(q => {
             if (q.component === 'date' || q.component === 'completionDate') {
               defaultVals[q.id] = new Date(); 
@@ -457,53 +479,29 @@ export default function CompleteAssignmentPage() {
                     minute: String(now.getMinutes()).padStart(2, '0'),
                     period: currentPeriod
                 };
-            } else if (q.component === 'checkbox' && q.options && Array.isArray(parseOptions(q.options))) {
+            } else if (q.component === 'checkbox' && q.options) {
               parseOptions(q.options).forEach(opt => {
                 defaultVals[`${q.id}.${opt}`] = false;
               });
-            } else if (q.component === 'range') {
-                let defaultRangeVal = 50;
-                if (typeof q.options === 'string') {
-                    const defaultOpt = q.options.split(';').find(opt => opt.startsWith('default='));
-                    if (defaultOpt) {
-                        const val = parseInt(defaultOpt.split('=')[1]);
-                        if (!isNaN(val)) defaultRangeVal = val;
-                    } else {
-                         const minOpt = q.options.split(';').find(opt => opt.startsWith('min='));
-                         if (minOpt) {
-                            const val = parseInt(minOpt.split('=')[1]);
-                            if (!isNaN(val)) defaultRangeVal = val;
-                         }
-                    }
-                }
-                defaultVals[q.id] = defaultRangeVal;
-            } else if (q.component === 'checkbox' && !q.options) {
-                defaultVals[q.id] = false;
-            }
-            else {
+            } else {
               defaultVals[q.id] = '';
             }
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
-            initialAudioPlayerStates[q.id] = { isPlaying: false, currentTime: 0, duration: 0 };
           });
           reset(defaultVals);
-          setAudioPlayerStates(initialAudioPlayerStates);
-        } else {
-          setError("Assignment not found or you do not have permission to access it.");
-          toast({ variant: "destructive", title: "Error", description: "Assignment not found." });
         }
+
       } catch (err) {
-        console.error("Failed to fetch assignment:", err);
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-        setError(`Failed to load assignment: ${errorMessage}`);
+        setError(`Failed to load assignment data: ${errorMessage}`);
         toast({ variant: "destructive", title: "Loading Failed", description: errorMessage });
       } finally {
         setIsLoading(false);
       }
     }
-
-    fetchAssignment();
-  }, [assignmentId, user, userProfile, authLoading, profileLoading, reset, toast, router, pathname]);
+    
+    fetchAssignmentAndDraft();
+  }, [assignmentId, user, userProfile?.account, authLoading, profileLoading, reset, toast, router, pathname]);
 
   useEffect(() => {
     const hasSchoolSelector = assignment?.questions.some(q => q.component === 'schoolSelector');
@@ -1845,6 +1843,7 @@ export default function CompleteAssignmentPage() {
                     size="lg"
                     onClick={handleSaveDraft} // We will create this function next
                     disabled={isSubmitting} // Disable when a submission is in progress
+                    className="mr-2" // <-- ADD THIS CLASS
                   >
                     <Save className="mr-2 h-5 w-5" /> {/* Using a Save icon */}
                     Save Draft

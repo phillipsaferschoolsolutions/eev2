@@ -5,6 +5,7 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
+import { createContext, useContext, useState, useCallback, useEffect } from "react" // Add useEffect
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -54,6 +55,7 @@ const SidebarProvider = React.forwardRef<
     defaultOpen?: boolean
     open?: boolean
     onOpenChange?: (open: boolean) => void
+    initialState?: "expanded" | "collapsed" // <-- ADD THIS LINE
   }
 >(
   (
@@ -64,12 +66,15 @@ const SidebarProvider = React.forwardRef<
       className,
       style,
       children,
+      initialState: initial = "expanded",
       ...props
     },
     ref
   ) => {
     const isMobile = useIsMobile()
-    const [openMobile, setOpenMobile] = React.useState(false)
+    const [openMobile, setOpenMobile] = React.useState(false);
+    const [sidebarState, setSidebarState] = useState(initial)
+
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
@@ -90,8 +95,22 @@ const SidebarProvider = React.forwardRef<
       [setOpenProp, open]
     )
 
+    // This useEffect hook runs once on the client to get the persisted state
+    useEffect(() => {
+      const persistedState = localStorage.getItem("sidebar-state")
+      if (persistedState === "expanded" || persistedState === "collapsed") {
+        setSidebarState(persistedState)
+      }
+    }, [])
+
     // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
+      setSidebarState((prevState) => {
+        const newState = prevState === "expanded" ? "collapsed" : "expanded"
+        // Save the new state to localStorage
+        localStorage.setItem("sidebar-state", newState)
+        return newState
+      })
       return isMobile
         ? setOpenMobile((open) => !open)
         : setOpen((open) => !open)
@@ -119,7 +138,7 @@ const SidebarProvider = React.forwardRef<
 
     const contextValue = React.useMemo<SidebarContext>(
       () => ({
-        state,
+        state: sidebarState,
         open,
         setOpen,
         isMobile,
@@ -127,7 +146,7 @@ const SidebarProvider = React.forwardRef<
         setOpenMobile,
         toggleSidebar,
       }),
-      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+      [sidebarState, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
     )
 
     return (

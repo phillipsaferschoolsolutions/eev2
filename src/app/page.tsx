@@ -688,9 +688,7 @@ export default function DashboardPage() {
                                 <TableCell className="font-medium truncate max-w-[150px]">{item.assignmentId}</TableCell>
                                 <TableCell className="truncate max-w-[120px]">{item.completedBy}</TableCell>
                                 <TableCell>
-                                  {item.submittedTimeServer && item.submittedTimeServer.toDate 
-                                    ? formatDisplayDateShort(item.submittedTimeServer.toDate()) 
-                                    : 'N/A'}
+                                    {item.submittedTimeServer ? new Date(item.submittedTimeServer).toLocaleString() : 'N/A'}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Button asChild variant="outline" size="sm">

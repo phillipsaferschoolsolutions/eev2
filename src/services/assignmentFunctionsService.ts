@@ -468,6 +468,65 @@ export async function deleteAssignmentDraft(assignmentId: string, draftId: strin
 }
 
 /**
+ * Gets a specific assignment draft for the current user.
+ * @param assignmentId The ID of the assignment to get the draft for.
+ * @param accountName The account associated with this action.
+ * @returns A promise that resolves to the draft data object or null if not found.
+ */
+export async function getAssignmentDraft(assignmentId: string, accountName: string): Promise<any | null> {
+  if (!assignmentId) {
+    throw new Error("Assignment ID is required to get a draft.");
+  }
+  if (!accountName) {
+    throw new Error("Account name is required to get a draft.");
+  }
+
+  // This will call the new endpoint to get a specific draft for the user
+  const url = `${ASSIGNMENTS_V2_BASE_URL}/draft/${assignmentId}`;
+
+  try {
+    const result = await authedFetch<any>(url, {
+      method: 'GET',
+    });
+    return result;
+  } catch (error: any) {
+    // A 404 error is expected if no draft exists, so we handle it gracefully
+    if (error.message.includes("404")) {
+      console.log(`No draft found for assignment ${assignmentId}.`);
+      return null;
+    }
+    // Re-throw other errors
+    console.error("Error fetching assignment draft:", error);
+    throw error;
+  }
+}
+
+
+/**
+ * Gets the details of a specific assignment completion.
+ * @param assignmentId The ID of the parent assignment.
+ * @param completionId The ID of the completion document.
+ * @param accountName The account associated with this action.
+ * @returns A promise that resolves to the completion data object.
+ */
+export async function getCompletionDetails(assignmentId: string, completionId: string, accountName: string): Promise<any> {
+  if (!assignmentId || !completionId) {
+    throw new Error("Both Assignment ID and Completion ID are required.");
+  }
+  if (!accountName) {
+    throw new Error("Account name is required.");
+  }
+
+  // This will call a new endpoint to get a specific completion
+  const url = `${ASSIGNMENTS_V2_BASE_URL}/${assignmentId}/completions/${completionId}`;
+
+  const result = await authedFetch<any>(url, {
+    method: 'GET',
+  });
+  return result;
+}
+
+/**
  * Fetches the most recent completions for a given assignment and school.
  * @param accountId The account to filter completions by.
  * @param assignmentId The specific assignment ID to filter by.
