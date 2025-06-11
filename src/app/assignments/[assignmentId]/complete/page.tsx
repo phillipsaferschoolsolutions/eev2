@@ -1292,6 +1292,7 @@ export default function CompleteAssignmentPage() {
                           width={150}
                           height={150}
                           className="object-cover rounded-md"
+                          data-ai-hint="photo bank image"
                         />
                       </div>
                     ))}
@@ -1301,11 +1302,18 @@ export default function CompleteAssignmentPage() {
             </Card>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-              {questionsToRender.map((question, index) => (
+              {questionsToRender.map((question, index) => {
+                const questionLabelContent = typeof question.label === 'string'
+                  ? question.label
+                  : (typeof question.label === 'object' && question.label !== null && 'label' in question.label && typeof (question.label as any).label === 'string')
+                    ? (question.label as any).label
+                    : `Question ${index + 1}`; // Fallback if label is malformed
+
+                return (
                 <Card key={question.id || index} className="p-6 bg-card/50">
                   <fieldset className="space-y-3">
                     <Label htmlFor={question.id} className="text-lg font-semibold text-foreground">
-                      {questionsToRender.length > 0 ? `${questionsToRender.indexOf(question) + 1}` : index + 1}. {question.label}
+                      {questionsToRender.length > 0 ? `${questionsToRender.indexOf(question) + 1}` : index + 1}. {questionLabelContent}
                       {question.required && <span className="text-destructive ml-1">*</span>}
                     </Label>
                     <div className="text-xs text-muted-foreground space-y-1 mb-2">
@@ -1471,7 +1479,7 @@ export default function CompleteAssignmentPage() {
                           render={({ field }) => (
                               <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value || ""}>
                                   <SelectTrigger id={question.id} className="w-full bg-background">
-                                      <SelectValue placeholder={`Select an option for "${question.label}"`} />
+                                      <SelectValue placeholder={`Select an option for "${questionLabelContent}"`} />
                                   </SelectTrigger>
                                   <SelectContent>
                                       {parseOptions(question.options).map(opt => (
@@ -1830,7 +1838,8 @@ export default function CompleteAssignmentPage() {
 
                   </fieldset>
                 </Card>
-              ))}
+                );
+              })}
 
               {questionsToRender.length === 0 && conditionallyVisibleQuestions.length > 0 && !isLoading && (
                   <div className="text-center py-10">
@@ -1926,6 +1935,7 @@ export default function CompleteAssignmentPage() {
                         alt={photo.name}
                         fill
                         className="object-cover rounded-md"
+                        data-ai-hint="select photo"
                       />
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <CheckCircle2 className="h-8 w-8 text-white"/>
@@ -1969,6 +1979,3 @@ export default function CompleteAssignmentPage() {
     </div>
   );
 }
-
-
-    

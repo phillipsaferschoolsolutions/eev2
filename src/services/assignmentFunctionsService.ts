@@ -465,22 +465,44 @@ export async function getAssignmentDraft(assignmentId: string, accountName: stri
     throw new Error("Account name is required to get a draft.");
   }
 
-  // This will call the new endpoint to get a specific draft for the user
   const url = `${ASSIGNMENTS_V2_BASE_URL}/draft/${assignmentId}`;
 
   try {
-    const result = await authedFetch<any>(url, {
+    const token = await getIdToken();
+    const headers = new Headers();
+    if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+    }
+    if (accountName) {
+        headers.set('account', accountName);
+    }
+    
+    // Perform the fetch call directly here to inspect the response object
+    const response = await fetch(url, {
       method: 'GET',
+      headers: headers,
     });
-    return result;
-  } catch (error: any) {
-    // A 404 error is expected if no draft exists, so we handle it gracefully
-    if (error.message.includes("404")) {
-      console.log(`No draft found for assignment ${assignmentId}.`);
+    
+    // GRACEFUL HANDLING: If a 404 is received, it's not an error, it just means no draft exists.
+    if (response.status === 404) {
+      console.log(`No draft found for assignment ${assignmentId}, which is a normal case.`);
       return null;
     }
-    // Re-throw other errors
-    console.error("Error fetching assignment draft:", error);
+
+    // If there's another type of error, throw it so it can be caught below.
+    if (!response.ok) {
+        const errorData = await response.text();
+        console.error(`API Error ${response.status} for ${url}:`, errorData);
+        throw new Error(`API Error: ${response.status} ${errorData || response.statusText}`);
+    }
+
+    // If the response is OK, parse and return the JSON.
+    return await response.json();
+
+  } catch (error) {
+    // This will now only catch server errors or other unexpected issues
+    console.error("An unexpected error occurred while fetching assignment draft:", error);
+    // Re-throw so the UI can be notified of a real problem
     throw error;
   }
 }

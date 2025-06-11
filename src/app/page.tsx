@@ -217,13 +217,13 @@ const EmergencyProtocolsCard: React.FC = () => (
     </CardHeader>
     <CardContent className="space-y-3 flex-grow flex flex-col justify-center">
       <Button className="w-full bg-destructive hover:bg-destructive/90">
-        <Radiation className="mr-2 h-4 w-4" /> Initiate Lockdown
+        <Radiation className="mr-2 h-4 w-4" /> Review Lockdown Procedures
       </Button>
       <Button variant="outline" className="w-full">
         <FileText className="mr-2 h-4 w-4" /> Report Incident
       </Button>
       <Button variant="outline" className="w-full">
-        <MessageSquare className="mr-2 h-4 w-4" /> Send Alert
+        <MessageSquare className="mr-2 h-4 w-4" /> Record an Alert
       </Button>
     </CardContent>
   </Card>
