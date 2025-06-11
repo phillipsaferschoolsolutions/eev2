@@ -30,7 +30,7 @@ import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, getAssignmentDraft, submitCompletedAssignment, saveAssignmentDraft, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, Paperclip, MessageSquare, Save, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Trash2, Radio, Badge, PlayIcon, PauseIcon, TimerIcon } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Paperclip, MessageSquare, Save, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Trash2, Radio, Badge, PlayIcon, PauseIcon, TimerIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
@@ -101,7 +101,7 @@ export default function CompleteAssignmentPage() {
   const pathname = usePathname();
   const { toast } = useToast();
   const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
-
+  const [currentPage, setCurrentPage] = useState(1);
   const assignmentId = typeof params.assignmentId === 'string' ? params.assignmentId : '';
 
   const [assignment, setAssignment] = useState<AssignmentWithPermissions | null>(null);
@@ -206,6 +206,15 @@ export default function CompleteAssignmentPage() {
     return assignment.questions.filter(q => shouldBeVisible(q.conditional, q.id));
   }, [assignment?.questions, allWatchedValues]);
 
+  // Add this useMemo hook near your other useMemo hooks
+  const totalPages = useMemo(() => {
+    if (!conditionallyVisibleQuestions || conditionallyVisibleQuestions.length === 0) {
+      return 1;
+    }
+    // Find the maximum page number from the visible questions
+    const maxPage = Math.max(...conditionallyVisibleQuestions.map(q => q.pageNumber || 1));
+    return maxPage;
+  }, [conditionallyVisibleQuestions]);
 
   const isQuestionAnswered = (question: AssignmentQuestion, formData: FieldValues): boolean => {
     const value = formData[question.id];
@@ -319,6 +328,11 @@ export default function CompleteAssignmentPage() {
 
   const questionsToRender = useMemo(() => {
     return conditionallyVisibleQuestions.filter(q => {
+      // Add a filter for the current page
+      const pageMatch = (q.pageNumber || 1) === currentPage;
+      if (!pageMatch) return false;
+
+      // Keep the existing filters for section, sub-section, and answered status
       const sectionMatch = selectedSection === "all" || (q.section || UNASSIGNED_FILTER_VALUE) === selectedSection;
       const subSectionMatch = selectedSubSection === "all" || (q.subSection || UNASSIGNED_FILTER_VALUE) === selectedSubSection;
 
@@ -330,7 +344,7 @@ export default function CompleteAssignmentPage() {
       const answered = isQuestionAnswered(q, allWatchedValues);
       return answeredStatusFilter === 'answered' ? answered : !answered;
     });
-  }, [conditionallyVisibleQuestions, selectedSection, selectedSubSection, answeredStatusFilter, allWatchedValues]);
+  }, [conditionallyVisibleQuestions, selectedSection, selectedSubSection, answeredStatusFilter, allWatchedValues, currentPage]); // Add currentPage to the dependency array
 
   const handlePhotoBankUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1834,6 +1848,30 @@ export default function CompleteAssignmentPage() {
                   </div>
               )}
 
+              {/* Pagination Controls */}
+              <div className="flex items-center justify-between mt-8 pt-6 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Previous Page
+                </Button>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage >= totalPages}
+                >
+                  Next Page
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
 
               <div className="flex justify-end pt-6">
                 {/* Add this Button for saving drafts, next to the submit button */}

@@ -24,13 +24,14 @@ import { Separator } from "@/components/ui/separator";
 
 // Schema for a single question
 const questionSchema = z.object({
-  _uid: z.string().optional(), // Temporary frontend ID
-  id: z.string().optional(), // Backend ID, can be same as _uid for new, or actual ID for existing
+  id: z.string().min(1, "Question ID is required."),
   label: z.string().min(1, "Question label is required."),
   component: z.string().min(1, "Component type is required."),
   section: z.string().optional(),
   subSection: z.string().optional(),
-  options: z.string().optional(), // Semicolon-separated
+  pageNumber: z.number().optional(), // <-- ADDED
+  order: z.number().optional(),      // <-- ADDED
+  options: z.string().optional(),
   required: z.boolean().optional(),
   comment: z.boolean().optional(),
   photoUpload: z.boolean().optional(),
@@ -43,6 +44,7 @@ const questionSchema = z.object({
     jobTitles: z.array(z.string()).optional(),
   }).optional(),
 });
+
 
 const newAssignmentSchema = z.object({
   assessmentName: z.string().min(3, { message: "Assessment name must be at least 3 characters." }),
@@ -137,12 +139,19 @@ export default function NewAssignmentPage() {
   }, [user, userProfile, authLoading, profileLoading, toast]);
 
   const addNewQuestion = () => {
-    const newId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Get the current number of questions to determine the next page number
+    const nextPageIndex = fields.length;
+    // Page numbers are typically 1-based, so we add 1
+    const nextPageNumber = nextPageIndex + 1;
+
     append({
-      _uid: newId,
-      id: newId,
+      id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       label: "",
       component: "text",
+      section: "", // Default empty section
+      subSection: "", // Default empty sub-section
+      pageNumber: nextPageNumber, // Automatically set the page number
+      order: 1, // Default order to 1, as it's the only question on the new page
       options: "",
       required: false,
       comment: false,
@@ -371,6 +380,48 @@ export default function NewAssignmentPage() {
                           </div>
                         </div>
 
+                        {/* Page Number and Order Inputs - CORRECTED VERSION */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor={`questions.${index}.pageNumber`}>Page Number</Label>
+                            <Controller
+                              name={`questions.${index}.pageNumber`}
+                              control={control}
+                              render={({ field }) => (
+                                <Input
+                                  id={`questions.${index}.pageNumber`}
+                                  type="number"
+                                  placeholder="e.g., 1"
+                                  {...field}
+                                  // This onChange ensures we pass a number or undefined to the form state
+                                  onChange={event => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
+                                  value={field.value ?? ''} // Handles undefined values gracefully
+                                />
+                              )}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`questions.${index}.order`}>Question Order</Label>
+                            <Controller
+                              name={`questions.${index}.order`}
+                              control={control}
+                              render={({ field }) => (
+                                <Input
+                                  id={`questions.${index}.order`}
+                                  type="number"
+                                  placeholder="Order on page, e.g., 1"
+                                  {...field}
+                                  onChange={event => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
+                                  value={field.value ?? ''}
+                                />
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        
+                        <Separator />
+                        <Label className="font-medium">Question Type</Label>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>

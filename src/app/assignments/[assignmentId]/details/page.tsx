@@ -15,19 +15,29 @@ import { Edit3, AlertTriangle, ArrowLeft, ListChecks, CheckSquare, MessageSquare
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 
-const parseOptions = (options: string | string[] | undefined): string[] => {
+// A more robust parseOptions function that handles multiple possible data formats
+const parseOptions = (options: any): { label: string; value: string }[] => {
   if (!options) return [];
-  if (Array.isArray(options)) return options;
-  try {
-    const parsed = JSON.parse(options);
-    if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
-      return parsed;
-    }
-  } catch (e) {
-    // If not JSON, fall back to semicolon split
+  
+  // Case 1: It's already the correct format (array of objects with label/value)
+  if (Array.isArray(options) && options.length > 0 && typeof options[0] === 'object' && options[0] !== null && 'label' in options[0]) {
+    return options.map(opt => ({ label: String(opt.label), value: String(opt.value || opt.label) }));
   }
-  return options.split(';').map(opt => opt.trim()).filter(opt => opt);
+
+  // Case 2: It's a simple array of strings
+  if (Array.isArray(options)) {
+    return options.map(opt => ({ label: String(opt), value: String(opt) }));
+  }
+  
+  // Case 3: It's a semicolon-separated string
+  if (typeof options === 'string') {
+    return options.split(';').map(opt => opt.trim()).filter(Boolean).map(opt => ({ label: opt, value: opt }));
+  }
+
+  // Fallback if the format is unknown
+  return [];
 };
+
 
 const formatDisplayDate = (dateString?: string) => {
   if (!dateString) return "N/A";
@@ -96,6 +106,8 @@ export default function AssignmentDetailsPage() {
       setError(null);
       try {
         const fetchedAssignment = await getAssignmentById(assignmentId, userProfile.account);
+        // ADD THIS LOG to see exactly what the server returns
+        console.log("Fetched Assignment Data from Server:", fetchedAssignment);
         if (fetchedAssignment) {
           setAssignment(fetchedAssignment);
         } else {
@@ -253,7 +265,7 @@ export default function AssignmentDetailsPage() {
           {assignment.questions && assignment.questions.length > 0 ? (
             <ul className="space-y-4">
               {assignment.questions.map((question, index) => (
-                <li key={question.id || `q-${index}`} className="p-4 border rounded-lg bg-card/60 shadow-sm">
+                <li key={`${question.id}-${index}`} className="p-4 border rounded-lg bg-card/60 shadow-sm">
                   <p className="font-semibold text-md mb-2">
                     {index + 1}. {question.label}
                     {question.required && <span className="text-destructive ml-1">*</span>}
@@ -264,7 +276,9 @@ export default function AssignmentDetailsPage() {
                       <div className="sm:col-span-2">
                         <strong>Options:</strong>
                         <ul className="list-disc list-inside ml-4 mt-1">
-                          {parseOptions(question.options).map(opt => <li key={opt}>{opt}</li>)}
+                        {parseOptions(question.options).map((opt, index) => (
+                          <li key={`${opt.value}-${index}`}>{opt.label}</li>
+                        ))}
                         </ul>
                       </div>
                     )}

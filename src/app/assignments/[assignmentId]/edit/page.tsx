@@ -23,19 +23,21 @@ import { Separator } from "@/components/ui/separator";
 
 // Schema for a single question
 const questionSchema = z.object({
-  id: z.string().min(1, "Question ID is required."), // Should be generated, e.g., UUID
+  _uid: z.string().optional(), // Temporary frontend ID
+  id: z.string().min(1, "Question ID is required."),
   label: z.string().min(1, "Question label is required."),
   component: z.string().min(1, "Component type is required."),
   section: z.string().optional(),
   subSection: z.string().optional(),
-  options: z.string().optional(), // Semicolon-separated
+  pageNumber: z.number().optional(), // <-- ADDED
+  order: z.number().optional(),      // <-- ADDED
+  options: z.string().optional(),
   required: z.boolean().optional(),
   comment: z.boolean().optional(),
   photoUpload: z.boolean().optional(),
   deficiencyLabel: z.string().optional(),
   deficiencyValues: z.array(z.string()).optional(),
   aiDeficiencyCheck: z.boolean().optional(),
-  // Placeholder for future assignment fields
   assignedTo: z.object({
     users: z.array(z.string()).optional(),
     sites: z.array(z.string()).optional(),
@@ -133,15 +135,23 @@ export default function EditAssignmentPage() {
         const fetchedAssignment = await getAssignmentById(assignmentId, userProfile!.account);
         if (fetchedAssignment) {
           setAssignment(fetchedAssignment);
+          
+          // CORRECTED: Transform the data before populating the form
           reset({
             assessmentName: fetchedAssignment.assessmentName || "",
             description: fetchedAssignment.description || "",
+            assignmentType: fetchedAssignment.assignmentType,
             questions: fetchedAssignment.questions.map(q => ({
               ...q,
-              options: Array.isArray(q.options) ? q.options.join(';') : q.options || "",
+              // Convert the array of option objects back to a semicolon-separated string
+              options: Array.isArray(q.options) 
+                ? q.options.map(opt => typeof opt === 'object' ? opt.label : opt).join(';') 
+                : "",
+              // Ensure deficiencyValues is an array of strings
+              deficiencyValues: q.deficiencyValues || [], 
             })) || [],
-            assignmentType: fetchedAssignment.assignmentType as "comprehensiveAssessment" | "siteAssessment" | "safetyPlan" | undefined, // Map fetched type
           });
+
         } else {
           setError("Assignment not found or you do not have permission to access it.");
           toast({ variant: "destructive", title: "Error", description: "Assignment not found." });
@@ -156,7 +166,7 @@ export default function EditAssignmentPage() {
     }
     fetchAssignment();
   }, [assignmentId, userProfile?.account, authLoading, profileLoading, reset, toast]);
-
+  
   const onSubmit: SubmitHandler<AssignmentFormData> = async (data) => {
     if (!assignment || !userProfile?.account) {
       toast({ variant: "destructive", title: "Error", description: "Cannot save, critical data missing." });
@@ -329,6 +339,45 @@ export default function EditAssignmentPage() {
                       </div>
                     </div>
 
+                    {/* Page Number and Order Inputs - CORRECTED VERSION */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor={`questions.${index}.pageNumber`}>Page Number</Label>
+                        <Controller
+                          name={`questions.${index}.pageNumber`}
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              id={`questions.${index}.pageNumber`}
+                              type="number"
+                              placeholder="e.g., 1"
+                              {...field}
+                              // This onChange ensures we pass a number or undefined to the form state
+                              onChange={event => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
+                              value={field.value ?? ''} // Handles undefined values gracefully
+                            />
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`questions.${index}.order`}>Question Order</Label>
+                        <Controller
+                          name={`questions.${index}.order`}
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              id={`questions.${index}.order`}
+                              type="number"
+                              placeholder="Order on page, e.g., 1"
+                              {...field}
+                              onChange={event => field.onChange(event.target.value === '' ? undefined : Number(event.target.value))}
+                              value={field.value ?? ''}
+                            />
+                          )}
+                        />
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor={`questions.${index}.component`}>Question Type</Label>
@@ -389,29 +438,30 @@ export default function EditAssignmentPage() {
                       <div>
                         <Label>Mark options as deficient:</Label>
                         <div className="space-y-2 mt-1 p-2 border rounded-md max-h-40 overflow-y-auto">
-                          {currentQuestionOptions.map(opt => (
-                            <div key={opt} className="flex items-center space-x-2">
-                              <Controller
-                                name={`questions.${index}.deficiencyValues`}
-                                control={control}
-                                render={({ field: controllerField }) => (
-                                  <Checkbox
-                                    id={`questions.${index}.deficiencyValues.${opt}`}
-                                    checked={controllerField.value?.includes(opt)}
-                                    onCheckedChange={(checked) => {
-                                      const currentValues = controllerField.value || [];
-                                      if (checked) {
-                                        controllerField.onChange([...currentValues, opt]);
-                                      } else {
-                                        controllerField.onChange(currentValues.filter(val => val !== opt));
-                                      }
-                                    }}
-                                  />
-                                )}
-                              />
-                              <Label htmlFor={`questions.${index}.deficiencyValues.${opt}`} className="font-normal">{opt}</Label>
-                            </div>
-                          ))}
+                        {currentQuestionOptions.map((opt, index) => (
+                          // CORRECTED: Use the option string and its index for a unique key
+                          <div key={`${opt}-${index}`} className="flex items-center space-x-2">
+                            <Controller
+                              name={`questions.${index}.deficiencyValues`}
+                              control={control}
+                              render={({ field: controllerField }) => (
+                                <Checkbox
+                                  id={`questions.${index}.deficiencyValues.${opt}`}
+                                  checked={controllerField.value?.includes(opt)}
+                                  onCheckedChange={(checked) => {
+                                    const currentValues = controllerField.value || [];
+                                    if (checked) {
+                                      controllerField.onChange([...currentValues, opt]);
+                                    } else {
+                                      controllerField.onChange(currentValues.filter(val => val !== opt));
+                                    }
+                                  }}
+                                />
+                              )}
+                            />
+                            <Label htmlFor={`questions.${index}.deficiencyValues.${opt}`} className="font-normal">{opt}</Label>
+                          </div>
+                        ))}
                         </div>
                       </div>
                     )}

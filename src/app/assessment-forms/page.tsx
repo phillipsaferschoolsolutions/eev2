@@ -226,43 +226,46 @@ export default function AssessmentFormsPage() {
             </div>
           )}
            {!overallLoadingMyAssignments && !myAssignmentsError && myAssignments.length > 0 && (
-             <ul className="space-y-3">
-               {myAssignments.map((assignment, index) => {
-                 let uniqueIdForLink: string | null = null;
-                 if (assignment.assignmentId && typeof assignment.assignmentId === 'string' && assignment.assignmentId.trim() !== '') {
-                     uniqueIdForLink = assignment.assignmentId;
-                 } else if (assignment.id && typeof assignment.id === 'string' && assignment.id.trim() !== '') {
-                     uniqueIdForLink = assignment.id;
-                 } else if (assignment.assessmentName && typeof assignment.assessmentName === 'string' && assignment.assessmentName.trim() !== '') {
-                     uniqueIdForLink = assignment.assessmentName; 
-                 }
+              <>
+              {console.log("Rendering All Account Assignments:", displayableAllAccountAssignments)} 
+              <ul className="space-y-3">
+                {myAssignments.map((assignment, index) => {
+                  let uniqueIdForLink: string | null = null;
+                  if (assignment.assignmentId && typeof assignment.assignmentId === 'string' && assignment.assignmentId.trim() !== '') {
+                      uniqueIdForLink = assignment.assignmentId;
+                  } else if (assignment.id && typeof assignment.id === 'string' && assignment.id.trim() !== '') {
+                      uniqueIdForLink = assignment.id;
+                  } else if (assignment.assessmentName && typeof assignment.assessmentName === 'string' && assignment.assessmentName.trim() !== '') {
+                      uniqueIdForLink = assignment.assessmentName; 
+                  }
 
-                 const keyForListItem = uniqueIdForLink || (assignment.assessmentName || `my-assignment-${index}`);
+                  const keyForListItem = uniqueIdForLink || (assignment.assessmentName || `my-assignment-${index}`);
 
-                 return (
-                   <li key={keyForListItem} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
-                     <div>
-                       <p className="font-medium">{assignment.assessmentName || assignment.description || 'Unnamed Assignment'}</p>
-                       <p className="text-xs text-muted-foreground">
-                         {assignment.description ? (assignment.assessmentName ? `Desc: ${assignment.description}` : assignment.description) : `Due: ${assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}`}
-                         {!uniqueIdForLink && <span className="ml-2 text-destructive">(ID missing for link)</span>}
-                       </p>
-                     </div>
-                     {uniqueIdForLink ? (
-                        <Button asChild variant="outline" size="sm">
-                          <Link href={`/assignments/${encodeURIComponent(uniqueIdForLink)}/complete`}>
-                            Go
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button variant="outline" size="sm" disabled>
-                          Go (ID Missing)
-                        </Button>
-                      )}
-                   </li>
-                 );
-               })}
-             </ul>
+                  return (
+                    <li key={keyForListItem} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
+                      <div>
+                        <p className="font-medium">{assignment.assessmentName || assignment.description || 'Unnamed Assignment'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {assignment.description ? (assignment.assessmentName ? `Desc: ${assignment.description}` : assignment.description) : `Due: ${assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}`}
+                          {!uniqueIdForLink && <span className="ml-2 text-destructive">(ID missing for link)</span>}
+                        </p>
+                      </div>
+                      {uniqueIdForLink ? (
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={`/assignments/${encodeURIComponent(uniqueIdForLink)}/complete`}>
+                              Go
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" disabled>
+                            Go (ID Missing)
+                          </Button>
+                        )}
+                    </li>
+                  );
+                })}
+              </ul>
+             </>
            )}
         </CardContent>
       </Card>

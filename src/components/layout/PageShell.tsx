@@ -9,9 +9,10 @@ import { useLayout } from "@/context/layout-context";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
+import { useAuth } from "@/context/auth-context";
 
 // Define navigation items here so they can be passed to header if needed
-export const mainNavItems = [
+export const baseNavItems = [
   { href: "/", label: "Dashboard", icon: "LayoutDashboard" },
   { href: "/map", label: "Campus Map", icon: "Map" },
   { href: "/assessment-forms", label: "Assignments", icon: "ClipboardList" },
@@ -32,9 +33,25 @@ const pageVariants = {
 };
 
 export function PageShell({ children }: { children: React.ReactNode }) {
+  const { userProfile } = useAuth(); // Get user profile
   const { layoutMode, isMobileViewForLayout } = useLayout();
   const sidebarContext = useSidebar();
   const pathname = usePathname();
+
+  // Define the roles that can see the admin link
+  const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
+  
+  // Dynamically create the nav items based on the user's role
+  const mainNavItems = React.useMemo(() => {
+    const navItems = [...baseNavItems];
+    if (userProfile && ADMIN_ROLES.includes(userProfile.permission)) {
+      // Add the Admin link if the user has an admin role
+      navItems.push({ href: "/admin", label: "Admin", icon: "Shield" });
+    }
+    // You can add other role-based links here as well
+    return navItems;
+  }, [userProfile]);
+
 
   React.useEffect(() => {
     if (!isMobileViewForLayout) { 

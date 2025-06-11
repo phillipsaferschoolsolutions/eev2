@@ -35,115 +35,51 @@ async function getIdToken(): Promise<string | null> {
 // --- Generic Fetch Wrapper for Analysis Service ---
 async function authedFetch<T>(
   fullUrl: string,
-  options: RequestInit = {},
-  accountName?: string
+  options: RequestInit = {}
 ): Promise<T> {
-  const token = await getIdToken();
+  const token = await getIdToken(); // Assumes getIdToken() is also present in the file
   const headers = new Headers(options.headers || {});
 
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   } else {
-    console.warn(`[CRITICAL] analysisService.authedFetch: No Authorization token available for endpoint: ${fullUrl}. This will likely cause API errors.`);
+    console.warn(`[CRITICAL] authedFetch: No Authorization token available for endpoint: ${fullUrl}.`);
   }
 
-  const trimmedAccountName = accountName?.trim();
-  if (trimmedAccountName) {
-    headers.set('account', trimmedAccountName);
+  // Automatically get accountName from localStorage
+  const accountName = localStorage.getItem('accountName');
+  if (accountName) {
+    headers.set('account', accountName);
   } else {
-     console.warn(`[CRITICAL] analysisService.authedFetch: 'account' header NOT SET for URL: ${fullUrl} because accountName parameter was: '${accountName}'. This may cause API errors if the endpoint requires an account context.`);
+    // Only warn if it's not a call to the auth endpoint itself
+    if (!fullUrl.includes('/auth')) {
+        console.warn(`[CRITICAL] authedFetch: 'account' header not found in localStorage for URL: ${fullUrl}.`);
+    }
   }
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
     headers.set('Content-Type', 'application/json');
   }
 
-  let response;
-  try {
-    response = await fetch(fullUrl, {
-      ...options,
-      headers,
-    });
-  } catch (networkError: any) {
-    console.error(`Network error for ${fullUrl} (analysisService):`, networkError);
-    let errorMessage = `Network Error: Could not connect to the server (${networkError.message || 'Failed to fetch'}). `;
-    errorMessage += `Please check your internet connection. If the issue persists, it might be a CORS configuration problem on the server or the server endpoint (${fullUrl}) might be down or incorrect.`;
-    throw new Error(errorMessage);
-  }
+  const response = await fetch(fullUrl, { ...options, headers });
 
   if (!response.ok) {
-    let errorBodyText = await response.text().catch(() => "Could not retrieve error body.");
-    let errorJson: any;
-    let parsedMessage: string | null = null;
-
-    if (errorBodyText) {
-      try {
-        errorJson = JSON.parse(errorBodyText);
-        if (errorJson && typeof errorJson.message === 'string') {
-          parsedMessage = errorJson.message;
-        } else if (errorJson && typeof errorJson.error === 'string') { 
-          parsedMessage = errorJson.error;
-        } else if (errorJson && typeof errorJson === 'object' && Object.keys(errorJson).length > 0) {
-          parsedMessage = JSON.stringify(errorJson); 
-        } else if (errorJson && typeof errorJson === 'object' && Object.keys(errorJson).length === 0) {
-          // If errorJson is an empty object, but errorBodyText was not, prefer errorBodyText for the message
-          parsedMessage = (errorBodyText && errorBodyText !== '{}') ? errorBodyText : response.statusText || `Server responded with status ${response.status}`;
-        }
-      } catch (e) {
-        if (errorBodyText.length > 150) { 
-            parsedMessage = response.statusText || `Server responded with status ${response.status}`;
-        } else {
-            parsedMessage = errorBodyText || response.statusText || `Server responded with status ${response.status}`;
-        }
-      }
-    }
-    
-    const finalErrorMessage = parsedMessage || response.statusText || `Server responded with status ${response.status}`;
-    
-    // Determine what to log as the error object
-    let loggedErrorDetail = errorJson;
-    if (errorJson && typeof errorJson === 'object' && Object.keys(errorJson).length === 0 && errorBodyText && errorBodyText !== '{}') {
-        loggedErrorDetail = errorBodyText; 
-    } else if (!errorJson && errorBodyText) {
-        loggedErrorDetail = errorBodyText;
-    }
-
-    console.error(`API Error ${response.status} for ${fullUrl} (analysisService):`, loggedErrorDetail || "Empty or unparseable error response body");
-    
-    throw new Error(
-      `API Error: ${response.status} ${finalErrorMessage} (from ${fullUrl})`
-    );
+    const errorData = await response.text();
+    console.error(`API Error ${response.status} for ${fullUrl}:`, errorData);
+    throw new Error(`API Error: ${response.status} ${errorData || response.statusText}`);
   }
 
-  const contentType = response.headers.get("content-type");
-  if (response.status === 204) { // No Content
+  if (response.status === 204) {
     return undefined as any as T;
   }
-
+  
   const textResponse = await response.text();
-  if (contentType && contentType.indexOf("application/json") !== -1) {
-     try {
-        return JSON.parse(textResponse) as T;
-     } catch (e) {
-        console.error(`analysisService.authedFetch: Failed to parse JSON for ${fullUrl}. Error: ${e}. Response text: ${textResponse}`);
-        throw new Error(`API Error: Malformed JSON response from ${fullUrl}.`);
-     }
-  } else {
-    // Attempt to parse if it looks like JSON, otherwise return as text
-    if (textResponse) {
-      if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
-        try {
-          return JSON.parse(textResponse) as T;
-        } catch (e) {
-          // Not JSON, fall through
-        }
-      }
-      return textResponse as any as T; // Return as text if not JSON or parse failed
-    }
-    return undefined as any as T; // Empty response
+  try {
+    return JSON.parse(textResponse);
+  } catch (e) {
+    return textResponse as any as T; // Fallback for non-JSON responses
   }
 }
-
 
 /**
  * Fetches dashboard widget data (user activity or account completions).

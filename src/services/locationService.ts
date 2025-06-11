@@ -25,85 +25,52 @@ async function getIdToken(): Promise<string | null> {
 // --- Generic Fetch Wrapper (copied from assignmentFunctionsService) ---
 async function authedFetch<T>(
   fullUrl: string,
-  options: RequestInit = {},
-  accountName?: string
+  options: RequestInit = {}
 ): Promise<T> {
-  const token = await getIdToken();
+  const token = await getIdToken(); // Assumes getIdToken() is also present in the file
   const headers = new Headers(options.headers || {});
 
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   } else {
-    console.warn(`[CRITICAL] authedFetch (locationService): No Authorization token available for endpoint: ${fullUrl}. This will likely cause API errors.`);
+    console.warn(`[CRITICAL] authedFetch: No Authorization token available for endpoint: ${fullUrl}.`);
   }
 
-  const trimmedAccountName = accountName?.trim();
-  if (trimmedAccountName) {
-    headers.set('account', trimmedAccountName);
+  // Automatically get accountName from localStorage
+  const accountName = localStorage.getItem('accountName');
+  if (accountName) {
+    headers.set('account', accountName);
   } else {
-    console.warn(`[CRITICAL] authedFetch (locationService): 'account' header NOT SET for URL: ${fullUrl} because accountName parameter was: '${accountName}'. This may cause API errors if the endpoint requires an account context.`);
+    // Only warn if it's not a call to the auth endpoint itself
+    if (!fullUrl.includes('/auth')) {
+        console.warn(`[CRITICAL] authedFetch: 'account' header not found in localStorage for URL: ${fullUrl}.`);
+    }
   }
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
     headers.set('Content-Type', 'application/json');
   }
 
-  let response;
-  try {
-    response = await fetch(fullUrl, {
-      ...options,
-      headers,
-    });
-  } catch (networkError: any) {
-    console.error(`Network error for ${fullUrl} (locationService):`, networkError);
-    let errorMessage = `Network Error: Could not connect to the server (${networkError.message || 'Failed to fetch'}). `;
-    errorMessage += `Please check your internet connection. If the issue persists, it might be a CORS configuration problem on the server or the server endpoint (${fullUrl}) might be down or incorrect.`;
-    throw new Error(errorMessage);
-  }
+  const response = await fetch(fullUrl, { ...options, headers });
 
   if (!response.ok) {
-    let errorData;
-    try {
-      errorData = await response.json();
-    } catch (e) {
-      errorData = { message: response.statusText || `HTTP error ${response.status}` };
-    }
-    console.error(`API Error ${response.status} for ${fullUrl} (locationService):`, errorData);
-    throw new Error(
-      `API Error: ${response.status} ${errorData?.message || response.statusText}`
-    );
+    const errorData = await response.text();
+    console.error(`API Error ${response.status} for ${fullUrl}:`, errorData);
+    throw new Error(`API Error: ${response.status} ${errorData || response.statusText}`);
   }
 
-  const contentType = response.headers.get("content-type");
-  if (response.status === 204) { // No Content
+  if (response.status === 204) {
     return undefined as any as T;
   }
-
+  
   const textResponse = await response.text();
-
-  if (contentType && contentType.indexOf("application/json") !== -1) {
-    try {
-      const jsonData = JSON.parse(textResponse) as T;
-      return jsonData;
-    } catch(e) {
-      console.error(`[authedFetch DEBUG (locationService)] Failed to parse JSON response from ${fullUrl} despite content-type. Error: ${e}. Raw text: ${textResponse}`);
-      throw new Error(`API Error: Failed to parse JSON response from ${fullUrl}.`);
-    }
-  } else {
-    if (textResponse) {
-      try {
-        if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
-          const jsonData = JSON.parse(textResponse) as T;
-          return jsonData;
-        }
-      } catch (e) {
-         console.error(`[authedFetch DEBUG (locationService)] Failed to parse non-JSON text response from ${fullUrl} as JSON despite structure match. Error: ${e}. Raw text: ${textResponse}`);
-      }
-      return textResponse as any as T;
-    }
-    return undefined as any as T;
+  try {
+    return JSON.parse(textResponse);
+  } catch (e) {
+    return textResponse as any as T; // Fallback for non-JSON responses
   }
 }
+
 
 /**
  * Fetches all locations for the authorized account.

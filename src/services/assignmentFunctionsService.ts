@@ -229,63 +229,47 @@ async function authedFetch<T>(
   fullUrl: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = await getIdToken();
-  const accountName = await getAccountName(); // This will wait for the accountName
+  const token = await getIdToken(); // Assumes getIdToken() is also present in the file
   const headers = new Headers(options.headers || {});
 
-  headers.set('Authorization', `Bearer ${token}`);
-  headers.set('account', accountName);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  } else {
+    console.warn(`[CRITICAL] authedFetch: No Authorization token available for endpoint: ${fullUrl}.`);
+  }
+
+  // Automatically get accountName from localStorage
+  const accountName = localStorage.getItem('accountName');
+  if (accountName) {
+    headers.set('account', accountName);
+  } else {
+    // Only warn if it's not a call to the auth endpoint itself
+    if (!fullUrl.includes('/auth')) {
+        console.warn(`[CRITICAL] authedFetch: 'account' header not found in localStorage for URL: ${fullUrl}.`);
+    }
+  }
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
     headers.set('Content-Type', 'application/json');
   }
 
-  let response;
-  try {
-    response = await fetch(fullUrl, {
-      ...options,
-      headers,
-    });
-  } catch (networkError: any) {
-    console.error(`Network error for ${fullUrl} (assignmentFunctionsService):`, networkError);
-    let errorMessage = `Network Error: Could not connect to the server (${networkError.message || 'Failed to fetch'}). `;
-    errorMessage += `Please check your internet connection. If the issue persists, it might be a CORS configuration problem on the server or the server endpoint (${fullUrl}) might be down or incorrect.`;
-    throw new Error(errorMessage);
-  }
+  const response = await fetch(fullUrl, { ...options, headers });
 
   if (!response.ok) {
-    let errorData;
-    try {
-      errorData = await response.json();
-    } catch (e) {
-      errorData = { message: response.statusText || `HTTP error ${response.status}` };
-    }
-    console.error(`API Error ${response.status} for ${fullUrl} (assignmentFunctionsService):`, errorData);
-    throw new Error(
-      `API Error: ${response.status} ${errorData?.message || response.statusText}`
-    );
+    const errorData = await response.text();
+    console.error(`API Error ${response.status} for ${fullUrl}:`, errorData);
+    throw new Error(`API Error: ${response.status} ${errorData || response.statusText}`);
   }
 
-  const contentType = response.headers.get("content-type");
   if (response.status === 204) {
     return undefined as any as T;
   }
-
-  if (contentType && contentType.indexOf("application/json") !== -1) {
-    return response.json() as Promise<T>;
-  } else {
-    const textResponse = await response.text();
-    if (textResponse) {
-      try {
-        if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
-          return JSON.parse(textResponse) as T;
-        }
-      } catch (e) {
-         console.error(`authedFetch (assignmentFunctionsService): Failed to parse non-JSON text response from ${fullUrl} as JSON despite structure match. Error: ${e}`);
-      }
-      return textResponse as any as T;
-    }
-    return undefined as any as T;
+  
+  const textResponse = await response.text();
+  try {
+    return JSON.parse(textResponse);
+  } catch (e) {
+    return textResponse as any as T; // Fallback for non-JSON responses
   }
 }
 
@@ -304,13 +288,14 @@ export async function getAllAssignmentsWithContent(): Promise<FullAssignment[]> 
  * 2. GET /assignmentlist
  * Returns metadata for all assignments tied to an account.
  */
-export async function getAssignmentListMetadata(accountName: string): Promise<AssignmentMetadata[]> {
-  if (!accountName || accountName.trim() === "") {
-    throw new Error("Account name is required for getAssignmentListMetadata.");
-  }
-  const result = await authedFetch<AssignmentMetadata[] | undefined>(`${BASE_URL}/assignmentlist`);
+export async function getAssignmentListMetadata(): Promise<AssignmentMetadata[]> {
+  // CORRECTED: Explicitly define the full, correct URL for the original service
+  const url = `${BASE_URL}/assignmentlist`;
+
+  const result = await authedFetch<AssignmentMetadata[] | undefined>(url);
   return result || [];
 }
+
 
 /**
  * 16. GET /:id
@@ -318,10 +303,9 @@ export async function getAssignmentListMetadata(accountName: string): Promise<As
  */
 export async function getAssignmentById(id: string, accountName: string): Promise<AssignmentWithPermissions | null> {
   if (!id) throw new Error('Assignment ID is required.');
-  if (!accountName || accountName.trim() === "") {
-    throw new Error("Account name is required for getAssignmentById.");
-  }
-  const result = await authedFetch<AssignmentWithPermissions | undefined>(`${BASE_URL}/${id}`);
+  // CORRECTED: Ensure this function uses ASSIGNMENTS_V2_BASE_URL
+  const url = `${ASSIGNMENTS_V2_BASE_URL}/${id}`;
+  const result = await authedFetch<AssignmentWithPermissions | undefined>(url);
   return result || null;
 }
 

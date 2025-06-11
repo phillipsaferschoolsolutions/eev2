@@ -38,69 +38,33 @@ async function authedFetch<T>(
     console.warn(`[CRITICAL] authedFetch (adminActionsService): No Authorization token available for endpoint: ${fullUrl}. This will likely cause API errors.`);
   }
 
-  const trimmedAccountName = currentAccountName?.trim();
-  if (trimmedAccountName) {
-    headers.set('account', trimmedAccountName);
-  } else {
-    console.warn(`[CRITICAL] authedFetch (adminActionsService): 'account' header NOT SET for URL: ${fullUrl} because currentAccountName parameter was: '${currentAccountName}'. This may cause API errors if the endpoint requires an account context.`);
-  }
+  // The 'account' header is automatically added by the authedFetch in assignmentFunctionsService.
+  // We should replicate that behavior here for consistency if admin endpoints need it.
+  const accountName = localStorage.getItem('accountName');
+    if (accountName) {
+        headers.set('account', accountName);
+    } else {
+        console.warn(`[CRITICAL] authedFetch (adminService): 'account' header not found in localStorage for URL: ${fullUrl}.`);
+    }
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
     headers.set('Content-Type', 'application/json');
   }
-
-  let response;
-  try {
-    response = await fetch(fullUrl, {
-      ...options,
-      headers,
-    });
-  } catch (networkError: any) {
-    console.error(`Network error for ${fullUrl} (adminActionsService):`, networkError);
-    let errorMessage = `Network Error: Could not connect to the server (${networkError.message || 'Failed to fetch'}). `;
-    errorMessage += `Please check your internet connection. If the issue persists, it might be a CORS configuration problem on the server or the server endpoint (${fullUrl}) might be down or incorrect.`;
-    throw new Error(errorMessage);
-  }
+  
+  const response = await fetch(fullUrl, { ...options, headers });
 
   if (!response.ok) {
-    let errorData;
-    try {
-      errorData = await response.json();
-    } catch (e) {
-      errorData = { message: response.statusText || `HTTP error ${response.status}` };
-    }
-    console.error(`API Error ${response.status} for ${fullUrl} (adminActionsService):`, errorData);
-    throw new Error(
-      `API Error: ${response.status} ${errorData?.message || response.statusText}`
-    );
+    const errorData = await response.text();
+    console.error(`API Error ${response.status} for ${fullUrl} (adminService):`, errorData);
+    throw new Error(`API Error: ${response.status} ${errorData || response.statusText}`);
   }
 
-  const contentType = response.headers.get("content-type");
-  if (response.status === 204) { // No Content
+  if (response.status === 204) {
     return undefined as any as T;
   }
+
+  return response.json() as Promise<T>;
   
-  const textResponse = await response.text();
-  if (contentType && contentType.indexOf("application/json") !== -1) {
-     try {
-        return JSON.parse(textResponse) as T;
-     } catch (e) {
-        console.error(`authedFetch (adminActionsService): Failed to parse JSON for ${fullUrl}. Error: ${e}. Response text: ${textResponse}`);
-        throw new Error(`API Error: Malformed JSON response from ${fullUrl}.`);
-     }
-  } else {
-    if (textResponse) {
-      if ((textResponse.startsWith('{') && textResponse.endsWith('}')) || (textResponse.startsWith('[') && textResponse.endsWith(']'))) {
-        try {
-          return JSON.parse(textResponse) as T;
-        } catch (e) {
-          // Not JSON, return as text
-        }
-      }
-      return textResponse as any as T; // Return as text if not JSON
-    }
-    return undefined as any as T; // Empty response
-  }
 }
 
 /**
