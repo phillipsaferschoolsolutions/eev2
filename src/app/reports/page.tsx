@@ -30,7 +30,17 @@ import type { Location } from "@/services/locationService";
 import { getLocationsForLookup } from "@/services/locationService";
 
 import type { WidgetSandboxData, UserActivity, AssignmentCompletionStatus, ReportFilterOptions, RawResponse, SchoolsWithQuestionsResponse, SchoolQuestionAnswers } from "@/types/Analysis";
-import { Activity, TrendingUp, ListChecks, FileText, Settings2, Download, Filter, CalendarIcon, MapPin, AlertCircle, Loader2, TableIcon, GripVertical, ArrowDownToLine } from "lucide-react";
+import { 
+  Activity, BarChartHorizontal, ChevronLeft, ChevronRight, 
+  TrendingUp, ListChecks, FileText, Settings2, Download, 
+  ShieldCheck, Users, MessageSquare,
+  Filter, CalendarIcon, MapPin, AlertCircle, Loader2, 
+  TableIcon, GripVertical, ArrowDownToLine 
+} from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
+
+
 
 const PERIOD_OPTIONS = [
   { value: "last7days", label: "Last 7 Days" },
@@ -897,6 +907,9 @@ const DraggableItem: React.FC<DraggableItemProps> = ({ type, id, label }) => {
                 <CardContent>{renderCommonResponsesWidget()}</CardContent>
               </Card>
             </div>
+            {/* ADD THIS LINE to render your new widget */}
+            <SafetyPlansWidget />
+
           </TabsContent>
 
           <TabsContent value="reportExplorer" className="mt-6">
@@ -912,3 +925,173 @@ const DraggableItem: React.FC<DraggableItemProps> = ({ type, id, label }) => {
     </DndProvider> // Close DndProvider
   );
 }
+
+
+
+
+
+
+
+// ---------------- START: SafetyPlansWidget Component Code ----------------
+
+// First, we need to add a few more imports to the top of your page.tsx file
+// I will list these in the next step, but they include things like:
+// import { ShieldCheck, TrendingUp, Users, BarChartHorizontal, MessageSquare, ChevronLeft, ChevronRight } from "lucide-react";
+// import { Progress } from "@/components/ui/progress";
+// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+// import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
+
+const SafetyPlansWidget = () => {
+  // --- Hardcoded Mock Data ---
+  const safetyPlanStats = {
+    percentageCompleted: 78,
+    currentProgress: 62,
+  };
+
+  const accountsNotStarted = [
+    { id: 'acc_01', name: 'Sunnyvale Unified School District', lastActivity: 'Never' },
+    { id: 'acc_02', name: 'Maplewood County Schools', lastActivity: 'Never' },
+    { id: 'acc_03', name: 'Oceanview Preparatory Academy', lastActivity: 'Never' },
+    { id: 'acc_04', name: 'Ironwood Charter Group', lastActivity: 'Never' },
+    { id: 'acc_05', name: 'Crestline Public Schools', lastActivity: 'Never' },
+    { id: 'acc_06', name: 'Riverbend District', lastActivity: 'Never' },
+  ];
+
+  const deficienciesBySection = [
+    { section: "Emergency Protocols", count: 28 },
+    { section: "Access Control", count: 19 },
+    { section: "Communication Systems", count: 15 },
+    { section: "Incident Response", count: 12 },
+    { section: "Physical Security", count: 9 },
+    { section: "Cybersecurity", count: 5 },
+  ];
+
+  // --- Pagination State & Logic ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(3);
+
+  const totalPages = Math.ceil(accountsNotStarted.length / itemsPerPage);
+  const paginatedAccounts = accountsNotStarted.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  return (
+    <Card className="w-full col-span-1 md:col-span-2 xl:col-span-3 bg-card/50 border-2 border-dashed">
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold flex items-center gap-3">
+          <ShieldCheck className="h-8 w-8 text-primary" />
+          Safety Plan Status Overview
+        </CardTitle>
+        <CardDescription>
+          A high-level summary of safety plan completion and identified deficiencies across all accounts.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-8">
+        {/* Top Stats Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="shadow-md">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-base font-medium">Completion Rate</CardTitle>
+              <ShieldCheck className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold">{safetyPlanStats.percentageCompleted}%</div>
+              <p className="text-xs text-muted-foreground">of all required safety plans are complete.</p>
+              <Progress value={safetyPlanStats.percentageCompleted} className="mt-2 h-2" />
+            </CardContent>
+          </Card>
+          <Card className="shadow-md">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-base font-medium">Active Plan Progress</CardTitle>
+              <TrendingUp className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold">{safetyPlanStats.currentProgress}%</div>
+              <p className="text-xs text-muted-foreground">average progress for plans currently in-flight.</p>
+              <Progress value={safetyPlanStats.currentProgress} className="mt-2 h-2" />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Bottom Details Section */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          {/* Accounts Not Started Table */}
+          <div>
+            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+              <Users className="h-5 w-5" />
+              Accounts That Have Not Yet Started
+            </h3>
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>School District</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedAccounts.map(account => (
+                    <TableRow key={account.id}>
+                      <TableCell className="font-medium">{account.name}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon">
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                </div>
+                <div className="flex items-center gap-2">
+                    <Select onValueChange={(value) => { setItemsPerPage(Number(value)); setCurrentPage(1); }} defaultValue={String(itemsPerPage)}>
+                        <SelectTrigger className="w-[120px]">
+                            <SelectValue placeholder="Rows per page" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {[1, 3, 5, 10].map(size => (
+                                <SelectItem key={size} value={String(size)}>{size} rows</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1}>
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages}>
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
+          </div>
+
+          {/* Deficiencies Chart */}
+          <div>
+            <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+              <BarChartHorizontal className="h-5 w-5" />
+              Deficiencies by Section
+            </h3>
+            <div className="w-full h-[300px] p-2 border rounded-lg">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={deficienciesBySection} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <XAxis type="number" />
+                  <YAxis dataKey="section" type="category" width={120} tick={{ fontSize: 12 }} />
+                  <Tooltip cursor={{ fill: 'rgba(230, 230, 230, 0.4)' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }} />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// ---------------- END: SafetyPlansWidget Component Code ----------------
+

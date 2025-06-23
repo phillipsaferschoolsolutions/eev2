@@ -533,38 +533,41 @@ export async function getCompletionDetails(assignmentId: string, completionId: s
 }
 
 /**
- * Fetches the most recent completions for a given assignment and school.
+ * Fetches the most recent completions based on specified filters.
  * @param accountId The account to filter completions by.
- * @param assignmentId The specific assignment ID to filter by.
+ * @param assignmentId Optional. The specific assignment ID to filter by.
  * @param selectedSchool The school to filter completions by.
+ * @param period The time period to look back for completions.
  * @returns A promise that resolves to an array of completion objects.
  */
 export async function getLastCompletions(
   accountId: string, 
-  assignmentId: string, 
-  selectedSchool: string
+  assignmentId: string | null, 
+  selectedSchool: string | null, // Allow null for "All Schools"
+  period: string
 ): Promise<any[]> {
-  if (!accountId || !assignmentId || !selectedSchool) {
-    throw new Error("Account ID, Assignment ID, and Selected School are required to fetch last completions.");
+  if (!accountId) {
+    throw new Error("Account ID is required to fetch last completions.");
   }
 
-  // CORRECTED: Use the correct endpoint URL
+  // Use the correct endpoint that expects a POST request
   const url = `${WIDGETS_BASE_URL}/getlastcompletions`;
 
   try {
-    // CORRECTED: Use a POST request with a body
-    const response = await authedFetch<{ status?: string; data?: any[]; completions?: any[] }>(url, {
+    const response = await authedFetch<{ status: string; data: any[] }>(url, {
       method: 'POST',
-      body: JSON.stringify({ assignmentId, selectedSchool }),
+      body: JSON.stringify({ 
+        assignmentId: assignmentId, 
+        selectedSchool: selectedSchool,
+        timePeriod: period // Pass the period in the body as well
+      }),
     });
 
-    // Handle both { data: [...] } and { completions: [...] } wrapper objects
-    if (response && Array.isArray(response.data)) {
+    // IMPORTANT: Access the .data property from the response object
+    if (response && response.status === 'success' && Array.isArray(response.data)) {
       return response.data;
-    } else if (response && Array.isArray(response.completions)) {
-        return response.completions;
     } else {
-      console.warn("getLastCompletions returned an unexpected response format:", response);
+      console.warn("getLastCompletions returned an unexpected response format or status:", response);
       return [];
     }
   } catch (error) {
@@ -572,6 +575,7 @@ export async function getLastCompletions(
     throw error;
   }
 }
+
 
 
 

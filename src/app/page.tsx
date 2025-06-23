@@ -466,18 +466,20 @@ export default function DashboardPage() {
   ]);
 
   useEffect(() => {
-    // Only run if all required filters are selected
-    if (userProfile?.account && lastCompletionsPeriod && selectedAssignmentForCompletions && selectedSchoolForCompletions) {
+    // This condition now ensures we have user data AND the component is mounted on the client.
+    if (userProfile?.account && isClientMounted) {
       setIsLoadingLastCompletions(true);
       setLastCompletionsError(null);
 
       getLastCompletions(
         userProfile.account,
-        selectedAssignmentForCompletions,
-        selectedSchoolForCompletions // Pass the selected school
+        selectedAssignmentForCompletions, 
+        selectedSchoolForCompletions,
+        lastCompletionsPeriod
       )
       .then(data => {
-        console.log("Last Completions Data Received:", data); // Log the data to the console
+        // Logging the data here for your other debugging point
+        console.log("Last Completions Data Received:", data); 
         setLastCompletionsData(data);
       })
       .catch((err) => {
@@ -485,13 +487,14 @@ export default function DashboardPage() {
         setLastCompletionsError((err as Error).message || "Could not load last completions data.");
       })
       .finally(() => setIsLoadingLastCompletions(false));
-    } else {
-      // If any filter is missing, clear the existing data
+    } else if (isClientMounted) {
+      // If the component is mounted but there's no user, clear data and stop loading.
       setLastCompletionsData([]);
       setIsLoadingLastCompletions(false);
     }
-  }, [userProfile?.account, selectedAssignmentForCompletions, lastCompletionsPeriod, selectedSchoolForCompletions]); // Updated dependency array
-
+    // THE FIX: The dependency array now correctly includes isClientMounted.
+  }, [userProfile?.account, selectedAssignmentForCompletions, selectedSchoolForCompletions, lastCompletionsPeriod, isClientMounted]);
+  
   // 1) On mount, try to load saved coords:
   useEffect(() => {
     if (typeof window === 'undefined') return;

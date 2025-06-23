@@ -151,17 +151,29 @@ export default function CompleteAssignmentPage() {
 
   const allWatchedValues = watch();
 
-  const parseOptions = (options: string | string[] | undefined): string[] => {
-    if (!options) return [];
-    if (Array.isArray(options)) return options;
-    try {
-      const parsed = JSON.parse(options);
-      if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
-        return parsed;
-      }
-    } catch (e) {  }
-    return options.split(';').map(opt => opt.trim()).filter(opt => opt);
-  };
+  // A more robust parseOptions function that handles multiple possible data formats
+const parseOptions = (options: any): { label: string; value: string }[] => {
+  if (!options) return [];
+  
+  // Case 1: It's already the correct format (array of objects with label/value)
+  if (Array.isArray(options) && options.length > 0 && typeof options[0] === 'object' && options[0] !== null && 'label' in options[0]) {
+    return options.map(opt => ({ label: String(opt.label), value: String(opt.value || opt.label) }));
+  }
+
+  // Case 2: It's a simple array of strings
+  if (Array.isArray(options)) {
+    return options.map(opt => ({ label: String(opt), value: String(opt) }));
+  }
+  
+  // Case 3: It's a semicolon-separated string
+  if (typeof options === 'string') {
+    return options.split(';').map(opt => opt.trim()).filter(Boolean).map(opt => ({ label: opt, value: opt }));
+  }
+
+  // Fallback if the format is unknown
+  return [];
+};
+
 
   const shouldBeVisible = (conditionalConfig: AssignmentQuestion['conditional'] | undefined, currentQuestionId: string): boolean => {
     if (!conditionalConfig) {
@@ -328,14 +340,13 @@ export default function CompleteAssignmentPage() {
 
   const questionsToRender = useMemo(() => {
     return conditionallyVisibleQuestions.filter(q => {
-      // Add a filter for the current page
-      const pageMatch = (q.pageNumber || 1) === currentPage;
+      // THE FIX: Convert q.pageNumber to a number before comparing.
+      const pageMatch = (Number(q.pageNumber) || 1) === currentPage;
       if (!pageMatch) return false;
 
-      // Keep the existing filters for section, sub-section, and answered status
+      // Existing filters (no changes needed here)
       const sectionMatch = selectedSection === "all" || (q.section || UNASSIGNED_FILTER_VALUE) === selectedSection;
       const subSectionMatch = selectedSubSection === "all" || (q.subSection || UNASSIGNED_FILTER_VALUE) === selectedSubSection;
-
       if (!sectionMatch || !subSectionMatch) return false;
 
       if (answeredStatusFilter === 'all') {
@@ -344,7 +355,7 @@ export default function CompleteAssignmentPage() {
       const answered = isQuestionAnswered(q, allWatchedValues);
       return answeredStatusFilter === 'answered' ? answered : !answered;
     });
-  }, [conditionallyVisibleQuestions, selectedSection, selectedSubSection, answeredStatusFilter, allWatchedValues, currentPage]); // Add currentPage to the dependency array
+  }, [conditionallyVisibleQuestions, selectedSection, selectedSubSection, answeredStatusFilter, allWatchedValues, currentPage]);
 
   const handlePhotoBankUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1010,14 +1021,15 @@ export default function CompleteAssignmentPage() {
         console.log(`Processing question ${idx + 1} (ID: ${question.id}, Label: ${question.label})`);
         let questionAnswer: any;
 
-        if (question.component === 'checkbox' && question.options && Array.isArray(parseOptions(question.options))) {
-            const selectedOptions: string[] = [];
-            parseOptions(question.options).forEach(opt => {
-                if (data[`${question.id}.${opt}`]) {
-                    selectedOptions.push(opt);
-                }
-            });
-            questionAnswer = selectedOptions;
+        // Check if the component is a multi-option checkbox
+        // Clean, single‐pass checkbox handler:
+        if (question.component === 'checkbox' && question.options) {
+          const selectedOptions = parseOptions(question.options)
+            .filter(opt => data[`${question.id}.${opt.value}`] === true)
+            .map(opt => opt.value);
+
+          // Always send an array (even if empty)
+          questionAnswer = selectedOptions;
         } else if ((question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && Array.isArray(parseOptions(question.options))) {
              const selectedOptions: string[] = [];
              parseOptions(question.options).forEach(opt => {
@@ -1025,7 +1037,7 @@ export default function CompleteAssignmentPage() {
                     selectedOptions.push(opt);
                 }
             });
-            questionAnswer = selectedOptions.join(',');
+            questionAnswer = selectedOptions//.join(',');
         } else if (question.component === 'checkbox' && !question.options) {
              questionAnswer = data[question.id] ?? false;
         } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
@@ -1439,10 +1451,10 @@ export default function CompleteAssignmentPage() {
                             defaultValue={field.value}
                             className="flex flex-col space-y-1 bg-background p-2 rounded-md"
                           >
-                            {parseOptions(question.options).map((option) => (
-                              <div key={option} className="flex items-center space-x-3">
-                                <RadioGroupItem value={option} id={`${question.id}-${option}`} />
-                                <Label htmlFor={`${question.id}-${option}`}>{option}</Label>
+                            {parseOptions(question.options).map(opt => (
+                              <div key={opt.value} className="flex items-center space-x-3">
+                                <RadioGroupItem value={opt.value} id={`${question.id}-${opt.value}`} />
+                                <Label htmlFor={`${question.id}-${opt.value}`}>{opt.label}</Label>
                               </div>
                             ))}
                           </RadioGroup>
@@ -1457,15 +1469,15 @@ export default function CompleteAssignmentPage() {
                         rules={{ required: question.required }}
                         render={({ field }) => (
                           <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-wrap gap-2 bg-background p-2 rounded-md">
-                            {parseOptions(question.options).map(option => (
-                                  <div key={option} className="flex items-center">
-                                      <RadioGroupItem value={option} id={`${question.id}-${option}`} className="sr-only peer" />
-                                      <Label htmlFor={`${question.id}-${option}`}
-                                          className="px-3 py-2 border rounded-md cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground hover:bg-muted/50">
-                                          {option}
-                                      </Label>
-                                  </div>
-                              ))}
+                            {parseOptions(question.options).map(opt => (
+                                <div key={opt.value} className="flex items-center">
+                                    <RadioGroupItem value={opt.value} id={`${question.id}-${opt.value}`} className="sr-only peer" />
+                                    <Label htmlFor={`${question.id}-${opt.value}`}
+                                        className="px-3 py-2 border rounded-md cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground hover:bg-muted/50">
+                                        {opt.label}
+                                    </Label>
+                                </div>
+                            ))}
                           </RadioGroup>
                         )}
                       />
@@ -1483,7 +1495,7 @@ export default function CompleteAssignmentPage() {
                                   </SelectTrigger>
                                   <SelectContent>
                                       {parseOptions(question.options).map(opt => (
-                                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                                       ))}
                                   </SelectContent>
                               </Select>
@@ -1529,9 +1541,9 @@ export default function CompleteAssignmentPage() {
                           render={({ field }) => (
                               <div className="flex items-center space-x-2 bg-background p-2 rounded-md">
                                   <Checkbox
-                                      id={question.id}
-                                      checked={field.value || false}
-                                      onCheckedChange={field.onChange}
+                                    id={`${question.id}-${opt.value}`}
+                                    checked={field.value || false}
+                                    onCheckedChange={(checked) => field.onChange(checked === true)}
                                   />
                                   <Label htmlFor={question.id} className="font-normal">Confirm</Label>
                               </div>
@@ -1542,21 +1554,21 @@ export default function CompleteAssignmentPage() {
                     {question.component === 'checkbox' && question.options && (
                       <div className="space-y-2 bg-background p-2 rounded-md">
                           {parseOptions(question.options).map(opt => (
-                              <Controller
-                                  key={opt}
-                                  name={`${question.id}.${opt}`}
-                                  control={control}
-                                  defaultValue={false}
-                                  render={({ field }) => (
-                                      <div className="flex items-center space-x-2">
-                                          <Checkbox
-                                              id={`${question.id}-${opt}`}
-                                              checked={!!field.value}
-                                              onCheckedChange={field.onChange}
-                                          />
-                                          <Label htmlFor={`${question.id}-${opt}`} className="font-normal">{opt}</Label>
-                                      </div>
-                                  )}
+                            <Controller
+                                key={opt.value}
+                                name={`${question.id}.${opt.value}`}
+                                control={control}
+                                defaultValue={false}
+                                render={({ field }) => (
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                          id={`${question.id}-${opt.value}`}
+                                          checked={field.value || false}
+                                          onCheckedChange={(checked) => field.onChange(checked === true)}
+                                        />
+                                        <Label htmlFor={`${question.id}-${opt.value}`} className="font-normal">{opt.label}</Label>
+                                    </div>
+                                )}
                               />
                           ))}
                       </div>
@@ -1565,16 +1577,22 @@ export default function CompleteAssignmentPage() {
                     {(question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && (
                       <div className="space-y-2 bg-background p-2 rounded-md">
                           <Label className="text-sm text-muted-foreground block mb-1">Select one or more:</Label>
-                          {parseOptions(question.options).map(opt => (
+                          {/* The .map() function now includes 'index' */}
+                          {parseOptions(question.options).map((opt, index) => (
                               <Controller
-                                  key={opt}
-                                  name={`${question.id}.${opt}`}
+                                  // THE FIX: The key now uses the index to ensure it is always unique.
+                                  key={`${opt.value}-${index}`}
+                                  name={`${question.id}.${opt.value}`}
                                   control={control}
                                   defaultValue={false}
                                   render={({ field }) => (
                                       <div className="flex items-center space-x-2">
-                                          <Checkbox id={`${question.id}-${opt}`} checked={!!field.value} onCheckedChange={field.onChange} />
-                                          <Label htmlFor={`${question.id}-${opt}`} className="font-normal">{opt}</Label>
+                                          <Checkbox 
+                                            id={`${question.id}-${opt.value}`}
+                                            checked={field.value || false}
+                                            onCheckedChange={(checked) => field.onChange(checked === true)} 
+                                            />
+                                          <Label htmlFor={`${question.id}-${opt.value}-${index}`} className="font-normal">{opt.label}</Label>
                                       </div>
                                   )}
                               />
