@@ -1,22 +1,7 @@
-
 'use client'; 
 
 import { AuthForm } from '@/components/auth/auth-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react'; 
-
-function SearchParamsComponent() {
-  const searchParams = useSearchParams();
-  const myParam = searchParams.get('myParam');
-
-  // This component is just for demonstrating useSearchParams if needed on this page
-  // It can be removed if not actively used.
-  // return (
-  //   myParam ? <div className="text-xs text-muted-foreground mb-2">Param: {myParam}</div> : null
-  // );
-  return null; // Not actively using params for display currently
-}
 
 export default function AuthPage() {
   return (
@@ -29,12 +14,7 @@ export default function AuthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Suspense fallback={<div>Loading...</div>}>
-            <SearchParamsComponent />
-          </Suspense>
-          <Suspense fallback={<div>Loading authentication form...</div>}>
-            <AuthForm />
-          </Suspense>
+          <AuthForm />
         </CardContent>
       </Card>
     </div>
