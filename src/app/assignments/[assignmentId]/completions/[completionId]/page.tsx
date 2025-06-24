@@ -17,8 +17,8 @@ export default function CompletionDetailsPage() {
   const router = useRouter();
   const { user, userProfile, loading: authLoading } = useAuth();
 
-  const assignmentId = typeof params.assignmentId === 'string' ? params.assignmentId : '';
-  const completionId = typeof params.completionId === 'string' ? params.completionId : '';
+  const assignmentId = typeof params.assignmentId === 'string' && params.assignmentId !== 'undefined' ? params.assignmentId : '';
+  const completionId = typeof params.completionId === 'string' && params.completionId !== 'undefined' ? params.completionId : '';
 
   const [completionData, setCompletionData] = useState<any>(null); // Use a proper type later
   const [isLoading, setIsLoading] = useState(true);
@@ -30,6 +30,10 @@ export default function CompletionDetailsPage() {
       setIsLoading(false);
       if (!authLoading && !userProfile?.account) {
           setError("User account information is missing.");
+      } else if (!assignmentId) {
+          setError("Assignment ID is missing or invalid.");
+      } else if (!completionId) {
+          setError("Completion ID is missing or invalid.");
       }
       return;
     }
