@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter, useSearchParams } from 'next/navigation'; 
+import { useRouter } from 'next/navigation'; 
 import { auth } from '@/lib/firebase';
 import {
   createUserWithEmailAndPassword,
@@ -114,7 +113,6 @@ const SocialLoginButtons = ({ isLoading, onSocialLogin }: { isLoading: boolean, 
 export function AuthForm() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams(); 
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,14 +155,9 @@ export function AuthForm() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      const redirectUrl = searchParams.get('redirect');
-      if (redirectUrl) {
-        router.push(redirectUrl);
-      } else {
-        router.push('/'); 
-      }
+      router.push('/'); 
     }
-  }, [user, authLoading, router, searchParams]);
+  }, [user, authLoading, router]);
 
 
   const resetRecaptcha = () => {
@@ -271,7 +264,7 @@ export function AuthForm() {
       const firebaseError = err as { code?: string; message?: string };
       if (firebaseError.code === 'auth/account-exists-with-different-credential') {
         setError(
-          'An account already exists with the same email address but different sign-in credentials. Try signing in using a method you’ve used before.'
+          'An account already exists with the same email address but different sign-in credentials. Try signing in using a method you've used before.'
         );
         toast({
           variant: 'destructive',
@@ -539,4 +532,3 @@ export function AuthForm() {
     </Tabs>
   );
 }
-
