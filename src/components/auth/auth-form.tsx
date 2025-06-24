@@ -264,7 +264,7 @@ export function AuthForm() {
       const firebaseError = err as { code?: string; message?: string };
       if (firebaseError.code === 'auth/account-exists-with-different-credential') {
         setError(
-          'An account already exists with the same email address but different sign-in credentials. Try signing in using a method you've used before.'
+          'An account already exists with the same email address but different sign-in credentials. Try signing in using a method you\'ve used before.'
         );
         toast({
           variant: 'destructive',
