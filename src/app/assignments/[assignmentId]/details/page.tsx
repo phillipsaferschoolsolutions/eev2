@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter, usePathname } from "next/navigation"; // Added usePathname
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
@@ -54,7 +53,6 @@ const formatDisplayDate = (dateString?: string) => {
 export default function AssignmentDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const pathname = usePathname(); // Get current pathname
   const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
   const { toast } = useToast();
 
@@ -82,7 +80,7 @@ export default function AssignmentDetailsPage() {
       setError("You must be logged in to view assignment details.");
       toast({ variant: "destructive", title: "Not Authenticated", description: "Please log in to view details."});
       setIsLoading(false);
-      router.push(`/auth?redirect=${encodeURIComponent(pathname)}`); // Redirect to login
+      router.push('/auth');
       return;
     }
 
@@ -123,7 +121,7 @@ export default function AssignmentDetailsPage() {
     }
 
     fetchAssignmentDetails();
-  }, [assignmentId, user, userProfile, authLoading, profileLoading, isAdmin, router, pathname, toast]); // Added pathname and toast
+  }, [assignmentId, user, userProfile, authLoading, profileLoading, isAdmin, router, toast]);
 
   if (isLoading) {
     return (
