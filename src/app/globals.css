@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -625,6 +624,471 @@ body {
     --sidebar-border: 210 20% 20% / 0.6;
   }
 
+  /* --- NEW ENHANCED THEMES --- */
+  
+  /* Coastal Breeze Light */
+  html.theme-coastal-breeze {
+    --theme-coastal-breeze-background-image: linear-gradient(to bottom, rgba(173, 216, 230, 0.7), rgba(135, 206, 235, 0.7));
+    --background: 195 60% 15%;
+    --foreground: 200 70% 95%;
+    --card: 200 50% 20% / 0.75;
+    --card-foreground: 200 60% 92%;
+    --popover: 200 40% 18% / 0.85;
+    --popover-foreground: 200 70% 94%;
+    --border: 195 30% 35% / 0.6;
+    --input: 195 30% 28% / 0.65;
+    --primary: 190 80% 60%;
+    --primary-foreground: 190 15% 10%;
+    --secondary: 210 60% 65%;
+    --secondary-foreground: 210 15% 95%;
+    --accent: 170 70% 65%;
+    --accent-foreground: 170 20% 15%;
+    --muted: 195 20% 30% / 0.5;
+    --muted-foreground: 195 35% 80%;
+    --ring: 190 80% 60%;
+    --sidebar-background: 200 45% 15% / 0.8;
+    --sidebar-foreground: 200 40% 90%;
+    --sidebar-primary: 190 70% 65%;
+    --sidebar-primary-foreground: 190 12% 8%;
+    --sidebar-accent: 170 65% 70%;
+    --sidebar-accent-foreground: 170 10% 92%;
+    --sidebar-border: 195 20% 30% / 0.6;
+  }
+  
+  /* Coastal Breeze Dark */
+  html.theme-coastal-breeze-dark {
+    --theme-coastal-breeze-dark-background-image: linear-gradient(to bottom, rgba(25, 42, 86, 0.8), rgba(10, 36, 62, 0.8));
+    --background: 210 70% 8%;
+    --foreground: 200 80% 90%;
+    --card: 210 60% 12% / 0.75;
+    --card-foreground: 200 70% 88%;
+    --popover: 210 50% 10% / 0.85;
+    --popover-foreground: 200 80% 92%;
+    --border: 205 40% 25% / 0.6;
+    --input: 205 40% 18% / 0.65;
+    --primary: 190 90% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 50% 30%;
+    --secondary-foreground: 190 70% 85%;
+    --accent: 170 80% 65%;
+    --accent-foreground: 0 0% 100%;
+    --muted: 210 30% 20% / 0.5;
+    --muted-foreground: 200 50% 75%;
+    --ring: 190 90% 55%;
+    --sidebar-background: 215 65% 8% / 0.8;
+    --sidebar-foreground: 200 70% 82%;
+    --sidebar-primary: 190 85% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 170 75% 70%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 210 30% 20% / 0.6;
+  }
+  
+  /* Urban Pulse Light */
+  html.theme-urban-pulse {
+    --theme-urban-pulse-background-image: linear-gradient(to bottom, rgba(255, 222, 173, 0.7), rgba(255, 182, 193, 0.7));
+    --background: 20 60% 15%;
+    --foreground: 30 70% 95%;
+    --card: 25 50% 20% / 0.75;
+    --card-foreground: 30 60% 92%;
+    --popover: 25 40% 18% / 0.85;
+    --popover-foreground: 30 70% 94%;
+    --border: 20 30% 35% / 0.6;
+    --input: 20 30% 28% / 0.65;
+    --primary: 15 80% 60%;
+    --primary-foreground: 15 15% 10%;
+    --secondary: 35 60% 65%;
+    --secondary-foreground: 35 15% 95%;
+    --accent: 350 70% 65%;
+    --accent-foreground: 350 20% 15%;
+    --muted: 20 20% 30% / 0.5;
+    --muted-foreground: 20 35% 80%;
+    --ring: 15 80% 60%;
+    --sidebar-background: 25 45% 15% / 0.8;
+    --sidebar-foreground: 30 40% 90%;
+    --sidebar-primary: 15 70% 65%;
+    --sidebar-primary-foreground: 15 12% 8%;
+    --sidebar-accent: 350 65% 70%;
+    --sidebar-accent-foreground: 350 10% 92%;
+    --sidebar-border: 20 20% 30% / 0.6;
+  }
+  
+  /* Urban Pulse Dark */
+  html.theme-urban-pulse-dark {
+    --theme-urban-pulse-dark-background-image: linear-gradient(to bottom, rgba(86, 25, 42, 0.8), rgba(62, 10, 36, 0.8));
+    --background: 330 70% 8%;
+    --foreground: 340 80% 90%;
+    --card: 330 60% 12% / 0.75;
+    --card-foreground: 340 70% 88%;
+    --popover: 330 50% 10% / 0.85;
+    --popover-foreground: 340 80% 92%;
+    --border: 325 40% 25% / 0.6;
+    --input: 325 40% 18% / 0.65;
+    --primary: 350 90% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 300 50% 30%;
+    --secondary-foreground: 340 70% 85%;
+    --accent: 280 80% 65%;
+    --accent-foreground: 0 0% 100%;
+    --muted: 330 30% 20% / 0.5;
+    --muted-foreground: 340 50% 75%;
+    --ring: 350 90% 55%;
+    --sidebar-background: 335 65% 8% / 0.8;
+    --sidebar-foreground: 340 70% 82%;
+    --sidebar-primary: 350 85% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 280 75% 70%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 330 30% 20% / 0.6;
+  }
+  
+  /* Forest Whisper Light */
+  html.theme-forest-whisper {
+    --theme-forest-whisper-background-image: linear-gradient(to bottom, rgba(173, 230, 182, 0.7), rgba(135, 235, 150, 0.7));
+    --background: 135 60% 15%;
+    --foreground: 140 70% 95%;
+    --card: 140 50% 20% / 0.75;
+    --card-foreground: 140 60% 92%;
+    --popover: 140 40% 18% / 0.85;
+    --popover-foreground: 140 70% 94%;
+    --border: 135 30% 35% / 0.6;
+    --input: 135 30% 28% / 0.65;
+    --primary: 130 80% 60%;
+    --primary-foreground: 130 15% 10%;
+    --secondary: 150 60% 65%;
+    --secondary-foreground: 150 15% 95%;
+    --accent: 110 70% 65%;
+    --accent-foreground: 110 20% 15%;
+    --muted: 135 20% 30% / 0.5;
+    --muted-foreground: 135 35% 80%;
+    --ring: 130 80% 60%;
+    --sidebar-background: 140 45% 15% / 0.8;
+    --sidebar-foreground: 140 40% 90%;
+    --sidebar-primary: 130 70% 65%;
+    --sidebar-primary-foreground: 130 12% 8%;
+    --sidebar-accent: 110 65% 70%;
+    --sidebar-accent-foreground: 110 10% 92%;
+    --sidebar-border: 135 20% 30% / 0.6;
+  }
+  
+  /* Forest Whisper Dark */
+  html.theme-forest-whisper-dark {
+    --theme-forest-whisper-dark-background-image: linear-gradient(to bottom, rgba(25, 86, 42, 0.8), rgba(10, 62, 36, 0.8));
+    --background: 150 70% 8%;
+    --foreground: 140 80% 90%;
+    --card: 150 60% 12% / 0.75;
+    --card-foreground: 140 70% 88%;
+    --popover: 150 50% 10% / 0.85;
+    --popover-foreground: 140 80% 92%;
+    --border: 145 40% 25% / 0.6;
+    --input: 145 40% 18% / 0.65;
+    --primary: 130 90% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 160 50% 30%;
+    --secondary-foreground: 140 70% 85%;
+    --accent: 100 80% 65%;
+    --accent-foreground: 0 0% 100%;
+    --muted: 150 30% 20% / 0.5;
+    --muted-foreground: 140 50% 75%;
+    --ring: 130 90% 55%;
+    --sidebar-background: 155 65% 8% / 0.8;
+    --sidebar-foreground: 140 70% 82%;
+    --sidebar-primary: 130 85% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 100 75% 70%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 150 30% 20% / 0.6;
+  }
+  
+  /* Desert Mirage Light */
+  html.theme-desert-mirage {
+    --theme-desert-mirage-background-image: linear-gradient(to bottom, rgba(255, 222, 173, 0.7), rgba(255, 228, 181, 0.7));
+    --background: 40 60% 15%;
+    --foreground: 45 70% 95%;
+    --card: 45 50% 20% / 0.75;
+    --card-foreground: 45 60% 92%;
+    --popover: 45 40% 18% / 0.85;
+    --popover-foreground: 45 70% 94%;
+    --border: 40 30% 35% / 0.6;
+    --input: 40 30% 28% / 0.65;
+    --primary: 35 80% 60%;
+    --primary-foreground: 35 15% 10%;
+    --secondary: 55 60% 65%;
+    --secondary-foreground: 55 15% 95%;
+    --accent: 25 70% 65%;
+    --accent-foreground: 25 20% 15%;
+    --muted: 40 20% 30% / 0.5;
+    --muted-foreground: 40 35% 80%;
+    --ring: 35 80% 60%;
+    --sidebar-background: 45 45% 15% / 0.8;
+    --sidebar-foreground: 45 40% 90%;
+    --sidebar-primary: 35 70% 65%;
+    --sidebar-primary-foreground: 35 12% 8%;
+    --sidebar-accent: 25 65% 70%;
+    --sidebar-accent-foreground: 25 10% 92%;
+    --sidebar-border: 40 20% 30% / 0.6;
+  }
+  
+  /* Desert Mirage Dark */
+  html.theme-desert-mirage-dark {
+    --theme-desert-mirage-dark-background-image: linear-gradient(to bottom, rgba(86, 42, 25, 0.8), rgba(62, 36, 10, 0.8));
+    --background: 30 70% 8%;
+    --foreground: 40 80% 90%;
+    --card: 30 60% 12% / 0.75;
+    --card-foreground: 40 70% 88%;
+    --popover: 30 50% 10% / 0.85;
+    --popover-foreground: 40 80% 92%;
+    --border: 25 40% 25% / 0.6;
+    --input: 25 40% 18% / 0.65;
+    --primary: 35 90% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 20 50% 30%;
+    --secondary-foreground: 40 70% 85%;
+    --accent: 45 80% 65%;
+    --accent-foreground: 0 0% 100%;
+    --muted: 30 30% 20% / 0.5;
+    --muted-foreground: 40 50% 75%;
+    --ring: 35 90% 55%;
+    --sidebar-background: 25 65% 8% / 0.8;
+    --sidebar-foreground: 40 70% 82%;
+    --sidebar-primary: 35 85% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 45 75% 70%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 30 30% 20% / 0.6;
+  }
+  
+  /* Mountain Majesty Light */
+  html.theme-mountain-majesty {
+    --theme-mountain-majesty-background-image: linear-gradient(to bottom, rgba(173, 216, 230, 0.7), rgba(221, 160, 221, 0.7));
+    --background: 250 60% 15%;
+    --foreground: 255 70% 95%;
+    --card: 255 50% 20% / 0.75;
+    --card-foreground: 255 60% 92%;
+    --popover: 255 40% 18% / 0.85;
+    --popover-foreground: 255 70% 94%;
+    --border: 250 30% 35% / 0.6;
+    --input: 250 30% 28% / 0.65;
+    --primary: 245 80% 60%;
+    --primary-foreground: 245 15% 10%;
+    --secondary: 265 60% 65%;
+    --secondary-foreground: 265 15% 95%;
+    --accent: 225 70% 65%;
+    --accent-foreground: 225 20% 15%;
+    --muted: 250 20% 30% / 0.5;
+    --muted-foreground: 250 35% 80%;
+    --ring: 245 80% 60%;
+    --sidebar-background: 255 45% 15% / 0.8;
+    --sidebar-foreground: 255 40% 90%;
+    --sidebar-primary: 245 70% 65%;
+    --sidebar-primary-foreground: 245 12% 8%;
+    --sidebar-accent: 225 65% 70%;
+    --sidebar-accent-foreground: 225 10% 92%;
+    --sidebar-border: 250 20% 30% / 0.6;
+  }
+  
+  /* Mountain Majesty Dark */
+  html.theme-mountain-majesty-dark {
+    --theme-mountain-majesty-dark-background-image: linear-gradient(to bottom, rgba(25, 42, 86, 0.8), rgba(86, 25, 86, 0.8));
+    --background: 260 70% 8%;
+    --foreground: 250 80% 90%;
+    --card: 260 60% 12% / 0.75;
+    --card-foreground: 250 70% 88%;
+    --popover: 260 50% 10% / 0.85;
+    --popover-foreground: 250 80% 92%;
+    --border: 255 40% 25% / 0.6;
+    --input: 255 40% 18% / 0.65;
+    --primary: 245 90% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 270 50% 30%;
+    --secondary-foreground: 250 70% 85%;
+    --accent: 225 80% 65%;
+    --accent-foreground: 0 0% 100%;
+    --muted: 260 30% 20% / 0.5;
+    --muted-foreground: 250 50% 75%;
+    --ring: 245 90% 55%;
+    --sidebar-background: 265 65% 8% / 0.8;
+    --sidebar-foreground: 250 70% 82%;
+    --sidebar-primary: 245 85% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 225 75% 70%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 260 30% 20% / 0.6;
+  }
+  
+  /* Tech Horizon Light */
+  html.theme-tech-horizon {
+    --theme-tech-horizon-background-image: linear-gradient(to bottom, rgba(173, 216, 230, 0.7), rgba(135, 206, 250, 0.7));
+    --background: 210 60% 15%;
+    --foreground: 215 70% 95%;
+    --card: 215 50% 20% / 0.75;
+    --card-foreground: 215 60% 92%;
+    --popover: 215 40% 18% / 0.85;
+    --popover-foreground: 215 70% 94%;
+    --border: 210 30% 35% / 0.6;
+    --input: 210 30% 28% / 0.65;
+    --primary: 205 80% 60%;
+    --primary-foreground: 205 15% 10%;
+    --secondary: 225 60% 65%;
+    --secondary-foreground: 225 15% 95%;
+    --accent: 195 70% 65%;
+    --accent-foreground: 195 20% 15%;
+    --muted: 210 20% 30% / 0.5;
+    --muted-foreground: 210 35% 80%;
+    --ring: 205 80% 60%;
+    --sidebar-background: 215 45% 15% / 0.8;
+    --sidebar-foreground: 215 40% 90%;
+    --sidebar-primary: 205 70% 65%;
+    --sidebar-primary-foreground: 205 12% 8%;
+    --sidebar-accent: 195 65% 70%;
+    --sidebar-accent-foreground: 195 10% 92%;
+    --sidebar-border: 210 20% 30% / 0.6;
+  }
+  
+  /* Tech Horizon Dark */
+  html.theme-tech-horizon-dark {
+    --theme-tech-horizon-dark-background-image: linear-gradient(to bottom, rgba(25, 42, 86, 0.8), rgba(10, 36, 62, 0.8));
+    --background: 210 70% 8%;
+    --foreground: 200 80% 90%;
+    --card: 210 60% 12% / 0.75;
+    --card-foreground: 200 70% 88%;
+    --popover: 210 50% 10% / 0.85;
+    --popover-foreground: 200 80% 92%;
+    --border: 205 40% 25% / 0.6;
+    --input: 205 40% 18% / 0.65;
+    --primary: 195 90% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 225 50% 30%;
+    --secondary-foreground: 200 70% 85%;
+    --accent: 165 80% 65%;
+    --accent-foreground: 0 0% 100%;
+    --muted: 210 30% 20% / 0.5;
+    --muted-foreground: 200 50% 75%;
+    --ring: 195 90% 55%;
+    --sidebar-background: 215 65% 8% / 0.8;
+    --sidebar-foreground: 200 70% 82%;
+    --sidebar-primary: 195 85% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 165 75% 70%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 210 30% 20% / 0.6;
+  }
+  
+  /* Tropical Paradise Light */
+  html.theme-tropical-paradise {
+    --theme-tropical-paradise-background-image: linear-gradient(to bottom, rgba(173, 230, 216, 0.7), rgba(144, 238, 144, 0.7));
+    --background: 165 60% 15%;
+    --foreground: 170 70% 95%;
+    --card: 170 50% 20% / 0.75;
+    --card-foreground: 170 60% 92%;
+    --popover: 170 40% 18% / 0.85;
+    --popover-foreground: 170 70% 94%;
+    --border: 165 30% 35% / 0.6;
+    --input: 165 30% 28% / 0.65;
+    --primary: 160 80% 60%;
+    --primary-foreground: 160 15% 10%;
+    --secondary: 180 60% 65%;
+    --secondary-foreground: 180 15% 95%;
+    --accent: 140 70% 65%;
+    --accent-foreground: 140 20% 15%;
+    --muted: 165 20% 30% / 0.5;
+    --muted-foreground: 165 35% 80%;
+    --ring: 160 80% 60%;
+    --sidebar-background: 170 45% 15% / 0.8;
+    --sidebar-foreground: 170 40% 90%;
+    --sidebar-primary: 160 70% 65%;
+    --sidebar-primary-foreground: 160 12% 8%;
+    --sidebar-accent: 140 65% 70%;
+    --sidebar-accent-foreground: 140 10% 92%;
+    --sidebar-border: 165 20% 30% / 0.6;
+  }
+  
+  /* Tropical Paradise Dark */
+  html.theme-tropical-paradise-dark {
+    --theme-tropical-paradise-dark-background-image: linear-gradient(to bottom, rgba(25, 86, 73, 0.8), rgba(10, 62, 36, 0.8));
+    --background: 170 70% 8%;
+    --foreground: 160 80% 90%;
+    --card: 170 60% 12% / 0.75;
+    --card-foreground: 160 70% 88%;
+    --popover: 170 50% 10% / 0.85;
+    --popover-foreground: 160 80% 92%;
+    --border: 165 40% 25% / 0.6;
+    --input: 165 40% 18% / 0.65;
+    --primary: 155 90% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 185 50% 30%;
+    --secondary-foreground: 160 70% 85%;
+    --accent: 135 80% 65%;
+    --accent-foreground: 0 0% 100%;
+    --muted: 170 30% 20% / 0.5;
+    --muted-foreground: 160 50% 75%;
+    --ring: 155 90% 55%;
+    --sidebar-background: 175 65% 8% / 0.8;
+    --sidebar-foreground: 160 70% 82%;
+    --sidebar-primary: 155 85% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 135 75% 70%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 170 30% 20% / 0.6;
+  }
+  
+  /* Aurora Borealis Light */
+  html.theme-aurora-borealis {
+    --theme-aurora-borealis-background-image: linear-gradient(to bottom, rgba(216, 191, 216, 0.7), rgba(255, 182, 193, 0.7));
+    --background: 300 60% 15%;
+    --foreground: 305 70% 95%;
+    --card: 305 50% 20% / 0.75;
+    --card-foreground: 305 60% 92%;
+    --popover: 305 40% 18% / 0.85;
+    --popover-foreground: 305 70% 94%;
+    --border: 300 30% 35% / 0.6;
+    --input: 300 30% 28% / 0.65;
+    --primary: 295 80% 60%;
+    --primary-foreground: 295 15% 10%;
+    --secondary: 315 60% 65%;
+    --secondary-foreground: 315 15% 95%;
+    --accent: 275 70% 65%;
+    --accent-foreground: 275 20% 15%;
+    --muted: 300 20% 30% / 0.5;
+    --muted-foreground: 300 35% 80%;
+    --ring: 295 80% 60%;
+    --sidebar-background: 305 45% 15% / 0.8;
+    --sidebar-foreground: 305 40% 90%;
+    --sidebar-primary: 295 70% 65%;
+    --sidebar-primary-foreground: 295 12% 8%;
+    --sidebar-accent: 275 65% 70%;
+    --sidebar-accent-foreground: 275 10% 92%;
+    --sidebar-border: 300 20% 30% / 0.6;
+  }
+  
+  /* Aurora Borealis Dark */
+  html.theme-aurora-borealis-dark {
+    --theme-aurora-borealis-dark-background-image: linear-gradient(to bottom, rgba(86, 25, 86, 0.8), rgba(62, 10, 36, 0.8));
+    --background: 290 70% 8%;
+    --foreground: 280 80% 90%;
+    --card: 290 60% 12% / 0.75;
+    --card-foreground: 280 70% 88%;
+    --popover: 290 50% 10% / 0.85;
+    --popover-foreground: 280 80% 92%;
+    --border: 285 40% 25% / 0.6;
+    --input: 285 40% 18% / 0.65;
+    --primary: 275 90% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 305 50% 30%;
+    --secondary-foreground: 280 70% 85%;
+    --accent: 255 80% 65%;
+    --accent-foreground: 0 0% 100%;
+    --muted: 290 30% 20% / 0.5;
+    --muted-foreground: 280 50% 75%;
+    --ring: 275 90% 55%;
+    --sidebar-background: 295 65% 8% / 0.8;
+    --sidebar-foreground: 280 70% 82%;
+    --sidebar-primary: 275 85% 60%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 255 75% 70%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 290 30% 20% / 0.6;
+  }
 }
 
 @layer base {
@@ -643,7 +1107,23 @@ body {
   html.theme-innovation-hub body,
   html.theme-campus-serenity body,
   html.theme-fortress-stone body,
-  html.theme-digital-citadel body {
+  html.theme-digital-citadel body,
+  html.theme-coastal-breeze body,
+  html.theme-coastal-breeze-dark body,
+  html.theme-urban-pulse body,
+  html.theme-urban-pulse-dark body,
+  html.theme-forest-whisper body,
+  html.theme-forest-whisper-dark body,
+  html.theme-desert-mirage body,
+  html.theme-desert-mirage-dark body,
+  html.theme-mountain-majesty body,
+  html.theme-mountain-majesty-dark body,
+  html.theme-tech-horizon body,
+  html.theme-tech-horizon-dark body,
+  html.theme-tropical-paradise body,
+  html.theme-tropical-paradise-dark body,
+  html.theme-aurora-borealis body,
+  html.theme-aurora-borealis-dark body {
     background-size: cover;
     background-position: center center;
     background-attachment: fixed;
@@ -656,6 +1136,22 @@ body {
   html.theme-campus-serenity body { background-image: var(--theme-campus-serenity-background-image); }
   html.theme-fortress-stone body { background-image: var(--theme-fortress-stone-background-image); }
   html.theme-digital-citadel body { background-image: var(--theme-digital-citadel-background-image); }
+  html.theme-coastal-breeze body { background-image: var(--theme-coastal-breeze-background-image); }
+  html.theme-coastal-breeze-dark body { background-image: var(--theme-coastal-breeze-dark-background-image); }
+  html.theme-urban-pulse body { background-image: var(--theme-urban-pulse-background-image); }
+  html.theme-urban-pulse-dark body { background-image: var(--theme-urban-pulse-dark-background-image); }
+  html.theme-forest-whisper body { background-image: var(--theme-forest-whisper-background-image); }
+  html.theme-forest-whisper-dark body { background-image: var(--theme-forest-whisper-dark-background-image); }
+  html.theme-desert-mirage body { background-image: var(--theme-desert-mirage-background-image); }
+  html.theme-desert-mirage-dark body { background-image: var(--theme-desert-mirage-dark-background-image); }
+  html.theme-mountain-majesty body { background-image: var(--theme-mountain-majesty-background-image); }
+  html.theme-mountain-majesty-dark body { background-image: var(--theme-mountain-majesty-dark-background-image); }
+  html.theme-tech-horizon body { background-image: var(--theme-tech-horizon-background-image); }
+  html.theme-tech-horizon-dark body { background-image: var(--theme-tech-horizon-dark-background-image); }
+  html.theme-tropical-paradise body { background-image: var(--theme-tropical-paradise-background-image); }
+  html.theme-tropical-paradise-dark body { background-image: var(--theme-tropical-paradise-dark-background-image); }
+  html.theme-aurora-borealis body { background-image: var(--theme-aurora-borealis-background-image); }
+  html.theme-aurora-borealis-dark body { background-image: var(--theme-aurora-borealis-dark-background-image); }
 
 
   /* Ensure cards and other elements have a background when body has an image */
@@ -665,7 +1161,23 @@ body {
   html.theme-innovation-hub .bg-card,
   html.theme-campus-serenity .bg-card,
   html.theme-fortress-stone .bg-card,
-  html.theme-digital-citadel .bg-card {
+  html.theme-digital-citadel .bg-card,
+  html.theme-coastal-breeze .bg-card,
+  html.theme-coastal-breeze-dark .bg-card,
+  html.theme-urban-pulse .bg-card,
+  html.theme-urban-pulse-dark .bg-card,
+  html.theme-forest-whisper .bg-card,
+  html.theme-forest-whisper-dark .bg-card,
+  html.theme-desert-mirage .bg-card,
+  html.theme-desert-mirage-dark .bg-card,
+  html.theme-mountain-majesty .bg-card,
+  html.theme-mountain-majesty-dark .bg-card,
+  html.theme-tech-horizon .bg-card,
+  html.theme-tech-horizon-dark .bg-card,
+  html.theme-tropical-paradise .bg-card,
+  html.theme-tropical-paradise-dark .bg-card,
+  html.theme-aurora-borealis .bg-card,
+  html.theme-aurora-borealis-dark .bg-card {
     background-color: hsl(var(--card)); 
   }
   html.theme-nature-embrace .bg-popover,
@@ -674,7 +1186,23 @@ body {
   html.theme-innovation-hub .bg-popover,
   html.theme-campus-serenity .bg-popover,
   html.theme-fortress-stone .bg-popover,
-  html.theme-digital-citadel .bg-popover {
+  html.theme-digital-citadel .bg-popover,
+  html.theme-coastal-breeze .bg-popover,
+  html.theme-coastal-breeze-dark .bg-popover,
+  html.theme-urban-pulse .bg-popover,
+  html.theme-urban-pulse-dark .bg-popover,
+  html.theme-forest-whisper .bg-popover,
+  html.theme-forest-whisper-dark .bg-popover,
+  html.theme-desert-mirage .bg-popover,
+  html.theme-desert-mirage-dark .bg-popover,
+  html.theme-mountain-majesty .bg-popover,
+  html.theme-mountain-majesty-dark .bg-popover,
+  html.theme-tech-horizon .bg-popover,
+  html.theme-tech-horizon-dark .bg-popover,
+  html.theme-tropical-paradise .bg-popover,
+  html.theme-tropical-paradise-dark .bg-popover,
+  html.theme-aurora-borealis .bg-popover,
+  html.theme-aurora-borealis-dark .bg-popover {
     background-color: hsl(var(--popover));
   }
   html.theme-nature-embrace [data-sidebar="sidebar"],
@@ -683,7 +1211,23 @@ body {
   html.theme-innovation-hub [data-sidebar="sidebar"],
   html.theme-campus-serenity [data-sidebar="sidebar"],
   html.theme-fortress-stone [data-sidebar="sidebar"],
-  html.theme-digital-citadel [data-sidebar="sidebar"] {
+  html.theme-digital-citadel [data-sidebar="sidebar"],
+  html.theme-coastal-breeze [data-sidebar="sidebar"],
+  html.theme-coastal-breeze-dark [data-sidebar="sidebar"],
+  html.theme-urban-pulse [data-sidebar="sidebar"],
+  html.theme-urban-pulse-dark [data-sidebar="sidebar"],
+  html.theme-forest-whisper [data-sidebar="sidebar"],
+  html.theme-forest-whisper-dark [data-sidebar="sidebar"],
+  html.theme-desert-mirage [data-sidebar="sidebar"],
+  html.theme-desert-mirage-dark [data-sidebar="sidebar"],
+  html.theme-mountain-majesty [data-sidebar="sidebar"],
+  html.theme-mountain-majesty-dark [data-sidebar="sidebar"],
+  html.theme-tech-horizon [data-sidebar="sidebar"],
+  html.theme-tech-horizon-dark [data-sidebar="sidebar"],
+  html.theme-tropical-paradise [data-sidebar="sidebar"],
+  html.theme-tropical-paradise-dark [data-sidebar="sidebar"],
+  html.theme-aurora-borealis [data-sidebar="sidebar"],
+  html.theme-aurora-borealis-dark [data-sidebar="sidebar"] {
      background-color: hsl(var(--sidebar-background));
   }
   html.theme-nature-embrace .bg-muted,
@@ -692,8 +1236,72 @@ body {
   html.theme-innovation-hub .bg-muted,
   html.theme-campus-serenity .bg-muted,
   html.theme-fortress-stone .bg-muted,
-  html.theme-digital-citadel .bg-muted {
+  html.theme-digital-citadel .bg-muted,
+  html.theme-coastal-breeze .bg-muted,
+  html.theme-coastal-breeze-dark .bg-muted,
+  html.theme-urban-pulse .bg-muted,
+  html.theme-urban-pulse-dark .bg-muted,
+  html.theme-forest-whisper .bg-muted,
+  html.theme-forest-whisper-dark .bg-muted,
+  html.theme-desert-mirage .bg-muted,
+  html.theme-desert-mirage-dark .bg-muted,
+  html.theme-mountain-majesty .bg-muted,
+  html.theme-mountain-majesty-dark .bg-muted,
+  html.theme-tech-horizon .bg-muted,
+  html.theme-tech-horizon-dark .bg-muted,
+  html.theme-tropical-paradise .bg-muted,
+  html.theme-tropical-paradise-dark .bg-muted,
+  html.theme-aurora-borealis .bg-muted,
+  html.theme-aurora-borealis-dark .bg-muted {
     background-color: hsl(var(--muted));
   }
+  
+  /* Animations for enhanced themes */
+  @keyframes wave {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(5px, -5px); }
+    50% { transform: translate(10px, 0); }
+    75% { transform: translate(5px, 5px); }
+  }
+  
+  @keyframes shimmer {
+    0% { background-position: -100% 0; }
+    100% { background-position: 200% 0; }
+  }
+  
+  /* Apply animations to specific theme elements */
+  html.theme-coastal-breeze .animate-wave,
+  html.theme-coastal-breeze-dark .animate-wave {
+    animation: wave 8s ease-in-out infinite;
+  }
+  
+  html.theme-forest-whisper .animate-float,
+  html.theme-forest-whisper-dark .animate-float {
+    animation: float 10s ease-in-out infinite;
+  }
+  
+  html.theme-tech-horizon .animate-pulse,
+  html.theme-tech-horizon-dark .animate-pulse {
+    animation: pulse 3s ease-in-out infinite;
+  }
+  
+  html.theme-aurora-borealis .animate-shimmer,
+  html.theme-aurora-borealis-dark .animate-shimmer {
+    background: linear-gradient(90deg, 
+      rgba(255,255,255,0) 0%, 
+      rgba(255,255,255,0.2) 50%, 
+      rgba(255,255,255,0) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 3s infinite;
+  }
 }
-

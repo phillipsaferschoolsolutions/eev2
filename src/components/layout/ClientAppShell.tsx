@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -23,7 +22,16 @@ const THEME_IDS = [
   'digital-dreams-light', 'digital-dreams-dark', 'crystal-frost-light', 'crystal-frost-dark',
   'ethereal-veil-light', 'ethereal-veil-dark', 'chromatic-glaze-light', 'chromatic-glaze-dark',
   'theme-nature-embrace', 'theme-guardian-shield', 'theme-tranquil-library',
-  'theme-innovation-hub', 'theme-campus-serenity', 'theme-fortress-stone', 'theme-digital-citadel'
+  'theme-innovation-hub', 'theme-campus-serenity', 'theme-fortress-stone', 'theme-digital-citadel',
+  // New enhanced themes
+  'theme-coastal-breeze', 'theme-coastal-breeze-dark',
+  'theme-urban-pulse', 'theme-urban-pulse-dark',
+  'theme-forest-whisper', 'theme-forest-whisper-dark',
+  'theme-desert-mirage', 'theme-desert-mirage-dark',
+  'theme-mountain-majesty', 'theme-mountain-majesty-dark',
+  'theme-tech-horizon', 'theme-tech-horizon-dark',
+  'theme-tropical-paradise', 'theme-tropical-paradise-dark',
+  'theme-aurora-borealis', 'theme-aurora-borealis-dark'
 ];
 
 export function ClientAppShell({ children }: { children: React.ReactNode }) {

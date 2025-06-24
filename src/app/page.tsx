@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -94,6 +93,7 @@ import { fetchPexelsImageURL } from '@/services/pexelsService';
 import { fetchWeather } from '@/services/weatherService'; // Assuming a service for fetching weather
 import { Badge } from "@/components/ui/badge";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
+import { AnimatedBackground } from "@/components/ui/animated-background";
 
 const getWeatherIcon = (id) => {
   if (id >= 200 && id < 300) return <CloudLightning className="text-yellow-500 h-10 w-10" />;
@@ -171,63 +171,261 @@ const heroTextVariants = {
 const PHOTO_HEAVY_THEME_PREFIX = "theme-";
 
 // --- Placeholder Card Components ---
-const CriticalTasksCard: React.FC = () => (
-  <Card className="h-full flex flex-col">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2 text-xl">
-        <AlertTriangle className="h-5 w-5 text-destructive" /> Critical Tasks
-      </CardTitle>
-      <CardDescription>High-priority items needing immediate attention.</CardDescription>
-    </CardHeader>
-    <CardContent className="flex-grow">
-      <ul className="space-y-3 text-sm">
-        <li className="flex justify-between items-center"><span>Inspect broken fence near West Gate</span> <Button variant="link" size="sm" className="p-0 h-auto">Details</Button></li>
-        <li className="flex justify-between items-center"><span>Review fire drill report</span> <Button variant="link" size="sm" className="p-0 h-auto">Details</Button></li>
-        <li className="flex justify-between items-center"><span>Restock first-aid kit - Gym</span> <Button variant="link" size="sm" className="p-0 h-auto">Details</Button></li>
-      </ul>
-    </CardContent>
-  </Card>
-);
+const CriticalTasksCard: React.FC = () => {
+  const { resolvedTheme } = useTheme();
+  const isEnhancedTheme = resolvedTheme?.includes('coastal') || 
+                          resolvedTheme?.includes('urban') || 
+                          resolvedTheme?.includes('forest') || 
+                          resolvedTheme?.includes('desert') || 
+                          resolvedTheme?.includes('mountain') || 
+                          resolvedTheme?.includes('tech') || 
+                          resolvedTheme?.includes('tropical') || 
+                          resolvedTheme?.includes('aurora');
+  
+  const getAnimationType = () => {
+    if (!resolvedTheme) return 'particles';
+    
+    if (resolvedTheme.includes('coastal')) return 'waves';
+    if (resolvedTheme.includes('forest')) return 'leaves';
+    if (resolvedTheme.includes('urban')) return 'cityLights';
+    if (resolvedTheme.includes('desert')) return 'desert';
+    if (resolvedTheme.includes('mountain')) return 'stars';
+    if (resolvedTheme.includes('aurora')) return 'aurora';
+    if (resolvedTheme.includes('tech')) return 'tech';
+    if (resolvedTheme.includes('tropical')) return 'particles';
+    
+    return 'particles';
+  };
+  
+  return (
+    <Card className="h-full flex flex-col relative overflow-hidden">
+      {isEnhancedTheme && (
+        <AnimatedBackground type={getAnimationType()} className="absolute inset-0 pointer-events-none" />
+      )}
+      <div className="relative z-10 flex flex-col h-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+            </motion.div>
+            <motion.span
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              Critical Tasks
+            </motion.span>
+          </CardTitle>
+          <CardDescription>High-priority items needing immediate attention.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-grow">
+          <ul className="space-y-3 text-sm">
+            <motion.li 
+              className="flex justify-between items-center"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <span>Inspect broken fence near West Gate</span> 
+              <Button variant="link" size="sm" className="p-0 h-auto">Details</Button>
+            </motion.li>
+            <motion.li 
+              className="flex justify-between items-center"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <span>Review fire drill report</span> 
+              <Button variant="link" size="sm" className="p-0 h-auto">Details</Button>
+            </motion.li>
+            <motion.li 
+              className="flex justify-between items-center"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
+              <span>Restock first-aid kit - Gym</span> 
+              <Button variant="link" size="sm" className="p-0 h-auto">Details</Button>
+            </motion.li>
+          </ul>
+        </CardContent>
+      </div>
+    </Card>
+  );
+};
 
-const UpcomingEventsCard: React.FC = () => (
-  <Card className="h-full flex flex-col">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2 text-xl">
-        <CalendarDays className="h-5 w-5 text-primary" /> Upcoming Events & Drills
-      </CardTitle>
-      <CardDescription>Scheduled safety events and drills.</CardDescription>
-    </CardHeader>
-    <CardContent className="flex-grow">
-      <ul className="space-y-2 text-sm">
-        <li><strong>Campus Safety Workshop:</strong> Tomorrow, 10 AM</li>
-        <li><strong>Fire Drill (Block B):</strong> Oct 28, 2 PM</li>
-        <li><strong>Security Team Meeting:</strong> Nov 2, 9 AM</li>
-      </ul>
-    </CardContent>
-  </Card>
-);
+const UpcomingEventsCard: React.FC = () => {
+  const { resolvedTheme } = useTheme();
+  const isEnhancedTheme = resolvedTheme?.includes('coastal') || 
+                          resolvedTheme?.includes('urban') || 
+                          resolvedTheme?.includes('forest') || 
+                          resolvedTheme?.includes('desert') || 
+                          resolvedTheme?.includes('mountain') || 
+                          resolvedTheme?.includes('tech') || 
+                          resolvedTheme?.includes('tropical') || 
+                          resolvedTheme?.includes('aurora');
+  
+  const getAnimationType = () => {
+    if (!resolvedTheme) return 'particles';
+    
+    if (resolvedTheme.includes('coastal')) return 'waves';
+    if (resolvedTheme.includes('forest')) return 'leaves';
+    if (resolvedTheme.includes('urban')) return 'cityLights';
+    if (resolvedTheme.includes('desert')) return 'desert';
+    if (resolvedTheme.includes('mountain')) return 'stars';
+    if (resolvedTheme.includes('aurora')) return 'aurora';
+    if (resolvedTheme.includes('tech')) return 'tech';
+    if (resolvedTheme.includes('tropical')) return 'particles';
+    
+    return 'particles';
+  };
+  
+  return (
+    <Card className="h-full flex flex-col relative overflow-hidden">
+      {isEnhancedTheme && (
+        <AnimatedBackground type={getAnimationType()} className="absolute inset-0 pointer-events-none" />
+      )}
+      <div className="relative z-10 flex flex-col h-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <CalendarDays className="h-5 w-5 text-primary" />
+            </motion.div>
+            <motion.span
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              Upcoming Events & Drills
+            </motion.span>
+          </CardTitle>
+          <CardDescription>Scheduled safety events and drills.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-grow">
+          <ul className="space-y-2 text-sm">
+            <motion.li
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <strong>Campus Safety Workshop:</strong> Tomorrow, 10 AM
+            </motion.li>
+            <motion.li
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <strong>Fire Drill (Block B):</strong> Oct 28, 2 PM
+            </motion.li>
+            <motion.li
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
+              <strong>Security Team Meeting:</strong> Nov 2, 9 AM
+            </motion.li>
+          </ul>
+        </CardContent>
+      </div>
+    </Card>
+  );
+};
 
-const EmergencyProtocolsCard: React.FC = () => (
-  <Card className="h-full flex flex-col">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2 text-xl">
-        <ShieldAlert className="h-5 w-5 text-primary" /> Emergency Protocols
-      </CardTitle>
-      <CardDescription>Quick actions for emergency situations.</CardDescription>
-    </CardHeader>
-    <CardContent className="space-y-3 flex-grow flex flex-col justify-center">
-      <Button className="w-full bg-destructive hover:bg-destructive/90">
-        <Radiation className="mr-2 h-4 w-4" /> Review Lockdown Procedures
-      </Button>
-      <Button variant="outline" className="w-full">
-        <FileText className="mr-2 h-4 w-4" /> Report Incident
-      </Button>
-      <Button variant="outline" className="w-full">
-        <MessageSquare className="mr-2 h-4 w-4" /> Record an Alert
-      </Button>
-    </CardContent>
-  </Card>
-);
+const EmergencyProtocolsCard: React.FC = () => {
+  const { resolvedTheme } = useTheme();
+  const isEnhancedTheme = resolvedTheme?.includes('coastal') || 
+                          resolvedTheme?.includes('urban') || 
+                          resolvedTheme?.includes('forest') || 
+                          resolvedTheme?.includes('desert') || 
+                          resolvedTheme?.includes('mountain') || 
+                          resolvedTheme?.includes('tech') || 
+                          resolvedTheme?.includes('tropical') || 
+                          resolvedTheme?.includes('aurora');
+  
+  const getAnimationType = () => {
+    if (!resolvedTheme) return 'particles';
+    
+    if (resolvedTheme.includes('coastal')) return 'waves';
+    if (resolvedTheme.includes('forest')) return 'leaves';
+    if (resolvedTheme.includes('urban')) return 'cityLights';
+    if (resolvedTheme.includes('desert')) return 'desert';
+    if (resolvedTheme.includes('mountain')) return 'stars';
+    if (resolvedTheme.includes('aurora')) return 'aurora';
+    if (resolvedTheme.includes('tech')) return 'tech';
+    if (resolvedTheme.includes('tropical')) return 'particles';
+    
+    return 'particles';
+  };
+  
+  return (
+    <Card className="h-full flex flex-col relative overflow-hidden">
+      {isEnhancedTheme && (
+        <AnimatedBackground type={getAnimationType()} className="absolute inset-0 pointer-events-none" />
+      )}
+      <div className="relative z-10 flex flex-col h-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <ShieldAlert className="h-5 w-5 text-primary" />
+            </motion.div>
+            <motion.span
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              Emergency Protocols
+            </motion.span>
+          </CardTitle>
+          <CardDescription>Quick actions for emergency situations.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 flex-grow flex flex-col justify-center">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            whileHover={{ scale: 1.05 }}
+          >
+            <Button className="w-full bg-destructive hover:bg-destructive/90">
+              <Radiation className="mr-2 h-4 w-4" /> Review Lockdown Procedures
+            </Button>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            whileHover={{ scale: 1.05 }}
+          >
+            <Button variant="outline" className="w-full">
+              <FileText className="mr-2 h-4 w-4" /> Report Incident
+            </Button>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            whileHover={{ scale: 1.05 }}
+          >
+            <Button variant="outline" className="w-full">
+              <MessageSquare className="mr-2 h-4 w-4" /> Record an Alert
+            </Button>
+          </motion.div>
+        </CardContent>
+      </div>
+    </Card>
+  );
+};
 
 
 export default function DashboardPage() {
@@ -269,14 +467,49 @@ export default function DashboardPage() {
   const [isLoadingWeather, setIsLoadingWeather] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
-
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
   
   useEffect(() => {
     setIsClientMounted(true);
   }, []);
 
-  const isPhotoHeavyTheme = isClientMounted && resolvedTheme && resolvedTheme.startsWith(PHOTO_HEAVY_THEME_PREFIX);
+  const isPhotoHeavyTheme = isClientMounted && resolvedTheme && (
+    resolvedTheme.startsWith(PHOTO_HEAVY_THEME_PREFIX) || 
+    resolvedTheme.includes('coastal') || 
+    resolvedTheme.includes('urban') || 
+    resolvedTheme.includes('forest') || 
+    resolvedTheme.includes('desert') || 
+    resolvedTheme.includes('mountain') || 
+    resolvedTheme.includes('tech') || 
+    resolvedTheme.includes('tropical') || 
+    resolvedTheme.includes('aurora')
+  );
+
+  const isEnhancedTheme = isClientMounted && resolvedTheme && (
+    resolvedTheme.includes('coastal') || 
+    resolvedTheme.includes('urban') || 
+    resolvedTheme.includes('forest') || 
+    resolvedTheme.includes('desert') || 
+    resolvedTheme.includes('mountain') || 
+    resolvedTheme.includes('tech') || 
+    resolvedTheme.includes('tropical') || 
+    resolvedTheme.includes('aurora')
+  );
+
+  const getAnimationType = () => {
+    if (!resolvedTheme) return 'particles';
+    
+    if (resolvedTheme.includes('coastal')) return 'waves';
+    if (resolvedTheme.includes('forest')) return 'leaves';
+    if (resolvedTheme.includes('urban')) return 'cityLights';
+    if (resolvedTheme.includes('desert')) return 'desert';
+    if (resolvedTheme.includes('mountain')) return 'stars';
+    if (resolvedTheme.includes('aurora')) return 'aurora';
+    if (resolvedTheme.includes('tech')) return 'tech';
+    if (resolvedTheme.includes('tropical')) return 'particles';
+    
+    return 'particles';
+  };
 
   const cardVariants = {
     hidden: ({ theme }: { theme?: string }) => {
@@ -335,6 +568,13 @@ export default function DashboardPage() {
         else if (resolvedTheme.includes("library") || resolvedTheme.includes("vintage")) pexelsQuery = "quiet library bookshelf calm study";
         else if (resolvedTheme.includes("innovation") || resolvedTheme.includes("cyber") || resolvedTheme.includes("digital")) pexelsQuery = "futuristic city technology bright sky";
         else if (resolvedTheme.includes("serenity") || resolvedTheme.includes("arctic") || resolvedTheme.includes("crystal")) pexelsQuery = "calm serene landscape clear sky";
+        else if (resolvedTheme.includes("coastal")) pexelsQuery = "beautiful ocean coastline waves";
+        else if (resolvedTheme.includes("urban")) pexelsQuery = "modern city skyline architecture";
+        else if (resolvedTheme.includes("desert")) pexelsQuery = "desert sand dunes landscape";
+        else if (resolvedTheme.includes("mountain")) pexelsQuery = "majestic mountain peaks landscape";
+        else if (resolvedTheme.includes("tech")) pexelsQuery = "futuristic technology interface";
+        else if (resolvedTheme.includes("tropical")) pexelsQuery = "tropical beach palm trees";
+        else if (resolvedTheme.includes("aurora")) pexelsQuery = "northern lights aurora borealis";
         
         fetchPexelsImageURL(pexelsQuery, "landscape")
           .then(url => setHeroImageUrl(url))
@@ -760,30 +1000,83 @@ export default function DashboardPage() {
         <div> 
           <CardTitle className="text-xl font-semibold mb-3 text-foreground/90">Completion Trends</CardTitle>
           <div className="grid grid-cols-3 gap-2 mb-4">
-            <div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
               <p className="text-xs font-medium text-muted-foreground">WEEK</p>
               <p className="text-2xl font-bold text-primary">{week || 0}</p>
-            </div>
-            <div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
               <p className="text-xs font-medium text-muted-foreground">MONTH</p>
               <p className="text-2xl font-bold text-primary">{month || 0}</p>
-            </div>
-            <div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
               <p className="text-xs font-medium text-muted-foreground">YEAR</p>
               <p className="text-2xl font-bold text-primary">{year || 0}</p>
-            </div>
+            </motion.div>
           </div>
         </div>
         <div className="flex-grow flex flex-col items-center justify-center"> 
-          <Award className="h-10 w-10 text-amber-500 mb-1" />
-          <p className="text-sm font-medium text-muted-foreground">Current Streak</p>
-          <p className="text-3xl font-bold text-amber-600 dark:text-amber-400 flex items-center">
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ 
+              type: "spring",
+              stiffness: 260,
+              damping: 20,
+              delay: 0.4
+            }}
+          >
+            <Award className="h-10 w-10 text-amber-500 mb-1" />
+          </motion.div>
+          <motion.p 
+            className="text-sm font-medium text-muted-foreground"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+          >
+            Current Streak
+          </motion.p>
+          <motion.p 
+            className="text-3xl font-bold text-amber-600 dark:text-amber-400 flex items-center"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+          >
             {streak || 0}
-            {(streak || 0) > 0 && <Flame className="inline-block h-7 w-7 ml-1 text-orange-500" />}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5 italic h-6 flex items-center justify-center">
+            {(streak || 0) > 0 && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ 
+                  type: "spring",
+                  stiffness: 260,
+                  damping: 20,
+                  delay: 0.7
+                }}
+              >
+                <Flame className="inline-block h-7 w-7 ml-1 text-orange-500" />
+              </motion.div>
+            )}
+          </motion.p>
+          <motion.p 
+            className="text-xs text-muted-foreground mt-0.5 italic h-6 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.7 }}
+          >
             {streakMessage || ((streak || 0) > 0 ? "Keep up the great work!" : "Let's get a streak going!")}
-          </p>
+          </motion.p>
         </div>
       </div>
     );
@@ -820,7 +1113,13 @@ export default function DashboardPage() {
           <ScrollArea className="h-48 xl:h-56 pr-2 flex-grow">
             {Object.keys(commonResponsesData).length > 0 ? (
               Object.entries(commonResponsesData).map(([locationName, questions]) => (
-                <div key={locationName} className="mb-3 p-2 border rounded">
+                <motion.div 
+                  key={locationName} 
+                  className="mb-3 p-2 border rounded"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
                   <h4 className="font-semibold text-xs text-muted-foreground mb-1">{locationName === "undefined" || locationName === "null" ? "Overall / Unspecified Location" : locationName}</h4>
                   {Object.entries(questions).map(([questionId, answerData]) => {
                     const questionDetail = commonResponsesAssignmentDetails.questions.find(q => q.id === questionId);
@@ -828,7 +1127,13 @@ export default function DashboardPage() {
                         return null;
                     }
                     return (
-                      <div key={questionId} className="text-xs mb-1 ml-2">
+                      <motion.div 
+                        key={questionId} 
+                        className="text-xs mb-1 ml-2"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.5, delay: 0.2 }}
+                      >
                         <p className="font-medium truncate italic">{answerData.questionLabel || `Q: ${questionId}`}</p>
                         <ul className="list-disc list-inside ml-3 text-muted-foreground/80">
                           {Object.entries(answerData)
@@ -836,13 +1141,21 @@ export default function DashboardPage() {
                               .sort(([, aVal], [, bVal]) => (bVal as number) - (aVal as number))
                               .slice(0, 3)
                               .map(([answer, count]) => (
-                                <li key={answer} className="truncate">{answer || "N/A"}: {count}</li>
+                                <motion.li 
+                                  key={answer} 
+                                  className="truncate"
+                                  initial={{ opacity: 0, x: -5 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ duration: 0.3, delay: 0.3 }}
+                                >
+                                  {answer || "N/A"}: {count}
+                                </motion.li>
                            ))}
                         </ul>
-                      </div>
+                      </motion.div>
                     );
                   })}
-                </div>
+                </motion.div>
               ))
             ) : ( <p className="text-sm text-muted-foreground text-center py-4">No common response data found for this selection.</p> )}
           </ScrollArea>
@@ -860,33 +1173,53 @@ export default function DashboardPage() {
  const renderWeatherWidget = () => {
   if (!userLat || !userLng) {
     return (
-      <Card className="h-full flex flex-col justify-center items-center p-4 text-center">
-        {weatherError ? (
-          <>
-            <Alert variant="warning">
-              <Info className="h-4 w-4" />
-              <AlertTitle>Location Needed</AlertTitle>
-              <AlertDescription>{weatherError}</AlertDescription>
-            </Alert>
-            <Button onClick={requestLocation} className="mt-4">Enable Location</Button>
-          </>
-        ) : (
-          <>
-            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-            <CardDescription>Please enable location services to fetch weather.</CardDescription>
-            <Button onClick={requestLocation} className="mt-4">Enable Location</Button>
-          </>
+      <Card className="h-full flex flex-col justify-center items-center p-4 text-center relative overflow-hidden">
+        {isEnhancedTheme && (
+          <AnimatedBackground type={getAnimationType()} className="absolute inset-0 pointer-events-none" />
         )}
+        <div className="relative z-10">
+          {weatherError ? (
+            <>
+              <Alert variant="warning">
+                <Info className="h-4 w-4" />
+                <AlertTitle>Location Needed</AlertTitle>
+                <AlertDescription>{weatherError}</AlertDescription>
+              </Alert>
+              <Button onClick={requestLocation} className="mt-4">Enable Location</Button>
+            </>
+          ) : (
+            <>
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+              <CardDescription>Please enable location services to fetch weather.</CardDescription>
+              <Button onClick={requestLocation} className="mt-4">Enable Location</Button>
+            </>
+          )}
+        </div>
       </Card>
     );
   }
 
   if (isLoadingWeather && (!weatherData && !weatherError)) {
-    return <Card className="h-full flex flex-col justify-center items-center p-4"><Skeleton className="h-32 w-full"/></Card>;
+    return (
+      <Card className="h-full flex flex-col justify-center items-center p-4 relative overflow-hidden">
+        {isEnhancedTheme && (
+          <AnimatedBackground type={getAnimationType()} className="absolute inset-0 pointer-events-none" />
+        )}
+        <div className="relative z-10">
+          <Skeleton className="h-32 w-full"/>
+        </div>
+      </Card>
+    );
   }
 
   if (weatherError && !isLoadingWeather) {
-    return <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Weather Error</AlertTitle><AlertDescription>{weatherError}</AlertDescription></Alert>;
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Weather Error</AlertTitle>
+        <AlertDescription>{weatherError}</AlertDescription>
+      </Alert>
+    );
   }
 
   if (!weatherData?.current) {
@@ -899,44 +1232,90 @@ export default function DashboardPage() {
   const sunset = new Date(current.sunset * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <Card className="h-full flex flex-col justify-between p-4">
-      <div className="flex items-center gap-4 mb-2">
-        {weather ? getWeatherIcon(weather.id) : <Cloud className="h-10 w-10 text-blue-400" />}
-        <div>
-          <CardTitle className="text-3xl">{Math.round(current.temp)}°F</CardTitle>
-          <CardDescription className="capitalize">{weather?.description || 'N/A'}</CardDescription>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-4">
-        <div className="flex items-center gap-1"><Thermometer className="h-4 w-4" /> Feels like: {Math.round(current.feels_like)}°F</div>
-        <div className="flex items-center gap-1"><Droplets className="h-4 w-4" /> Humidity: {current.humidity}%</div>
-        <div className="flex items-center gap-1"><Wind className="h-4 w-4" /> Wind: {Math.round(current.wind_speed)} mph</div>
-        <div className="flex items-center gap-1"><Sun className="h-4 w-4" /> UV Index: {current.uvi}</div>
-        <div className="flex items-center gap-1"><Sunrise className="h-4 w-4" /> Sunrise: {sunrise}</div>
-        <div className="flex items-center gap-1"><Sunset className="h-4 w-4" /> Sunset: {sunset}</div>
-      </div>
-
-      {weatherData?.daily?.length >= 5 && (
-        <div className="border-t pt-3">
-          <h5 className="text-xs font-semibold mb-2">5-Day Forecast</h5>
-          <div className="grid grid-cols-5 gap-2 text-center text-xs">
-            {weatherData.daily.slice(1, 6).map((day, index) => (
-              <div key={index} className="flex flex-col items-center">
-                <p>{new Date(day.dt * 1000).toLocaleDateString('en-US', { weekday: 'short' })}</p>
-                {day.weather?.[0] && getWeatherIcon(day.weather[0].id)}
-                <p>{Math.round(day.temp.day)}°</p>
-              </div>
-            ))}
-          </div>
-        </div>
+    <Card className="h-full flex flex-col justify-between p-4 relative overflow-hidden">
+      {isEnhancedTheme && (
+        <AnimatedBackground type={getAnimationType()} className="absolute inset-0 pointer-events-none" />
       )}
+      <div className="relative z-10 flex flex-col h-full">
+        <motion.div 
+          className="flex items-center gap-4 mb-2"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ 
+              type: "spring",
+              stiffness: 260,
+              damping: 20,
+              delay: 0.2
+            }}
+          >
+            {weather ? getWeatherIcon(weather.id) : <Cloud className="h-10 w-10 text-blue-400" />}
+          </motion.div>
+          <div>
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <CardTitle className="text-3xl">{Math.round(current.temp)}°F</CardTitle>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
+              <CardDescription className="capitalize">{weather?.description || 'N/A'}</CardDescription>
+            </motion.div>
+          </div>
+        </motion.div>
+
+        <motion.div 
+          className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+        >
+          <div className="flex items-center gap-1"><Thermometer className="h-4 w-4" /> Feels like: {Math.round(current.feels_like)}°F</div>
+          <div className="flex items-center gap-1"><Droplets className="h-4 w-4" /> Humidity: {current.humidity}%</div>
+          <div className="flex items-center gap-1"><Wind className="h-4 w-4" /> Wind: {Math.round(current.wind_speed)} mph</div>
+          <div className="flex items-center gap-1"><Sun className="h-4 w-4" /> UV Index: {current.uvi}</div>
+          <div className="flex items-center gap-1"><Sunrise className="h-4 w-4" /> Sunrise: {sunrise}</div>
+          <div className="flex items-center gap-1"><Sunset className="h-4 w-4" /> Sunset: {sunset}</div>
+        </motion.div>
+
+        {weatherData?.daily?.length >= 5 && (
+          <motion.div 
+            className="border-t pt-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.7 }}
+          >
+            <h5 className="text-xs font-semibold mb-2">5-Day Forecast</h5>
+            <div className="grid grid-cols-5 gap-2 text-center text-xs">
+              {weatherData.daily.slice(1, 6).map((day, index) => (
+                <motion.div 
+                  key={index} 
+                  className="flex flex-col items-center"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.8 + (index * 0.1) }}
+                >
+                  <p>{new Date(day.dt * 1000).toLocaleDateString('en-US', { weekday: 'short' })}</p>
+                  {day.weather?.[0] && getWeatherIcon(day.weather[0].id)}
+                  <p>{Math.round(day.temp.day)}°</p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </div>
     </Card>
   );
 };
-
-
-
 
   return (
     <div className="space-y-6">
@@ -955,6 +1334,12 @@ export default function DashboardPage() {
             }}
             whileHover={isPhotoHeavyTheme && heroImageUrl ? { scale: 1.03, transition: { duration: 0.4, ease: "circOut" } } : {}}
           />
+          {isEnhancedTheme && (
+            <AnimatedBackground 
+              type={getAnimationType()} 
+              className="absolute inset-0 z-1 pointer-events-none"
+            />
+          )}
           <div className="relative z-10">
             <div className="flex flex-col sm:flex-row justify-between items-center text-left sm:text-left">
                 <div className="flex-1 mb-4 sm:mb-0">
@@ -969,16 +1354,30 @@ export default function DashboardPage() {
                     </motion.p>
                 </div>
                 <div className="flex gap-2 sm:ml-6 shrink-0 mt-4 sm:mt-0">
-                    <Button variant={(isPhotoHeavyTheme && heroImageUrl) ? "secondary" : "outline"} asChild size="lg">
-                        <Link href="/assessment-forms">
-                            <ListOrdered className="mr-2 h-5 w-5" /> View Tasks
-                        </Link>
-                    </Button>
-                    <Button variant={(isPhotoHeavyTheme && heroImageUrl) ? "default" : "default"} asChild size="lg">
-                        <Link href="/assessment-forms/new">
-                            <Edit3 className="mr-2 h-5 w-5" /> New Assessment
-                        </Link>
-                    </Button>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.5, delay: 0.6 }}
+                      whileHover={{ scale: 1.05 }}
+                    >
+                      <Button variant={(isPhotoHeavyTheme && heroImageUrl) ? "secondary" : "outline"} asChild size="lg">
+                          <Link href="/assessment-forms">
+                              <ListOrdered className="mr-2 h-5 w-5" /> View Tasks
+                          </Link>
+                      </Button>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.5, delay: 0.7 }}
+                      whileHover={{ scale: 1.05 }}
+                    >
+                      <Button variant={(isPhotoHeavyTheme && heroImageUrl) ? "default" : "default"} asChild size="lg">
+                          <Link href="/assessment-forms/new">
+                              <Edit3 className="mr-2 h-5 w-5" /> New Assessment
+                          </Link>
+                      </Button>
+                    </motion.div>
                 </div>
             </div>
           </div>
@@ -991,98 +1390,176 @@ export default function DashboardPage() {
 
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 0, theme: resolvedTheme}}>
-          <Card className="h-full flex flex-col">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Activity className="h-5 w-5 text-primary"/>Last Completions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-grow flex flex-col space-y-3">
-                {renderLastCompletionsWidget()}
-            </CardContent>
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 0, theme: resolvedTheme}} className="relative overflow-hidden">
+          <Card className="h-full flex flex-col relative overflow-hidden">
+            {isEnhancedTheme && (
+              <AnimatedBackground type={getAnimationType()} className="absolute inset-0 pointer-events-none" />
+            )}
+            <div className="relative z-10 flex flex-col h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ 
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 20
+                    }}
+                  >
+                    <Activity className="h-5 w-5 text-primary"/>
+                  </motion.div>
+                  <motion.span
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                  >
+                    Last Completions
+                  </motion.span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-grow flex flex-col space-y-3">
+                  {renderLastCompletionsWidget()}
+              </CardContent>
+            </div>
           </Card>
         </motion.div>
 
-        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 1, theme: resolvedTheme}}>
-            <Card className="h-full flex flex-col">
-                 <CardContent className="flex-grow flex items-center justify-center p-3 sm:p-4">
-                    {renderStreakWidget()}
-                </CardContent>
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 1, theme: resolvedTheme}} className="relative overflow-hidden">
+            <Card className="h-full flex flex-col relative overflow-hidden">
+                {isEnhancedTheme && (
+                  <AnimatedBackground type={getAnimationType()} className="absolute inset-0 pointer-events-none" />
+                )}
+                <div className="relative z-10">
+                  <CardContent className="flex-grow flex items-center justify-center p-3 sm:p-4">
+                      {renderStreakWidget()}
+                  </CardContent>
+                </div>
             </Card>
         </motion.div>
 
-        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 2, theme: resolvedTheme}}>
-            <Card className="h-full flex flex-col">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                        <Filter className="h-5 w-5 text-primary"/>Common Responses
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="flex-grow">{renderCommonResponsesWidget()}</CardContent>
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 2, theme: resolvedTheme}} className="relative overflow-hidden">
+            <Card className="h-full flex flex-col relative overflow-hidden">
+                {isEnhancedTheme && (
+                  <AnimatedBackground type={getAnimationType()} className="absolute inset-0 pointer-events-none" />
+                )}
+                <div className="relative z-10 flex flex-col h-full">
+                  <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <motion.div
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ 
+                            type: "spring",
+                            stiffness: 260,
+                            damping: 20
+                          }}
+                        >
+                          <Filter className="h-5 w-5 text-primary"/>
+                        </motion.div>
+                        <motion.span
+                          initial={{ x: -20, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ duration: 0.5, delay: 0.1 }}
+                        >
+                          Common Responses
+                        </motion.span>
+                      </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex-grow">{renderCommonResponsesWidget()}</CardContent>
+                </div>
             </Card>
         </motion.div>
 
-        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 3, theme: resolvedTheme}}>
+        <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 3, theme: resolvedTheme}} className="relative overflow-hidden">
             <CriticalTasksCard />
         </motion.div>
-         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 4, theme: resolvedTheme}}>
+         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 4, theme: resolvedTheme}} className="relative overflow-hidden">
             <UpcomingEventsCard />
         </motion.div>
-         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 5, theme: resolvedTheme}}>
+         <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 5, theme: resolvedTheme}} className="relative overflow-hidden">
             <EmergencyProtocolsCard />
         </motion.div>
       </div>
       
       {/* New Weather Widget Card */}
-      <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 6, theme: resolvedTheme}}>
+      <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 6, theme: resolvedTheme}} className="relative overflow-hidden">
           <Card className="h-full flex flex-col">
               {renderWeatherWidget()}
           </Card>
       </motion.div>
 
 
-      <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 6, theme: resolvedTheme}}>
-        <Card className="col-span-1 xl:col-span-3">
-            <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
-                <Newspaper className="h-5 w-5 text-primary" /> School Security News
-            </CardTitle>
-            <CardDescription>Latest updates relevant to K-12 school security and cybersecurity.</CardDescription>
-            </CardHeader>
-            <CardContent>
-            {newsLoading && (
-                <div className="space-y-3">
-                {[...Array(3)].map((_, i) => (
-                    <div key={i} className="flex items-start space-x-3 p-2 rounded-md">
-                    <Skeleton className="h-16 w-24 rounded" />
-                    <div className="flex-1 space-y-1">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
-                        <Skeleton className="h-3 w-1/4" />
-                    </div>
-                    </div>
-                ))}
-                </div>
+      <motion.div variants={cardVariants} initial="hidden" animate={isClientMounted ? "visible" : "hidden"} custom={{index: 6, theme: resolvedTheme}} className="relative overflow-hidden">
+        <Card className="col-span-1 xl:col-span-3 relative overflow-hidden">
+            {isEnhancedTheme && (
+              <AnimatedBackground type={getAnimationType()} className="absolute inset-0 pointer-events-none" />
             )}
-            {newsError && <Alert variant="destructive"><AlertCircle className="h-4 w-4"/><AlertTitle>News Error</AlertTitle><AlertDescription>{newsError}</AlertDescription></Alert>}
-            {!newsLoading && !newsError && newsItems.length > 0 && (
-                <ul className="space-y-3">
-                {newsItems.map((item) => (
-                    <li key={item.guid} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <h3 className="font-semibold mb-1 text-sm leading-tight">{item.title}</h3>
-                        <p className="text-xs text-muted-foreground mb-2 line-clamp-2" dangerouslySetInnerHTML={{ __html: item.description.replace(/<img[^>]*>/g,"") }}/>
-                        <div className="flex justify-between items-center">
-                            <span className="text-xs text-muted-foreground">{formatDisplayDateShort(item.pubDate)}</span>
-                            <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => setSelectedNewsItem(item)}>
-                                Read More
-                            </Button>
+            <div className="relative z-10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ 
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 20
+                    }}
+                  >
+                    <Newspaper className="h-5 w-5 text-primary" />
+                  </motion.div>
+                  <motion.span
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                  >
+                    School Security News
+                  </motion.span>
+                </CardTitle>
+                <CardDescription>Latest updates relevant to K-12 school security and cybersecurity.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {newsLoading && (
+                    <div className="space-y-3">
+                    {[...Array(3)].map((_, i) => (
+                        <div key={i} className="flex items-start space-x-3 p-2 rounded-md">
+                        <Skeleton className="h-16 w-24 rounded" />
+                        <div className="flex-1 space-y-1">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/2" />
+                            <Skeleton className="h-3 w-1/4" />
                         </div>
-                    </li>
-                ))}
-                </ul>
-            )}
-            </CardContent>
+                        </div>
+                    ))}
+                    </div>
+                )}
+                {newsError && <Alert variant="destructive"><AlertCircle className="h-4 w-4"/><AlertTitle>News Error</AlertTitle><AlertDescription>{newsError}</AlertDescription></Alert>}
+                {!newsLoading && !newsError && newsItems.length > 0 && (
+                    <ul className="space-y-3">
+                    {newsItems.map((item) => (
+                        <motion.li 
+                          key={item.guid} 
+                          className="p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.5 }}
+                          whileHover={{ scale: 1.02 }}
+                        >
+                            <h3 className="font-semibold mb-1 text-sm leading-tight">{item.title}</h3>
+                            <p className="text-xs text-muted-foreground mb-2 line-clamp-2" dangerouslySetInnerHTML={{ __html: item.description.replace(/<img[^>]*>/g,"") }}/>
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">{formatDisplayDateShort(item.pubDate)}</span>
+                                <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => setSelectedNewsItem(item)}>
+                                    Read More
+                                </Button>
+                            </div>
+                        </motion.li>
+                    ))}
+                    </ul>
+                )}
+              </CardContent>
+            </div>
         </Card>
       </motion.div>
 
@@ -1113,4 +1590,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -10,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { useAuth } from "@/context/auth-context";
+import { useTheme } from "next-themes";
+import { AnimatedBackground } from "@/components/ui/animated-background";
 
 // Define navigation items here so they can be passed to header if needed
 export const baseNavItems = [
@@ -37,6 +38,7 @@ export function PageShell({ children }: { children: React.ReactNode }) {
   const { layoutMode, isMobileViewForLayout } = useLayout();
   const sidebarContext = useSidebar();
   const pathname = usePathname();
+  const { resolvedTheme } = useTheme();
 
   // Define the roles that can see the admin link
   const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
@@ -52,6 +54,36 @@ export function PageShell({ children }: { children: React.ReactNode }) {
     return navItems;
   }, [userProfile]);
 
+  // Determine if we should show animated backgrounds based on theme
+  const showAnimatedBackground = React.useMemo(() => {
+    if (!resolvedTheme) return false;
+    
+    // Check if the theme is one of our enhanced themes
+    return resolvedTheme.includes('theme-coastal-breeze') || 
+           resolvedTheme.includes('theme-urban-pulse') ||
+           resolvedTheme.includes('theme-forest-whisper') ||
+           resolvedTheme.includes('theme-desert-mirage') ||
+           resolvedTheme.includes('theme-mountain-majesty') ||
+           resolvedTheme.includes('theme-tech-horizon') ||
+           resolvedTheme.includes('theme-tropical-paradise') ||
+           resolvedTheme.includes('theme-aurora-borealis');
+  }, [resolvedTheme]);
+
+  // Determine animation type based on theme
+  const getAnimationType = React.useCallback(() => {
+    if (!resolvedTheme) return 'particles';
+    
+    if (resolvedTheme.includes('coastal')) return 'waves';
+    if (resolvedTheme.includes('forest')) return 'leaves';
+    if (resolvedTheme.includes('urban')) return 'cityLights';
+    if (resolvedTheme.includes('desert')) return 'desert';
+    if (resolvedTheme.includes('mountain')) return 'stars';
+    if (resolvedTheme.includes('aurora')) return 'aurora';
+    if (resolvedTheme.includes('tech')) return 'tech';
+    if (resolvedTheme.includes('tropical')) return 'particles';
+    
+    return 'particles';
+  }, [resolvedTheme]);
 
   React.useEffect(() => {
     if (!isMobileViewForLayout) { 
@@ -81,9 +113,17 @@ export function PageShell({ children }: { children: React.ReactNode }) {
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                className="p-4 sm:p-6 lg:p-8 flex-grow"
+                className="p-4 sm:p-6 lg:p-8 flex-grow relative"
               >
-                {children}
+                {showAnimatedBackground && (
+                  <AnimatedBackground 
+                    type={getAnimationType()} 
+                    className="absolute inset-0 pointer-events-none z-0"
+                  />
+                )}
+                <div className="relative z-10">
+                  {children}
+                </div>
               </motion.main>
             </AnimatePresence>
           </SidebarInset>
@@ -95,9 +135,17 @@ export function PageShell({ children }: { children: React.ReactNode }) {
               initial="initial"
               animate="animate"
               exit="exit"
-              className="p-4 sm:p-6 lg:p-8 flex-grow"
+              className="p-4 sm:p-6 lg:p-8 flex-grow relative"
             >
-              {children}
+              {showAnimatedBackground && (
+                <AnimatedBackground 
+                  type={getAnimationType()} 
+                  className="absolute inset-0 pointer-events-none z-0"
+                />
+              )}
+              <div className="relative z-10">
+                {children}
+              </div>
             </motion.main>
           </AnimatePresence>
         )}

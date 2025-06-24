@@ -1,15 +1,40 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Palette, Sun, Moon, Contrast, Terminal, Waves, Leaf, Sunset, Building, Flame, Sparkles, Trees, Cpu, Snowflake, Mountain, Fish, Scroll, Edit3, Binary, Wand2, CircuitBoard, Zap, Gem, Layers, Shield, BookOpen, Network } from "lucide-react";
+import { Palette, Sun, Moon, Contrast, Terminal, Waves, Leaf, Sunset, Building, Flame, Sparkles, Trees, Cpu, Snowflake, Mountain, Fish, Scroll, Edit3, Binary, Wand2, CircuitBoard, Zap, Gem, Layers, Shield, BookOpen, Network, Camera, Compass, Cloud, Coffee, Landmark, Rocket, Droplets, Wind, Umbrella, Lightbulb, Flower, Palmtree, Plane, Sailboat } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 
 const appThemes = [
   { id: "light", name: "Default Light", description: "The standard clean and professional theme.", icon: Sun, isDark: false, gradient: "bg-gradient-to-br from-blue-100 to-indigo-100" },
   { id: "dark", name: "Default Dark", description: "For low-light conditions, reduces eye strain.", icon: Moon, isDark: true, gradient: "bg-gradient-to-br from-slate-800 to-slate-900" },
+  
+  // New enhanced themes
+  { id: "theme-coastal-breeze", name: "Coastal Breeze", description: "Serene coastal landscapes with animated wave effects.", icon: Sailboat, isDark: false, gradient: "bg-gradient-to-br from-sky-300 to-blue-500", isEnhanced: true },
+  { id: "theme-coastal-breeze-dark", name: "Coastal Breeze Dark", description: "Moonlit shores with gentle animated waves.", icon: Sailboat, isDark: true, gradient: "bg-gradient-to-br from-blue-900 to-slate-900", isEnhanced: true },
+  
+  { id: "theme-urban-pulse", name: "Urban Pulse", description: "Dynamic cityscapes with animated light trails.", icon: Building, isDark: false, gradient: "bg-gradient-to-br from-orange-200 to-rose-300", isEnhanced: true },
+  { id: "theme-urban-pulse-dark", name: "Urban Pulse Dark", description: "Neon-lit city nights with animated elements.", icon: Building, isDark: true, gradient: "bg-gradient-to-br from-slate-900 to-purple-900", isEnhanced: true },
+  
+  { id: "theme-forest-whisper", name: "Forest Whisper", description: "Lush forest canopies with animated leaf effects.", icon: Trees, isDark: false, gradient: "bg-gradient-to-br from-green-200 to-emerald-300", isEnhanced: true },
+  { id: "theme-forest-whisper-dark", name: "Forest Whisper Dark", description: "Mystical night forests with animated fireflies.", icon: Trees, isDark: true, gradient: "bg-gradient-to-br from-green-900 to-emerald-800", isEnhanced: true },
+  
+  { id: "theme-desert-mirage", name: "Desert Mirage", description: "Warm desert landscapes with heat haze animations.", icon: Palmtree, isDark: false, gradient: "bg-gradient-to-br from-amber-200 to-yellow-400", isEnhanced: true },
+  { id: "theme-desert-mirage-dark", name: "Desert Mirage Dark", description: "Starlit desert nights with animated sand dunes.", icon: Palmtree, isDark: true, gradient: "bg-gradient-to-br from-amber-900 to-yellow-800", isEnhanced: true },
+  
+  { id: "theme-mountain-majesty", name: "Mountain Majesty", description: "Majestic peaks with animated cloud effects.", icon: Mountain, isDark: false, gradient: "bg-gradient-to-br from-indigo-200 to-purple-300", isEnhanced: true },
+  { id: "theme-mountain-majesty-dark", name: "Mountain Majesty Dark", description: "Alpine nights with animated northern lights.", icon: Mountain, isDark: true, gradient: "bg-gradient-to-br from-indigo-900 to-purple-800", isEnhanced: true },
+  
+  { id: "theme-tech-horizon", name: "Tech Horizon", description: "Futuristic interfaces with animated circuit patterns.", icon: CircuitBoard, isDark: false, gradient: "bg-gradient-to-br from-cyan-200 to-blue-300", isEnhanced: true },
+  { id: "theme-tech-horizon-dark", name: "Tech Horizon Dark", description: "Cyberpunk aesthetics with animated data flows.", icon: CircuitBoard, isDark: true, gradient: "bg-gradient-to-br from-cyan-900 to-blue-800", isEnhanced: true },
+  
+  { id: "theme-tropical-paradise", name: "Tropical Paradise", description: "Vibrant beaches with animated palm trees.", icon: Umbrella, isDark: false, gradient: "bg-gradient-to-br from-teal-200 to-lime-300", isEnhanced: true },
+  { id: "theme-tropical-paradise-dark", name: "Tropical Paradise Dark", description: "Tropical nights with animated ocean waves.", icon: Umbrella, isDark: true, gradient: "bg-gradient-to-br from-teal-900 to-lime-800", isEnhanced: true },
+  
+  { id: "theme-aurora-borealis", name: "Aurora Borealis", description: "Northern lights with animated color waves.", icon: Lightbulb, isDark: false, gradient: "bg-gradient-to-br from-purple-200 to-pink-300", isEnhanced: true },
+  { id: "theme-aurora-borealis-dark", name: "Aurora Borealis Dark", description: "Polar nights with vibrant animated auroras.", icon: Lightbulb, isDark: true, gradient: "bg-gradient-to-br from-purple-900 to-pink-800", isEnhanced: true },
   
   { id: "theme-nature-embrace", name: "Nature's Embrace", description: "Dynamic nature background. Serene & organic.", icon: Trees, isDark: true, gradient: "bg-gradient-to-br from-green-500 to-emerald-700" },
   { id: "theme-guardian-shield", name: "Guardian Shield", description: "Metallic & blue hues. Sense of security.", icon: Shield, isDark: true, gradient: "bg-gradient-to-br from-slate-600 to-blue-700" },
@@ -71,9 +96,104 @@ const appThemes = [
   { id: "chromatic-glaze-dark", name: "Chromatic Glaze (Dark)", description: "Glossy black with electric magenta and green accents.", icon: Zap, isDark: true, gradient: "bg-[radial-gradient(ellipse_at_center,_rgba(20,20,20,0.8)_0%,_rgba(0,0,0,0.6)_70%)]" },
 ];
 
+// Animation variants for theme cards
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.05,
+      duration: 0.5,
+      ease: [0.4, 0, 0.2, 1]
+    }
+  }),
+  hover: {
+    y: -5,
+    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+    transition: {
+      duration: 0.3,
+      ease: "easeOut"
+    }
+  }
+};
+
+// Animation variants for the theme icon
+const iconVariants = {
+  hidden: { scale: 0.8, opacity: 0 },
+  visible: { 
+    scale: 1, 
+    opacity: 1,
+    transition: { 
+      delay: 0.2,
+      duration: 0.5,
+      ease: "backOut"
+    }
+  },
+  hover: { 
+    scale: 1.1,
+    rotate: [0, 5, -5, 0],
+    transition: { 
+      duration: 0.5,
+      ease: "easeInOut",
+      repeat: Infinity,
+      repeatType: "mirror"
+    }
+  }
+};
+
+// Animation variants for enhanced theme cards
+const enhancedCardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.05,
+      duration: 0.5,
+      ease: [0.4, 0, 0.2, 1]
+    }
+  }),
+  hover: {
+    y: -8,
+    scale: 1.03,
+    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+    transition: {
+      duration: 0.4,
+      ease: "easeOut"
+    }
+  }
+};
+
+// Animation variants for the enhanced theme icon
+const enhancedIconVariants = {
+  hidden: { scale: 0.8, opacity: 0, rotate: -10 },
+  visible: { 
+    scale: 1, 
+    opacity: 1,
+    rotate: 0,
+    transition: { 
+      delay: 0.2,
+      duration: 0.5,
+      ease: "backOut"
+    }
+  },
+  hover: { 
+    scale: 1.2,
+    rotate: [0, 10, -10, 0],
+    transition: { 
+      duration: 1,
+      ease: "easeInOut",
+      repeat: Infinity,
+      repeatType: "mirror"
+    }
+  }
+};
+
 export default function ThemingPage() {
   const { theme: currentTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [showEnhanced, setShowEnhanced] = useState(true);
 
   useEffect(() => {
     setMounted(true);
@@ -83,55 +203,137 @@ export default function ThemingPage() {
     setTheme(themeId);
   };
 
+  // Filter themes based on the showEnhanced state
+  const filteredThemes = showEnhanced 
+    ? appThemes.filter(theme => theme.isEnhanced)
+    : appThemes.filter(theme => !theme.isEnhanced);
+
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Theming Options</h1>
-      <p className="text-lg text-muted-foreground">
-        Personalize the application's appearance to suit your preferences or conform with corporate branding.
-      </p>
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+      >
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Theming Options</h1>
+          <p className="text-lg text-muted-foreground">
+            Personalize the application's appearance to suit your preferences or conform with corporate branding.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            variant={showEnhanced ? "default" : "outline"} 
+            onClick={() => setShowEnhanced(true)}
+            className="flex items-center gap-2"
+          >
+            <Camera className="h-4 w-4" />
+            Enhanced Themes
+          </Button>
+          <Button 
+            variant={!showEnhanced ? "default" : "outline"} 
+            onClick={() => setShowEnhanced(false)}
+            className="flex items-center gap-2"
+          >
+            <Palette className="h-4 w-4" />
+            Standard Themes
+          </Button>
+        </div>
+      </motion.div>
       
       <Card>
         <CardHeader>
-          <CardTitle>Select Your Theme</CardTitle>
-          <CardDescription>Choose from the available themes below. Changes will apply instantly.</CardDescription>
+          <CardTitle>{showEnhanced ? "Enhanced Photo Themes" : "Standard Themes"}</CardTitle>
+          <CardDescription>
+            {showEnhanced 
+              ? "These enhanced themes feature dynamic backgrounds, animated elements, and immersive designs."
+              : "Choose from the available themes below. Changes will apply instantly."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {appThemes.map((themeOption) => (
-            <Card key={themeOption.id} className="overflow-hidden flex flex-col">
-              <CardHeader className="p-0">
-                <div
-                  className={`h-32 w-full flex items-center justify-center ${themeOption.gradient}`}
-                  data-ai-hint="theme color palette"
-                >
-                  <themeOption.icon className={`h-12 w-12 ${themeOption.isDark ? 'text-white/90' : 'text-neutral-900/90' }`} />
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 flex-grow flex flex-col">
-                <h3 className="text-lg font-semibold mb-1">{themeOption.name}</h3>
-                <p className="text-sm text-muted-foreground mb-3 flex-grow">{themeOption.description}</p>
-                <Button
-                  onClick={() => handleThemeChange(themeOption.id)}
-                  className="w-full mt-auto"
-                  variant={mounted && currentTheme === themeOption.id ? "default" : "outline"}
-                >
-                  Apply Theme
-                </Button>
-              </CardContent>
-            </Card>
+          {filteredThemes.map((themeOption, index) => (
+            <motion.div
+              key={themeOption.id}
+              custom={index}
+              variants={themeOption.isEnhanced ? enhancedCardVariants : cardVariants}
+              initial="hidden"
+              animate="visible"
+              whileHover="hover"
+              className="h-full"
+            >
+              <Card className="overflow-hidden flex flex-col h-full">
+                <CardHeader className="p-0">
+                  <div
+                    className={`h-32 w-full flex items-center justify-center ${themeOption.gradient}`}
+                    data-ai-hint="theme color palette"
+                  >
+                    <motion.div
+                      variants={themeOption.isEnhanced ? enhancedIconVariants : iconVariants}
+                      initial="hidden"
+                      animate="visible"
+                      whileHover="hover"
+                    >
+                      <themeOption.icon className={`h-12 w-12 ${themeOption.isDark ? 'text-white/90' : 'text-neutral-900/90' }`} />
+                    </motion.div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 flex-grow flex flex-col">
+                  <motion.h3 
+                    className="text-lg font-semibold mb-1"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    {themeOption.name}
+                  </motion.h3>
+                  <motion.p 
+                    className="text-sm text-muted-foreground mb-3 flex-grow"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    {themeOption.description}
+                  </motion.p>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <Button
+                      onClick={() => handleThemeChange(themeOption.id)}
+                      className="w-full mt-auto"
+                      variant={mounted && currentTheme === themeOption.id ? "default" : "outline"}
+                    >
+                      Apply Theme
+                    </Button>
+                  </motion.div>
+                </CardContent>
+              </Card>
+            </motion.div>
           ))}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-            <CardTitle>Customization Tip</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <p className="text-muted-foreground">
-                Photo-heavy themes use a dynamic background image fetched from Pexels. Other themes primarily adjust color schemes. True glassmorphism with blurred backgrounds on components like cards typically requires `backdrop-filter` and semi-transparent backgrounds, which are more advanced styling changes. More significant layout alterations based on themes are being developed.
-            </p>
-        </CardContent>
-      </Card>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6, duration: 0.5 }}
+      >
+        <Card>
+          <CardHeader>
+              <CardTitle>Enhanced Theme Features</CardTitle>
+          </CardHeader>
+          <CardContent>
+              <p className="text-muted-foreground">
+                  The enhanced themes use Pexels API to fetch high-quality background images that match the theme's aesthetic. 
+                  They also incorporate Framer Motion animations for interactive elements and transitions. 
+                  Each theme has been carefully designed with complementary color palettes for both light and dark modes, 
+                  with special attention to accessibility and readability.
+              </p>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }
