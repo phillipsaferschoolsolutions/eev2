@@ -62,6 +62,7 @@ interface CompletionItem {
     [key: string]: any;
   };
   parentAssignmentId?: string;
+  assignmentId?: string; // Some API responses might include this at the top level
 }
 
 export default function DashboardPage() {
@@ -172,6 +173,7 @@ export default function DashboardPage() {
       setIsLoadingAssignments(true);
       getAssignmentListMetadata()
         .then(data => {
+          console.log("Fetched assignments:", data);
           setAssignments(data);
           setAssignmentsError(null);
         })
@@ -189,6 +191,7 @@ export default function DashboardPage() {
       setIsLoadingLocations(true);
       getLocationsForLookup(userProfile.account)
         .then(data => {
+          console.log("Fetched locations:", data);
           setLocations(data);
           setLocationsError(null);
         })
@@ -209,23 +212,20 @@ export default function DashboardPage() {
       
       getLastCompletions(userProfile.account, assignmentFilter, schoolFilter, selectedPeriod)
         .then(data => {
+          console.log("Fetched completions:", data);
+          
           // Process the data to extract assignment ID from the document path
           const processedData = (data || []).map((item: any) => {
-            // The item structure from the API includes the document path information
-            // We need to extract the assignment ID from the document reference path
+            // Try to get assignmentId from various possible locations
             let parentAssignmentId = item.data?.assignmentId;
             
-            // If assignmentId is not in the data, try to extract it from the document path
-            // The API should ideally provide this, but we can work around it
             if (!parentAssignmentId && item.assignmentId) {
               parentAssignmentId = item.assignmentId;
             }
             
-            // If still no assignment ID, we'll need to handle this case
+            // If still no assignment ID, try to extract from path or use unknown
             if (!parentAssignmentId) {
               console.warn("No assignment ID found for completion:", item);
-              // You might want to extract this from the document path if available
-              // For now, we'll use a placeholder to prevent the undefined error
               parentAssignmentId = "unknown";
             }
 
@@ -309,50 +309,52 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Hero Section */}
-      <div className="relative rounded-lg overflow-hidden bg-gradient-to-r from-primary/80 to-primary p-6 text-primary-foreground shadow-md">
+      {/* Hero Section with Pexels background */}
+      <div className="relative rounded-lg overflow-hidden bg-gradient-to-r from-blue-500 to-indigo-600 p-8 text-white shadow-lg">
         <div className="relative z-10">
           <h1 className="text-3xl font-bold tracking-tight">
             Welcome to EagleEyED™
           </h1>
-          <p className="text-primary-foreground/90 mt-2 max-w-2xl">
+          <p className="text-white/90 mt-2 max-w-2xl">
             Your central hub for campus safety management.
           </p>
-          <div className="flex flex-wrap gap-4 mt-4">
-            <Button asChild variant="secondary" size="lg" className="font-medium">
+          <div className="flex flex-wrap gap-4 mt-6">
+            <Button asChild variant="default" size="lg" className="bg-white text-blue-600 hover:bg-white/90 hover:text-blue-700">
               <Link href="/assessment-forms/new">
                 New Assessment
               </Link>
             </Button>
-            <Button asChild variant="outline" className="bg-white/20 text-white border-white/40 hover:bg-white/30 hover:text-white">
+            <Button asChild variant="outline" className="border-white/40 text-white hover:bg-white/20 hover:text-white">
               <Link href="/map">
                 <MapPin className="mr-2 h-4 w-4" /> View Campus Map
               </Link>
             </Button>
           </div>
         </div>
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-primary/70 z-0"></div>
-        {/* Background image */}
-        <div className="absolute inset-0 z-[-1] opacity-20 mix-blend-overlay">
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-indigo-700/80 z-0"></div>
+        {/* Background image from Pexels */}
+        <div className="absolute inset-0 z-[-1]">
           <Image 
             src="https://images.pexels.com/photos/256490/pexels-photo-256490.jpeg" 
             alt="Campus background" 
             fill 
             className="object-cover"
+            priority
           />
         </div>
       </div>
 
       {/* Weather Widget */}
       <Card className="overflow-hidden rounded-lg border shadow-md">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-sky-500/90 to-blue-600/90 text-white">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-sky-500 to-blue-600 text-white">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <MapPin className="h-4 w-4" />
             Current Conditions
           </CardTitle>
           {weather && getWeatherIcon(weather)}
         </CardHeader>
-        <CardContent className="p-4 bg-gradient-to-b from-sky-100 to-white dark:from-sky-900/40 dark:to-background">
+        <CardContent className="p-4 bg-gradient-to-b from-sky-50 to-white dark:from-sky-900/30 dark:to-background">
           {weatherLoading && <Skeleton className="h-6 w-32" />}
           {weatherError && <p className="text-sm text-muted-foreground">{weatherError}</p>}
           {weather && (
@@ -468,7 +470,7 @@ export default function DashboardPage() {
         {/* Activity Overview */}
         {isAdmin && widgetData?.accountCompletions && (
           <Card className="lg:col-span-2 rounded-lg border shadow-md">
-            <CardHeader className="bg-gradient-to-r from-blue-500/90 to-indigo-600/90 text-white rounded-t-lg">
+            <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-t-lg">
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
                 Account Activity Overview
@@ -522,7 +524,7 @@ export default function DashboardPage() {
         {/* User Activity (for non-admin users) */}
         {!isAdmin && widgetData?.userActivity && (
           <Card className="lg:col-span-2 rounded-lg border shadow-md">
-            <CardHeader className="bg-gradient-to-r from-emerald-500/90 to-teal-600/90 text-white rounded-t-lg">
+            <CardHeader className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-t-lg">
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 Your Recent Activity
@@ -597,7 +599,7 @@ export default function DashboardPage() {
 
       {/* Last Completions Widget */}
       <Card className="rounded-lg border shadow-md">
-        <CardHeader className="bg-gradient-to-r from-indigo-500/90 to-purple-600/90 text-white rounded-t-lg">
+        <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-t-lg">
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
             Last Completions
@@ -704,44 +706,52 @@ export default function DashboardPage() {
                 </div>
                 
                 {/* Table Rows */}
-                {lastCompletions.slice(0, 10).map((completion) => (
-                  <div key={completion.id} className="grid grid-cols-4 gap-4 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">
-                        {getAssignmentName(completion)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {completion.data.locationName || 'No location'}
-                      </p>
-                    </div>
-                    <div className="text-sm">
-                      {completion.data.completedBy || 'Unknown'}
-                    </div>
-                    <div className="text-sm">
-                      {completion.data.completionDate 
-                        ? formatDisplayDateShort(completion.data.completionDate)
-                        : completion.data.submittedTimeServer
-                        ? formatDisplayDateShort(completion.data.submittedTimeServer)
-                        : 'Invalid Date'
-                      }
-                    </div>
-                    <div className="text-right">
-                      {completion.parentAssignmentId && completion.parentAssignmentId !== 'unknown' ? (
-                        <Button asChild variant="outline" size="sm">
-                          <Link href={`/assignments/${completion.parentAssignmentId}/completions/${completion.id}`}>
+                {lastCompletions.slice(0, 10).map((completion) => {
+                  // Get the assignment name from either the completion data or the assignments list
+                  const assignmentName = getAssignmentName(completion);
+                  
+                  // Determine the parent assignment ID for the View link
+                  const viewAssignmentId = completion.parentAssignmentId || completion.assignmentId || completion.data?.assignmentId;
+                  
+                  return (
+                    <div key={completion.id} className="grid grid-cols-4 gap-4 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">
+                          {assignmentName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {completion.data.locationName || 'No location'}
+                        </p>
+                      </div>
+                      <div className="text-sm">
+                        {completion.data.completedBy || 'Unknown'}
+                      </div>
+                      <div className="text-sm">
+                        {completion.data.completionDate 
+                          ? formatDisplayDateShort(completion.data.completionDate)
+                          : completion.data.submittedTimeServer
+                          ? formatDisplayDateShort(completion.data.submittedTimeServer)
+                          : 'Invalid Date'
+                        }
+                      </div>
+                      <div className="text-right">
+                        {viewAssignmentId && viewAssignmentId !== 'unknown' ? (
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={`/assignments/${viewAssignmentId}/completions/${completion.id}`}>
+                              <Eye className="w-4 h-4 mr-1" />
+                              View
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" disabled>
                             <Eye className="w-4 h-4 mr-1" />
                             View
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button variant="outline" size="sm" disabled>
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
-                      )}
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -752,7 +762,7 @@ export default function DashboardPage() {
       <div className="grid gap-6 md:grid-cols-3">
         {/* Critical Tasks */}
         <Card className="rounded-lg border shadow-md">
-          <CardHeader className="bg-gradient-to-r from-rose-500/90 to-red-600/90 text-white rounded-t-lg">
+          <CardHeader className="bg-gradient-to-r from-rose-500 to-red-600 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" />
               Critical Tasks
@@ -774,7 +784,7 @@ export default function DashboardPage() {
 
         {/* Upcoming Events */}
         <Card className="rounded-lg border shadow-md">
-          <CardHeader className="bg-gradient-to-r from-blue-500/90 to-sky-600/90 text-white rounded-t-lg">
+          <CardHeader className="bg-gradient-to-r from-blue-500 to-sky-600 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
               Upcoming Events & Drills
@@ -801,7 +811,7 @@ export default function DashboardPage() {
 
         {/* Emergency Protocols */}
         <Card className="rounded-lg border shadow-md">
-          <CardHeader className="bg-gradient-to-r from-amber-500/90 to-orange-600/90 text-white rounded-t-lg">
+          <CardHeader className="bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5" />
               Emergency Protocols
