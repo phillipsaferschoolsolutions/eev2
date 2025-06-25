@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle2, XCircle, HelpCircle, Image as ImageIcon } from "lucide-react";
 import { getCompletionDetails } from "@/services/assignmentFunctionsService";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
 
 export default function CompletionDetailsPage() {
   const params = useParams();
@@ -43,6 +45,7 @@ export default function CompletionDetailsPage() {
       setError(null);
       try {
         const data = await getCompletionDetails(assignmentId, completionId, userProfile.account);
+        console.log("Fetched completion details:", data);
         if (data) {
           setCompletionData(data);
         } else {
@@ -91,6 +94,28 @@ export default function CompletionDetailsPage() {
     );
   }
 
+  // Helper function to determine if a value is a valid answer (not null, undefined, or empty string)
+  const hasValidAnswer = (value: any) => {
+    return value !== null && value !== undefined && value !== '';
+  };
+
+  // Helper function to format answer display based on type
+  const formatAnswer = (answer: any) => {
+    if (answer === null || answer === undefined) return <span className="italic text-muted-foreground/70">No answer provided</span>;
+    
+    if (typeof answer === 'boolean') {
+      return answer ? 
+        <Badge variant="default" className="bg-green-500"><CheckCircle2 className="mr-1 h-3 w-3" /> Yes</Badge> : 
+        <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3" /> No</Badge>;
+    }
+    
+    if (Array.isArray(answer)) {
+      return answer.join(', ');
+    }
+    
+    return String(answer);
+  };
+
   return (
     <div className="container mx-auto py-8 px-4">
       <Button variant="outline" onClick={() => router.back()} className="mb-4">
@@ -119,24 +144,36 @@ export default function CompletionDetailsPage() {
               {/* --- Answers Section --- */}
               <div>
                 <h3 className="text-lg font-semibold mb-3">Submitted Answers</h3>
-                <div className="space-y-4">
-                  {completionData.questions && completionData.questions.length > 0 ? (
-                    completionData.questions.map((question: any, index: number) => {
-                      const answer = completionData.content?.[question.id];
-                      const comment = completionData.commentsData?.[question.id];
-                      const photoUrl = completionData.photoLinks?.[question.id];
+                
+                {/* Check if content exists */}
+                {completionData.content && Object.keys(completionData.content).length > 0 ? (
+                  <div className="space-y-4">
+                    {Object.entries(completionData.content).map(([questionId, answer], index) => {
+                      // Try to find the question label from questions array if available
+                      let questionLabel = "Question";
+                      if (completionData.questions && Array.isArray(completionData.questions)) {
+                        const question = completionData.questions.find((q: any) => q.id === questionId);
+                        if (question && question.label) {
+                          questionLabel = question.label;
+                        }
+                      }
+                      
+                      // Get comment for this question if it exists
+                      const comment = completionData.commentsData && completionData.commentsData[questionId];
+                      
+                      // Get photo URL for this question if it exists
+                      const photoUrl = completionData.uploadedPhotos && completionData.uploadedPhotos[questionId]?.link;
                       
                       return (
-                        <div key={question.id || index} className="p-3 border rounded-md bg-muted/20">
-                          <p className="font-semibold">{index + 1}. {question.label}</p>
+                        <div key={questionId} className="p-4 border rounded-md bg-muted/20">
+                          <p className="font-semibold">{index + 1}. {questionLabel}</p>
                           
                           {/* Display Answer */}
                           <div className="mt-2">
                             <span className="text-sm font-medium text-muted-foreground">Answer: </span>
                             <span className="text-sm">
-                              {answer !== null && answer !== undefined && answer !== '' ? 
-                                (Array.isArray(answer) ? answer.join(', ') : String(answer)) 
-                                : <span className="italic text-muted-foreground/70">No answer provided</span>
+                              {hasValidAnswer(answer) ? formatAnswer(answer) : 
+                                <span className="italic text-muted-foreground/70">No answer provided</span>
                               }
                             </span>
                           </div>
@@ -153,19 +190,69 @@ export default function CompletionDetailsPage() {
                           {photoUrl && (
                             <div className="mt-2">
                                 <p className="text-xs font-semibold text-muted-foreground">Attached Photo</p>
-                                <a href={photoUrl} target="_blank" rel="noopener noreferrer">
-                                    <img src={photoUrl} alt={`Photo for ${question.label}`} className="max-w-xs mt-1 rounded-md shadow-md" />
+                                <a href={photoUrl} target="_blank" rel="noopener noreferrer" className="block mt-1">
+                                    <Image 
+                                      src={photoUrl} 
+                                      alt={`Photo for ${questionLabel}`} 
+                                      width={300} 
+                                      height={200} 
+                                      className="max-w-xs rounded-md shadow-md object-cover"
+                                    />
                                 </a>
                             </div>
                           )}
                         </div>
                       );
-                    })
-                  ) : (
-                    <p className="text-muted-foreground">No questions were found for this assignment.</p>
-                  )}
-                </div>
+                    })}
+                  </div>
+                ) : (
+                  <Alert>
+                    <HelpCircle className="h-4 w-4" />
+                    <AlertTitle>No Content Found</AlertTitle>
+                    <AlertDescription>
+                      This completion record doesn't contain any question responses.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
+              
+              {/* Additional Sections for Photos, Comments, etc. */}
+              {completionData.uploadedPhotos && Object.keys(completionData.uploadedPhotos).length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">All Uploaded Photos</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {Object.entries(completionData.uploadedPhotos).map(([questionId, photoData]: [string, any]) => {
+                      if (!photoData.link) return null;
+                      
+                      // Try to find question label
+                      let questionLabel = "Unknown Question";
+                      if (completionData.questions && Array.isArray(completionData.questions)) {
+                        const question = completionData.questions.find((q: any) => q.id === questionId);
+                        if (question && question.label) {
+                          questionLabel = question.label;
+                        }
+                      }
+                      
+                      return (
+                        <Card key={questionId} className="overflow-hidden">
+                          <div className="relative h-48">
+                            <Image 
+                              src={photoData.link} 
+                              alt={`Photo for ${questionLabel}`}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                          <CardContent className="p-3">
+                            <p className="text-xs font-medium truncate">{questionLabel}</p>
+                            <p className="text-xs text-muted-foreground">{photoData.date || 'No date'}</p>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

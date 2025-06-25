@@ -45,7 +45,10 @@ import {
   Bell,
   ShieldAlert,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Umbrella,
+  Sunrise,
+  Sunset
 } from "lucide-react";
 import { formatDisplayDateShort } from "@/lib/utils";
 import Link from "next/link";
@@ -61,10 +64,21 @@ interface CompletionItem {
     submittedTimeServer?: any;
     locationName?: string;
     status?: string;
+    content?: Record<string, any>;
     [key: string]: any;
   };
   parentAssignmentId?: string;
   assignmentId?: string; // Some API responses might include this at the top level
+}
+
+// Weather forecast interface
+interface WeatherForecast {
+  date: string;
+  day: string;
+  temp: number;
+  condition: string;
+  icon: string;
+  precipitation: number;
 }
 
 export default function DashboardPage() {
@@ -75,6 +89,7 @@ export default function DashboardPage() {
   const [weather, setWeather] = useState<WeatherLocationData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
+  const [forecast, setForecast] = useState<WeatherForecast[]>([]);
 
   // Widget data state
   const [widgetData, setWidgetData] = useState<WidgetSandboxData | null>(null);
@@ -112,6 +127,44 @@ export default function DashboardPage() {
   const [assignmentMap, setAssignmentMap] = useState<Record<string, string>>({});
 
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
+
+  // Generate mock forecast data based on current weather
+  useEffect(() => {
+    if (weather && weather.current) {
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const today = new Date();
+      
+      // Generate 5-day forecast with some variation based on current weather
+      const mockForecast: WeatherForecast[] = [];
+      
+      for (let i = 1; i <= 5; i++) {
+        const forecastDate = new Date(today);
+        forecastDate.setDate(today.getDate() + i);
+        
+        // Create some variation in temperature (±5°F from current)
+        const variation = Math.floor(Math.random() * 10) - 5;
+        const baseTemp = weather.current?.temp || weather.main?.temp || 70;
+        
+        // Randomly select a condition
+        const conditions = ['Clear', 'Partly cloudy', 'Cloudy', 'Light rain', 'Sunny'];
+        const conditionIndex = Math.floor(Math.random() * conditions.length);
+        
+        mockForecast.push({
+          date: forecastDate.toLocaleDateString(),
+          day: days[forecastDate.getDay()],
+          temp: Math.round(baseTemp + variation),
+          condition: conditions[conditionIndex],
+          icon: conditionIndex === 0 ? 'sun' : 
+                conditionIndex === 1 ? 'cloud-sun' : 
+                conditionIndex === 2 ? 'cloud' : 
+                conditionIndex === 3 ? 'cloud-rain' : 'sun',
+          precipitation: conditionIndex === 3 ? Math.round(Math.random() * 50) : 0
+        });
+      }
+      
+      setForecast(mockForecast);
+    }
+  }, [weather]);
 
   // Fetch weather data based on user's location
   useEffect(() => {
@@ -245,11 +298,11 @@ export default function DashboardPage() {
     }
   }, [userProfile?.account, authLoading, profileLoading, selectedAssignment, selectedSchool, selectedPeriod]);
 
-  const getWeatherIcon = (weather: WeatherLocationData) => {
-    const condition = weather.current?.weather?.[0]?.description?.toLowerCase() || '';
-    if (condition.includes('rain')) return <CloudRain className="h-5 w-5" />;
-    if (condition.includes('cloud')) return <Cloud className="h-5 w-5" />;
-    if (condition.includes('snow')) return <Snowflake className="h-5 w-5" />;
+  const getWeatherIcon = (condition: string) => {
+    const lowerCondition = condition.toLowerCase();
+    if (lowerCondition.includes('rain')) return <CloudRain className="h-5 w-5" />;
+    if (lowerCondition.includes('cloud')) return <Cloud className="h-5 w-5" />;
+    if (lowerCondition.includes('snow')) return <Snowflake className="h-5 w-5" />;
     return <Sun className="h-5 w-5" />;
   };
 
@@ -370,43 +423,123 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Weather Widget */}
+      {/* Enhanced Weather Widget */}
       <Card className="overflow-hidden rounded-lg border shadow-md">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-sky-500 to-blue-600 text-white">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <MapPin className="h-4 w-4" />
-            Current Conditions
+            Weather Forecast
           </CardTitle>
-          {weather && getWeatherIcon(weather)}
+          {weather && getWeatherIcon(weather.current?.weather?.[0]?.description || '')}
         </CardHeader>
-        <CardContent className="p-4 bg-gradient-to-b from-sky-50 to-white dark:from-sky-900/30 dark:to-background">
-          {weatherLoading && <Skeleton className="h-6 w-32" />}
-          {weatherError && <p className="text-sm text-muted-foreground">{weatherError}</p>}
-          {weather && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1">
-                  <Thermometer className="h-4 w-4 text-rose-500" />
-                  <span className="text-2xl font-bold">
-                    {Math.round(weather.current?.temp || weather.main?.temp || 0)}°F
-                  </span>
+        <CardContent className="p-0">
+          {weatherLoading ? (
+            <div className="p-4">
+              <Skeleton className="h-6 w-32" />
+              <div className="flex gap-2 mt-2">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-24 w-full" />
+                ))}
+              </div>
+            </div>
+          ) : weatherError ? (
+            <div className="p-4">
+              <p className="text-sm text-muted-foreground">{weatherError}</p>
+            </div>
+          ) : weather ? (
+            <div>
+              {/* Current Weather */}
+              <div className="p-4 bg-gradient-to-b from-sky-50 to-white dark:from-sky-900/30 dark:to-background">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-3xl font-bold">
+                        {Math.round(weather.current?.temp || weather.main?.temp || 0)}°F
+                      </div>
+                      <div className="text-sm text-muted-foreground capitalize">
+                        {weather.current?.weather?.[0]?.description || 'Clear'}
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {weather.name || 'Current Location'}
+                    </p>
+                  </div>
+                  
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-1 text-sm">
+                      <Sunrise className="h-4 w-4 text-amber-500" />
+                      <span>
+                        {weather.current?.sunrise 
+                          ? new Date(weather.current.sunrise * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) 
+                          : '6:30 AM'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm">
+                      <Sunset className="h-4 w-4 text-orange-500" />
+                      <span>
+                        {weather.current?.sunset 
+                          ? new Date(weather.current.sunset * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) 
+                          : '7:45 PM'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Wind className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm text-muted-foreground">
-                    {Math.round(weather.current?.wind_speed || weather.wind?.speed || 0)} mph
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Droplets className="h-4 w-4 text-blue-400" />
-                  <span className="text-sm text-muted-foreground">
-                    {weather.current?.humidity || weather.main?.humidity || 0}%
-                  </span>
+                
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                  <div className="flex flex-col items-center p-2 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                    <Wind className="h-5 w-5 text-blue-500 mb-1" />
+                    <span className="text-sm font-medium">
+                      {Math.round(weather.current?.wind_speed || weather.wind?.speed || 0)} mph
+                    </span>
+                    <span className="text-xs text-muted-foreground">Wind</span>
+                  </div>
+                  
+                  <div className="flex flex-col items-center p-2 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                    <Droplets className="h-5 w-5 text-blue-400 mb-1" />
+                    <span className="text-sm font-medium">
+                      {weather.current?.humidity || weather.main?.humidity || 0}%
+                    </span>
+                    <span className="text-xs text-muted-foreground">Humidity</span>
+                  </div>
+                  
+                  <div className="flex flex-col items-center p-2 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                    <Umbrella className="h-5 w-5 text-purple-500 mb-1" />
+                    <span className="text-sm font-medium">
+                      {weather.current?.uvi || 0}
+                    </span>
+                    <span className="text-xs text-muted-foreground">UV Index</span>
+                  </div>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                {weather.name} • {weather.current?.weather?.[0]?.description || 'Clear'}
-              </p>
+              
+              {/* 5-Day Forecast */}
+              <div className="grid grid-cols-5 divide-x border-t">
+                {forecast.map((day, index) => (
+                  <div key={index} className="p-3 text-center">
+                    <p className="text-xs font-medium">{day.day}</p>
+                    <div className="my-2">
+                      {day.condition.toLowerCase().includes('rain') ? (
+                        <CloudRain className="h-6 w-6 mx-auto text-blue-500" />
+                      ) : day.condition.toLowerCase().includes('cloud') ? (
+                        <Cloud className="h-6 w-6 mx-auto text-gray-500" />
+                      ) : day.condition.toLowerCase().includes('snow') ? (
+                        <Snowflake className="h-6 w-6 mx-auto text-blue-300" />
+                      ) : (
+                        <Sun className="h-6 w-6 mx-auto text-amber-500" />
+                      )}
+                    </div>
+                    <p className="text-sm font-bold">{day.temp}°F</p>
+                    <p className="text-xs text-muted-foreground">{day.condition}</p>
+                    {day.precipitation > 0 && (
+                      <p className="text-xs text-blue-500 mt-1">{day.precipitation}% rain</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="p-4">
+              <p className="text-sm text-muted-foreground">Weather data unavailable</p>
             </div>
           )}
         </CardContent>
