@@ -14,9 +14,12 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   getLastCompletions, 
   getWeatherAndLocation, 
-  type WeatherLocationData 
+  getAssignmentListMetadata,
+  type WeatherLocationData,
+  type AssignmentMetadata
 } from "@/services/assignmentFunctionsService";
 import { getDashboardWidgetsSandbox, getWidgetTrends } from "@/services/analysisService";
+import { getLocationsForLookup, type Location } from "@/services/locationService";
 import type { WidgetSandboxData, TrendsResponse } from "@/types/Analysis";
 import { 
   Activity, 
@@ -50,6 +53,7 @@ interface CompletionItem {
   id: string;
   data: {
     assignmentId?: string; // This might not be present
+    assessmentName?: string; // Add this to properly display assignment names
     completedBy: string;
     completionDate?: string;
     submittedTimeServer?: any;
@@ -89,6 +93,14 @@ export default function DashboardPage() {
   const [selectedAssignment, setSelectedAssignment] = useState<string>("all");
   const [selectedSchool, setSelectedSchool] = useState<string>("all");
   const [selectedPeriod, setSelectedPeriod] = useState<string>("last30days");
+  
+  // Assignments and locations for dropdowns
+  const [assignments, setAssignments] = useState<AssignmentMetadata[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
+  const [locationsError, setLocationsError] = useState<string | null>(null);
 
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
 
@@ -152,6 +164,40 @@ export default function DashboardPage() {
           setTrendsError("Could not load trends data");
         })
         .finally(() => setTrendsLoading(false));
+    }
+  }, [userProfile?.account, authLoading, profileLoading]);
+
+  // Fetch assignments for dropdown
+  useEffect(() => {
+    if (!authLoading && !profileLoading && userProfile?.account) {
+      setIsLoadingAssignments(true);
+      getAssignmentListMetadata()
+        .then(data => {
+          setAssignments(data);
+          setAssignmentsError(null);
+        })
+        .catch(err => {
+          console.error("Error fetching assignments:", err);
+          setAssignmentsError("Could not load assignments");
+        })
+        .finally(() => setIsLoadingAssignments(false));
+    }
+  }, [userProfile?.account, authLoading, profileLoading]);
+
+  // Fetch locations for dropdown
+  useEffect(() => {
+    if (!authLoading && !profileLoading && userProfile?.account) {
+      setIsLoadingLocations(true);
+      getLocationsForLookup(userProfile.account)
+        .then(data => {
+          setLocations(data);
+          setLocationsError(null);
+        })
+        .catch(err => {
+          console.error("Error fetching locations:", err);
+          setLocationsError("Could not load locations");
+        })
+        .finally(() => setIsLoadingLocations(false));
     }
   }, [userProfile?.account, authLoading, profileLoading]);
 
@@ -551,7 +597,19 @@ export default function DashboardPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Assignments</SelectItem>
-                {/* Add specific assignments here if needed */}
+                {isLoadingAssignments ? (
+                  <SelectItem value="loading" disabled>Loading assignments...</SelectItem>
+                ) : assignmentsError ? (
+                  <SelectItem value="error" disabled>Error loading assignments</SelectItem>
+                ) : assignments.length > 0 ? (
+                  assignments.map(assignment => (
+                    <SelectItem key={assignment.id} value={assignment.id}>
+                      {assignment.assessmentName || 'Unnamed Assignment'}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" disabled>No assignments found</SelectItem>
+                )}
               </SelectContent>
             </Select>
 
@@ -561,7 +619,19 @@ export default function DashboardPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Schools</SelectItem>
-                {/* Add specific schools here if needed */}
+                {isLoadingLocations ? (
+                  <SelectItem value="loading" disabled>Loading locations...</SelectItem>
+                ) : locationsError ? (
+                  <SelectItem value="error" disabled>Error loading locations</SelectItem>
+                ) : locations.length > 0 ? (
+                  locations.map(location => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.locationName}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="none" disabled>No locations found</SelectItem>
+                )}
               </SelectContent>
             </Select>
 
@@ -616,44 +686,57 @@ export default function DashboardPage() {
                 </div>
                 
                 {/* Table Rows */}
-                {lastCompletions.slice(0, 10).map((completion) => (
-                  <div key={completion.id} className="grid grid-cols-4 gap-4 p-3 border rounded hover:bg-muted/50 transition-colors">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">
-                        {completion.data.assessmentName || 'Unknown Assignment'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {completion.data.locationName || 'No location'}
-                      </p>
-                    </div>
-                    <div className="text-sm">
-                      {completion.data.completedBy || 'Unknown'}
-                    </div>
-                    <div className="text-sm">
-                      {completion.data.completionDate 
-                        ? formatDisplayDateShort(completion.data.completionDate)
-                        : completion.data.submittedTimeServer
-                        ? formatDisplayDateShort(completion.data.submittedTimeServer)
-                        : 'Invalid Date'
-                      }
-                    </div>
-                    <div className="text-right">
-                      {completion.parentAssignmentId && completion.parentAssignmentId !== 'unknown' ? (
-                        <Button asChild variant="outline" size="sm">
-                          <Link href={`/assignments/${completion.parentAssignmentId}/completions/${completion.id}`}>
+                {lastCompletions.slice(0, 10).map((completion) => {
+                  // Find the assignment name from either the completion data or the assignments list
+                  let assignmentName = completion.data.assessmentName;
+                  
+                  // If not in completion data, try to find it in the assignments list
+                  if (!assignmentName && completion.parentAssignmentId && assignments.length > 0) {
+                    const matchingAssignment = assignments.find(a => a.id === completion.parentAssignmentId);
+                    if (matchingAssignment) {
+                      assignmentName = matchingAssignment.assessmentName;
+                    }
+                  }
+                  
+                  return (
+                    <div key={completion.id} className="grid grid-cols-4 gap-4 p-3 border rounded hover:bg-muted/50 transition-colors">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">
+                          {assignmentName || 'Unknown Assignment'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {completion.data.locationName || 'No location'}
+                        </p>
+                      </div>
+                      <div className="text-sm">
+                        {completion.data.completedBy || 'Unknown'}
+                      </div>
+                      <div className="text-sm">
+                        {completion.data.completionDate 
+                          ? formatDisplayDateShort(completion.data.completionDate)
+                          : completion.data.submittedTimeServer
+                          ? formatDisplayDateShort(completion.data.submittedTimeServer)
+                          : 'Invalid Date'
+                        }
+                      </div>
+                      <div className="text-right">
+                        {completion.parentAssignmentId && completion.parentAssignmentId !== 'unknown' ? (
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={`/assignments/${completion.parentAssignmentId}/completions/${completion.id}`}>
+                              <Eye className="w-4 h-4 mr-1" />
+                              View
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" disabled>
                             <Eye className="w-4 h-4 mr-1" />
                             View
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button variant="outline" size="sm" disabled>
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
-                      )}
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
