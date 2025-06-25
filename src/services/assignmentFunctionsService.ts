@@ -1,4 +1,3 @@
-
 // src/services/assignmentFunctionsService.ts
 'use client';
 
@@ -550,17 +549,22 @@ export async function getLastCompletions(
     throw new Error("Account ID is required to fetch last completions.");
   }
 
-  // Use the correct endpoint that expects a POST request
-  const url = `${WIDGETS_BASE_URL}/getlastcompletions`;
+  // Build query parameters
+  const params = new URLSearchParams();
+  if (assignmentId) {
+    params.append('assignmentId', assignmentId);
+  }
+  if (selectedSchool) {
+    params.append('selectedSchool', selectedSchool);
+  }
+  params.append('timePeriod', period);
+
+  // Use GET request with query parameters instead of POST with body
+  const url = `${WIDGETS_BASE_URL}/completed-assignments?${params.toString()}`;
 
   try {
     const response = await authedFetch<{ status: string; data: any[] }>(url, {
-      method: 'POST',
-      body: JSON.stringify({ 
-        assignmentId: assignmentId, 
-        selectedSchool: selectedSchool,
-        timePeriod: period // Pass the period in the body as well
-      }),
+      method: 'GET',
     });
 
     // IMPORTANT: Access the .data property from the response object
@@ -613,7 +617,7 @@ export async function getAssignmentsByLocation(payload: ByLocationPayload, accou
 
 /**
  * 6. GET /header/:lat/:lng (This now uses WIDGETS_BASE_URL)
- * Returns current weather + reverse-geolocation for user’s location.
+ * Returns current weather + reverse-geolocation for user's location.
  */
 export async function getWeatherAndLocation(lat: number, lng: number): Promise<WeatherLocationData | null> {
     if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
