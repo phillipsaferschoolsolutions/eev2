@@ -102,6 +102,9 @@ export default function DashboardPage() {
   const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
+  // Create a mapping of assignment IDs to names for quick lookup
+  const [assignmentMap, setAssignmentMap] = useState<Record<string, string>>({});
+
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
 
   // Fetch weather data based on user's location
@@ -175,6 +178,16 @@ export default function DashboardPage() {
         .then(data => {
           console.log("Fetched assignments:", data);
           setAssignments(data);
+          
+          // Create a mapping of assignment IDs to names for quick lookup
+          const mapping: Record<string, string> = {};
+          data.forEach(assignment => {
+            if (assignment.id && assignment.assessmentName) {
+              mapping[assignment.id] = assignment.assessmentName;
+            }
+          });
+          setAssignmentMap(mapping);
+          
           setAssignmentsError(null);
         })
         .catch(err => {
@@ -259,6 +272,11 @@ export default function DashboardPage() {
     // First check if assessmentName is directly in the completion data
     if (completion.data.assessmentName) {
       return completion.data.assessmentName;
+    }
+    
+    // Next, check if we can find the name in our assignment map using parentAssignmentId
+    if (completion.parentAssignmentId && assignmentMap[completion.parentAssignmentId]) {
+      return assignmentMap[completion.parentAssignmentId];
     }
     
     // If not, try to find it in the assignments list using parentAssignmentId
