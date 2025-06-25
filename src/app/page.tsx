@@ -52,8 +52,8 @@ import Image from "next/image";
 interface CompletionItem {
   id: string;
   data: {
-    assignmentId?: string; // This might not be present
-    assessmentName?: string; // Add this to properly display assignment names
+    assignmentId?: string;
+    assessmentName?: string;
     completedBy: string;
     completionDate?: string;
     submittedTimeServer?: any;
@@ -61,7 +61,6 @@ interface CompletionItem {
     status?: string;
     [key: string]: any;
   };
-  // Add the assignment ID from the document path
   parentAssignmentId?: string;
 }
 
@@ -255,6 +254,25 @@ export default function DashboardPage() {
     return <Sun className="h-5 w-5" />;
   };
 
+  // Function to get assignment name from either completion data or assignments list
+  const getAssignmentName = (completion: CompletionItem): string => {
+    // First check if assessmentName is directly in the completion data
+    if (completion.data.assessmentName) {
+      return completion.data.assessmentName;
+    }
+    
+    // If not, try to find it in the assignments list using parentAssignmentId
+    if (completion.parentAssignmentId && assignments.length > 0) {
+      const matchingAssignment = assignments.find(a => a.id === completion.parentAssignmentId);
+      if (matchingAssignment && matchingAssignment.assessmentName) {
+        return matchingAssignment.assessmentName;
+      }
+    }
+    
+    // If still not found, return a default
+    return 'Unknown Assignment';
+  };
+
   if (authLoading || profileLoading || claimsLoading) {
     return (
       <div className="space-y-6">
@@ -295,10 +313,10 @@ export default function DashboardPage() {
       <div className="relative rounded-lg overflow-hidden bg-gradient-to-r from-primary/80 to-primary p-6 text-primary-foreground shadow-md">
         <div className="relative z-10">
           <h1 className="text-3xl font-bold tracking-tight">
-            Welcome back, {userProfile?.displayName || user.email}
+            Welcome to EagleEyED™
           </h1>
           <p className="text-primary-foreground/90 mt-2 max-w-2xl">
-            Your central hub for campus safety management. Here's what's happening with your safety management today.
+            Your central hub for campus safety management.
           </p>
           <div className="flex flex-wrap gap-4 mt-4">
             <Button asChild variant="secondary" size="lg" className="font-medium">
@@ -314,7 +332,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-primary/70 z-0"></div>
-        {/* Optional background image */}
+        {/* Background image */}
         <div className="absolute inset-0 z-[-1] opacity-20 mix-blend-overlay">
           <Image 
             src="https://images.pexels.com/photos/256490/pexels-photo-256490.jpeg" 
@@ -326,7 +344,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Weather Widget */}
-      <Card className="overflow-hidden border-none shadow-md">
+      <Card className="overflow-hidden rounded-lg border shadow-md">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-sky-500/90 to-blue-600/90 text-white">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <MapPin className="h-4 w-4" />
@@ -369,7 +387,7 @@ export default function DashboardPage() {
 
       {/* Trends Overview */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-none shadow-md bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
+        <Card className="rounded-lg border shadow-md bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">This Week</CardTitle>
             <Calendar className="h-4 w-4 text-blue-500" />
@@ -388,7 +406,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-md bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-background">
+        <Card className="rounded-lg border shadow-md bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/30 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">This Month</CardTitle>
             <TrendingUp className="h-4 w-4 text-emerald-500" />
@@ -407,7 +425,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-md bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-background">
+        <Card className="rounded-lg border shadow-md bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
             <Award className="h-4 w-4 text-amber-500" />
@@ -426,7 +444,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-md bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background">
+        <Card className="rounded-lg border shadow-md bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">This Year</CardTitle>
             <Target className="h-4 w-4 text-purple-500" />
@@ -449,8 +467,8 @@ export default function DashboardPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Activity Overview */}
         {isAdmin && widgetData?.accountCompletions && (
-          <Card className="lg:col-span-2 border-none shadow-md">
-            <CardHeader className="bg-gradient-to-r from-blue-500/90 to-indigo-600/90 text-white">
+          <Card className="lg:col-span-2 rounded-lg border shadow-md">
+            <CardHeader className="bg-gradient-to-r from-blue-500/90 to-indigo-600/90 text-white rounded-t-lg">
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
                 Account Activity Overview
@@ -503,8 +521,8 @@ export default function DashboardPage() {
 
         {/* User Activity (for non-admin users) */}
         {!isAdmin && widgetData?.userActivity && (
-          <Card className="lg:col-span-2 border-none shadow-md">
-            <CardHeader className="bg-gradient-to-r from-emerald-500/90 to-teal-600/90 text-white">
+          <Card className="lg:col-span-2 rounded-lg border shadow-md">
+            <CardHeader className="bg-gradient-to-r from-emerald-500/90 to-teal-600/90 text-white rounded-t-lg">
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 Your Recent Activity
@@ -559,7 +577,7 @@ export default function DashboardPage() {
         )}
 
         {/* Current Streak Card */}
-        <Card className="border-none shadow-md bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-background">
+        <Card className="rounded-lg border shadow-md bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-background">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Award className="h-5 w-5 text-amber-500" />
@@ -578,8 +596,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Last Completions Widget */}
-      <Card className="border-none shadow-md">
-        <CardHeader className="bg-gradient-to-r from-indigo-500/90 to-purple-600/90 text-white">
+      <Card className="rounded-lg border shadow-md">
+        <CardHeader className="bg-gradient-to-r from-indigo-500/90 to-purple-600/90 text-white rounded-t-lg">
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
             Last Completions
@@ -655,7 +673,7 @@ export default function DashboardPage() {
             {completionsLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 border rounded">
+                  <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="space-y-1">
                       <Skeleton className="h-4 w-48" />
                       <Skeleton className="h-3 w-32" />
@@ -686,57 +704,44 @@ export default function DashboardPage() {
                 </div>
                 
                 {/* Table Rows */}
-                {lastCompletions.slice(0, 10).map((completion) => {
-                  // Find the assignment name from either the completion data or the assignments list
-                  let assignmentName = completion.data.assessmentName;
-                  
-                  // If not in completion data, try to find it in the assignments list
-                  if (!assignmentName && completion.parentAssignmentId && assignments.length > 0) {
-                    const matchingAssignment = assignments.find(a => a.id === completion.parentAssignmentId);
-                    if (matchingAssignment) {
-                      assignmentName = matchingAssignment.assessmentName;
-                    }
-                  }
-                  
-                  return (
-                    <div key={completion.id} className="grid grid-cols-4 gap-4 p-3 border rounded hover:bg-muted/50 transition-colors">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">
-                          {assignmentName || 'Unknown Assignment'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {completion.data.locationName || 'No location'}
-                        </p>
-                      </div>
-                      <div className="text-sm">
-                        {completion.data.completedBy || 'Unknown'}
-                      </div>
-                      <div className="text-sm">
-                        {completion.data.completionDate 
-                          ? formatDisplayDateShort(completion.data.completionDate)
-                          : completion.data.submittedTimeServer
-                          ? formatDisplayDateShort(completion.data.submittedTimeServer)
-                          : 'Invalid Date'
-                        }
-                      </div>
-                      <div className="text-right">
-                        {completion.parentAssignmentId && completion.parentAssignmentId !== 'unknown' ? (
-                          <Button asChild variant="outline" size="sm">
-                            <Link href={`/assignments/${completion.parentAssignmentId}/completions/${completion.id}`}>
-                              <Eye className="w-4 h-4 mr-1" />
-                              View
-                            </Link>
-                          </Button>
-                        ) : (
-                          <Button variant="outline" size="sm" disabled>
+                {lastCompletions.slice(0, 10).map((completion) => (
+                  <div key={completion.id} className="grid grid-cols-4 gap-4 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">
+                        {getAssignmentName(completion)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {completion.data.locationName || 'No location'}
+                      </p>
+                    </div>
+                    <div className="text-sm">
+                      {completion.data.completedBy || 'Unknown'}
+                    </div>
+                    <div className="text-sm">
+                      {completion.data.completionDate 
+                        ? formatDisplayDateShort(completion.data.completionDate)
+                        : completion.data.submittedTimeServer
+                        ? formatDisplayDateShort(completion.data.submittedTimeServer)
+                        : 'Invalid Date'
+                      }
+                    </div>
+                    <div className="text-right">
+                      {completion.parentAssignmentId && completion.parentAssignmentId !== 'unknown' ? (
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/assignments/${completion.parentAssignmentId}/completions/${completion.id}`}>
                             <Eye className="w-4 h-4 mr-1" />
                             View
-                          </Button>
-                        )}
-                      </div>
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button variant="outline" size="sm" disabled>
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
+                      )}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -746,8 +751,8 @@ export default function DashboardPage() {
       {/* Bottom Row Cards */}
       <div className="grid gap-6 md:grid-cols-3">
         {/* Critical Tasks */}
-        <Card className="border-none shadow-md">
-          <CardHeader className="bg-gradient-to-r from-rose-500/90 to-red-600/90 text-white">
+        <Card className="rounded-lg border shadow-md">
+          <CardHeader className="bg-gradient-to-r from-rose-500/90 to-red-600/90 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" />
               Critical Tasks
@@ -768,8 +773,8 @@ export default function DashboardPage() {
         </Card>
 
         {/* Upcoming Events */}
-        <Card className="border-none shadow-md">
-          <CardHeader className="bg-gradient-to-r from-blue-500/90 to-sky-600/90 text-white">
+        <Card className="rounded-lg border shadow-md">
+          <CardHeader className="bg-gradient-to-r from-blue-500/90 to-sky-600/90 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
               Upcoming Events & Drills
@@ -795,8 +800,8 @@ export default function DashboardPage() {
         </Card>
 
         {/* Emergency Protocols */}
-        <Card className="border-none shadow-md">
-          <CardHeader className="bg-gradient-to-r from-amber-500/90 to-orange-600/90 text-white">
+        <Card className="rounded-lg border shadow-md">
+          <CardHeader className="bg-gradient-to-r from-amber-500/90 to-orange-600/90 text-white rounded-t-lg">
             <CardTitle className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5" />
               Emergency Protocols
