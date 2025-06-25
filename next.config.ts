@@ -1,4 +1,3 @@
-
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -31,6 +30,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Add this for static export
+  output: 'export',
+  distDir: 'out',
 };
 
 export default nextConfig;
