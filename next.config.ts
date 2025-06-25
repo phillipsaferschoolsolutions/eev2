@@ -3,10 +3,10 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   images: {
     unoptimized: true, // Set to true to disable the Image Optimization API
@@ -32,8 +32,8 @@ const nextConfig: NextConfig = {
     ],
   },
   // Add this for static export
-  output: 'export',
-  distDir: 'out',
+  //  output: 'export',
+  //  distDir: 'out',
 };
 
 export default nextConfig;
