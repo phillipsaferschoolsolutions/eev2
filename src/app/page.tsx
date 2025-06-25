@@ -287,6 +287,14 @@ export default function DashboardPage() {
       }
     }
     
+    // If we're filtering by a specific assignment, use that assignment's name
+    if (selectedAssignment !== "all" && assignments.length > 0) {
+      const selectedAssignmentObj = assignments.find(a => a.id === selectedAssignment);
+      if (selectedAssignmentObj && selectedAssignmentObj.assessmentName) {
+        return selectedAssignmentObj.assessmentName;
+      }
+    }
+    
     // If still not found, return a default
     return 'Unknown Assignment';
   };
@@ -725,11 +733,23 @@ export default function DashboardPage() {
                 
                 {/* Table Rows */}
                 {lastCompletions.slice(0, 10).map((completion) => {
-                  // Get the assignment name from either the completion data or the assignments list
-                  const assignmentName = getAssignmentName(completion);
+                  // For selected assignment, use the selected assignment's name
+                  let assignmentName = "Unknown Assignment";
                   
-                  // Determine the parent assignment ID for the View link
-                  const viewAssignmentId = completion.parentAssignmentId || completion.assignmentId || completion.data?.assignmentId;
+                  if (selectedAssignment !== "all") {
+                    // If a specific assignment is selected, use its name from the assignments list
+                    const selectedAssignmentObj = assignments.find(a => a.id === selectedAssignment);
+                    if (selectedAssignmentObj?.assessmentName) {
+                      assignmentName = selectedAssignmentObj.assessmentName;
+                    }
+                  } else {
+                    // Otherwise try to get the name from the completion data
+                    if (completion.data.assessmentName) {
+                      assignmentName = completion.data.assessmentName;
+                    } else if (completion.parentAssignmentId && assignmentMap[completion.parentAssignmentId]) {
+                      assignmentName = assignmentMap[completion.parentAssignmentId];
+                    }
+                  }
                   
                   return (
                     <div key={completion.id} className="grid grid-cols-4 gap-4 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
@@ -753,19 +773,13 @@ export default function DashboardPage() {
                         }
                       </div>
                       <div className="text-right">
-                        {viewAssignmentId && viewAssignmentId !== 'unknown' ? (
-                          <Button asChild variant="outline" size="sm">
-                            <Link href={`/assignments/${viewAssignmentId}/completions/${completion.id}`}>
-                              <Eye className="w-4 h-4 mr-1" />
-                              View
-                            </Link>
-                          </Button>
-                        ) : (
-                          <Button variant="outline" size="sm" disabled>
+                        {/* The View button should always be enabled since we have the completion ID */}
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/assignments/${selectedAssignment !== "all" ? selectedAssignment : (completion.parentAssignmentId || completion.assignmentId || "unknown")}/completions/${completion.id}`}>
                             <Eye className="w-4 h-4 mr-1" />
                             View
-                          </Button>
-                        )}
+                          </Link>
+                        </Button>
                       </div>
                     </div>
                   );
