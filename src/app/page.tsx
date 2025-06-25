@@ -232,29 +232,7 @@ export default function DashboardPage() {
       getLastCompletions(userProfile.account, assignmentFilter, schoolFilter, selectedPeriod)
         .then(data => {
           console.log("Fetched completions:", data);
-          
-          // Process the data to extract assignment ID from the document path
-          const processedData = (data || []).map((item: any) => {
-            // Try to get assignmentId from various possible locations
-            let parentAssignmentId = item.data?.assignmentId;
-            
-            if (!parentAssignmentId && item.assignmentId) {
-              parentAssignmentId = item.assignmentId;
-            }
-            
-            // If still no assignment ID, try to extract from path or use unknown
-            if (!parentAssignmentId) {
-              console.warn("No assignment ID found for completion:", item);
-              parentAssignmentId = "unknown";
-            }
-
-            return {
-              ...item,
-              parentAssignmentId
-            };
-          });
-          
-          setLastCompletions(processedData);
+          setLastCompletions(data);
           setCompletionsError(null);
           // Reset to first page when data changes
           setCurrentPage(1);
@@ -308,7 +286,7 @@ export default function DashboardPage() {
   };
 
   // Calculate pagination
-  const totalPages = Math.ceil(lastCompletions.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(lastCompletions.length / itemsPerPage));
   const paginatedCompletions = lastCompletions.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -754,23 +732,25 @@ export default function DashboardPage() {
                 
                 {/* Table Rows */}
                 {paginatedCompletions.map((completion) => {
-                  // For selected assignment, use the selected assignment's name
-                  let assignmentName = "Unknown Assignment";
+                  // Get assignment name using the parentAssignmentId from the updated API response
+                  let assignmentName = completion.data.assessmentName || "Unknown Assignment";
                   
-                  if (selectedAssignment !== "all") {
-                    // If a specific assignment is selected, use its name from the assignments list
-                    const selectedAssignmentObj = assignments.find(a => a.id === selectedAssignment);
-                    if (selectedAssignmentObj?.assessmentName) {
-                      assignmentName = selectedAssignmentObj.assessmentName;
-                    }
-                  } else {
-                    // Otherwise try to get the name from the completion data
-                    if (completion.data.assessmentName) {
-                      assignmentName = completion.data.assessmentName;
-                    } else if (completion.parentAssignmentId && assignmentMap[completion.parentAssignmentId]) {
+                  // If we have a parentAssignmentId from the API, use it to look up the name
+                  if (completion.parentAssignmentId) {
+                    // Check if we have this assignment in our map
+                    if (assignmentMap[completion.parentAssignmentId]) {
                       assignmentName = assignmentMap[completion.parentAssignmentId];
+                    } else {
+                      // Try to find it in the assignments list
+                      const matchingAssignment = assignments.find(a => a.id === completion.parentAssignmentId);
+                      if (matchingAssignment?.assessmentName) {
+                        assignmentName = matchingAssignment.assessmentName;
+                      }
                     }
                   }
+                  
+                  // Determine the parent assignment ID for the View link
+                  const parentId = completion.parentAssignmentId || "unknown";
                   
                   return (
                     <div key={completion.id} className="grid grid-cols-4 gap-4 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
@@ -794,9 +774,9 @@ export default function DashboardPage() {
                         }
                       </div>
                       <div className="text-right">
-                        {/* The View button should always be enabled since we have the completion ID */}
+                        {/* Always enable the View button and use parentAssignmentId for the link */}
                         <Button asChild variant="outline" size="sm">
-                          <Link href={`/assignments/${selectedAssignment !== "all" ? selectedAssignment : (completion.parentAssignmentId || completion.assignmentId || "unknown")}/completions/${completion.id}`}>
+                          <Link href={`/assignments/${parentId}/completions/${completion.id}`}>
                             <Eye className="w-4 h-4 mr-1" />
                             View
                           </Link>
