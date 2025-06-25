@@ -43,7 +43,9 @@ import {
   Award,
   ListChecks,
   Bell,
-  ShieldAlert
+  ShieldAlert,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { formatDisplayDateShort } from "@/lib/utils";
 import Link from "next/link";
@@ -93,6 +95,10 @@ export default function DashboardPage() {
   const [selectedAssignment, setSelectedAssignment] = useState<string>("all");
   const [selectedSchool, setSelectedSchool] = useState<string>("all");
   const [selectedPeriod, setSelectedPeriod] = useState<string>("last30days");
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
   
   // Assignments and locations for dropdowns
   const [assignments, setAssignments] = useState<AssignmentMetadata[]>([]);
@@ -250,6 +256,8 @@ export default function DashboardPage() {
           
           setLastCompletions(processedData);
           setCompletionsError(null);
+          // Reset to first page when data changes
+          setCurrentPage(1);
         })
         .catch(err => {
           console.error("Error fetching last completions:", err);
@@ -297,6 +305,19 @@ export default function DashboardPage() {
     
     // If still not found, return a default
     return 'Unknown Assignment';
+  };
+
+  // Calculate pagination
+  const totalPages = Math.ceil(lastCompletions.length / itemsPerPage);
+  const paginatedCompletions = lastCompletions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Handler for changing items per page
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
+    setCurrentPage(1); // Reset to first page when changing items per page
   };
 
   if (authLoading || profileLoading || claimsLoading) {
@@ -732,7 +753,7 @@ export default function DashboardPage() {
                 </div>
                 
                 {/* Table Rows */}
-                {lastCompletions.slice(0, 10).map((completion) => {
+                {paginatedCompletions.map((completion) => {
                   // For selected assignment, use the selected assignment's name
                   let assignmentName = "Unknown Assignment";
                   
@@ -784,6 +805,50 @@ export default function DashboardPage() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+            
+            {/* Pagination Controls */}
+            {lastCompletions.length > 0 && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <span>Rows per page</span>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={handleItemsPerPageChange}
+                  >
+                    <SelectTrigger className="w-[70px] h-8">
+                      <SelectValue placeholder={itemsPerPage} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[5, 10, 20, 50].map(size => (
+                        <SelectItem key={size} value={size.toString()}>{size}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages || 1}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             )}
           </div>
