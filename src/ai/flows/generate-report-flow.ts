@@ -101,10 +101,10 @@ Severity and Timeline Definitions
 - Long Term (120+ days): May require coordination with external resources
 
 Completion Data:
-{{{JSON.stringify(completionData)}}}
+{{completionData}}
 
 Assignment Data:
-{{{JSON.stringify(assignmentData)}}}
+{{assignmentData}}
 
 Account Name:
 {{{accountName}}}
