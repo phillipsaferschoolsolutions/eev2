@@ -149,43 +149,7 @@ export default function GenerateReportPage() {
   // Function to handle PDF export
   const handleExportPdf = async () => {
     try {
-      // Create a temporary div to hold the report content
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = reportHtml;
-      tempDiv.className = 'report-for-export';
-      document.body.appendChild(tempDiv);
-      
-      // Add some basic styling for the PDF
-      const style = document.createElement('style');
-      style.textContent = `
-        .report-for-export {
-          font-family: Arial, sans-serif;
-          color: #333;
-          line-height: 1.5;
-          max-width: 800px;
-          margin: 0 auto;
-        }
-        .report-for-export h1 { font-size: 24px; margin-bottom: 16px; }
-        .report-for-export h2 { font-size: 20px; margin-top: 24px; margin-bottom: 12px; }
-        .report-for-export h3 { font-size: 18px; margin-top: 20px; margin-bottom: 10px; }
-        .report-for-export h4 { font-size: 16px; margin-top: 16px; margin-bottom: 8px; }
-        .report-for-export p { margin-bottom: 12px; }
-        .report-for-export ul, .report-for-export ol { margin-bottom: 12px; padding-left: 24px; }
-        .report-for-export table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-        .report-for-export th, .report-for-export td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        .report-for-export th { background-color: #f2f2f2; }
-        .report-header { text-align: center; margin-bottom: 24px; }
-        .report-company { font-weight: bold; }
-        .report-footer { margin-top: 32px; text-align: center; font-size: 12px; color: #666; }
-      `;
-      document.head.appendChild(style);
-      
-      // Export to PDF
-      await exportToPdf(tempDiv.outerHTML, 'safety-assessment-report.pdf');
-      
-      // Clean up
-      document.body.removeChild(tempDiv);
-      document.head.removeChild(style);
+      await exportToPdf(reportHtml, 'safety-assessment-report.pdf');
     } catch (error) {
       console.error("Failed to export to PDF:", error);
       setReportError("Failed to export to PDF. Please try again.");

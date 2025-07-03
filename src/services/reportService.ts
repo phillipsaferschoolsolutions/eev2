@@ -74,7 +74,7 @@ export async function generateReportForCompletion(
 export async function exportToPdf(htmlContent: string, fileName: string = 'safety-assessment-report.pdf'): Promise<void> {
   try {
     const options = {
-      margin: [10, 10, 10, 10],
+      margin: [15, 15, 15, 15],
       filename: fileName,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
@@ -133,158 +133,380 @@ export async function exportToDocx(htmlContent: string, fileName: string = 'safe
  * @returns HTML string representation of the report.
  */
 export function reportToHtml(report: GenerateReportOutput): string {
-  // This function converts the structured report data to HTML
-  // You can customize this to match your desired report styling
+  // Extract metadata from the report or completion data if available
+  const assignmentName = report.title || "Safety Assessment Report";
+  const completedBy = ""; // This would need to be extracted from completionData
+  const completionDate = ""; // This would need to be extracted from completionData
   
+  // This function converts the structured report data to HTML with enhanced styling
   const html = `
-    <div class="report-container">
-      <div class="report-header">
-        <h1>${report.title}</h1>
-        <p class="report-company">Safer School Solutions, Inc.</p>
-      </div>
-      
-      <div class="report-section">
-        <h2>Executive Summary</h2>
-        <div>${report.executiveSummary}</div>
-      </div>
-      
-      <div class="report-section">
-        <h2>Detailed Assessment by Domain</h2>
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${assignmentName}</title>
+      <style>
+        /* Base Styles */
+        body {
+          font-family: 'Arial', 'Helvetica', sans-serif;
+          line-height: 1.6;
+          color: #333;
+          margin: 0;
+          padding: 0;
+          background-color: #fff;
+        }
         
-        <div class="domain-section">
-          <h3>People (Staff, Training, Supervision)</h3>
+        .report-container {
+          max-width: 1000px;
+          margin: 0 auto;
+          padding: 20px;
+          background-color: #fff;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Header Styles */
+        .report-header {
+          text-align: center;
+          margin-bottom: 30px;
+          padding-bottom: 20px;
+          border-bottom: 2px solid #3F51B5;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        
+        .logo-container {
+          margin-bottom: 15px;
+        }
+        
+        .logo-container img {
+          max-width: 200px;
+          height: auto;
+        }
+        
+        .report-title {
+          font-size: 28px;
+          font-weight: bold;
+          color: #3F51B5;
+          margin: 10px 0;
+        }
+        
+        .report-company {
+          font-size: 18px;
+          font-weight: bold;
+          color: #5C6BC0;
+          margin-bottom: 5px;
+        }
+        
+        .report-metadata {
+          background-color: #E8EAF6;
+          padding: 15px;
+          border-radius: 5px;
+          margin-top: 15px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+        
+        .report-metadata p {
+          margin: 5px 0;
+          font-size: 14px;
+        }
+        
+        /* Section Styles */
+        .report-section {
+          margin-bottom: 40px;
+        }
+        
+        .report-section h2 {
+          color: #3F51B5;
+          font-size: 24px;
+          border-bottom: 2px solid #E8EAF6;
+          padding-bottom: 10px;
+          margin-bottom: 20px;
+        }
+        
+        /* Domain Section Styles */
+        .domain-section {
+          margin-bottom: 30px;
+          background-color: #fafafa;
+          padding: 20px;
+          border-radius: 5px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .domain-section h3 {
+          color: #5C6BC0;
+          font-size: 20px;
+          margin-bottom: 15px;
+          border-left: 4px solid #5C6BC0;
+          padding-left: 10px;
+        }
+        
+        .domain-section h4 {
+          font-weight: bold;
+          font-size: 16px;
+          margin-top: 20px;
+          margin-bottom: 10px;
+          color: #3F51B5;
+        }
+        
+        /* Lists */
+        ul, ol {
+          margin-top: 10px;
+          margin-bottom: 20px;
+        }
+        
+        ul li, ol li {
+          margin-bottom: 8px;
+        }
+        
+        /* Tables */
+        .recommendations-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 15px;
+          font-size: 14px;
+        }
+        
+        .recommendations-table th,
+        .recommendations-table td {
+          border: 1px solid #ddd;
+          padding: 12px;
+          text-align: left;
+        }
+        
+        .recommendations-table th {
+          background-color: #E8EAF6;
+          color: #3F51B5;
+          font-weight: bold;
+        }
+        
+        .recommendations-table tr:nth-child(even) {
+          background-color: #f9f9f9;
+        }
+        
+        .recommendations-table tr:hover {
+          background-color: #f1f1f1;
+        }
+        
+        /* Severity indicators */
+        .severity-critical {
+          color: #d32f2f;
+          font-weight: bold;
+        }
+        
+        .severity-medium {
+          color: #f57c00;
+          font-weight: bold;
+        }
+        
+        .severity-low {
+          color: #388e3c;
+          font-weight: bold;
+        }
+        
+        /* Footer */
+        .report-footer {
+          margin-top: 40px;
+          text-align: center;
+          font-size: 12px;
+          color: #666;
+          padding-top: 20px;
+          border-top: 1px solid #E8EAF6;
+        }
+        
+        /* Print-specific styles */
+        @media print {
+          body {
+            font-size: 12pt;
+          }
           
-          <h4>Strengths</h4>
-          <ul>
-            ${report.domains.people.strengths.map(strength => `<li>${strength}</li>`).join('')}
-          </ul>
+          .report-container {
+            box-shadow: none;
+            padding: 0;
+          }
           
-          <h4>Areas for Improvement</h4>
-          <ul>
-            ${report.domains.people.improvements.map(improvement => `<li>${improvement}</li>`).join('')}
-          </ul>
+          .domain-section {
+            page-break-inside: avoid;
+            box-shadow: none;
+          }
           
-          <h4>Site-Specific Observations</h4>
-          <div>${report.domains.people.observations}</div>
+          .recommendations-table {
+            page-break-inside: avoid;
+          }
           
-          <h4>Recommendations</h4>
-          <table class="recommendations-table">
-            <thead>
-              <tr>
-                <th>Recommendation</th>
-                <th>Severity</th>
-                <th>Timeline</th>
-                <th>Reference</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${report.domains.people.recommendations.map(rec => `
-                <tr>
-                  <td>${rec.recommendation}</td>
-                  <td>${rec.severity}</td>
-                  <td>${rec.timeline}</td>
-                  <td>${rec.reference || ''}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+          .report-section {
+            page-break-after: always;
+          }
+          
+          .report-section:last-child {
+            page-break-after: avoid;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="report-container">
+        <div class="report-header">
+          <div class="logo-container">
+            <img src="/LogoTransV4.png" alt="EagleEyED Logo" />
+          </div>
+          <h1 class="report-title">${assignmentName}</h1>
+          <div class="report-company">Safer School Solutions, Inc.</div>
+          <div class="report-metadata">
+            <p><strong>Assignment:</strong> ${assignmentName}</p>
+            <p><strong>Completed By:</strong> ${completedBy || "Not specified"}</p>
+            <p><strong>Completion Date:</strong> ${completionDate || "Not specified"}</p>
+            <p><strong>Report Generated:</strong> ${new Date().toLocaleDateString()}</p>
+          </div>
         </div>
         
-        <div class="domain-section">
-          <h3>Process (Procedures, Protocols, Plans)</h3>
-          
-          <h4>Strengths</h4>
-          <ul>
-            ${report.domains.process.strengths.map(strength => `<li>${strength}</li>`).join('')}
-          </ul>
-          
-          <h4>Areas for Improvement</h4>
-          <ul>
-            ${report.domains.process.improvements.map(improvement => `<li>${improvement}</li>`).join('')}
-          </ul>
-          
-          <h4>Site-Specific Observations</h4>
-          <div>${report.domains.process.observations}</div>
-          
-          <h4>Recommendations</h4>
-          <table class="recommendations-table">
-            <thead>
-              <tr>
-                <th>Recommendation</th>
-                <th>Severity</th>
-                <th>Timeline</th>
-                <th>Reference</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${report.domains.process.recommendations.map(rec => `
-                <tr>
-                  <td>${rec.recommendation}</td>
-                  <td>${rec.severity}</td>
-                  <td>${rec.timeline}</td>
-                  <td>${rec.reference || ''}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+        <div class="report-section">
+          <h2>Executive Summary</h2>
+          <div>${report.executiveSummary}</div>
         </div>
         
-        <div class="domain-section">
-          <h3>Technology & Infrastructure (Physical Security, Equipment)</h3>
+        <div class="report-section">
+          <h2>Detailed Assessment by Domain</h2>
           
-          <h4>Strengths</h4>
-          <ul>
-            ${report.domains.technology.strengths.map(strength => `<li>${strength}</li>`).join('')}
-          </ul>
-          
-          <h4>Areas for Improvement</h4>
-          <ul>
-            ${report.domains.technology.improvements.map(improvement => `<li>${improvement}</li>`).join('')}
-          </ul>
-          
-          <h4>Site-Specific Observations</h4>
-          <div>${report.domains.technology.observations}</div>
-          
-          <h4>Recommendations</h4>
-          <table class="recommendations-table">
-            <thead>
-              <tr>
-                <th>Recommendation</th>
-                <th>Severity</th>
-                <th>Timeline</th>
-                <th>Reference</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${report.domains.technology.recommendations.map(rec => `
+          <div class="domain-section">
+            <h3>People (Staff, Training, Supervision)</h3>
+            
+            <h4>Strengths</h4>
+            <ul>
+              ${report.domains.people.strengths.map(strength => `<li>${strength}</li>`).join('')}
+            </ul>
+            
+            <h4>Areas for Improvement</h4>
+            <ul>
+              ${report.domains.people.improvements.map(improvement => `<li>${improvement}</li>`).join('')}
+            </ul>
+            
+            <h4>Site-Specific Observations</h4>
+            <div>${report.domains.people.observations}</div>
+            
+            <h4>Recommendations</h4>
+            <table class="recommendations-table">
+              <thead>
                 <tr>
-                  <td>${rec.recommendation}</td>
-                  <td>${rec.severity}</td>
-                  <td>${rec.timeline}</td>
-                  <td>${rec.reference || ''}</td>
+                  <th>Recommendation</th>
+                  <th>Severity</th>
+                  <th>Timeline</th>
+                  <th>Reference</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${report.domains.people.recommendations.map(rec => `
+                  <tr>
+                    <td>${rec.recommendation}</td>
+                    <td class="severity-${rec.severity.toLowerCase()}">${rec.severity}</td>
+                    <td>${rec.timeline}</td>
+                    <td>${rec.reference || ''}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="domain-section">
+            <h3>Process (Procedures, Protocols, Plans)</h3>
+            
+            <h4>Strengths</h4>
+            <ul>
+              ${report.domains.process.strengths.map(strength => `<li>${strength}</li>`).join('')}
+            </ul>
+            
+            <h4>Areas for Improvement</h4>
+            <ul>
+              ${report.domains.process.improvements.map(improvement => `<li>${improvement}</li>`).join('')}
+            </ul>
+            
+            <h4>Site-Specific Observations</h4>
+            <div>${report.domains.process.observations}</div>
+            
+            <h4>Recommendations</h4>
+            <table class="recommendations-table">
+              <thead>
+                <tr>
+                  <th>Recommendation</th>
+                  <th>Severity</th>
+                  <th>Timeline</th>
+                  <th>Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${report.domains.process.recommendations.map(rec => `
+                  <tr>
+                    <td>${rec.recommendation}</td>
+                    <td class="severity-${rec.severity.toLowerCase()}">${rec.severity}</td>
+                    <td>${rec.timeline}</td>
+                    <td>${rec.reference || ''}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="domain-section">
+            <h3>Technology & Infrastructure (Physical Security, Equipment)</h3>
+            
+            <h4>Strengths</h4>
+            <ul>
+              ${report.domains.technology.strengths.map(strength => `<li>${strength}</li>`).join('')}
+            </ul>
+            
+            <h4>Areas for Improvement</h4>
+            <ul>
+              ${report.domains.technology.improvements.map(improvement => `<li>${improvement}</li>`).join('')}
+            </ul>
+            
+            <h4>Site-Specific Observations</h4>
+            <div>${report.domains.technology.observations}</div>
+            
+            <h4>Recommendations</h4>
+            <table class="recommendations-table">
+              <thead>
+                <tr>
+                  <th>Recommendation</th>
+                  <th>Severity</th>
+                  <th>Timeline</th>
+                  <th>Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${report.domains.technology.recommendations.map(rec => `
+                  <tr>
+                    <td>${rec.recommendation}</td>
+                    <td class="severity-${rec.severity.toLowerCase()}">${rec.severity}</td>
+                    <td>${rec.timeline}</td>
+                    <td>${rec.reference || ''}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="report-section">
+          <h2>Next Steps for Site Leadership</h2>
+          <ol>
+            ${report.nextSteps.map(step => `<li>${step}</li>`).join('')}
+          </ol>
+        </div>
+        
+        <div class="report-section">
+          <h2>Appendices</h2>
+          <div>${report.appendices}</div>
+        </div>
+        
+        <div class="report-footer">
+          <p>© ${new Date().getFullYear()} Safer School Solutions, Inc. All rights reserved.</p>
+          <p>Generated by EagleEyED™ Safety Assessment Platform</p>
         </div>
       </div>
-      
-      <div class="report-section">
-        <h2>Next Steps for Site Leadership</h2>
-        <ol>
-          ${report.nextSteps.map(step => `<li>${step}</li>`).join('')}
-        </ol>
-      </div>
-      
-      <div class="report-section">
-        <h2>Appendices</h2>
-        <div>${report.appendices}</div>
-      </div>
-      
-      <div class="report-footer">
-        <p>© ${new Date().getFullYear()} Safer School Solutions, Inc. All rights reserved.</p>
-      </div>
-    </div>
+    </body>
+    </html>
   `;
   
   return html;
