@@ -242,7 +242,7 @@ export default function ReportStudioPage() {
                   <TableRow key={report.id}>
                     <TableCell className="font-medium">{report.reportName}</TableCell>
                     <TableCell>{formatDate(report.createdAt)}</TableCell>
-                    <TableCell>{report.assignmentName || "Unknown Assignment"}</TableCell>
+                    <TableCell>{report.assignmentId || "Unknown Assignment"}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" asChild>
