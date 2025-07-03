@@ -240,7 +240,7 @@ export default function ReportStudioPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Report Name</TableHead>
-                  <TableHead>Created At</TableHead>
+                  <TableHead>Created Date</TableHead>
                   <TableHead>Assignment</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
