@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from "@/context/auth-context";
 import {
   Tabs,
   TabsContent,
@@ -10,11 +11,67 @@ import {
 } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, FilePlus, FileEdit, FileSearch } from "lucide-react";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { getSavedReports } from "@/services/reportService";
+import { FileText, FilePlus, FileEdit, FileSearch, AlertTriangle, Eye, Download, Loader2 } from "lucide-react";
+import Link from "next/link";
+
+// Define admin roles that can access this page
+const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
 
 export default function ReportStudioPage() {
   const [activeTab, setActiveTab] = useState("reportViewer");
   const router = useRouter();
+  const { user, userProfile, loading: authLoading } = useAuth();
+  
+  const [savedReports, setSavedReports] = useState<any[]>([]);
+  const [isLoadingReports, setIsLoadingReports] = useState(true);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+  
+  // Check if user has admin permissions
+  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.permission);
+  
+  // Fetch saved reports when the component mounts
+  useEffect(() => {
+    if (!authLoading && userProfile?.account) {
+      fetchSavedReports();
+    }
+  }, [userProfile?.account, authLoading]);
+  
+  // Function to fetch saved reports
+  const fetchSavedReports = async () => {
+    if (!userProfile?.account) return;
+    
+    setIsLoadingReports(true);
+    setReportsError(null);
+    
+    try {
+      const reports = await getSavedReports(userProfile.account);
+      setSavedReports(reports);
+    } catch (error) {
+      console.error("Failed to fetch saved reports:", error);
+      setReportsError("Failed to load saved reports. Please try again.");
+    } finally {
+      setIsLoadingReports(false);
+    }
+  };
+  
+  // If the user is not an admin, show access denied
+  if (!authLoading && !isAdmin) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Access Denied</AlertTitle>
+          <AlertDescription>
+            You do not have the necessary permissions to access the Report Studio.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-10">
@@ -84,8 +141,8 @@ export default function ReportStudioPage() {
             </p>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" className="w-full" disabled>
-              Coming Soon
+            <Button variant="outline" className="w-full" onClick={() => setActiveTab("reportViewer")}>
+              View Reports
             </Button>
           </CardFooter>
         </Card>
@@ -99,16 +156,62 @@ export default function ReportStudioPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12">
-            <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No Reports Yet</h3>
-            <p className="text-muted-foreground max-w-md mx-auto mb-6">
-              Generate your first report by selecting an assessment completion and using our AI-powered report generator.
-            </p>
-            <Button onClick={() => router.push('/report-studio/generate')}>
-              Generate Your First Report
-            </Button>
-          </div>
+          {isLoadingReports ? (
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : reportsError ? (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error Loading Reports</AlertTitle>
+              <AlertDescription>{reportsError}</AlertDescription>
+            </Alert>
+          ) : savedReports.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Report Name</TableHead>
+                  <TableHead>Created Date</TableHead>
+                  <TableHead>Assignment</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {savedReports.map((report) => (
+                  <TableRow key={report.id}>
+                    <TableCell className="font-medium">{report.reportName}</TableCell>
+                    <TableCell>{new Date(report.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>{report.assignmentName || "Unknown Assignment"}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/report-studio/view/${report.id}`}>
+                            <Eye className="mr-1 h-4 w-4" /> View
+                          </Link>
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <Download className="mr-1 h-4 w-4" /> Download
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-12">
+              <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-xl font-semibold mb-2">No Reports Yet</h3>
+              <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                Generate your first report by selecting an assessment completion and using our AI-powered report generator.
+              </p>
+              <Button onClick={() => router.push('/report-studio/generate')}>
+                Generate Your First Report
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -21,6 +21,58 @@ async function getIdToken(): Promise<string | null> {
   return null;
 }
 
+// --- Generic Fetch Wrapper ---
+async function authedFetch<T>(
+  fullUrl: string,
+  options: RequestInit = {},
+  accountName?: string
+): Promise<T> {
+  const token = await getIdToken();
+  const headers = new Headers(options.headers || {});
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  } else {
+    console.warn(`[CRITICAL] authedFetch (reportService): No Authorization token available for endpoint: ${fullUrl}.`);
+  }
+
+  // Set account header if provided
+  if (accountName) {
+    headers.set('account', accountName);
+  } else {
+    // Try to get from localStorage as fallback
+    const storedAccount = localStorage.getItem('accountName');
+    if (storedAccount) {
+      headers.set('account', storedAccount);
+    } else {
+      console.warn(`[CRITICAL] authedFetch (reportService): 'account' header not found for URL: ${fullUrl}.`);
+    }
+  }
+
+  if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const response = await fetch(fullUrl, { ...options, headers });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    console.error(`API Error ${response.status} for ${fullUrl}:`, errorData);
+    throw new Error(`API Error: ${response.status} ${errorData || response.statusText}`);
+  }
+
+  if (response.status === 204) {
+    return undefined as any as T;
+  }
+  
+  const textResponse = await response.text();
+  try {
+    return JSON.parse(textResponse);
+  } catch (e) {
+    return textResponse as any as T; // Fallback for non-JSON responses
+  }
+}
+
 /**
  * Generates a report for a specific completion using AI.
  * @param assignmentId The ID of the assignment.
@@ -125,6 +177,83 @@ export async function exportToDocx(htmlContent: string, fileName: string = 'safe
     console.error("Error exporting to DOCX:", error);
     throw new Error(`Failed to export to DOCX: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+/**
+ * Saves a generated report to Firestore via the backend.
+ * @param reportName The name of the report.
+ * @param htmlContent The HTML content of the report.
+ * @param assignmentId The ID of the assignment the report is based on.
+ * @param completionId The ID of the completion the report is based on.
+ * @param accountName The account ID.
+ * @returns A promise that resolves with the saved report's ID.
+ */
+export async function saveReport(
+  reportName: string,
+  htmlContent: string,
+  assignmentId: string,
+  completionId: string,
+  accountName: string
+): Promise<{ id: string; message: string }> {
+  if (!reportName || !htmlContent || !assignmentId || !completionId || !accountName) {
+    throw new Error("All report details (name, content, assignmentId, completionId, accountName) are required to save a report.");
+  }
+
+  const payload = {
+    reportName,
+    htmlContent,
+    assignmentId,
+    completionId,
+  };
+
+  // Use the reportstudio Firebase function endpoint
+  const REPORT_STUDIO_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/reportstudio';
+
+  const result = await authedFetch<{ id: string; message: string }>(`${REPORT_STUDIO_BASE_URL}/savereport`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }, accountName);
+
+  return result;
+}
+
+/**
+ * Fetches saved reports for the current account.
+ * @param accountName The account ID.
+ * @returns A promise that resolves with an array of saved report metadata.
+ */
+export async function getSavedReports(accountName: string): Promise<any[]> {
+  if (!accountName) {
+    throw new Error("Account name is required to fetch saved reports.");
+  }
+
+  const REPORT_STUDIO_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/reportstudio';
+  
+  const result = await authedFetch<any[]>(`${REPORT_STUDIO_BASE_URL}/reports`, {
+    method: 'GET',
+  }, accountName);
+
+  return result || [];
+}
+
+/**
+ * Fetches a specific saved report by ID.
+ * @param reportId The ID of the report to fetch.
+ * @param accountName The account ID.
+ * @returns A promise that resolves with the report data.
+ */
+export async function getReportById(reportId: string, accountName: string): Promise<any> {
+  if (!reportId || !accountName) {
+    throw new Error("Report ID and account name are required to fetch a report.");
+  }
+
+  const REPORT_STUDIO_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/reportstudio';
+  
+  const result = await authedFetch<any>(`${REPORT_STUDIO_BASE_URL}/reports/${reportId}`, {
+    method: 'GET',
+  }, accountName);
+
+  return result;
 }
 
 /**

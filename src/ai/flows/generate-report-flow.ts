@@ -31,6 +31,7 @@ const DomainSection = z.object({
 
 const GenerateReportOutputSchema = z.object({
   title: z.string().describe('The title of the report.'),
+  reportName: z.string().describe('A concise, descriptive name for the report, suitable for a file name or list entry.'), // New field
   executiveSummary: z.string().describe('A concise summary of key findings.'),
   domains: z.object({
     people: DomainSection.describe('Staff, training, supervision aspects.'),
@@ -109,7 +110,8 @@ Assignment Data:
 Account Name:
 {{{accountName}}}
 
-Please generate a comprehensive safety assessment report following the framework above. The report should be structured, professional, and provide actionable insights. Remember to maintain a coaching and encouraging tone throughout the report.`,
+Please generate a comprehensive safety assessment report following the framework above. The report should be structured, professional, and provide actionable insights. Remember to maintain a coaching and encouraging tone throughout the report.
+Also, provide a concise, descriptive name for the report in the 'reportName' field, suitable for a file name or list entry.`,
 });
 
 const generateReportFlow = ai.defineFlow(

@@ -11,8 +11,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { getAssignmentListMetadata, getLastCompletions, type AssignmentMetadata } from "@/services/assignmentFunctionsService";
-import { generateReportForCompletion, reportToHtml, exportToPdf, exportToDocx } from "@/services/reportService";
-import { ArrowLeft, FileText, Download, Loader2, FilePlus, AlertTriangle, FileDown, FileType2, Shield } from "lucide-react";
+import { generateReportForCompletion, reportToHtml, exportToPdf, exportToDocx, saveReport } from "@/services/reportService";
+import { ArrowLeft, FileText, Download, Loader2, FilePlus, AlertTriangle, FileDown, FileType2, Shield, Save } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 // Define the type for completion items
 interface CompletionItem {
@@ -33,6 +34,7 @@ const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
 export default function GenerateReportPage() {
   const router = useRouter();
   const { user, userProfile, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   
   // State for assignments and completions
   const [assignments, setAssignments] = useState<AssignmentMetadata[]>([]);
@@ -44,6 +46,7 @@ export default function GenerateReportPage() {
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(true);
   const [isLoadingCompletions, setIsLoadingCompletions] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [isSavingReport, setIsSavingReport] = useState(false);
   
   // State for errors
   const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
@@ -52,7 +55,9 @@ export default function GenerateReportPage() {
   
   // State for the report
   const [reportHtml, setReportHtml] = useState<string>("");
+  const [reportName, setReportName] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("select");
+  const [savedReportId, setSavedReportId] = useState<string | null>(null);
   
   // Check if user has admin permissions
   const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.permission);
@@ -124,6 +129,7 @@ export default function GenerateReportPage() {
     
     setIsGeneratingReport(true);
     setReportError(null);
+    setSavedReportId(null); // Reset saved status on new generation
     
     try {
       const report = await generateReportForCompletion(
@@ -135,6 +141,7 @@ export default function GenerateReportPage() {
       // Convert the structured report data to HTML
       const html = reportToHtml(report);
       setReportHtml(html);
+      setReportName(report.reportName || report.title || "Untitled Report");
       
       // Switch to the editor tab
       setActiveTab("editor");
@@ -145,11 +152,37 @@ export default function GenerateReportPage() {
       setIsGeneratingReport(false);
     }
   };
+
+  // Function to save the report
+  const handleSaveReport = async () => {
+    if (!reportName || !reportHtml || !selectedAssignmentId || !selectedCompletionId || !userProfile?.account) {
+      toast({ variant: "destructive", title: "Save Failed", description: "Missing report data to save." });
+      return;
+    }
+
+    setIsSavingReport(true);
+    try {
+      const result = await saveReport(
+        reportName,
+        reportHtml,
+        selectedAssignmentId,
+        selectedCompletionId,
+        userProfile.account
+      );
+      setSavedReportId(result.id);
+      toast({ title: "Report Saved", description: `Report "${reportName}" saved successfully!` });
+    } catch (error) {
+      console.error("Error saving report:", error);
+      toast({ variant: "destructive", title: "Save Failed", description: (error as Error).message || "An unknown error occurred while saving the report." });
+    } finally {
+      setIsSavingReport(false);
+    }
+  };
   
   // Function to handle PDF export
   const handleExportPdf = async () => {
     try {
-      await exportToPdf(reportHtml, 'safety-assessment-report.pdf');
+      await exportToPdf(reportHtml, `${reportName.replace(/\s/g, '_')}.pdf`);
     } catch (error) {
       console.error("Failed to export to PDF:", error);
       setReportError("Failed to export to PDF. Please try again.");
@@ -159,7 +192,7 @@ export default function GenerateReportPage() {
   // Function to handle DOCX export
   const handleExportDocx = async () => {
     try {
-      await exportToDocx(reportHtml, 'safety-assessment-report.docx');
+      await exportToDocx(reportHtml, `${reportName.replace(/\s/g, '_')}.docx`);
     } catch (error) {
       console.error("Failed to export to DOCX:", error);
       setReportError("Failed to export to DOCX. Please try again.");
@@ -324,7 +357,7 @@ export default function GenerateReportPage() {
         <TabsContent value="editor" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Edit Report</CardTitle>
+              <CardTitle>Edit Report: {reportName}</CardTitle>
               <CardDescription>
                 Review and customize the AI-generated report before exporting.
               </CardDescription>
@@ -342,6 +375,27 @@ export default function GenerateReportPage() {
                 Back to Selection
               </Button>
               <div className="flex gap-2">
+                <Button 
+                  onClick={handleSaveReport} 
+                  disabled={isSavingReport || savedReportId !== null}
+                >
+                  {isSavingReport ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : savedReportId ? (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Saved!
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Report
+                    </>
+                  )}
+                </Button>
                 <Button variant="outline" onClick={handleExportDocx}>
                   <FileType2 className="mr-2 h-4 w-4" />
                   Export to DOCX
