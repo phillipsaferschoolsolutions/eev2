@@ -122,6 +122,16 @@ export default function ReportStudioPage() {
     );
   }
 
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch (e) {
+      return "Invalid Date";
+    }
+  };
+
   return (
     <div className="container mx-auto py-10">
       <h1 className="text-3xl font-bold mb-6">Report Studio</h1>
@@ -222,7 +232,7 @@ export default function ReportStudioPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Report Name</TableHead>
-                  <TableHead>Created Date</TableHead>
+                  <TableHead>Created At</TableHead>
                   <TableHead>Assignment</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -231,7 +241,7 @@ export default function ReportStudioPage() {
                 {savedReports.map((report) => (
                   <TableRow key={report.id}>
                     <TableCell className="font-medium">{report.reportName}</TableCell>
-                    <TableCell>{new Date(report.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatDate(report.createdAt)}</TableCell>
                     <TableCell>{report.assignmentName || "Unknown Assignment"}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
