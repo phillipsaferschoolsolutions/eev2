@@ -138,7 +138,7 @@ export default function ViewReportPage() {
           <CardHeader>
             <CardTitle>{report.reportName}</CardTitle>
             <CardDescription>
-              Created on {new Date(report.createdAt).toLocaleDateString()} for assignment: {report.assignmentName || "Unknown Assignment"}
+              Created on {formatDate(report.createdAt)} for assignment: {report.assignmentName || "Unknown Assignment"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -166,4 +166,30 @@ export default function ViewReportPage() {
       )}
     </div>
   );
+  
+  // Format date for display
+  function formatDate(timestamp: any) {
+    if (!timestamp) return "N/A";
+    
+    try {
+      // Handle Firestore timestamp objects
+      if (timestamp && typeof timestamp === 'object' && 'seconds' in timestamp) {
+        return new Date(timestamp.seconds * 1000).toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+      
+      // Handle ISO strings or other date formats
+      return new Date(timestamp).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (e) {
+      console.error("Error formatting date:", e, timestamp);
+      return "Invalid Date";
+    }
+  }
 }

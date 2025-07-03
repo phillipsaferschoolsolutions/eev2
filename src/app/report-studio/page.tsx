@@ -107,6 +107,32 @@ export default function ReportStudioPage() {
     }
   };
   
+  // Format date for display
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return "N/A";
+    
+    try {
+      // Handle Firestore timestamp objects
+      if (timestamp && typeof timestamp === 'object' && 'seconds' in timestamp) {
+        return new Date(timestamp.seconds * 1000).toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+      
+      // Handle ISO strings or other date formats
+      return new Date(timestamp).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (e) {
+      console.error("Error formatting date:", e, timestamp);
+      return "Invalid Date";
+    }
+  };
+
   // If the user is not an admin, show access denied
   if (!authLoading && !isAdmin) {
     return (
@@ -121,24 +147,6 @@ export default function ReportStudioPage() {
       </div>
     );
   }
-
-  // Format date for display
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return "N/A";
-    
-    // Handle Firestore timestamp objects
-    if (timestamp && typeof timestamp === 'object' && timestamp.seconds) {
-      return new Date(timestamp.seconds * 1000).toLocaleDateString();
-    }
-    
-    // Handle ISO strings or other date formats
-    try {
-      return new Date(timestamp).toLocaleDateString();
-    } catch (e) {
-      console.error("Error formatting date:", e, timestamp);
-      return "Invalid Date";
-    }
-  };
 
   return (
     <div className="container mx-auto py-10">
