@@ -179,7 +179,7 @@ const ASSIGNMENTS_V2_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions
 const WIDGETS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/widgets'; // Use this for weather
 
 // --- Helper to get ID Token ---
-async function getIdToken(): Promise<string> {
+export async function getIdToken(): Promise<string> {
     return new Promise((resolve, reject) => {
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
             unsubscribe(); // Unsubscribe to avoid memory leaks

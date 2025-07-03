@@ -7,19 +7,8 @@ import { getCompletionDetails, getAssignmentById } from '@/services/assignmentFu
 import { generateReport, type GenerateReportInput, type GenerateReportOutput } from '@/ai/flows/generate-report-flow';
 import html2pdf from 'html2pdf.js';
 
-// --- Helper to get ID Token ---
-async function getIdToken(): Promise<string | null> {
-  const currentUser: User | null = auth.currentUser;
-  if (currentUser) {
-    try {
-      return await currentUser.getIdToken(true); // Force refresh
-    } catch (error) {
-      console.error("Error getting ID token:", error);
-      return null;
-    }
-  }
-  return null;
-}
+// Import the robust getIdToken function from assignmentFunctionsService
+import { getIdToken as getIdTokenRobust } from '@/services/assignmentFunctionsService';
 
 // --- Generic Fetch Wrapper ---
 async function authedFetch<T>(
@@ -27,7 +16,7 @@ async function authedFetch<T>(
   options: RequestInit = {},
   accountName?: string
 ): Promise<T> {
-  const token = await getIdToken();
+  const token = await getIdTokenRobust(); // Use the robust getIdToken function
   const headers = new Headers(options.headers || {});
 
   if (token) {
