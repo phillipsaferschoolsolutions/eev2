@@ -17,12 +17,12 @@ export const baseNavItems = [
   { href: "/", label: "Dashboard", icon: "LayoutDashboard" },
   { href: "/map", label: "Campus Map", icon: "Map" },
   { href: "/assessment-forms", label: "Assignments", icon: "ClipboardList" },
-  { href: "/drill-tracking", label: "Drill Tracking", icon: "Zap" }, // Added new item
+  { href: "/drill-tracking", label: "Drill Tracking", icon: "Zap" },
   { href: "/resources", label: "Resources", icon: "FolderKanban" },
   { href: "/photo-analysis", label: "Photo Analysis", icon: "Camera" },
   { href: "/policy-analysis", label: "Policy Analysis", icon: "FileCheck2" },
-  { href: "/reports", label: "Report Studio", icon: "FilePieChart" },
-  { href: "/delaware-report", label: "Delaware Report", icon: "FileText" }, // Added Delaware Report link
+  { href: "/report-studio", label: "Report Studio", icon: "FilePieChart" },
+  { href: "/delaware-report", label: "Delaware Report", icon: "FileText" },
   { href: "/messaging", label: "Messaging", icon: "MessageSquare" },
   { href: "/theming", label: "Theming", icon: "Palette" },
 ];
