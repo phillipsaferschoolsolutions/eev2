@@ -1,17 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-// Dynamically import ReactQuill to avoid SSR issues
-const ReactQuill = dynamic(() => import('react-quill'), {
-  ssr: false,
-  loading: () => <Skeleton className="h-64 w-full" />,
-});
-
-// Import Quill CSS
+// Import CSS for styling
 import 'react-quill/dist/quill.snow.css';
 
 export interface RichTextEditorProps {
@@ -31,10 +24,18 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   // State to track if component is mounted (for SSR compatibility)
   const [mounted, setMounted] = useState(false);
+  const [QuillComponent, setQuillComponent] = useState<any>(null);
 
-  // Set mounted to true on client-side
+  // Set mounted to true on client-side and dynamically import ReactQuill
   useEffect(() => {
     setMounted(true);
+    
+    // Dynamically import ReactQuill only on the client side
+    import('react-quill').then((module) => {
+      setQuillComponent(() => module.default);
+    }).catch(err => {
+      console.error('Failed to load ReactQuill:', err);
+    });
   }, []);
 
   // Define Quill modules/formats
@@ -63,14 +64,14 @@ export function RichTextEditor({
     'table',
   ];
 
-  // If not mounted yet (SSR), return skeleton
-  if (!mounted) {
+  // If not mounted yet (SSR) or QuillComponent not loaded, return skeleton
+  if (!mounted || !QuillComponent) {
     return <Skeleton className="h-64 w-full" />;
   }
 
   return (
     <div className={cn("rich-text-editor-container", className)}>
-      <ReactQuill
+      <QuillComponent
         theme="snow"
         value={value}
         onChange={onChange}
