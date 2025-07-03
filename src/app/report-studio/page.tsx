@@ -123,11 +123,19 @@ export default function ReportStudioPage() {
   }
 
   // Format date for display
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "N/A";
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return "N/A";
+    
+    // Handle Firestore timestamp objects
+    if (timestamp && typeof timestamp === 'object' && timestamp.seconds) {
+      return new Date(timestamp.seconds * 1000).toLocaleDateString();
+    }
+    
+    // Handle ISO strings or other date formats
     try {
-      return new Date(dateString).toLocaleDateString();
+      return new Date(timestamp).toLocaleDateString();
     } catch (e) {
+      console.error("Error formatting date:", e, timestamp);
       return "Invalid Date";
     }
   };
