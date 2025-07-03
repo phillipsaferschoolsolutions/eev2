@@ -115,7 +115,7 @@ export default function ReportStudioPage() {
     try {
       // Handle Firestore timestamp objects
       if (timestamp && typeof timestamp === 'object' && 'seconds' in timestamp) {
-        return new Date(timestamp.seconds * 1000).toLocaleDateString(undefined, {
+        return new Date(timestamp._seconds * 1000).toLocaleDateString(undefined, {
           year: 'numeric',
           month: 'long',
           day: 'numeric'
