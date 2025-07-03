@@ -15,7 +15,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getSavedReports, deleteReport } from "@/services/reportService";
-import { FileText, FilePlus, FileEdit, FileSearch, AlertTriangle, Eye, Download, Loader2, Trash2 } from "lucide-react";
+import { FileText, FilePlus, FileEdit, Lightbulb, AlertTriangle, Eye, Download, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -204,15 +204,15 @@ export default function ReportStudioPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileEdit className="h-5 w-5 text-primary" />
-              Edit Reports
+              Report Templates
             </CardTitle>
             <CardDescription>
-              Modify existing reports
+              Manage report templates and layouts
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Edit previously generated reports with our WYSIWYG editor. Add custom content, format text, and more.
+              Create and manage templates for different types of reports. Define sections, styling, and content structure.
             </p>
           </CardContent>
           <CardFooter>
@@ -225,21 +225,21 @@ export default function ReportStudioPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FileSearch className="h-5 w-5 text-primary" />
-              View Reports
+              <Lightbulb className="h-5 w-5 text-primary" />
+              AI Prompt Customization
             </CardTitle>
             <CardDescription>
-              Browse and download reports
+              Customize AI report generation
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              View all generated reports. Download in PDF or DOCX format for sharing with stakeholders.
+              Customize the AI prompts used for report generation. Tailor the AI's focus, tone, and analysis approach.
             </p>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" className="w-full" onClick={() => setActiveTab("reportViewer")}>
-              View Reports
+            <Button onClick={() => router.push('/report-studio/prompt-settings')} className="w-full">
+              Customize AI Prompts
             </Button>
           </CardFooter>
         </Card>

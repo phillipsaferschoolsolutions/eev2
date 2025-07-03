@@ -10,6 +10,17 @@ import html2pdf from 'html2pdf.js';
 // Import the robust getIdToken function from assignmentFunctionsService
 import { getIdToken as getIdTokenRobust } from '@/services/assignmentFunctionsService';
 
+// Define types for prompt settings
+export interface PromptSettings {
+  customPrompt: string;
+  promptMode: 'replace' | 'extend';
+}
+
+export interface GenerateReportOptions {
+  customPrompt?: string;
+  promptMode?: string;
+}
+
 // --- Generic Fetch Wrapper ---
 async function authedFetch<T>(
   fullUrl: string,
@@ -67,12 +78,14 @@ async function authedFetch<T>(
  * @param assignmentId The ID of the assignment.
  * @param completionId The ID of the completion.
  * @param accountName The account name.
+ * @param options Optional settings for report generation including custom prompt.
  * @returns The generated report content.
  */
 export async function generateReportForCompletion(
   assignmentId: string,
   completionId: string,
-  accountName: string
+  accountName: string,
+  options?: GenerateReportOptions
 ): Promise<GenerateReportOutput> {
   if (!assignmentId || !completionId || !accountName) {
     throw new Error("Assignment ID, Completion ID, and Account Name are all required.");
@@ -97,6 +110,12 @@ export async function generateReportForCompletion(
       assignmentData,
       accountName,
     };
+
+    // Add custom prompt options if provided
+    if (options?.customPrompt) {
+      input.customPrompt = options.customPrompt;
+      input.promptMode = options.promptMode as 'replace' | 'extend';
+    }
 
     // Call the AI flow to generate the report
     const report = await generateReport(input);
@@ -260,6 +279,51 @@ export async function deleteReport(reportId: string, accountName: string): Promi
   
   const result = await authedFetch<{ message: string }>(`${REPORT_STUDIO_BASE_URL}/reports/${reportId}`, {
     method: 'DELETE',
+  }, accountName);
+
+  return result;
+}
+
+/**
+ * Fetches the custom prompt settings for an account.
+ * @param accountName The account ID.
+ * @returns A promise that resolves with the prompt settings.
+ */
+export async function getPromptSettings(accountName: string): Promise<PromptSettings | null> {
+  if (!accountName) {
+    throw new Error("Account name is required to fetch prompt settings.");
+  }
+
+  const REPORT_STUDIO_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/reportstudio';
+  
+  try {
+    const result = await authedFetch<PromptSettings>(`${REPORT_STUDIO_BASE_URL}/prompt-settings`, {
+      method: 'GET',
+    }, accountName);
+    
+    return result;
+  } catch (error) {
+    console.error("Error fetching prompt settings:", error);
+    return null;
+  }
+}
+
+/**
+ * Saves custom prompt settings for an account.
+ * @param accountName The account ID.
+ * @param settings The prompt settings to save.
+ * @returns A promise that resolves when the settings are successfully saved.
+ */
+export async function savePromptSettings(accountName: string, settings: PromptSettings): Promise<{ message: string }> {
+  if (!accountName) {
+    throw new Error("Account name is required to save prompt settings.");
+  }
+
+  const REPORT_STUDIO_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/reportstudio';
+  
+  const result = await authedFetch<{ message: string }>(`${REPORT_STUDIO_BASE_URL}/prompt-settings`, {
+    method: 'POST',
+    body: JSON.stringify(settings),
   }, accountName);
 
   return result;

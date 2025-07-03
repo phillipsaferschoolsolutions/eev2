@@ -14,6 +14,8 @@ const GenerateReportInputSchema = z.object({
   completionData: z.record(z.any()).describe('The full completion data including questions, answers, and metadata.'),
   assignmentData: z.record(z.any()).describe('The assignment data including questions and metadata.'),
   accountName: z.string().describe('The account name for the report.'),
+  customPrompt: z.string().optional().describe('Optional custom prompt to use for report generation.'),
+  promptMode: z.enum(['replace', 'extend']).optional().describe('How to use the custom prompt: replace or extend the default.'),
 });
 export type GenerateReportInput = z.infer<typeof GenerateReportInputSchema>;
 
@@ -53,7 +55,9 @@ const generateReportPrompt = ai.definePrompt({
   name: 'generateReportPrompt',
   input: { schema: GenerateReportInputSchema },
   output: { schema: GenerateReportOutputSchema },
-  prompt: `You are an expert school safety assessment analyst at Safer School Solutions, Inc. Your task is to generate a comprehensive safety assessment report based on the provided completion data from a school safety inspection.
+  prompt: (input) => {
+    // Default prompt
+    const defaultPrompt = `You are an expert school safety assessment analyst at Safer School Solutions, Inc. Your task is to generate a comprehensive safety assessment report based on the provided completion data from a school safety inspection.
 
 School Safety Assessment Report Framework
 Overview
@@ -111,7 +115,23 @@ Account Name:
 {{{accountName}}}
 
 Please generate a comprehensive safety assessment report following the framework above. The report should be structured, professional, and provide actionable insights. Remember to maintain a coaching and encouraging tone throughout the report.
-Also, provide a concise, descriptive name for the report in the 'reportName' field, suitable for a file name or list entry.`,
+Also, provide a concise, descriptive name for the report in the 'reportName' field, suitable for a file name or list entry.`;
+
+    // If there's a custom prompt and the mode is 'replace', use only the custom prompt
+    if (input.customPrompt && input.promptMode === 'replace') {
+      return input.customPrompt;
+    }
+    
+    // If there's a custom prompt and the mode is 'extend', combine the prompts
+    if (input.customPrompt && input.promptMode === 'extend') {
+      return `${input.customPrompt}
+
+${defaultPrompt}`;
+    }
+    
+    // Otherwise, use the default prompt
+    return defaultPrompt;
+  }
 });
 
 const generateReportFlow = ai.defineFlow(

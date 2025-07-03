@@ -11,9 +11,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { getAssignmentListMetadata, getLastCompletions, type AssignmentMetadata } from "@/services/assignmentFunctionsService";
-import { generateReportForCompletion, reportToHtml, exportToPdf, exportToDocx, saveReport } from "@/services/reportService";
-import { ArrowLeft, FileText, Download, Loader2, FilePlus, AlertTriangle, FileDown, FileType2, Shield, Save } from "lucide-react";
+import { generateReportForCompletion, reportToHtml, exportToPdf, exportToDocx, saveReport, getPromptSettings } from "@/services/reportService";
+import { ArrowLeft, FileText, Download, Loader2, FilePlus, AlertTriangle, FileDown, FileType2, Shield, Save, Lightbulb } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
 
 // Define the type for completion items
 interface CompletionItem {
@@ -59,6 +60,11 @@ export default function GenerateReportPage() {
   const [activeTab, setActiveTab] = useState<string>("select");
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
   
+  // State for AI prompt customization
+  const [useCustomPrompt, setUseCustomPrompt] = useState<boolean>(false);
+  const [promptSettings, setPromptSettings] = useState<{customPrompt: string, promptMode: string} | null>(null);
+  const [isLoadingPromptSettings, setIsLoadingPromptSettings] = useState(false);
+  
   // Check if user has admin permissions
   const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.permission);
   
@@ -66,6 +72,7 @@ export default function GenerateReportPage() {
   useEffect(() => {
     if (!authLoading && userProfile?.account) {
       fetchAssignments();
+      fetchPromptSettings();
     }
   }, [userProfile?.account, authLoading]);
   
@@ -120,6 +127,25 @@ export default function GenerateReportPage() {
     }
   };
   
+  // Function to fetch prompt settings
+  const fetchPromptSettings = async () => {
+    if (!userProfile?.account) return;
+    
+    setIsLoadingPromptSettings(true);
+    
+    try {
+      const settings = await getPromptSettings(userProfile.account);
+      if (settings) {
+        setPromptSettings(settings);
+      }
+    } catch (error) {
+      console.error("Failed to fetch prompt settings:", error);
+      // Don't set an error state here, as this is not critical for the main functionality
+    } finally {
+      setIsLoadingPromptSettings(false);
+    }
+  };
+  
   // Function to generate a report
   const handleGenerateReport = async () => {
     if (!selectedAssignmentId || !selectedCompletionId || !userProfile?.account) {
@@ -132,10 +158,17 @@ export default function GenerateReportPage() {
     setSavedReportId(null); // Reset saved status on new generation
     
     try {
+      // Determine if we should use custom prompt settings
+      const useCustomSettings = useCustomPrompt && promptSettings && promptSettings.customPrompt.trim() !== "";
+      
       const report = await generateReportForCompletion(
         selectedAssignmentId,
         selectedCompletionId,
-        userProfile.account
+        userProfile.account,
+        useCustomSettings ? {
+          customPrompt: promptSettings.customPrompt,
+          promptMode: promptSettings.promptMode
+        } : undefined
       );
       
       // Convert the structured report data to HTML
@@ -323,6 +356,61 @@ export default function GenerateReportPage() {
                   </Select>
                 )}
               </div>
+              
+              {/* AI Prompt Customization Toggle */}
+              {isAdmin && promptSettings && (
+                <div className="mt-6 p-4 border rounded-lg bg-muted/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Lightbulb className="h-5 w-5 text-amber-500" />
+                      <h3 className="font-medium">AI Prompt Customization</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch 
+                        id="useCustomPrompt" 
+                        checked={useCustomPrompt} 
+                        onCheckedChange={setUseCustomPrompt}
+                        disabled={!promptSettings || !promptSettings.customPrompt}
+                      />
+                      <Label htmlFor="useCustomPrompt">
+                        {useCustomPrompt ? "Using Custom Prompt" : "Using Default Prompt"}
+                      </Label>
+                    </div>
+                  </div>
+                  
+                  {isLoadingPromptSettings ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : promptSettings && promptSettings.customPrompt ? (
+                    <div className="text-sm text-muted-foreground">
+                      <p>
+                        {useCustomPrompt 
+                          ? `Using your custom AI instructions (${promptSettings.promptMode === "extend" ? "extending" : "replacing"} the default prompt).` 
+                          : "Custom prompt is available but not enabled. Toggle the switch to use it."}
+                      </p>
+                      <Button 
+                        variant="link" 
+                        size="sm" 
+                        className="p-0 h-auto text-xs"
+                        onClick={() => router.push('/report-studio/prompt-settings')}
+                      >
+                        View or edit your custom prompt
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      <p>No custom prompt has been set up yet.</p>
+                      <Button 
+                        variant="link" 
+                        size="sm" 
+                        className="p-0 h-auto text-xs"
+                        onClick={() => router.push('/report-studio/prompt-settings')}
+                      >
+                        Create a custom prompt
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
             <CardFooter>
               <Button 
