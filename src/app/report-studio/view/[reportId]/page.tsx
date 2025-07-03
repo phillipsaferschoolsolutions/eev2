@@ -169,20 +169,42 @@ export default function ViewReportPage() {
   
   // Format date for display
   function formatDate(timestamp: any) {
+    console.log("formatDate received:", timestamp, "Type:", typeof timestamp);
     if (!timestamp) return "N/A";
     
-    try {
-      // Handle Firestore timestamp objects
-      if (timestamp && typeof timestamp === 'object' && 'seconds' in timestamp) {
-        return new Date(timestamp.seconds * 1000).toLocaleDateString(undefined, {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
+    let dateValue;
+    if (timestamp && typeof timestamp === 'object') {
+      // Prioritize 'seconds' property if it exists (for direct Firestore Timestamp objects)
+      if ('seconds' in timestamp && typeof timestamp.seconds === 'number') {
+        dateValue = timestamp.seconds * 1000;
+      } 
+      // Fallback to '_seconds' property (for deserialized Timestamp objects)
+      else if ('_seconds' in timestamp && typeof timestamp._seconds === 'number') {
+        dateValue = timestamp._seconds * 1000;
       }
-      
-      // Handle ISO strings or other date formats
-      return new Date(timestamp).toLocaleDateString(undefined, {
+    }
+
+    if (dateValue !== undefined) {
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) { // Check if the date is valid
+        console.error("Invalid date created from timestamp value:", dateValue);
+        return "Invalid Date";
+      }
+      return date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+
+    // Fallback for ISO strings or other date formats that Date constructor can directly parse
+    try {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        console.error("Invalid date created from direct timestamp string/object:", timestamp);
+        return "Invalid Date";
+      }
+      return date.toLocaleDateString(undefined, {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
