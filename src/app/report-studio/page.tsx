@@ -109,6 +109,7 @@ export default function ReportStudioPage() {
   
   // Format date for display
   const formatDate = (timestamp: any) => {
+      console.log("formatDate received:", timestamp, "Type:", typeof timestamp); // Add this line
     if (!timestamp) return "N/A";
     
     try {
