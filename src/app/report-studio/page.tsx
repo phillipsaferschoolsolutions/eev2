@@ -14,9 +14,20 @@ import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { getSavedReports } from "@/services/reportService";
-import { FileText, FilePlus, FileEdit, FileSearch, AlertTriangle, Eye, Download, Loader2 } from "lucide-react";
+import { getSavedReports, deleteReport } from "@/services/reportService";
+import { FileText, FilePlus, FileEdit, FileSearch, AlertTriangle, Eye, Download, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Define admin roles that can access this page
 const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
@@ -25,10 +36,13 @@ export default function ReportStudioPage() {
   const [activeTab, setActiveTab] = useState("reportViewer");
   const router = useRouter();
   const { user, userProfile, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   
   const [savedReports, setSavedReports] = useState<any[]>([]);
   const [isLoadingReports, setIsLoadingReports] = useState(true);
   const [reportsError, setReportsError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [reportToDelete, setReportToDelete] = useState<string | null>(null);
   
   // Check if user has admin permissions
   const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.permission);
@@ -55,6 +69,41 @@ export default function ReportStudioPage() {
       setReportsError("Failed to load saved reports. Please try again.");
     } finally {
       setIsLoadingReports(false);
+    }
+  };
+
+  // Function to handle report deletion
+  const handleDeleteReport = async (reportId: string) => {
+    if (!userProfile?.account) {
+      toast({ 
+        variant: "destructive", 
+        title: "Error", 
+        description: "User account information is missing." 
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteReport(reportId, userProfile.account);
+      
+      // Update the local state to remove the deleted report
+      setSavedReports(prevReports => prevReports.filter(report => report.id !== reportId));
+      
+      toast({ 
+        title: "Report Deleted", 
+        description: "The report has been successfully deleted." 
+      });
+    } catch (error) {
+      console.error("Failed to delete report:", error);
+      toast({ 
+        variant: "destructive", 
+        title: "Delete Failed", 
+        description: error instanceof Error ? error.message : "An unknown error occurred." 
+      });
+    } finally {
+      setIsDeleting(false);
+      setReportToDelete(null); // Close the confirmation dialog
     }
   };
   
@@ -194,6 +243,20 @@ export default function ReportStudioPage() {
                         <Button variant="outline" size="sm">
                           <Download className="mr-1 h-4 w-4" /> Download
                         </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-destructive hover:bg-destructive/10"
+                          onClick={() => setReportToDelete(report.id)}
+                          disabled={isDeleting}
+                        >
+                          {isDeleting && reportToDelete === report.id ? (
+                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="mr-1 h-4 w-4" />
+                          )}
+                          Delete
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -214,6 +277,38 @@ export default function ReportStudioPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog for Report Deletion */}
+      <AlertDialog open={!!reportToDelete} onOpenChange={(open) => !open && setReportToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this report?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The report will be permanently deleted from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => reportToDelete && handleDeleteReport(reportToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Report
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

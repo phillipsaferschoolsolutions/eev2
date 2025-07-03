@@ -246,6 +246,26 @@ export async function getReportById(reportId: string, accountName: string): Prom
 }
 
 /**
+ * Deletes a specific saved report by ID.
+ * @param reportId The ID of the report to delete.
+ * @param accountName The account ID.
+ * @returns A promise that resolves when the report is successfully deleted.
+ */
+export async function deleteReport(reportId: string, accountName: string): Promise<{ message: string }> {
+  if (!reportId || !accountName) {
+    throw new Error("Report ID and account name are required to delete a report.");
+  }
+
+  const REPORT_STUDIO_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/reportstudio';
+  
+  const result = await authedFetch<{ message: string }>(`${REPORT_STUDIO_BASE_URL}/reports/${reportId}`, {
+    method: 'DELETE',
+  }, accountName);
+
+  return result;
+}
+
+/**
  * Converts the structured report data to HTML for display in the editor.
  * @param report The structured report data.
  * @returns HTML string representation of the report.
