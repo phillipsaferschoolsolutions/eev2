@@ -15,7 +15,7 @@ export function Logo(props: React.HTMLAttributes<HTMLDivElement>) {
     <div className="flex items-center gap-2" {...props}>
       <Eye className="h-7 w-7 text-sidebar-primary" />
       <span className="text-2xl font-bold tracking-tight text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-        <span className="bg-clip-text text-transparent bg-gradient-to-r from-sidebar-primary to-sidebar-primary/80 drop-shadow-sm">
+        <span className="bg-clip-text text-transparent bg-gradient-to-r from-sidebar-primary to-[hsl(var(--logo-accent-color))] drop-shadow-sm">
           {logoText}
         </span>
       </span>

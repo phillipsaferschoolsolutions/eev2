@@ -4,6 +4,9 @@
 
 @layer base {
   :root {
+    /* Logo Accent Color for Default Light Theme */
+    --logo-accent-color: 220 100% 50%;
+    
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
@@ -40,6 +43,9 @@
   }
 
   .dark {
+    /* Logo Accent Color for Default Dark Theme */
+    --logo-accent-color: 217 91% 60%;
+    
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
@@ -76,9 +82,12 @@
 
   /* Enhanced Themes - Light Variants */
   .theme-coastal-breeze {
+    /* Logo Accent Color */
+    --logo-accent-color: 220 100% 60%;
+    
     --background: 200 75% 95%;
     --foreground: 200 50% 10%;
-    --card: 0 0% 100%;
+    --card: 200 75% 100% / 0.7;
     --card-foreground: 200 50% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 200 50% 10%;
@@ -111,9 +120,12 @@
   }
 
   .theme-coastal-breeze-dark {
+    /* Logo Accent Color */
+    --logo-accent-color: 180 100% 60%;
+    
     --background: 200 50% 10%;
     --foreground: 200 20% 95%;
-    --card: 200 50% 12%;
+    --card: 200 50% 12% / 0.7;
     --card-foreground: 200 20% 95%;
     --popover: 200 50% 12%;
     --popover-foreground: 200 20% 95%;
@@ -146,9 +158,12 @@
   }
 
   .theme-urban-pulse {
+    /* Logo Accent Color */
+    --logo-accent-color: 330 100% 50%;
+    
     --background: 25 75% 95%;
     --foreground: 25 50% 10%;
-    --card: 0 0% 100%;
+    --card: 25 75% 100% / 0.7;
     --card-foreground: 25 50% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 25 50% 10%;
@@ -181,9 +196,12 @@
   }
 
   .theme-urban-pulse-dark {
+    /* Logo Accent Color */
+    --logo-accent-color: 330 100% 60%;
+    
     --background: 25 50% 10%;
     --foreground: 25 20% 95%;
-    --card: 25 50% 12%;
+    --card: 25 50% 12% / 0.7;
     --card-foreground: 25 20% 95%;
     --popover: 25 50% 12%;
     --popover-foreground: 25 20% 95%;
@@ -216,9 +234,12 @@
   }
 
   .theme-forest-whisper {
+    /* Logo Accent Color */
+    --logo-accent-color: 40 100% 60%;
+    
     --background: 120 75% 95%;
     --foreground: 120 50% 10%;
-    --card: 0 0% 100%;
+    --card: 120 75% 100% / 0.7;
     --card-foreground: 120 50% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 120 50% 10%;
@@ -251,9 +272,12 @@
   }
 
   .theme-forest-whisper-dark {
+    /* Logo Accent Color */
+    --logo-accent-color: 60 100% 60%;
+    
     --background: 120 50% 10%;
     --foreground: 120 20% 95%;
-    --card: 120 50% 12%;
+    --card: 120 50% 12% / 0.7;
     --card-foreground: 120 20% 95%;
     --popover: 120 50% 12%;
     --popover-foreground: 120 20% 95%;
@@ -286,9 +310,12 @@
   }
 
   .theme-desert-mirage {
+    /* Logo Accent Color */
+    --logo-accent-color: 200 100% 50%;
+    
     --background: 40 75% 95%;
     --foreground: 40 50% 10%;
-    --card: 0 0% 100%;
+    --card: 40 75% 100% / 0.7;
     --card-foreground: 40 50% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 40 50% 10%;
@@ -321,9 +348,12 @@
   }
 
   .theme-desert-mirage-dark {
+    /* Logo Accent Color */
+    --logo-accent-color: 200 100% 60%;
+    
     --background: 40 50% 10%;
     --foreground: 40 20% 95%;
-    --card: 40 50% 12%;
+    --card: 40 50% 12% / 0.7;
     --card-foreground: 40 20% 95%;
     --popover: 40 50% 12%;
     --popover-foreground: 40 20% 95%;
@@ -356,9 +386,12 @@
   }
 
   .theme-mountain-majesty {
+    /* Logo Accent Color */
+    --logo-accent-color: 120 100% 50%;
+    
     --background: 260 75% 95%;
     --foreground: 260 50% 10%;
-    --card: 0 0% 100%;
+    --card: 260 75% 100% / 0.7;
     --card-foreground: 260 50% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 260 50% 10%;
@@ -391,9 +424,12 @@
   }
 
   .theme-mountain-majesty-dark {
+    /* Logo Accent Color */
+    --logo-accent-color: 120 100% 60%;
+    
     --background: 260 50% 10%;
     --foreground: 260 20% 95%;
-    --card: 260 50% 12%;
+    --card: 260 50% 12% / 0.7;
     --card-foreground: 260 20% 95%;
     --popover: 260 50% 12%;
     --popover-foreground: 260 20% 95%;
@@ -426,9 +462,12 @@
   }
 
   .theme-tech-horizon {
+    /* Logo Accent Color */
+    --logo-accent-color: 330 100% 60%;
+    
     --background: 180 75% 95%;
     --foreground: 180 50% 10%;
-    --card: 0 0% 100%;
+    --card: 180 75% 100% / 0.7;
     --card-foreground: 180 50% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 180 50% 10%;
@@ -461,9 +500,12 @@
   }
 
   .theme-tech-horizon-dark {
+    /* Logo Accent Color */
+    --logo-accent-color: 330 100% 70%;
+    
     --background: 180 50% 10%;
     --foreground: 180 20% 95%;
-    --card: 180 50% 12%;
+    --card: 180 50% 12% / 0.7;
     --card-foreground: 180 20% 95%;
     --popover: 180 50% 12%;
     --popover-foreground: 180 20% 95%;
@@ -496,9 +538,12 @@
   }
 
   .theme-tropical-paradise {
+    /* Logo Accent Color */
+    --logo-accent-color: 300 100% 50%;
+    
     --background: 150 75% 95%;
     --foreground: 150 50% 10%;
-    --card: 0 0% 100%;
+    --card: 150 75% 100% / 0.7;
     --card-foreground: 150 50% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 150 50% 10%;
@@ -531,9 +576,12 @@
   }
 
   .theme-tropical-paradise-dark {
+    /* Logo Accent Color */
+    --logo-accent-color: 300 100% 60%;
+    
     --background: 150 50% 10%;
     --foreground: 150 20% 95%;
-    --card: 150 50% 12%;
+    --card: 150 50% 12% / 0.7;
     --card-foreground: 150 20% 95%;
     --popover: 150 50% 12%;
     --popover-foreground: 150 20% 95%;
@@ -566,9 +614,12 @@
   }
 
   .theme-aurora-borealis {
+    /* Logo Accent Color */
+    --logo-accent-color: 160 100% 50%;
+    
     --background: 280 75% 95%;
     --foreground: 280 50% 10%;
-    --card: 0 0% 100%;
+    --card: 280 75% 100% / 0.7;
     --card-foreground: 280 50% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 280 50% 10%;
@@ -601,9 +652,12 @@
   }
 
   .theme-aurora-borealis-dark {
+    /* Logo Accent Color */
+    --logo-accent-color: 160 100% 60%;
+    
     --background: 280 50% 10%;
     --foreground: 280 20% 95%;
-    --card: 280 50% 12%;
+    --card: 280 50% 12% / 0.7;
     --card-foreground: 280 20% 95%;
     --popover: 280 50% 12%;
     --popover-foreground: 280 20% 95%;
@@ -637,6 +691,9 @@
 
   /* Original Themes */
   .theme-nature-embrace {
+    /* Logo Accent Color */
+    --logo-accent-color: 0 100% 60%;
+    
     --background: 140 30% 15%;
     --foreground: 140 10% 95%;
     --card: 140 30% 18%;
@@ -667,6 +724,9 @@
   }
 
   .theme-guardian-shield {
+    /* Logo Accent Color */
+    --logo-accent-color: 30 100% 60%;
+    
     --background: 220 30% 15%;
     --foreground: 220 10% 95%;
     --card: 220 30% 18%;
@@ -697,6 +757,9 @@
   }
 
   .theme-tranquil-library {
+    /* Logo Accent Color */
+    --logo-accent-color: 200 100% 60%;
+    
     --background: 30 30% 15%;
     --foreground: 30 10% 95%;
     --card: 30 30% 18%;
@@ -727,6 +790,9 @@
   }
 
   .theme-innovation-hub {
+    /* Logo Accent Color */
+    --logo-accent-color: 30 100% 60%;
+    
     --background: 220 30% 15%;
     --foreground: 220 10% 95%;
     --card: 220 30% 18%;
@@ -757,6 +823,9 @@
   }
 
   .theme-campus-serenity {
+    /* Logo Accent Color */
+    --logo-accent-color: 0 100% 60%;
+    
     --background: 200 30% 15%;
     --foreground: 200 10% 95%;
     --card: 200 30% 18%;
@@ -787,6 +856,9 @@
   }
 
   .theme-fortress-stone {
+    /* Logo Accent Color */
+    --logo-accent-color: 60 100% 60%;
+    
     --background: 240 10% 15%;
     --foreground: 240 10% 95%;
     --card: 240 10% 18%;
@@ -817,6 +889,9 @@
   }
 
   .theme-digital-citadel {
+    /* Logo Accent Color */
+    --logo-accent-color: 30 100% 60%;
+    
     --background: 220 30% 15%;
     --foreground: 220 10% 95%;
     --card: 220 30% 18%;
@@ -848,6 +923,9 @@
 
   /* Additional themes from theming page */
   .corporate-blue {
+    /* Logo Accent Color */
+    --logo-accent-color: 0 100% 60%;
+    
     --background: 210 50% 98%;
     --foreground: 210 50% 10%;
     --card: 0 0% 100%;
@@ -878,6 +956,9 @@
   }
 
   .matrix {
+    /* Logo Accent Color */
+    --logo-accent-color: 330 100% 60%;
+    
     --background: 120 10% 5%;
     --foreground: 120 100% 50%;
     --card: 120 10% 8%;
@@ -908,6 +989,9 @@
   }
 
   .desert-light {
+    /* Logo Accent Color */
+    --logo-accent-color: 200 100% 50%;
+    
     --background: 35 50% 95%;
     --foreground: 35 50% 10%;
     --card: 0 0% 100%;
@@ -938,6 +1022,9 @@
   }
 
   .ocean-deep {
+    /* Logo Accent Color */
+    --logo-accent-color: 30 100% 60%;
+    
     --background: 200 50% 10%;
     --foreground: 200 20% 95%;
     --card: 200 50% 12%;
@@ -968,6 +1055,9 @@
   }
 
   .spring-meadow {
+    /* Logo Accent Color */
+    --logo-accent-color: 330 100% 60%;
+    
     --background: 100 50% 95%;
     --foreground: 100 50% 10%;
     --card: 0 0% 100%;
@@ -998,6 +1088,9 @@
   }
 
   .slate-contrast {
+    /* Logo Accent Color */
+    --logo-accent-color: 30 100% 60%;
+    
     --background: 220 20% 15%;
     --foreground: 220 10% 95%;
     --card: 220 20% 18%;
@@ -1028,6 +1121,9 @@
   }
 
   .high-contrast-dark {
+    /* Logo Accent Color */
+    --logo-accent-color: 120 100% 60%;
+    
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
     --card: 0 0% 5%;
@@ -1058,6 +1154,9 @@
   }
 
   .high-contrast-light {
+    /* Logo Accent Color */
+    --logo-accent-color: 220 100% 50%;
+    
     --background: 0 0% 100%;
     --foreground: 0 0% 0%;
     --card: 0 0% 95%;
@@ -1096,6 +1195,28 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* Glassmorphism effect for enhanced themes */
+.theme-coastal-breeze .rounded-lg.border.bg-card,
+.theme-coastal-breeze-dark .rounded-lg.border.bg-card,
+.theme-urban-pulse .rounded-lg.border.bg-card,
+.theme-urban-pulse-dark .rounded-lg.border.bg-card,
+.theme-forest-whisper .rounded-lg.border.bg-card,
+.theme-forest-whisper-dark .rounded-lg.border.bg-card,
+.theme-desert-mirage .rounded-lg.border.bg-card,
+.theme-desert-mirage-dark .rounded-lg.border.bg-card,
+.theme-mountain-majesty .rounded-lg.border.bg-card,
+.theme-mountain-majesty-dark .rounded-lg.border.bg-card,
+.theme-tech-horizon .rounded-lg.border.bg-card,
+.theme-tech-horizon-dark .rounded-lg.border.bg-card,
+.theme-tropical-paradise .rounded-lg.border.bg-card,
+.theme-tropical-paradise-dark .rounded-lg.border.bg-card,
+.theme-aurora-borealis .rounded-lg.border.bg-card,
+.theme-aurora-borealis-dark .rounded-lg.border.bg-card {
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 /* Theme-specific background images */

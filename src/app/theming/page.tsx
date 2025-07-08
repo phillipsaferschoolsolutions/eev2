@@ -12,29 +12,29 @@ const appThemes = [
   { id: "dark", name: "Default Dark", description: "For low-light conditions, reduces eye strain.", icon: Moon, isDark: true, gradient: "bg-gradient-to-br from-slate-800 to-slate-900" },
   
   // New enhanced themes
-  { id: "theme-coastal-breeze", name: "Coastal Breeze", description: "Serene coastal landscapes with animated wave effects.", icon: Sailboat, isDark: false, gradient: "bg-gradient-to-br from-sky-300 to-blue-500", isEnhanced: true },
-  { id: "theme-coastal-breeze-dark", name: "Coastal Breeze Dark", description: "Moonlit shores with gentle animated waves.", icon: Sailboat, isDark: true, gradient: "bg-gradient-to-br from-blue-900 to-slate-900", isEnhanced: true },
+  { id: "theme-coastal-breeze", name: "Coastal Breeze", description: "Serene coastal landscapes with glassmorphic UI.", icon: Sailboat, isDark: false, gradient: "bg-gradient-to-br from-sky-300/70 to-blue-500/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-coastal-breeze-dark", name: "Coastal Breeze Dark", description: "Moonlit shores with frosted glass elements.", icon: Sailboat, isDark: true, gradient: "bg-gradient-to-br from-blue-900/70 to-slate-900/70 backdrop-blur-md", isEnhanced: true },
   
-  { id: "theme-urban-pulse", name: "Urban Pulse", description: "Dynamic cityscapes with animated light trails.", icon: Building, isDark: false, gradient: "bg-gradient-to-br from-orange-200 to-rose-300", isEnhanced: true },
-  { id: "theme-urban-pulse-dark", name: "Urban Pulse Dark", description: "Neon-lit city nights with animated elements.", icon: Building, isDark: true, gradient: "bg-gradient-to-br from-slate-900 to-purple-900", isEnhanced: true },
+  { id: "theme-urban-pulse", name: "Urban Pulse", description: "Dynamic cityscapes with glassmorphic UI elements.", icon: Building, isDark: false, gradient: "bg-gradient-to-br from-orange-200/70 to-rose-300/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-urban-pulse-dark", name: "Urban Pulse Dark", description: "Neon-lit city nights with frosted glass elements.", icon: Building, isDark: true, gradient: "bg-gradient-to-br from-slate-900/70 to-purple-900/70 backdrop-blur-md", isEnhanced: true },
   
-  { id: "theme-forest-whisper", name: "Forest Whisper", description: "Lush forest canopies with animated leaf effects.", icon: Trees, isDark: false, gradient: "bg-gradient-to-br from-green-200 to-emerald-300", isEnhanced: true },
-  { id: "theme-forest-whisper-dark", name: "Forest Whisper Dark", description: "Mystical night forests with animated fireflies.", icon: Trees, isDark: true, gradient: "bg-gradient-to-br from-green-900 to-emerald-800", isEnhanced: true },
+  { id: "theme-forest-whisper", name: "Forest Whisper", description: "Lush forest canopies with glassmorphic UI elements.", icon: Trees, isDark: false, gradient: "bg-gradient-to-br from-green-200/70 to-emerald-300/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-forest-whisper-dark", name: "Forest Whisper Dark", description: "Mystical night forests with frosted glass elements.", icon: Trees, isDark: true, gradient: "bg-gradient-to-br from-green-900/70 to-emerald-800/70 backdrop-blur-md", isEnhanced: true },
   
-  { id: "theme-desert-mirage", name: "Desert Mirage", description: "Warm desert landscapes with heat haze animations.", icon: Palmtree, isDark: false, gradient: "bg-gradient-to-br from-amber-200 to-yellow-400", isEnhanced: true },
-  { id: "theme-desert-mirage-dark", name: "Desert Mirage Dark", description: "Starlit desert nights with animated sand dunes.", icon: Palmtree, isDark: true, gradient: "bg-gradient-to-br from-amber-900 to-yellow-800", isEnhanced: true },
+  { id: "theme-desert-mirage", name: "Desert Mirage", description: "Warm desert landscapes with glassmorphic UI elements.", icon: Palmtree, isDark: false, gradient: "bg-gradient-to-br from-amber-200/70 to-yellow-400/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-desert-mirage-dark", name: "Desert Mirage Dark", description: "Starlit desert nights with frosted glass elements.", icon: Palmtree, isDark: true, gradient: "bg-gradient-to-br from-amber-900/70 to-yellow-800/70 backdrop-blur-md", isEnhanced: true },
   
-  { id: "theme-mountain-majesty", name: "Mountain Majesty", description: "Majestic peaks with animated cloud effects.", icon: Mountain, isDark: false, gradient: "bg-gradient-to-br from-indigo-200 to-purple-300", isEnhanced: true },
-  { id: "theme-mountain-majesty-dark", name: "Mountain Majesty Dark", description: "Alpine nights with animated northern lights.", icon: Mountain, isDark: true, gradient: "bg-gradient-to-br from-indigo-900 to-purple-800", isEnhanced: true },
+  { id: "theme-mountain-majesty", name: "Mountain Majesty", description: "Majestic peaks with glassmorphic UI elements.", icon: Mountain, isDark: false, gradient: "bg-gradient-to-br from-indigo-200/70 to-purple-300/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-mountain-majesty-dark", name: "Mountain Majesty Dark", description: "Alpine nights with frosted glass elements.", icon: Mountain, isDark: true, gradient: "bg-gradient-to-br from-indigo-900/70 to-purple-800/70 backdrop-blur-md", isEnhanced: true },
   
-  { id: "theme-tech-horizon", name: "Tech Horizon", description: "Futuristic interfaces with animated circuit patterns.", icon: CircuitBoard, isDark: false, gradient: "bg-gradient-to-br from-cyan-200 to-blue-300", isEnhanced: true },
-  { id: "theme-tech-horizon-dark", name: "Tech Horizon Dark", description: "Cyberpunk aesthetics with animated data flows.", icon: CircuitBoard, isDark: true, gradient: "bg-gradient-to-br from-cyan-900 to-blue-800", isEnhanced: true },
+  { id: "theme-tech-horizon", name: "Tech Horizon", description: "Futuristic interfaces with glassmorphic UI elements.", icon: CircuitBoard, isDark: false, gradient: "bg-gradient-to-br from-cyan-200/70 to-blue-300/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-tech-horizon-dark", name: "Tech Horizon Dark", description: "Cyberpunk aesthetics with frosted glass elements.", icon: CircuitBoard, isDark: true, gradient: "bg-gradient-to-br from-cyan-900/70 to-blue-800/70 backdrop-blur-md", isEnhanced: true },
   
-  { id: "theme-tropical-paradise", name: "Tropical Paradise", description: "Vibrant beaches with animated palm trees.", icon: Umbrella, isDark: false, gradient: "bg-gradient-to-br from-teal-200 to-lime-300", isEnhanced: true },
-  { id: "theme-tropical-paradise-dark", name: "Tropical Paradise Dark", description: "Tropical nights with animated ocean waves.", icon: Umbrella, isDark: true, gradient: "bg-gradient-to-br from-teal-900 to-lime-800", isEnhanced: true },
+  { id: "theme-tropical-paradise", name: "Tropical Paradise", description: "Vibrant beaches with glassmorphic UI elements.", icon: Umbrella, isDark: false, gradient: "bg-gradient-to-br from-teal-200/70 to-lime-300/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-tropical-paradise-dark", name: "Tropical Paradise Dark", description: "Tropical nights with frosted glass elements.", icon: Umbrella, isDark: true, gradient: "bg-gradient-to-br from-teal-900/70 to-lime-800/70 backdrop-blur-md", isEnhanced: true },
   
-  { id: "theme-aurora-borealis", name: "Aurora Borealis", description: "Northern lights with animated color waves.", icon: Lightbulb, isDark: false, gradient: "bg-gradient-to-br from-purple-200 to-pink-300", isEnhanced: true },
-  { id: "theme-aurora-borealis-dark", name: "Aurora Borealis Dark", description: "Polar nights with vibrant animated auroras.", icon: Lightbulb, isDark: true, gradient: "bg-gradient-to-br from-purple-900 to-pink-800", isEnhanced: true },
+  { id: "theme-aurora-borealis", name: "Aurora Borealis", description: "Northern lights with glassmorphic UI elements.", icon: Lightbulb, isDark: false, gradient: "bg-gradient-to-br from-purple-200/70 to-pink-300/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-aurora-borealis-dark", name: "Aurora Borealis Dark", description: "Polar nights with frosted glass elements.", icon: Lightbulb, isDark: true, gradient: "bg-gradient-to-br from-purple-900/70 to-pink-800/70 backdrop-blur-md", isEnhanced: true },
   
   { id: "theme-nature-embrace", name: "Nature's Embrace", description: "Dynamic nature background. Serene & organic.", icon: Trees, isDark: true, gradient: "bg-gradient-to-br from-green-500 to-emerald-700" },
   { id: "theme-guardian-shield", name: "Guardian Shield", description: "Metallic & blue hues. Sense of security.", icon: Shield, isDark: true, gradient: "bg-gradient-to-br from-slate-600 to-blue-700" },
@@ -320,14 +320,14 @@ export default function ThemingPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6, duration: 0.5 }}
       >
-        <Card>
+                  <CardTitle>Glassmorphic Theme Features</CardTitle>
           <CardHeader>
               <CardTitle>Enhanced Theme Features</CardTitle>
           </CardHeader>
-          <CardContent>
-              <p className="text-muted-foreground">
-                  The enhanced themes use Pexels API to fetch high-quality background images that match the theme's aesthetic. 
-                  They also incorporate Framer Motion animations for interactive elements and transitions. 
+                      The enhanced themes now feature a modern glassmorphic design with frosted glass effects. 
+                      Cards and UI elements have a semi-transparent backdrop with blur effects that create depth and visual interest.
+                      Each theme has been carefully designed with complementary color palettes and contrasting accent colors for the logo,
+                      ensuring both aesthetic appeal and readability across light and dark modes.
                   Each theme has been carefully designed with complementary color palettes for both light and dark modes, 
                   with special attention to accessibility and readability.
               </p>
