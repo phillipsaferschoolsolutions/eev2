@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback, type ChangeEvent } from "react";
@@ -369,8 +368,8 @@ export default function ResourcesPage() {
                   <TableHead className="hidden lg:table-cell">Tags</TableHead>
                   <TableHead>Summary</TableHead>
                   <TableHead>Audio Note</TableHead>
-                  <TableHead className="text-right">View</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right dark:text-slate-300">View</TableHead>
+                  <TableHead className="text-right dark:text-slate-300">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -383,7 +382,7 @@ export default function ResourcesPage() {
                       <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-12 ml-auto" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-8 w-12 ml-auto" /></TableCell>
                       <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
                     </TableRow>
                   ))
@@ -402,12 +401,12 @@ export default function ResourcesPage() {
 
                     return (
                       <TableRow key={doc.id}>
-                        <TableCell className="font-medium truncate max-w-[150px]">{doc.name}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{doc.fileType || "N/A"}</TableCell>
-                        <TableCell className="hidden md:table-cell">
+                        <TableCell className="font-medium truncate max-w-[150px] dark:text-white">{doc.name}</TableCell>
+                        <TableCell className="hidden sm:table-cell dark:text-white">{doc.fileType || "N/A"}</TableCell>
+                        <TableCell className="hidden md:table-cell dark:text-white">
                           {isValidDate ? format(parsedDate, "PP") : "Invalid date"}
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell truncate max-w-[100px]">
+                        <TableCell className="hidden lg:table-cell truncate max-w-[100px] dark:text-white">
                           {doc.tags?.join(', ') || "None"}
                         </TableCell>
                         <TableCell>
