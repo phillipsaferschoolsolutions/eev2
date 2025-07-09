@@ -320,17 +320,21 @@ export default function ThemingPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6, duration: 0.5 }}
       >
-                  <CardTitle>Glassmorphic Theme Features</CardTitle>
+        <Card>
           <CardHeader>
               <CardTitle>Enhanced Theme Features</CardTitle>
+              <CardDescription>
+                The enhanced themes now feature a modern glassmorphic design with frosted glass effects. 
+                Cards and UI elements have a semi-transparent backdrop with blur effects that create depth and visual interest.
+                Each theme has been carefully designed with complementary color palettes and contrasting accent colors for the logo,
+                ensuring both aesthetic appeal and readability across light and dark modes.
+              </CardDescription>
           </CardHeader>
-                      The enhanced themes now feature a modern glassmorphic design with frosted glass effects. 
-                      Cards and UI elements have a semi-transparent backdrop with blur effects that create depth and visual interest.
-                      Each theme has been carefully designed with complementary color palettes and contrasting accent colors for the logo,
-                      ensuring both aesthetic appeal and readability across light and dark modes.
+          <CardContent>
+            <p className="text-muted-foreground">
                   Each theme has been carefully designed with complementary color palettes for both light and dark modes, 
                   with special attention to accessibility and readability.
-              </p>
+            </p>
           </CardContent>
         </Card>
       </motion.div>
