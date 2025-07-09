@@ -1222,21 +1222,21 @@
 /* Improve text contrast for all themes */
 .rounded-lg.border.bg-card {
   --card-bg-opacity: 0.95;
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: rgba(255, 255, 255, 0.98);
 }
 
 /* Dark mode card background */
 .dark .rounded-lg.border.bg-card {
-  background-color: rgba(30, 41, 59, 0.95);
+  background-color: rgba(15, 23, 42, 0.98);
 }
 
 /* Stronger text contrast for card content */
 .rounded-lg.border.bg-card .text-muted-foreground {
-  color: rgba(0, 0, 0, 0.8);
+  color: rgba(0, 0, 0, 0.9);
 }
 
 .dark .rounded-lg.border.bg-card .text-muted-foreground {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 /* Ensure card titles have strong contrast */
@@ -1245,7 +1245,7 @@
 .rounded-lg.border.bg-card .text-lg,
 .rounded-lg.border.bg-card .font-semibold,
 .rounded-lg.border.bg-card .font-bold {
-  color: rgba(0, 0, 0, 0.95);
+  color: rgba(0, 0, 0, 1);
 }
 
 .dark .rounded-lg.border.bg-card .text-2xl,
@@ -1253,7 +1253,7 @@
 .dark .rounded-lg.border.bg-card .text-lg,
 .dark .rounded-lg.border.bg-card .font-semibold,
 .dark .rounded-lg.border.bg-card .font-bold {
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(255, 255, 255, 1);
 }
 
 /* Improve contrast for dashboard stat cards */
@@ -1281,20 +1281,20 @@
 
 /* Weather widget text and icons */
 .overflow-hidden.rounded-lg.border.shadow-md .p-4.bg-gradient-to-b {
-  background-color: rgba(255, 255, 255, 0.98);
+  background-color: rgba(255, 255, 255, 1);
 }
 
 .dark .overflow-hidden.rounded-lg.border.shadow-md .p-4.bg-gradient-to-b {
-  background-color: rgba(30, 41, 59, 0.98);
+  background-color: rgba(15, 23, 42, 1);
 }
 
 /* Weather widget forecast days */
 .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t {
-  background-color: rgba(255, 255, 255, 0.98);
+  background-color: rgba(255, 255, 255, 1);
 }
 
 .dark .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t {
-  background-color: rgba(30, 41, 59, 0.98);
+  background-color: rgba(15, 23, 42, 1);
 }
 
 /* Weather widget forecast text */
@@ -1385,7 +1385,7 @@
 .card h4,
 .card h5,
 .card h6 {
-  color: rgba(0, 0, 0, 0.9);
+  color: rgba(0, 0, 0, 1);
 }
 
 .dark .card .text-sm,
@@ -1401,16 +1401,16 @@
 .dark .card h4,
 .dark .card h5,
 .dark .card h6 {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 1);
 }
 
 /* Fix for card descriptions */
 .card-description {
-  color: rgba(0, 0, 0, 0.7) !important;
+  color: rgba(0, 0, 0, 0.8) !important;
 }
 
 .dark .card-description {
-  color: rgba(255, 255, 255, 0.7) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
 }
 
 /* Theme-specific background images */
@@ -1508,4 +1508,56 @@
   text-align: center;
   font-size: 12px;
   color: #666;
+}
+
+/* Add styles to ensure content areas match the theme in dark mode */
+.relative.z-10 {
+  position: relative;
+  z-index: 10;
+}
+
+/* Fix for inner content areas in modules */
+.bg-background {
+  background-color: hsl(var(--background));
+}
+
+/* Ensure form inputs have proper contrast in dark mode */
+.dark .bg-input,
+.dark input,
+.dark textarea,
+.dark select {
+  color: rgba(255, 255, 255, 1);
+  background-color: rgba(30, 41, 59, 0.8);
+}
+
+/* Fix for module content areas in dark mode */
+.dark main {
+  background-color: hsl(var(--background));
+}
+
+/* Ensure all module content cards have proper background in dark mode */
+.dark .p-4,
+.dark .p-6,
+.dark .p-8 {
+  background-color: transparent;
+}
+
+/* Fix for white backgrounds in module content areas */
+.dark .bg-white,
+.dark .bg-card {
+  background-color: rgba(15, 23, 42, 0.98);
+  color: rgba(255, 255, 255, 1);
+}
+
+/* Ensure all text in module content areas is visible */
+.dark .text-black,
+.dark .text-gray-800,
+.dark .text-gray-900 {
+  color: rgba(255, 255, 255, 1);
+}
+
+/* Fix for module content areas with explicit white background */
+.dark [class*="bg-white"] {
+  background-color: rgba(15, 23, 42, 0.98) !important;
+  color: rgba(255, 255, 255, 1) !important;
 }
