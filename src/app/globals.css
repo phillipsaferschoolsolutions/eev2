@@ -1561,3 +1561,65 @@
   background-color: rgba(15, 23, 42, 0.98) !important;
   color: rgba(255, 255, 255, 1) !important;
 }
+
+/* Fix for tables in dark mode */
+.dark .border.rounded-md,
+.dark table,
+.dark .bg-muted\/20,
+.dark .bg-muted\/30,
+.dark .bg-muted\/50 {
+  background-color: hsl(var(--background));
+  color: rgba(255, 255, 255, 1);
+}
+
+/* Fix for table headers in dark mode */
+.dark th {
+  color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(30, 41, 59, 0.5);
+}
+
+/* Fix for table cells in dark mode */
+.dark td {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Fix for table rows hover in dark mode */
+.dark tr:hover {
+  background-color: rgba(30, 41, 59, 0.5);
+}
+
+/* Fix for table borders in dark mode */
+.dark table,
+.dark th,
+.dark td {
+  border-color: rgba(55, 65, 81, 0.5);
+}
+
+/* Fix for search inputs in dark mode */
+.dark input[type="search"],
+.dark .relative.flex-grow input {
+  background-color: rgba(15, 23, 42, 0.8);
+  color: rgba(255, 255, 255, 1);
+  border-color: rgba(55, 65, 81, 0.5);
+}
+
+/* Fix for text in table cells that might be explicitly colored */
+.dark .text-sm,
+.dark .font-medium,
+.dark .truncate {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Fix for buttons in tables */
+.dark button.text-xs,
+.dark button.px-1\.5,
+.dark button.py-0\.5,
+.dark button.h-auto {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Add a subtle glow effect to table borders in dark mode for a modern look */
+.dark .border.rounded-md {
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
+}
