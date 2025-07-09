@@ -354,13 +354,13 @@ export default function ResourcesPage() {
           <div className="mb-4 flex items-center gap-2">
             <div className="relative flex-grow">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input type="search" placeholder="Search by name or tag..." className="pl-8 w-full" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <Input type="search" placeholder="Search by name or tag..." className="pl-8 w-full dark:bg-slate-800 dark:text-white dark:border-blue-900/30" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
             <Button variant="outline" disabled><Filter className="mr-2 h-4 w-4" /> Filters (Soon)</Button>
           </div>
-          <ScrollArea className="h-[400px] border rounded-md">
-            <Table>
-              <TableHeader>
+          <ScrollArea className="h-[400px] border rounded-md dark:border-blue-900/30 dark:bg-transparent">
+            <Table className="dark:bg-transparent">
+              <TableHeader className="dark:bg-slate-900/50">
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead className="hidden sm:table-cell">Type</TableHead>
@@ -493,8 +493,8 @@ export default function ResourcesPage() {
               </TableBody>
             </Table>
           </ScrollArea>
-          <CardFooter className="pt-4">
-            <p className="text-xs text-muted-foreground">Showing {filteredDocuments.length} of {documents.length} documents. Pagination coming soon.</p>
+          <CardFooter className="pt-4 dark:bg-transparent">
+            <p className="text-xs text-muted-foreground dark:text-slate-300">Showing {filteredDocuments.length} of {documents.length} documents. Pagination coming soon.</p>
           </CardFooter>
         </CardContent>
       </Card>
