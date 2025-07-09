@@ -110,7 +110,7 @@ const cardVariants = {
   }),
   hover: {
     y: -5,
-    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2)",
     transition: {
       duration: 0.3,
       ease: "easeOut"
@@ -157,7 +157,7 @@ const enhancedCardVariants = {
   hover: {
     y: -8,
     scale: 1.03,
-    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)",
     transition: {
       duration: 0.4,
       ease: "easeOut"
@@ -280,7 +280,7 @@ export default function ThemingPage() {
                 </CardHeader>
                 <CardContent className="p-4 flex-grow flex flex-col">
                   <motion.h3 
-                    className="text-lg font-semibold mb-1"
+                    className="text-lg font-semibold mb-1 text-foreground"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.3 }}
@@ -288,7 +288,7 @@ export default function ThemingPage() {
                     {themeOption.name}
                   </motion.h3>
                   <motion.p 
-                    className="text-sm text-muted-foreground mb-3 flex-grow"
+                    className="text-sm text-foreground/80 mb-3 flex-grow"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.4 }}
