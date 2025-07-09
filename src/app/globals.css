@@ -1247,8 +1247,71 @@
 /* Ensure weather widget has good contrast */
 .overflow-hidden.rounded-lg.border.shadow-md .text-sm,
 .overflow-hidden.rounded-lg.border.shadow-md .text-xs {
-  color: hsl(var(--foreground) / 0.9);
+  color: hsl(var(--foreground));
   font-weight: 500;
+}
+
+/* Specific improvements for weather widget */
+.overflow-hidden.rounded-lg.border.shadow-md {
+  --card-bg-opacity: 0.98;
+}
+
+/* Weather widget text and icons */
+.overflow-hidden.rounded-lg.border.shadow-md .p-4.bg-gradient-to-b {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* Weather widget forecast days */
+.overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* Weather widget forecast text */
+.overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t .text-sm,
+.overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t .text-xs {
+  color: rgba(0, 0, 0, 0.9);
+  font-weight: 600;
+}
+
+/* Weather widget current conditions */
+.overflow-hidden.rounded-lg.border.shadow-md .text-3xl.font-bold,
+.overflow-hidden.rounded-lg.border.shadow-md .text-sm.text-muted-foreground.capitalize,
+.overflow-hidden.rounded-lg.border.shadow-md .text-sm.text-muted-foreground.mt-1 {
+  color: rgba(0, 0, 0, 0.9);
+}
+
+/* Weather widget detail boxes */
+.overflow-hidden.rounded-lg.border.shadow-md .flex.flex-col.items-center.p-2 {
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+/* Weather widget detail text */
+.overflow-hidden.rounded-lg.border.shadow-md .text-sm.font-medium,
+.overflow-hidden.rounded-lg.border.shadow-md .text-xs.text-muted-foreground {
+  color: rgba(0, 0, 0, 0.9);
+}
+
+/* Dashboard stat cards */
+.grid.gap-6.md\:grid-cols-2.lg\:grid-cols-4 .rounded-lg.border.shadow-md .text-2xl.font-bold,
+.grid.gap-6.md\:grid-cols-2.lg\:grid-cols-4 .rounded-lg.border.shadow-md .text-xs.text-muted-foreground {
+  color: rgba(0, 0, 0, 0.9);
+}
+
+/* Dark theme adjustments for weather widget */
+.dark .overflow-hidden.rounded-lg.border.shadow-md .p-4.bg-gradient-to-b,
+.dark .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t,
+.dark .overflow-hidden.rounded-lg.border.shadow-md .flex.flex-col.items-center.p-2 {
+  background-color: rgba(30, 41, 59, 0.95);
+}
+
+.dark .overflow-hidden.rounded-lg.border.shadow-md .text-3xl.font-bold,
+.dark .overflow-hidden.rounded-lg.border.shadow-md .text-sm.text-muted-foreground.capitalize,
+.dark .overflow-hidden.rounded-lg.border.shadow-md .text-sm.text-muted-foreground.mt-1,
+.dark .overflow-hidden.rounded-lg.border.shadow-md .text-sm.font-medium,
+.dark .overflow-hidden.rounded-lg.border.shadow-md .text-xs.text-muted-foreground,
+.dark .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t .text-sm,
+.dark .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t .text-xs {
+  color: rgba(255, 255, 255, 0.95);
 }
 
 /* Theme-specific background images */
