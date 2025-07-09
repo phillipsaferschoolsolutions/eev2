@@ -428,7 +428,7 @@ export default function DashboardPage() {
               <div className="p-4 bg-gradient-to-b from-sky-50 to-white dark:from-sky-900/30 dark:to-background">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="flex items-center gap-2 text-black dark:text-white">
+                    <div className="flex items-center gap-2">
                       <div className="text-3xl font-bold text-black dark:text-white">
                         {Math.round(weather.current?.temp || weather.main?.temp || 0)}°F
                       </div>
@@ -467,7 +467,7 @@ export default function DashboardPage() {
                     <span className="text-sm font-medium text-black dark:text-white">
                       {Math.round(weather.current?.wind_speed || weather.wind?.speed || 0)} mph
                     </span>
-                    <span className="text-xs text-black/70 dark:text-white/70">Wind</span>
+                    <span className="text-xs text-black dark:text-white">Wind</span>
                   </div>
                   
                   <div className="flex flex-col items-center p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
@@ -475,7 +475,7 @@ export default function DashboardPage() {
                     <span className="text-sm font-medium text-black dark:text-white">
                       {weather.current?.humidity || weather.main?.humidity || 0}%
                     </span>
-                    <span className="text-xs text-black/70 dark:text-white/70">Humidity</span>
+                    <span className="text-xs text-black dark:text-white">Humidity</span>
                   </div>
                   
                   <div className="flex flex-col items-center p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
@@ -483,7 +483,7 @@ export default function DashboardPage() {
                     <span className="text-sm font-medium text-black dark:text-white">
                       {weather.current?.uvi || 0}
                     </span>
-                    <span className="text-xs text-black/70 dark:text-white/70">UV Index</span>
+                    <span className="text-xs text-black dark:text-white">UV Index</span>
                   </div>
                 </div>
               </div>
@@ -505,9 +505,9 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <p className="text-sm font-bold text-black dark:text-white">{day.temp}°F</p>
-                    <p className="text-xs text-black/80 dark:text-white/80">{day.condition}</p>
+                    <p className="text-xs text-black dark:text-white">{day.condition}</p>
                     {day.precipitation > 0 && (
-                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">{day.precipitation}% rain</p>
+                      <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">{day.precipitation}% rain</p>
                     )}
                   </div>
                 ))}

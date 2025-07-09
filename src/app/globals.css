@@ -1222,12 +1222,21 @@
 /* Improve text contrast for all themes */
 .rounded-lg.border.bg-card {
   --card-bg-opacity: 0.95;
-  background-color: hsl(var(--card) / var(--card-bg-opacity));
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+/* Dark mode card background */
+.dark .rounded-lg.border.bg-card {
+  background-color: rgba(30, 41, 59, 0.95);
 }
 
 /* Stronger text contrast for card content */
 .rounded-lg.border.bg-card .text-muted-foreground {
-  color: hsl(var(--foreground) / 0.8);
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.dark .rounded-lg.border.bg-card .text-muted-foreground {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* Ensure card titles have strong contrast */
@@ -1236,7 +1245,15 @@
 .rounded-lg.border.bg-card .text-lg,
 .rounded-lg.border.bg-card .font-semibold,
 .rounded-lg.border.bg-card .font-bold {
-  color: hsl(var(--foreground) / 0.95);
+  color: rgba(0, 0, 0, 0.95);
+}
+
+.dark .rounded-lg.border.bg-card .text-2xl,
+.dark .rounded-lg.border.bg-card .text-xl,
+.dark .rounded-lg.border.bg-card .text-lg,
+.dark .rounded-lg.border.bg-card .font-semibold,
+.dark .rounded-lg.border.bg-card .font-bold {
+  color: rgba(255, 255, 255, 0.95);
 }
 
 /* Improve contrast for dashboard stat cards */
@@ -1247,7 +1264,13 @@
 /* Ensure weather widget has good contrast */
 .overflow-hidden.rounded-lg.border.shadow-md .text-sm,
 .overflow-hidden.rounded-lg.border.shadow-md .text-xs {
-  color: hsl(var(--foreground));
+  color: rgba(0, 0, 0, 0.9);
+  font-weight: 500;
+}
+
+.dark .overflow-hidden.rounded-lg.border.shadow-md .text-sm,
+.dark .overflow-hidden.rounded-lg.border.shadow-md .text-xs {
+  color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
 }
 
@@ -1258,18 +1281,32 @@
 
 /* Weather widget text and icons */
 .overflow-hidden.rounded-lg.border.shadow-md .p-4.bg-gradient-to-b {
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.98);
+}
+
+.dark .overflow-hidden.rounded-lg.border.shadow-md .p-4.bg-gradient-to-b {
+  background-color: rgba(30, 41, 59, 0.98);
 }
 
 /* Weather widget forecast days */
 .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t {
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.98);
+}
+
+.dark .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t {
+  background-color: rgba(30, 41, 59, 0.98);
 }
 
 /* Weather widget forecast text */
 .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t .text-sm,
 .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t .text-xs {
-  color: rgba(0, 0, 0, 0.9);
+  color: rgba(0, 0, 0, 1);
+  font-weight: 600;
+}
+
+.dark .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t .text-sm,
+.dark .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t .text-xs {
+  color: rgba(255, 255, 255, 1);
   font-weight: 600;
 }
 
@@ -1277,31 +1314,51 @@
 .overflow-hidden.rounded-lg.border.shadow-md .text-3xl.font-bold,
 .overflow-hidden.rounded-lg.border.shadow-md .text-sm.text-muted-foreground.capitalize,
 .overflow-hidden.rounded-lg.border.shadow-md .text-sm.text-muted-foreground.mt-1 {
-  color: rgba(0, 0, 0, 0.9);
+  color: rgba(0, 0, 0, 1);
+}
+
+.dark .overflow-hidden.rounded-lg.border.shadow-md .text-3xl.font-bold,
+.dark .overflow-hidden.rounded-lg.border.shadow-md .text-sm.text-muted-foreground.capitalize,
+.dark .overflow-hidden.rounded-lg.border.shadow-md .text-sm.text-muted-foreground.mt-1 {
+  color: rgba(255, 255, 255, 1);
 }
 
 /* Weather widget detail boxes */
 .overflow-hidden.rounded-lg.border.shadow-md .flex.flex-col.items-center.p-2 {
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: rgba(255, 255, 255, 0.98);
+}
+
+.dark .overflow-hidden.rounded-lg.border.shadow-md .flex.flex-col.items-center.p-2 {
+  background-color: rgba(30, 41, 59, 0.98);
 }
 
 /* Weather widget detail text */
 .overflow-hidden.rounded-lg.border.shadow-md .text-sm.font-medium,
 .overflow-hidden.rounded-lg.border.shadow-md .text-xs.text-muted-foreground {
-  color: rgba(0, 0, 0, 0.9);
+  color: rgba(0, 0, 0, 1);
+}
+
+.dark .overflow-hidden.rounded-lg.border.shadow-md .text-sm.font-medium,
+.dark .overflow-hidden.rounded-lg.border.shadow-md .text-xs.text-muted-foreground {
+  color: rgba(255, 255, 255, 1);
 }
 
 /* Dashboard stat cards */
 .grid.gap-6.md\:grid-cols-2.lg\:grid-cols-4 .rounded-lg.border.shadow-md .text-2xl.font-bold,
 .grid.gap-6.md\:grid-cols-2.lg\:grid-cols-4 .rounded-lg.border.shadow-md .text-xs.text-muted-foreground {
-  color: rgba(0, 0, 0, 0.9);
+  color: rgba(0, 0, 0, 1);
+}
+
+.dark .grid.gap-6.md\:grid-cols-2.lg\:grid-cols-4 .rounded-lg.border.shadow-md .text-2xl.font-bold,
+.dark .grid.gap-6.md\:grid-cols-2.lg\:grid-cols-4 .rounded-lg.border.shadow-md .text-xs.text-muted-foreground {
+  color: rgba(255, 255, 255, 1);
 }
 
 /* Dark theme adjustments for weather widget */
 .dark .overflow-hidden.rounded-lg.border.shadow-md .p-4.bg-gradient-to-b,
 .dark .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t,
 .dark .overflow-hidden.rounded-lg.border.shadow-md .flex.flex-col.items-center.p-2 {
-  background-color: rgba(30, 41, 59, 0.95);
+  background-color: rgba(30, 41, 59, 0.98);
 }
 
 .dark .overflow-hidden.rounded-lg.border.shadow-md .text-3xl.font-bold,
@@ -1311,7 +1368,49 @@
 .dark .overflow-hidden.rounded-lg.border.shadow-md .text-xs.text-muted-foreground,
 .dark .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t .text-sm,
 .dark .overflow-hidden.rounded-lg.border.shadow-md .grid.grid-cols-5.divide-x.border-t .text-xs {
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(255, 255, 255, 1);
+}
+
+/* Ensure all card text is visible */
+.card .text-sm,
+.card .text-xs,
+.card .text-lg,
+.card .text-xl,
+.card .text-2xl,
+.card .text-3xl,
+.card p,
+.card h1,
+.card h2,
+.card h3,
+.card h4,
+.card h5,
+.card h6 {
+  color: rgba(0, 0, 0, 0.9);
+}
+
+.dark .card .text-sm,
+.dark .card .text-xs,
+.dark .card .text-lg,
+.dark .card .text-xl,
+.dark .card .text-2xl,
+.dark .card .text-3xl,
+.dark .card p,
+.dark .card h1,
+.dark .card h2,
+.dark .card h3,
+.dark .card h4,
+.dark .card h5,
+.dark .card h6 {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Fix for card descriptions */
+.card-description {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+
+.dark .card-description {
+  color: rgba(255, 255, 255, 0.7) !important;
 }
 
 /* Theme-specific background images */
