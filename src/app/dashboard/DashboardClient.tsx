@@ -428,15 +428,15 @@ export default function DashboardPage() {
               <div className="p-4 bg-gradient-to-b from-sky-50 to-white dark:from-sky-900/30 dark:to-background">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-3xl font-bold">
+                    <div className="flex items-center gap-2 text-black dark:text-white">
+                      <div className="text-3xl font-bold text-black dark:text-white">
                         {Math.round(weather.current?.temp || weather.main?.temp || 0)}°F
                       </div>
-                      <div className="text-sm text-muted-foreground capitalize">
+                      <div className="text-sm capitalize text-black dark:text-white">
                         {weather.current?.weather?.[0]?.description || 'Clear'}
                       </div>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-sm mt-1 text-black dark:text-white">
                       {weather.name || 'Current Location'}
                     </p>
                   </div>
@@ -462,28 +462,28 @@ export default function DashboardPage() {
                 </div>
                 
                 <div className="grid grid-cols-3 gap-4 mt-4">
-                  <div className="flex flex-col items-center p-2 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
-                    <Wind className="h-5 w-5 text-blue-500 mb-1" />
-                    <span className="text-sm font-medium">
+                  <div className="flex flex-col items-center p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+                    <Wind className="h-5 w-5 text-blue-500 dark:text-blue-400 mb-1" />
+                    <span className="text-sm font-medium text-black dark:text-white">
                       {Math.round(weather.current?.wind_speed || weather.wind?.speed || 0)} mph
                     </span>
-                    <span className="text-xs text-muted-foreground">Wind</span>
+                    <span className="text-xs text-black/70 dark:text-white/70">Wind</span>
                   </div>
                   
-                  <div className="flex flex-col items-center p-2 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
-                    <Droplets className="h-5 w-5 text-blue-400 mb-1" />
-                    <span className="text-sm font-medium">
+                  <div className="flex flex-col items-center p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+                    <Droplets className="h-5 w-5 text-blue-400 dark:text-blue-300 mb-1" />
+                    <span className="text-sm font-medium text-black dark:text-white">
                       {weather.current?.humidity || weather.main?.humidity || 0}%
                     </span>
-                    <span className="text-xs text-muted-foreground">Humidity</span>
+                    <span className="text-xs text-black/70 dark:text-white/70">Humidity</span>
                   </div>
                   
-                  <div className="flex flex-col items-center p-2 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
-                    <Umbrella className="h-5 w-5 text-purple-500 mb-1" />
-                    <span className="text-sm font-medium">
+                  <div className="flex flex-col items-center p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
+                    <Umbrella className="h-5 w-5 text-purple-500 dark:text-purple-400 mb-1" />
+                    <span className="text-sm font-medium text-black dark:text-white">
                       {weather.current?.uvi || 0}
                     </span>
-                    <span className="text-xs text-muted-foreground">UV Index</span>
+                    <span className="text-xs text-black/70 dark:text-white/70">UV Index</span>
                   </div>
                 </div>
               </div>
@@ -491,23 +491,23 @@ export default function DashboardPage() {
               {/* 5-Day Forecast */}
               <div className="grid grid-cols-5 divide-x border-t">
                 {forecast.map((day, index) => (
-                  <div key={index} className="p-3 text-center">
-                    <p className="text-xs font-medium">{day.day}</p>
+                  <div key={index} className="p-3 text-center bg-white dark:bg-slate-800">
+                    <p className="text-xs font-medium text-black dark:text-white">{day.day}</p>
                     <div className="my-2">
                       {day.condition.toLowerCase().includes('rain') ? (
-                        <CloudRain className="h-6 w-6 mx-auto text-blue-500" />
+                        <CloudRain className="h-6 w-6 mx-auto text-blue-500 dark:text-blue-400" />
                       ) : day.condition.toLowerCase().includes('cloud') ? (
-                        <Cloud className="h-6 w-6 mx-auto text-gray-500" />
+                        <Cloud className="h-6 w-6 mx-auto text-gray-500 dark:text-gray-400" />
                       ) : day.condition.toLowerCase().includes('snow') ? (
-                        <Snowflake className="h-6 w-6 mx-auto text-blue-300" />
+                        <Snowflake className="h-6 w-6 mx-auto text-blue-300 dark:text-blue-200" />
                       ) : (
-                        <Sun className="h-6 w-6 mx-auto text-amber-500" />
+                        <Sun className="h-6 w-6 mx-auto text-amber-500 dark:text-amber-400" />
                       )}
                     </div>
-                    <p className="text-sm font-bold">{day.temp}°F</p>
-                    <p className="text-xs text-muted-foreground">{day.condition}</p>
+                    <p className="text-sm font-bold text-black dark:text-white">{day.temp}°F</p>
+                    <p className="text-xs text-black/80 dark:text-white/80">{day.condition}</p>
                     {day.precipitation > 0 && (
-                      <p className="text-xs text-blue-500 mt-1">{day.precipitation}% rain</p>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">{day.precipitation}% rain</p>
                     )}
                   </div>
                 ))}
