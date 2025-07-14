@@ -25,7 +25,7 @@ async function getIdToken(): Promise<string | null> {
 // --- Generic Fetch Wrapper (copied from assignmentFunctionsService) ---
 async function authedFetch<T>(
   fullUrl: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
   account?: string
 ): Promise<T> {
   const token = await getIdToken(); // Assumes getIdToken() is also present in the file
