@@ -3,7 +3,7 @@
 
 import { auth, firestore } from '@/lib/firebase';
 import type { User } from 'firebase/auth';
-import type { PointOfInterest, MapSettings } from '@/types/Map';
+import type { PointOfInterest, MapSettings, ReunificationRoute, RoutePoint } from '@/types/Map';
 import {
   collection,
   doc,
@@ -156,5 +156,76 @@ export async function updateMapSettings(accountId: string, updates: Partial<MapS
   } catch (error) {
     console.error("Error updating map settings:", error);
     throw new Error(`Failed to update map settings: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Saves a new reunification route
+ */
+export async function saveRoute(route: Omit<ReunificationRoute, 'id' | 'createdAt'>): Promise<string> {
+  try {
+    const routeCollection = collection(firestore, 'reunification_routes');
+    const docRef = await addDoc(routeCollection, {
+      ...route,
+      createdAt: serverTimestamp(),
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error("Error saving route:", error);
+    throw new Error(`Failed to save route: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Updates an existing reunification route
+ */
+export async function updateRoute(routeId: string, updates: Partial<ReunificationRoute>): Promise<void> {
+  try {
+    const routeRef = doc(firestore, 'reunification_routes', routeId);
+    await updateDoc(routeRef, {
+      ...updates,
+      updatedAt: serverTimestamp(),
+      updatedBy: auth.currentUser?.email || 'system',
+    });
+  } catch (error) {
+    console.error("Error updating route:", error);
+    throw new Error(`Failed to update route: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Deletes a reunification route
+ */
+export async function deleteRoute(routeId: string): Promise<void> {
+  try {
+    const routeRef = doc(firestore, 'reunification_routes', routeId);
+    await deleteDoc(routeRef);
+  } catch (error) {
+    console.error("Error deleting route:", error);
+    throw new Error(`Failed to delete route: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Gets all reunification routes for an account
+ */
+export async function getRoutesForAccount(accountId: string): Promise<ReunificationRoute[]> {
+  try {
+    const routeCollection = collection(firestore, 'reunification_routes');
+    const q = query(routeCollection, where('accountId', '==', accountId));
+    const querySnapshot = await getDocs(q);
+    
+    const routes: ReunificationRoute[] = [];
+    querySnapshot.forEach((doc) => {
+      routes.push({
+        id: doc.id,
+        ...doc.data(),
+      } as ReunificationRoute);
+    });
+    
+    return routes;
+  } catch (error) {
+    console.error("Error getting routes:", error);
+    throw new Error(`Failed to get routes: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

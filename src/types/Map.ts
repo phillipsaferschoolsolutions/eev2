@@ -13,9 +13,11 @@ export interface MapLocation {
 export interface PointOfInterest extends MapLocation {
   type: 'building' | 'entrance' | 'exit' | 'parking' | 'staging' | 'custom';
   label: string;
-  notes?: string;
+  notes?: string; 
   color?: string;
   icon?: string;
+  zoneType?: 'safe' | 'restricted' | 'hazard' | 'none';
+  isEmergencyPoint?: boolean;
 }
 
 export interface MapViewport {
@@ -37,4 +39,31 @@ export interface MapSettings {
   lastViewport?: MapViewport;
   updatedAt: any; // Firestore Timestamp
   updatedBy: string;
+}
+
+export interface RoutePoint {
+  id: string;
+  position: {
+    lat: number;
+    lng: number;
+  };
+  order: number;
+  label?: string;
+  notes?: string;
+}
+
+export interface ReunificationRoute {
+  id: string;
+  name: string;
+  description?: string;
+  accountId: string;
+  createdBy: string;
+  createdAt: any; // Firestore Timestamp
+  updatedAt?: any; // Firestore Timestamp
+  updatedBy?: string;
+  points: RoutePoint[];
+  color?: string;
+  isActive?: boolean;
+  visibleTo?: string[]; // Array of role IDs
+  type: 'student' | 'guardian' | 'emergency' | 'evacuation';
 }
