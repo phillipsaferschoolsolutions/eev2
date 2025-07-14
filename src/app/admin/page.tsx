@@ -74,7 +74,9 @@ export default function AdminPage() {
             <CardDescription>Add, edit, or remove sites and locations.</CardDescription>
           </CardHeader>
           <CardContent>
-             <Button disabled>Manage Locations</Button>
+             <Button asChild>
+               <Link href="/admin/locations">Manage Locations</Link>
+             </Button>
           </CardContent>
         </Card>
         

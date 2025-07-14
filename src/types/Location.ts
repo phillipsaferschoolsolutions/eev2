@@ -6,6 +6,18 @@ export interface Location {
   locationName: string; // Display name of the location and the value to be captured
   address?: string; // Optional address
   account?: string; // Account this location belongs to
+  locationType?: string;
+  schoolCity?: string;
+  schoolState?: string;
+  schoolAddress?: string;
+  lat?: string;
+  lng?: string;
+  photoReference?: string;
+  photoURL?: string;
+  lastAction?: string;
+  timestamp?: any; // Firestore timestamp
+  updatedAt?: string;
+  searchableIndex?: Record<string, boolean>;
   // Add any other relevant fields that your API might return
   [key: string]: any; // Allow other properties
 }

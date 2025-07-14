@@ -26,6 +26,7 @@ async function getIdToken(): Promise<string | null> {
 async function authedFetch<T>(
   fullUrl: string,
   options: RequestInit = {}
+  account?: string
 ): Promise<T> {
   const token = await getIdToken(); // Assumes getIdToken() is also present in the file
   const headers = new Headers(options.headers || {});
@@ -37,7 +38,7 @@ async function authedFetch<T>(
   }
 
   // Automatically get accountName from localStorage
-  const accountName = localStorage.getItem('accountName');
+  const accountName = account || localStorage.getItem('accountName');
   if (accountName) {
     headers.set('account', accountName);
   } else {
@@ -84,6 +85,67 @@ export async function getLocationsForLookup(accountName: string): Promise<Locati
   }
   const result = await authedFetch<Location[] | undefined>(`${LOCATIONS_BASE_URL}/`, {}, trimmedAccountName);
   return result || [];
+}
+
+/**
+ * Fetches a specific location by ID.
+ */
+export async function getLocationById(id: string, accountName: string): Promise<Location | null> {
+  if (!id) throw new Error('Location ID is required.');
+  if (!accountName || accountName.trim() === "") {
+    throw new Error("Account name is required to fetch a location.");
+  }
+  
+  try {
+    const result = await authedFetch<Location>(`${LOCATIONS_BASE_URL}/${id}`, {}, accountName);
+    return result;
+  } catch (error) {
+    console.error(`Error fetching location ${id}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Creates a new location.
+ */
+export async function createLocation(location: Omit<Location, 'id'>, accountName: string): Promise<Location> {
+  if (!accountName || accountName.trim() === "") {
+    throw new Error("Account name is required to create a location.");
+  }
+  
+  return authedFetch<Location>(`${LOCATIONS_BASE_URL}/`, {
+    method: 'POST',
+    body: JSON.stringify(location),
+  }, accountName);
+}
+
+/**
+ * Updates an existing location.
+ */
+export async function updateLocation(id: string, location: Location, accountName: string): Promise<void> {
+  if (!id) throw new Error('Location ID is required.');
+  if (!accountName || accountName.trim() === "") {
+    throw new Error("Account name is required to update a location.");
+  }
+  
+  await authedFetch<void>(`${LOCATIONS_BASE_URL}/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(location),
+  }, accountName);
+}
+
+/**
+ * Deletes a location.
+ */
+export async function deleteLocation(id: string, accountName: string): Promise<void> {
+  if (!id) throw new Error('Location ID is required.');
+  if (!accountName || accountName.trim() === "") {
+    throw new Error("Account name is required to delete a location.");
+  }
+  
+  await authedFetch<void>(`${LOCATIONS_BASE_URL}/single/${id}`, {
+    method: 'DELETE',
+  }, accountName);
 }
 
     
