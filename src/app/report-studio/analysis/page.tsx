@@ -6,22 +6,23 @@ import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DatePicker } from "@/components/ui/date-picker";
+import { Checkbox } from "@/components/ui/checkbox"; 
 import { getAssignmentListMetadata, type AssignmentMetadata } from "@/services/assignmentFunctionsService";
 import { getAggregatedCompletions } from "@/services/analysisService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
-import { ArrowLeft, BarChart2, PieChart, LineChart, Table as TableIcon, Download, RefreshCw, Filter, Shield, Loader2 } from "lucide-react";
+import { ArrowLeft, BarChart2, PieChart, LineChart, Table as TableIcon, Download, RefreshCw, Filter, Shield, Loader2, X, CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import PivotTableComponent from "@/components/analysis/PivotTableComponent";
 import VisualizationComponent from "@/components/analysis/VisualizationComponent";
 import type { AggregatedCompletionsPayload, AggregatedCompletionsResponse, PivotTableData } from "@/types/Analysis";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
 
 // Define admin roles that can access this page
 const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
@@ -41,7 +42,9 @@ export default function DataAnalysisPage() {
   const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<string[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined); 
+  const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | null>(null);
+  const [yearView, setYearView] = useState<boolean>(false);
   
   // State for pivot table configuration
   const [rowDimensions, setRowDimensions] = useState<string[]>(['questionId']);
@@ -52,6 +55,10 @@ export default function DataAnalysisPage() {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [aggregatedData, setAggregatedData] = useState<AggregatedCompletionsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // State for "Select All" functionality
+  const [selectAllAssignments, setSelectAllAssignments] = useState<boolean>(false);
+  const [selectAllLocations, setSelectAllLocations] = useState<boolean>(false);
   
   // State for visualization
   const [activeTab, setActiveTab] = useState("pivot");
@@ -90,6 +97,28 @@ export default function DataAnalysisPage() {
         });
     }
   }, [userProfile?.account, authLoading, toast]);
+  
+  // Handle "Select All Assignments" toggle
+  useEffect(() => {
+    if (selectAllAssignments) {
+      const allAssignmentIds = assignments.map(assignment => assignment.id);
+      setSelectedAssignmentIds(allAssignmentIds);
+    } else if (selectedAssignmentIds.length === assignments.length) {
+      // If all are selected but the toggle is turned off, deselect all
+      setSelectedAssignmentIds([]);
+    }
+  }, [selectAllAssignments, assignments]);
+  
+  // Handle "Select All Locations" toggle
+  useEffect(() => {
+    if (selectAllLocations) {
+      const allLocationIds = locations.map(location => location.id);
+      setSelectedLocationIds(allLocationIds);
+    } else if (selectedLocationIds.length === locations.length) {
+      // If all are selected but the toggle is turned off, deselect all
+      setSelectedLocationIds([]);
+    }
+  }, [selectAllLocations, locations]);
   
   // Prepare data for the pivot table
   const pivotData = useMemo(() => {
@@ -268,7 +297,17 @@ export default function DataAnalysisPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Assignment Selection */}
             <div className="space-y-2">
-              <Label>Assignments</Label>
+              <div className="flex justify-between items-center">
+                <Label>Assignments</Label>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="select-all-assignments"
+                    checked={selectAllAssignments || (assignments.length > 0 && selectedAssignmentIds.length === assignments.length)}
+                    onCheckedChange={(checked) => setSelectAllAssignments(!!checked)}
+                  />
+                  <Label htmlFor="select-all-assignments" className="text-xs font-normal">Select All</Label>
+                </div>
+              </div>
               {isLoadingAssignments ? (
                 <Skeleton className="h-10 w-full" />
               ) : (
@@ -304,7 +343,17 @@ export default function DataAnalysisPage() {
             
             {/* Location Selection */}
             <div className="space-y-2">
-              <Label>Locations</Label>
+              <div className="flex justify-between items-center">
+                <Label>Locations</Label>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="select-all-locations"
+                    checked={selectAllLocations || (locations.length > 0 && selectedLocationIds.length === locations.length)}
+                    onCheckedChange={(checked) => setSelectAllLocations(!!checked)}
+                  />
+                  <Label htmlFor="select-all-locations" className="text-xs font-normal">Select All</Label>
+                </div>
+              </div>
               {isLoadingLocations ? (
                 <Skeleton className="h-10 w-full" />
               ) : (
@@ -342,20 +391,104 @@ export default function DataAnalysisPage() {
           {/* Date Range Selection */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label>Start Date</Label>
-              <DatePicker
-                date={startDate}
-                setDate={setStartDate}
-                className="w-full"
-              />
+              <Label htmlFor="start-date">Start Date</Label>
+              <div className="relative">
+                <Button
+                  id="start-date"
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                  onClick={() => {
+                    setShowDatePicker(showDatePicker === 'start' ? null : 'start');
+                    setYearView(false);
+                  }}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, "PPP") : <span>Pick a start date</span>}
+                </Button>
+                {showDatePicker === 'start' && (
+                  <div className="absolute z-50 mt-2 p-2 bg-popover border rounded-md shadow-md">
+                    <div className="flex justify-between items-center mb-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setYearView(!yearView)}
+                      >
+                        {yearView ? "Month View" : "Year View"}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setShowDatePicker(null)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={(date) => {
+                        setStartDate(date);
+                        if (!yearView) setShowDatePicker(null);
+                      }}
+                      initialFocus
+                      captionLayout={yearView ? "dropdown-buttons" : "buttons"}
+                      fromYear={2020}
+                      toYear={2030}
+                      view={yearView ? "year" : "month"}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
-              <Label>End Date</Label>
-              <DatePicker
-                date={endDate}
-                setDate={setEndDate}
-                className="w-full"
-              />
+              <Label htmlFor="end-date">End Date</Label>
+              <div className="relative">
+                <Button
+                  id="end-date"
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                  onClick={() => {
+                    setShowDatePicker(showDatePicker === 'end' ? null : 'end');
+                    setYearView(false);
+                  }}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, "PPP") : <span>Pick an end date</span>}
+                </Button>
+                {showDatePicker === 'end' && (
+                  <div className="absolute z-50 mt-2 p-2 bg-popover border rounded-md shadow-md">
+                    <div className="flex justify-between items-center mb-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setYearView(!yearView)}
+                      >
+                        {yearView ? "Month View" : "Year View"}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setShowDatePicker(null)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={(date) => {
+                        setEndDate(date);
+                        if (!yearView) setShowDatePicker(null);
+                      }}
+                      initialFocus
+                      captionLayout={yearView ? "dropdown-buttons" : "buttons"}
+                      fromYear={2020}
+                      toYear={2030}
+                      view={yearView ? "year" : "month"}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           
