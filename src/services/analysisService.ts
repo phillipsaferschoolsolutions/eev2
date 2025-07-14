@@ -7,6 +7,8 @@ import type {
   WidgetSandboxData,
   RawResponse,
   RawResponsesPayload,
+  AggregatedCompletionsPayload,
+  AggregatedCompletionsResponse,
   SchoolsWithQuestionsResponse,
   SavedReportMetadata,
   LastCompletionsResponse,
@@ -16,6 +18,7 @@ import type {
 
 const ANALYSIS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysisv2';
 const ANALYSIS_V2_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/analysisv2';
+const REPORT_STUDIO_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/reportstudio';
 const WIDGETS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/widgets'; // Corrected base URL for widgets
 
 // --- Helper to get ID Token ---
@@ -177,6 +180,30 @@ export async function getCommonResponsesForAssignment(
     {},
     accountName
   );
+  return result || null;
+}
+
+/**
+ * Fetches aggregated completion data for pivot table and visualization.
+ * Uses POST /aggregated-completions from REPORT_STUDIO_BASE_URL
+ */
+export async function getAggregatedCompletions(
+  payload: AggregatedCompletionsPayload,
+  accountName: string
+): Promise<AggregatedCompletionsResponse | null> {
+  if (!accountName || accountName.trim() === "") {
+    throw new Error("Account name is required for getAggregatedCompletions.");
+  }
+  
+  const result = await authedFetch<AggregatedCompletionsResponse | undefined>(
+    `${REPORT_STUDIO_BASE_URL}/aggregated-completions`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    accountName
+  );
+  
   return result || null;
 }
 

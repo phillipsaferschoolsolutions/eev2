@@ -2,6 +2,38 @@
 
 import type { AssignmentQuestion, AssignmentMetadata } from "./assignmentFunctionsService";
 
+// For /aggregated-completions endpoint
+export interface AggregatedCompletionsPayload {
+  assignmentIds?: string[]; // Filter by specific assignments
+  startDate?: string; // ISO date string
+  endDate?: string; // ISO date string
+  locationIds?: string[]; // Filter by specific locations
+  dimensions: string[]; // Fields to group by (e.g., 'questionId', 'locationName')
+  measures: string[]; // Metrics to calculate (e.g., 'count', 'average')
+  filters?: {
+    [key: string]: any; // Additional filters
+  };
+}
+
+export interface AggregatedCompletionsResponse {
+  data: {
+    [key: string]: any; // Aggregated data in a format suitable for pivot tables
+  };
+  dimensions: {
+    [key: string]: string[]; // Available values for each dimension
+  };
+  metadata: {
+    questionLabels?: { [questionId: string]: string }; // Map of questionIds to their labels
+    locationNames?: { [locationId: string]: string }; // Map of locationIds to their names
+    assignmentNames?: { [assignmentId: string]: string }; // Map of assignmentIds to their names
+  };
+}
+
+// For pivot table data
+export interface PivotTableData {
+  [key: string]: string | number | boolean | null;
+}
+
 // For /widgets/sandbox
 export interface UserActivity {
   id: string; // Assignment ID

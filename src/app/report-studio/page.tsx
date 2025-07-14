@@ -13,9 +13,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; 
 import { getSavedReports, deleteReport } from "@/services/reportService";
-import { FileText, FilePlus, FileEdit, Lightbulb, AlertTriangle, Eye, Download, Loader2, Trash2 } from "lucide-react";
+import { FileText, FilePlus, FileEdit, Lightbulb, AlertTriangle, Eye, Download, Loader2, Trash2, BarChart2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -181,7 +181,7 @@ export default function ReportStudioPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FilePlus className="h-5 w-5 text-primary" />
+              <FilePlus className="h-5 w-5 text-primary" /> 
               Generate New Report
             </CardTitle>
             <CardDescription>
@@ -196,6 +196,28 @@ export default function ReportStudioPage() {
           <CardFooter>
             <Button onClick={() => router.push('/report-studio/generate')} className="w-full">
               Create New Report
+            </Button>
+          </CardFooter>
+        </Card>
+        
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart2 className="h-5 w-5 text-primary" />
+              Interactive Analysis
+            </CardTitle>
+            <CardDescription>
+              Analyze data with pivot tables and charts
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Explore your assessment data with interactive pivot tables and visualizations. Drill down into specific metrics and create custom views.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={() => router.push('/report-studio/analysis')} className="w-full">
+              Open Data Analysis
             </Button>
           </CardFooter>
         </Card>
