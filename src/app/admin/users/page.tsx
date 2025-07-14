@@ -25,12 +25,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePermissions } from "@/hooks/use-permissions";
 // You will likely need these for the permission change dialog
 // import { updateUserPermission } from "@/services/adminService";
 
 export default function UserManagementPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { can } = usePermissions();
 
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
@@ -47,10 +49,14 @@ export default function UserManagementPage() {
   const [signature, setSignature] = useState("");
   const [isSubmittingChange, setIsSubmittingChange] = useState(false);
 
-  const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
+  // Check if user has permission to manage users
+  const hasAccess = !authLoading && (
+    (userProfile?.role && ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"].includes(userProfile.role)) || 
+    can("admin.users.manage")
+  );
 
   useEffect(() => {
-    if (userProfile && ADMIN_ROLES.includes(userProfile.permission)) {
+    if (hasAccess) {
       setIsLoadingUsers(true);
       setError(null);
       getUsers(currentPage, itemsPerPage)
@@ -91,7 +97,7 @@ export default function UserManagementPage() {
     return <div>Loading...</div>;
   }
 
-  if (!userProfile || !ADMIN_ROLES.includes(userProfile.permission)) {
+  if (!hasAccess) {
     return (
       <div className="container mx-auto py-8 px-4">
         <Alert variant="destructive">
@@ -157,7 +163,7 @@ export default function UserManagementPage() {
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
                         <Select
-                          defaultValue={user.permission}
+                          defaultValue={user.role}
                            onValueChange={(newPermission) => {
                               setPermissionChange({ 
                                 userId: user.uid, 

@@ -2,12 +2,14 @@
 "use client";
 
 import type React from 'react';
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { type User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
-import type { UserProfile } from '@/types/User'; 
+import type { UserProfile, UserProfileWithRole } from '@/types/User'; 
 import { getUserProfile } from '@/services/userService'; 
+import { getRole } from '@/services/roleService';
+import type { Role } from '@/types/Role';
 
 interface CustomClaims {
   admin?: boolean;
@@ -17,11 +19,12 @@ interface CustomClaims {
 
 interface AuthContextType {
   user: FirebaseUser | null;
-  userProfile: UserProfile | null;
+  userProfile: UserProfileWithRole | null;
   customClaims: CustomClaims | null; 
   loading: boolean; 
   profileLoading: boolean; 
   claimsLoading: boolean; 
+  roleLoading: boolean;
   updateCurrentAccountInProfile: (newAccount: string) => void;
 }
 
@@ -29,11 +32,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfileWithRole | null>(null);
   const [customClaims, setCustomClaims] = useState<CustomClaims | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
   const [claimsLoading, setClaimsLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -47,8 +51,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           if (currentUser.email) {
             const profile = await getUserProfile(currentUser.email);
-            console.log("[AuthContext] Fetched profile:", profile); 
-            setUserProfile(profile);
+            console.log("[AuthContext] Fetched profile:", profile);
+            
+            // Create a copy of the profile to avoid modifying the original
+            const profileWithRole: UserProfileWithRole = { ...profile };
+            
+            // Fetch role details if a role is specified
+            if (profile && profile.role) {
+              setRoleLoading(true);
+              try {
+                const roleDetails = await getRole(profile.role);
+                if (roleDetails) {
+                  profileWithRole.roleDetails = roleDetails;
+                  profileWithRole.permissions = roleDetails.permissions;
+                }
+              } catch (roleError) {
+                console.error("Failed to load role details in AuthContext", roleError);
+              } finally {
+                setRoleLoading(false);
+              }
+            } else {
+              // For backward compatibility, if profile.permission exists but profile.role doesn't
+              if (profile && profile.permission && !profile.role) {
+                profileWithRole.role = profile.permission;
+                
+                // Try to fetch the role details using the permission value
+                setRoleLoading(true);
+                try {
+                  const roleDetails = await getRole(profile.permission);
+                  if (roleDetails) {
+                    profileWithRole.roleDetails = roleDetails;
+                    profileWithRole.permissions = roleDetails.permissions;
+                  }
+                } catch (roleError) {
+                  console.error("Failed to load role details from permission in AuthContext", roleError);
+                } finally {
+                  setRoleLoading(false);
+                }
+              } else {
+                setRoleLoading(false);
+              }
+            }
+            
+            setUserProfile(profileWithRole);
+            
             // *** FIX: Save accountName to localStorage ***
             if (profile && profile.account) {
               localStorage.setItem('accountName', profile.account);
@@ -85,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUserProfile(null);
         setCustomClaims(null);
         setProfileLoading(false);
+        setRoleLoading(false);
         setClaimsLoading(false);
         localStorage.removeItem('accountName');
         localStorage.removeItem('user'); // Also clear user if stored
@@ -106,8 +153,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    user,
+    userProfile,
+    customClaims,
+    loading,
+    profileLoading,
+    claimsLoading,
+    roleLoading,
+    updateCurrentAccountInProfile
+  }), [
+    user,
+    userProfile,
+    customClaims,
+    loading,
+    profileLoading,
+    claimsLoading,
+    roleLoading,
+    updateCurrentAccountInProfile
+  ]);
+
   return (
-    <AuthContext.Provider value={{ user, userProfile, customClaims, loading, profileLoading, claimsLoading, updateCurrentAccountInProfile }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

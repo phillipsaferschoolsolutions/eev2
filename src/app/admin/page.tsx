@@ -5,15 +5,17 @@ import { useAuth } from "@/context/auth-context";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Users, MapPin, KeyRound } from "lucide-react";
+import { Shield, Users, MapPin, KeyRound, LockIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/hooks/use-permissions";
 
 // Define the roles that are allowed to see the Admin Panel
 const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
 
 export default function AdminPage() {
   const { userProfile, loading: authLoading } = useAuth();
+  const { can } = usePermissions();
 
   // Show a loading state while user profile is being fetched
   if (authLoading) {
@@ -30,7 +32,7 @@ export default function AdminPage() {
   }
 
   // Show an access denied message if the user is not an admin
-  if (!userProfile || !ADMIN_ROLES.includes(userProfile.permission)) {
+  if (!userProfile || (!ADMIN_ROLES.includes(userProfile.role || "") && !can("admin.access"))) {
     return (
       <div className="container mx-auto py-8 px-4">
         <Alert variant="destructive">
@@ -57,11 +59,11 @@ export default function AdminPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Users className="text-primary"/> User Management</CardTitle>
-            <CardDescription>View, edit, and manage user accounts and permissions.</CardDescription>
+            <CardDescription>View, edit, and manage user accounts.</CardDescription>
           </CardHeader>
           <CardContent>
             {/* This button is now enabled and links to the new page */}
-            <Button asChild>
+            <Button asChild disabled={!can("admin.users.manage")}>
               <Link href="/admin/users">Manage Users</Link>
             </Button>
           </CardContent>
@@ -75,7 +77,7 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
              <Button asChild>
-               <Link href="/admin/locations">Manage Locations</Link>
+               <Link href="/admin/locations" disabled={!can("admin.locations.manage")}>Manage Locations</Link>
              </Button>
           </CardContent>
         </Card>
@@ -83,11 +85,13 @@ export default function AdminPage() {
         {/* Permissions / Roles Card */}
          <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><KeyRound className="text-primary"/> Roles & Permissions</CardTitle>
-            <CardDescription>Define and manage roles and their access levels.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><LockIcon className="text-primary"/> Roles & Permissions</CardTitle>
+            <CardDescription>Define and manage roles and their access permissions.</CardDescription>
           </CardHeader>
           <CardContent>
-             <Button disabled>Manage Roles</Button>
+             <Button asChild disabled={!can("admin.roles.manage")}>
+               <Link href="/admin/roles">Manage Roles</Link>
+             </Button>
           </CardContent>
         </Card>
       </div>

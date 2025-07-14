@@ -36,6 +36,7 @@ import {
 import { getLocationsForLookup, createLocation, updateLocation, deleteLocation } from "@/services/locationService";
 import type { Location } from "@/types/Location";
 import Link from "next/link";
+import { usePermissions } from '@/hooks/use-permissions';
 
 // Define admin roles that can access this page
 const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
@@ -122,6 +123,7 @@ const usStates = [
 export default function LocationManagementPage() {
   const router = useRouter();
   const { user, userProfile, loading: authLoading } = useAuth();
+  const { can } = usePermissions();
   const { toast } = useToast();
   
   // State for locations
@@ -158,7 +160,10 @@ export default function LocationManagementPage() {
   });
   
   // Check if user has admin permissions
-  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.permission);
+  const hasAccess = !authLoading && (
+    (userProfile?.role && ADMIN_ROLES.includes(userProfile.role)) || 
+    can("admin.locations.manage")
+  );
   
   // Fetch locations when the component mounts
   useEffect(() => {
@@ -307,7 +312,7 @@ export default function LocationManagementPage() {
   };
   
   // If the user is not an admin, show access denied
-  if (!authLoading && !isAdmin) {
+  if (!authLoading && !hasAccess) {
     return (
       <div className="container mx-auto py-8 px-4">
         <Alert variant="destructive">
