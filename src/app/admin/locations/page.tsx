@@ -33,7 +33,7 @@ import {
   ArrowLeft, Building, MapPin, Plus, Edit, Trash2, 
   Search, ChevronLeft, ChevronRight, AlertTriangle, Loader2, Shield 
 } from "lucide-react";
-import { getLocations, createLocation, updateLocation, deleteLocation } from "@/services/locationService";
+import { getLocationsForLookup, createLocation, updateLocation, deleteLocation } from "@/services/locationService";
 import type { Location } from "@/types/Location";
 import Link from "next/link";
 
@@ -197,7 +197,7 @@ export default function LocationManagementPage() {
     setLocationsError(null);
     
     try {
-      const fetchedLocations = await getLocations(userProfile.account);
+      const fetchedLocations = await getLocationsForLookup(userProfile.account);
       setLocations(fetchedLocations);
       setFilteredLocations(fetchedLocations);
       setTotalLocations(fetchedLocations.length);
