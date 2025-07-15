@@ -1668,3 +1668,139 @@
 .dark .flex.items-center.space-x-2.text-sm.text-muted-foreground > span {
   color: rgba(255, 255, 255, 0.9);
 }
+
+.ProseMirror a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+
+/* Fix for text visibility issues across themes */
+/* Ensure all card content has proper contrast */
+.card .text-sm,
+.card .text-xs,
+.card .text-lg,
+.card .text-xl,
+.card .text-2xl,
+.card .text-3xl,
+.card p,
+.card h1,
+.card h2,
+.card h3,
+.card h4,
+.card h5,
+.card h6 {
+  color: hsl(var(--card-foreground));
+}
+
+/* Ensure card descriptions have proper contrast */
+.card-description {
+  color: hsl(var(--card-foreground)/0.8) !important;
+}
+
+/* Fix for text in table cells that might be explicitly colored */
+.dark .text-sm,
+.dark .font-medium,
+.dark .truncate {
+  color: inherit;
+}
+
+/* Fix for buttons in tables */
+.dark button.text-xs,
+.dark button.px-1\.5,
+.dark button.py-0\.5,
+.dark button.h-auto {
+  color: inherit;
+}
+
+/* Fix for select dropdown text in dark mode */
+.dark .text-muted-foreground {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Fix for select dropdown items in dark mode */
+.dark [data-radix-select-content] {
+  background-color: hsl(var(--popover));
+  border-color: hsl(var(--border));
+}
+
+.dark [data-radix-select-item] {
+  color: hsl(var(--popover-foreground));
+}
+
+.dark [data-radix-select-item]:hover {
+  background-color: hsl(var(--accent));
+}
+
+.dark [data-radix-select-item][data-highlighted] {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+/* Fix for select dropdown trigger in dark mode */
+.dark .border.flex.h-10.w-full.items-center.justify-between.rounded-md.bg-background.px-3.py-2.text-sm {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+/* Fix for select dropdown value in dark mode */
+.dark [data-radix-select-trigger] span {
+  color: hsl(var(--foreground));
+}
+
+/* Fix for "Rows per page" text in dark mode */
+.dark .flex.items-center.space-x-2.text-sm.text-muted-foreground > span {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Improve contrast for all themes */
+.rounded-lg.border.bg-card {
+  --card-bg-opacity: 0.95;
+  background-color: hsl(var(--card) / var(--card-bg-opacity));
+}
+
+/* Stronger text contrast for card content */
+.rounded-lg.border.bg-card .text-muted-foreground {
+  color: hsl(var(--card-foreground) / 0.8);
+}
+
+/* Ensure card titles have strong contrast */
+.rounded-lg.border.bg-card .text-2xl,
+.rounded-lg.border.bg-card .text-xl,
+.rounded-lg.border.bg-card .text-lg,
+.rounded-lg.border.bg-card .font-semibold,
+.rounded-lg.border.bg-card .font-bold {
+  color: hsl(var(--card-foreground));
+}
+
+/* Improve contrast for dashboard stat cards */
+.grid.gap-6.md\:grid-cols-2.lg\:grid-cols-4 .rounded-lg.border.bg-card {
+  --card-bg-opacity: 0.98;
+}
+
+/* Ensure form inputs have proper contrast in dark mode */
+.dark .bg-input,
+.dark input,
+.dark textarea,
+.dark select {
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--input));
+}
+
+/* Fix for module content areas in dark mode */
+.dark main {
+  background-color: hsl(var(--background));
+}
+
+/* Fix for white backgrounds in module content areas */
+.dark .bg-white,
+.dark .bg-card {
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
+/* Fix for module content areas with explicit white background */
+.dark [class*="bg-white"] {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground)) !important;
+}
