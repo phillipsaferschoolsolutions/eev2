@@ -2,8 +2,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { cn } from "@/lib/utils";
 import React from "react";
+import { cn } from "@/lib/utils";
 import { ClientAppShell } from '@/components/layout/ClientAppShell';
 
 const geistSans = Geist({
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 };
 
 // Define theme IDs here to ensure they're consistent between server and client components
-export const THEME_IDS = [
+const THEME_IDS = [
   'light', 'dark', 'corporate-blue', 'matrix', 'desert-light', 'ocean-deep',
   'spring-meadow', 'slate-contrast', 'high-contrast-dark', 'high-contrast-light',
   'solar-flare-light', 'solar-flare-dark', 'nebula-night-light', 'nebula-night-dark',
@@ -43,6 +43,8 @@ export const THEME_IDS = [
   'theme-tropical-paradise', 'theme-tropical-paradise-dark',
   'theme-aurora-borealis', 'theme-aurora-borealis-dark'
 ];
+
+export { THEME_IDS };
 
 export default function RootLayout({
   children,
