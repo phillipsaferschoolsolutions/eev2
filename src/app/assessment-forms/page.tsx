@@ -1,17 +1,19 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle, UserCircle, FolderKanban, ServerIcon, Briefcase } from "lucide-react";
 import type { AssignmentMetadata } from "@/services/assignmentFunctionsService";
 import { getMyAssignments, getAssignmentListMetadata } from "@/services/assignmentFunctionsService";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton"; 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
 import { usePathname } from "next/navigation"; 
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const sampleTemplates = [
   { id: "env1", name: "Environmental Safety Checklist", description: "General campus environment assessment.", icon: CheckSquare },
@@ -28,10 +30,33 @@ export default function AssessmentFormsPage() {
   const [allAccountAssignments, setAllAccountAssignments] = useState<AssignmentMetadata[]>([]);
   const [isLoadingAllAccountAssignments, setIsLoadingAllAccountAssignments] = useState(true);
   const [allAccountAssignmentsError, setAllAccountAssignmentsError] = useState<string | null>(null);
+  
+  // Pagination states for My Assignments
+  const [myAssignmentsPage, setMyAssignmentsPage] = useState(1);
+  const [myAssignmentsPerPage, setMyAssignmentsPerPage] = useState(5);
+  
+  // Pagination states for All Account Assignments
+  const [allAssignmentsPage, setAllAssignmentsPage] = useState(1);
+  const [allAssignmentsPerPage, setAllAssignmentsPerPage] = useState(5);
 
   const pathname = usePathname(); 
 
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
+  
+  // Calculate paginated assignments
+  const paginatedMyAssignments = useMemo(() => {
+    const startIndex = (myAssignmentsPage - 1) * myAssignmentsPerPage;
+    return myAssignments.slice(startIndex, startIndex + myAssignmentsPerPage);
+  }, [myAssignments, myAssignmentsPage, myAssignmentsPerPage]);
+  
+  const paginatedAllAccountAssignments = useMemo(() => {
+    const startIndex = (allAssignmentsPage - 1) * allAssignmentsPerPage;
+    return displayableAllAccountAssignments.slice(startIndex, startIndex + allAssignmentsPerPage);
+  }, [displayableAllAccountAssignments, allAssignmentsPage, allAssignmentsPerPage]);
+  
+  // Calculate total pages
+  const totalMyAssignmentsPages = Math.ceil(myAssignments.length / myAssignmentsPerPage);
+  const totalAllAssignmentsPages = Math.ceil(displayableAllAccountAssignments.length / allAssignmentsPerPage);
 
   useEffect(() => {
     async function fetchMyTasks() {
@@ -148,9 +173,16 @@ export default function AssessmentFormsPage() {
     }
 
     fetchAllAccountTasks();
-
   }, [isAdmin, userProfile, customClaims, authLoading, profileLoading, claimsLoading]);
 
+  // Reset page when changing items per page
+  useEffect(() => {
+    setMyAssignmentsPage(1);
+  }, [myAssignmentsPerPage]);
+  
+  useEffect(() => {
+    setAllAssignmentsPage(1);
+  }, [allAssignmentsPerPage]);
 
   const overallLoadingMyAssignments = authLoading || profileLoading || claimsLoading || isLoadingMyAssignments;
   const overallLoadingAllAccountAssignments = authLoading || profileLoading || claimsLoading || isLoadingAllAccountAssignments;
@@ -181,7 +213,7 @@ export default function AssessmentFormsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Briefcase className="h-6 w-6 text-primary" />
+            <Briefcase className="h-6 w-6 text-primary" /> 
             My Assignments
           </CardTitle>
           <CardDescription>
@@ -225,48 +257,100 @@ export default function AssessmentFormsPage() {
               </p>
             </div>
           )}
-           {!overallLoadingMyAssignments && !myAssignmentsError && myAssignments.length > 0 && (
-              <>
-              {console.log("Rendering All Account Assignments:", displayableAllAccountAssignments)} 
-              <ul className="space-y-3">
-                {myAssignments.map((assignment, index) => {
-                  let uniqueIdForLink: string | null = null;
-                  if (assignment.assignmentId && typeof assignment.assignmentId === 'string' && assignment.assignmentId.trim() !== '') {
-                      uniqueIdForLink = assignment.assignmentId;
-                  } else if (assignment.id && typeof assignment.id === 'string' && assignment.id.trim() !== '') {
-                      uniqueIdForLink = assignment.id;
-                  } else if (assignment.assessmentName && typeof assignment.assessmentName === 'string' && assignment.assessmentName.trim() !== '') {
-                      uniqueIdForLink = assignment.assessmentName; 
-                  }
+          {!overallLoadingMyAssignments && !myAssignmentsError && myAssignments.length > 0 && (
+            <>
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Assignment Name</TableHead>
+                      <TableHead>Description/Due Date</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedMyAssignments.map((assignment, index) => {
+                      let uniqueIdForLink: string | null = null;
+                      if (assignment.assignmentId && typeof assignment.assignmentId === 'string' && assignment.assignmentId.trim() !== '') {
+                        uniqueIdForLink = assignment.assignmentId;
+                      } else if (assignment.id && typeof assignment.id === 'string' && assignment.id.trim() !== '') {
+                        uniqueIdForLink = assignment.id;
+                      } else if (assignment.assessmentName && typeof assignment.assessmentName === 'string' && assignment.assessmentName.trim() !== '') {
+                        uniqueIdForLink = assignment.assessmentName;
+                      }
 
-                  const keyForListItem = uniqueIdForLink || (assignment.assessmentName || `my-assignment-${index}`);
-
-                  return (
-                    <li key={keyForListItem} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
-                      <div>
-                        <p className="font-medium">{assignment.assessmentName || assignment.description || 'Unnamed Assignment'}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {assignment.description ? (assignment.assessmentName ? `Desc: ${assignment.description}` : assignment.description) : `Due: ${assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}`}
-                          {!uniqueIdForLink && <span className="ml-2 text-destructive">(ID missing for link)</span>}
-                        </p>
-                      </div>
-                      {uniqueIdForLink ? (
-                          <Button asChild variant="outline" size="sm">
-                            <Link href={`/assignments/${encodeURIComponent(uniqueIdForLink)}/complete`}>
-                              Go
-                            </Link>
-                          </Button>
-                        ) : (
-                          <Button variant="outline" size="sm" disabled>
-                            Go (ID Missing)
-                          </Button>
-                        )}
-                    </li>
-                  );
-                })}
-              </ul>
-             </>
-           )}
+                      return (
+                        <TableRow key={uniqueIdForLink || `my-assignment-${index}`}>
+                          <TableCell className="font-medium">
+                            {assignment.assessmentName || 'Unnamed Assignment'}
+                            {!uniqueIdForLink && <span className="ml-2 text-destructive">(ID missing)</span>}
+                          </TableCell>
+                          <TableCell>
+                            {assignment.description || `Due: ${assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'N/A'}`}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {uniqueIdForLink ? (
+                              <Button asChild variant="outline" size="sm">
+                                <Link href={`/assignments/${encodeURIComponent(uniqueIdForLink)}/complete`}>
+                                  Go
+                                </Link>
+                              </Button>
+                            ) : (
+                              <Button variant="outline" size="sm" disabled>
+                                Go
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {/* Pagination Controls */}
+              <div className="flex items-center justify-between mt-4">
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <span>Rows per page</span>
+                  <Select
+                    value={myAssignmentsPerPage.toString()}
+                    onValueChange={(value) => setMyAssignmentsPerPage(Number(value))}
+                  >
+                    <SelectTrigger className="w-[70px] h-8">
+                      <SelectValue placeholder={myAssignmentsPerPage} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[3, 5, 10, 20, 50].map(size => (
+                        <SelectItem key={size} value={size.toString()}>{size}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-muted-foreground">
+                    Page {myAssignmentsPage} of {totalMyAssignmentsPages || 1}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMyAssignmentsPage(prev => Math.max(prev - 1, 1))}
+                    disabled={myAssignmentsPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMyAssignmentsPage(prev => Math.min(prev + 1, totalMyAssignmentsPages))}
+                    disabled={myAssignmentsPage === totalMyAssignmentsPages || totalMyAssignmentsPages === 0}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -309,23 +393,76 @@ export default function AssessmentFormsPage() {
                 </p>
               </div>
             )}
-            {!overallLoadingAllAccountAssignments && !allAccountAssignmentsError && displayableAllAccountAssignments.length > 0 && (
-              <ul className="space-y-3">
-                {displayableAllAccountAssignments.map((assignment) => (
-                  <li key={`admin-${assignment.id}`} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors border">
-                    <div>
-                      <p className="font-medium">{assignment.assessmentName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {assignment.description || `ID: ${assignment.id}`}
-                      </p>
-                    </div>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={`/assignments/${assignment.id}/details`}>View Details</Link>
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
+           {!overallLoadingAllAccountAssignments && !allAccountAssignmentsError && displayableAllAccountAssignments.length > 0 && (
+             <>
+               <div className="rounded-md border overflow-hidden">
+                 <Table>
+                   <TableHeader>
+                     <TableRow>
+                       <TableHead>Assignment Name</TableHead>
+                       <TableHead>Description</TableHead>
+                       <TableHead className="text-right">Action</TableHead>
+                     </TableRow>
+                   </TableHeader>
+                   <TableBody>
+                     {paginatedAllAccountAssignments.map((assignment) => (
+                       <TableRow key={`admin-${assignment.id}`}>
+                         <TableCell className="font-medium">{assignment.assessmentName}</TableCell>
+                         <TableCell>{assignment.description || `ID: ${assignment.id}`}</TableCell>
+                         <TableCell className="text-right">
+                           <Button asChild variant="outline" size="sm">
+                             <Link href={`/assignments/${assignment.id}/details`}>View Details</Link>
+                           </Button>
+                         </TableCell>
+                       </TableRow>
+                     ))}
+                   </TableBody>
+                 </Table>
+               </div>
+               
+               {/* Pagination Controls */}
+               <div className="flex items-center justify-between mt-4">
+                 <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                   <span>Rows per page</span>
+                   <Select
+                     value={allAssignmentsPerPage.toString()}
+                     onValueChange={(value) => setAllAssignmentsPerPage(Number(value))}
+                   >
+                     <SelectTrigger className="w-[70px] h-8">
+                       <SelectValue placeholder={allAssignmentsPerPage} />
+                     </SelectTrigger>
+                     <SelectContent>
+                       {[3, 5, 10, 20, 50].map(size => (
+                         <SelectItem key={size} value={size.toString()}>{size}</SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
+                 
+                 <div className="flex items-center space-x-2">
+                   <span className="text-sm text-muted-foreground">
+                     Page {allAssignmentsPage} of {totalAllAssignmentsPages || 1}
+                   </span>
+                   <Button
+                     variant="outline"
+                     size="sm"
+                     onClick={() => setAllAssignmentsPage(prev => Math.max(prev - 1, 1))}
+                     disabled={allAssignmentsPage === 1}
+                   >
+                     Previous
+                   </Button>
+                   <Button
+                     variant="outline"
+                     size="sm"
+                     onClick={() => setAllAssignmentsPage(prev => Math.min(prev + 1, totalAllAssignmentsPages))}
+                     disabled={allAssignmentsPage === totalAllAssignmentsPages || totalAllAssignmentsPages === 0}
+                   >
+                     Next
+                   </Button>
+                 </div>
+               </div>
+             </>
+           )}
             {!overallLoadingAllAccountAssignments && !allAccountAssignmentsError && allAccountAssignments.length > 0 && displayableAllAccountAssignments.length === 0 && (
                <div className="border rounded-lg p-6 text-center bg-muted/20">
                   <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
