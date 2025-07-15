@@ -49,6 +49,10 @@ export default function AssessmentFormsPage() {
     return myAssignments.slice(startIndex, startIndex + myAssignmentsPerPage);
   }, [myAssignments, myAssignmentsPage, myAssignmentsPerPage]);
   
+  const displayableAllAccountAssignments = allAccountAssignments.filter(
+    assignment => assignment && typeof assignment.id === 'string' && assignment.id.trim() !== ''
+  );
+  
   const paginatedAllAccountAssignments = useMemo(() => {
     const startIndex = (allAssignmentsPage - 1) * allAssignmentsPerPage;
     return displayableAllAccountAssignments.slice(startIndex, startIndex + allAssignmentsPerPage);
@@ -186,10 +190,6 @@ export default function AssessmentFormsPage() {
 
   const overallLoadingMyAssignments = authLoading || profileLoading || claimsLoading || isLoadingMyAssignments;
   const overallLoadingAllAccountAssignments = authLoading || profileLoading || claimsLoading || isLoadingAllAccountAssignments;
-
-  const displayableAllAccountAssignments = allAccountAssignments.filter(
-    assignment => assignment && typeof assignment.id === 'string' && assignment.id.trim() !== ''
-  );
 
   console.log("[TEMP DEBUG AssessmentFormsPage] RENDERING with isAdmin:", isAdmin, "profileLoading:", profileLoading, "userProfile loaded:", !!userProfile, "permission:", userProfile?.permission, "customClaims:", customClaims);
 
