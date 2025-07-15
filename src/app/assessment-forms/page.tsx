@@ -202,7 +202,11 @@ export default function AssessmentFormsPage() {
             Create new assignments or complete tasks for account: {userProfile?.account || "Loading account..."}.
           </p>
         </div>
-        <Button size="lg" asChild>
+        <Button 
+          size="lg" 
+          asChild 
+          className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+        >
           <Link href="/assessment-forms/new">
             <FilePlus2 className="mr-2 h-5 w-5" /> Create New Assignment
           </Link>
