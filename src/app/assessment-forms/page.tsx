@@ -208,7 +208,11 @@ export default function AssessmentFormsPage() {
           </Link>
         </Button>
       </div>
-
+      <Button 
+        size="lg" 
+        className="bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+        asChild
+      >
       {/* My Assignments Section */}
       <Card>
         <CardHeader>
