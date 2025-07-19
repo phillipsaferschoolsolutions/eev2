@@ -570,6 +570,51 @@ export function reportToHtml(report: GenerateReportOutput): string {
         </div>
         
         <div class="report-section">
+          <h2>Methodology and Scope</h2>
+          <div>${report.methodology}</div>
+        </div>
+        
+        <div class="report-section">
+          <h2>Risk Assessment Matrix</h2>
+          <div>${report.riskAssessment.riskMatrix}</div>
+          
+          <h3>Critical Risks</h3>
+          <ul>
+            ${report.riskAssessment.criticalRisks.map(risk => `<li class="severity-critical">${risk}</li>`).join('')}
+          </ul>
+          
+          <h3>Moderate Risks</h3>
+          <ul>
+            ${report.riskAssessment.moderateRisks.map(risk => `<li class="severity-medium">${risk}</li>`).join('')}
+          </ul>
+          
+          <h3>Low Risks</h3>
+          <ul>
+            ${report.riskAssessment.lowRisks.map(risk => `<li class="severity-low">${risk}</li>`).join('')}
+          </ul>
+        </div>
+        
+        <div class="report-section">
+          <h2>Compliance Evaluation</h2>
+          <div>${report.complianceEvaluation.overview}</div>
+          
+          <h3>Standards and Regulations Reviewed</h3>
+          <ul>
+            ${report.complianceEvaluation.standardsReviewed.map(standard => `<li>${standard}</li>`).join('')}
+          </ul>
+          
+          <h3>Compliance Strengths</h3>
+          <ul>
+            ${report.complianceEvaluation.complianceStrengths.map(strength => `<li class="severity-low">${strength}</li>`).join('')}
+          </ul>
+          
+          <h3>Compliance Gaps</h3>
+          <ul>
+            ${report.complianceEvaluation.complianceGaps.map(gap => `<li class="severity-critical">${gap}</li>`).join('')}
+          </ul>
+        </div>
+        
+        <div class="report-section">
           <h2>Detailed Assessment by Domain</h2>
           
           <div class="domain-section">
@@ -691,6 +736,92 @@ export function reportToHtml(report: GenerateReportOutput): string {
         </div>
         
         <div class="report-section">
+          <h2>Detailed Findings and Analysis</h2>
+          
+          <h3>Safety Metrics and Performance Indicators</h3>
+          <div>${report.detailedFindings.safetyMetrics}</div>
+          
+          <h3>Benchmark Comparison</h3>
+          <div>${report.detailedFindings.benchmarkComparison}</div>
+          
+          <h3>Trend Analysis</h3>
+          <div>${report.detailedFindings.trendAnalysis}</div>
+          
+          <h3>Incident Analysis</h3>
+          <div>${report.detailedFindings.incidentAnalysis}</div>
+        </div>
+        
+        <div class="report-section">
+          <h2>Comprehensive Action Plan</h2>
+          
+          <h3>Immediate Actions (0-30 Days)</h3>
+          <table class="recommendations-table">
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Timeline</th>
+                <th>Responsibility</th>
+                <th>Resources Required</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${report.actionPlan.immediateActions.map(action => `
+                <tr>
+                  <td>${action.action}</td>
+                  <td class="severity-critical">${action.timeline}</td>
+                  <td>${action.responsibility}</td>
+                  <td>${action.resources}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          
+          <h3>Short-Term Actions (30-90 Days)</h3>
+          <table class="recommendations-table">
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Timeline</th>
+                <th>Responsibility</th>
+                <th>Resources Required</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${report.actionPlan.shortTermActions.map(action => `
+                <tr>
+                  <td>${action.action}</td>
+                  <td class="severity-medium">${action.timeline}</td>
+                  <td>${action.responsibility}</td>
+                  <td>${action.resources}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          
+          <h3>Long-Term Strategic Actions (90+ Days)</h3>
+          <table class="recommendations-table">
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Timeline</th>
+                <th>Responsibility</th>
+                <th>Resources Required</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${report.actionPlan.longTermActions.map(action => `
+                <tr>
+                  <td>${action.action}</td>
+                  <td class="severity-low">${action.timeline}</td>
+                  <td>${action.responsibility}</td>
+                  <td>${action.resources}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="report-section">
           <h2>Next Steps for Site Leadership</h2>
           <ol>
             ${report.nextSteps.map(step => `<li>${step}</li>`).join('')}
@@ -700,6 +831,11 @@ export function reportToHtml(report: GenerateReportOutput): string {
         <div class="report-section">
           <h2>Appendices</h2>
           <div>${report.appendices}</div>
+        </div>
+        
+        <div class="report-section">
+          <h2>Conclusion</h2>
+          <div>${report.conclusion}</div>
         </div>
         
         <div class="report-footer">

@@ -35,13 +35,53 @@ const GenerateReportOutputSchema = z.object({
   title: z.string().describe('The title of the report.'),
   reportName: z.string().describe('A concise, descriptive name for the report, suitable for a file name or list entry.'), // New field
   executiveSummary: z.string().describe('A concise summary of key findings.'),
+  methodology: z.string().describe('Detailed methodology and scope of the assessment.'),
+  riskAssessment: z.object({
+    riskMatrix: z.string().describe('Comprehensive risk assessment matrix with detailed analysis.'),
+    criticalRisks: z.array(z.string()).describe('List of critical risks identified.'),
+    moderateRisks: z.array(z.string()).describe('List of moderate risks identified.'),
+    lowRisks: z.array(z.string()).describe('List of low-level risks identified.'),
+  }).describe('Comprehensive risk assessment section.'),
+  complianceEvaluation: z.object({
+    overview: z.string().describe('Overview of compliance status.'),
+    standardsReviewed: z.array(z.string()).describe('List of safety standards and regulations reviewed.'),
+    complianceGaps: z.array(z.string()).describe('Identified compliance gaps.'),
+    complianceStrengths: z.array(z.string()).describe('Areas of strong compliance.'),
+  }).describe('Detailed compliance evaluation section.'),
   domains: z.object({
     people: DomainSection.describe('Staff, training, supervision aspects.'),
     process: DomainSection.describe('Procedures, protocols, plans aspects.'),
     technology: DomainSection.describe('Physical security, equipment, infrastructure aspects.'),
   }),
+  detailedFindings: z.object({
+    safetyMetrics: z.string().describe('Quantitative safety metrics and data analysis.'),
+    benchmarkComparison: z.string().describe('Comparison against industry benchmarks and standards.'),
+    trendAnalysis: z.string().describe('Analysis of safety trends and patterns.'),
+    incidentAnalysis: z.string().describe('Analysis of any incidents or near-misses.'),
+  }).describe('Detailed findings and analysis section.'),
+  actionPlan: z.object({
+    immediateActions: z.array(z.object({
+      action: z.string(),
+      timeline: z.string(),
+      responsibility: z.string(),
+      resources: z.string(),
+    })).describe('Immediate actions required (0-30 days).'),
+    shortTermActions: z.array(z.object({
+      action: z.string(),
+      timeline: z.string(),
+      responsibility: z.string(),
+      resources: z.string(),
+    })).describe('Short-term actions (30-90 days).'),
+    longTermActions: z.array(z.object({
+      action: z.string(),
+      timeline: z.string(),
+      responsibility: z.string(),
+      resources: z.string(),
+    })).describe('Long-term strategic actions (90+ days).'),
+  }).describe('Comprehensive action plan with detailed implementation roadmap.'),
   nextSteps: z.array(z.string()).describe('Prioritized next steps for site leadership.'),
   appendices: z.string().describe('Methodology and question references.'),
+  conclusion: z.string().describe('Comprehensive conclusion summarizing key findings and overall assessment.'),
 });
 export type GenerateReportOutput = z.infer<typeof GenerateReportOutputSchema>;
 
@@ -57,53 +97,114 @@ const generateReportPrompt = ai.definePrompt({
   output: { schema: GenerateReportOutputSchema },
   prompt: (input) => {
     // Default prompt
-    const defaultPrompt = `You are an expert school safety assessment analyst at Safer School Solutions, Inc. Your task is to generate a comprehensive safety assessment report based on the provided completion data from a school safety inspection.
+    const defaultPrompt = `You are an expert school safety assessment analyst at Safer School Solutions, Inc. Your task is to generate a comprehensive, premium-quality safety assessment report that justifies significant investment and demonstrates exceptional value. This report must be thorough, detailed, and professionally comprehensive - minimum 15 pages of substantive content.
 
-School Safety Assessment Report Framework
-Overview
-This system generates standardized safety assessment reports for educational facilities based on structured assessment data. Each report follows a consistent format to ensure comparability and clarity across different sites. Remember that the goal of these reports is to coach and encourage people to improve (not to judge or make people feel bad). The goal is to highlight positive and areas that need improvement while focusing on the items they are most likely able to control (based on their role as a school administrator) but not being a school district administrator or facilities expert. They likely don't manage the budget or timeline for large infrastructure changes so while we may highlight those gaps we will focus on the ones they can make a measurable positive impact with to make students and the site safer.
+**PREMIUM SAFETY ASSESSMENT REPORT FRAMEWORK**
 
-Report Structure
-All safety assessment reports must follow this structure:
-- Title page and header information
-- Executive Summary (overview of key findings)
-- Detailed Assessment by Domain
-  - People (staff, training, supervision)
-  - Process (procedures, protocols, plans)
-  - Technology & Infrastructure (physical security, equipment)
-- Next Steps for Site Leadership
-- Appendices (methodology and question references)
+**CONTENT REQUIREMENTS:**
+- Generate comprehensive, detailed content that demonstrates exceptional value
+- Minimum 15 pages of substantive analysis and recommendations
+- Include specific data points, metrics, and quantifiable findings
+- Provide detailed explanations and context for all findings
+- Use professional language and industry-standard terminology
+- Reference relevant safety standards, regulations, and best practices
 
-Domain Framework
+**MANDATORY REPORT STRUCTURE:**
+
+1. **Executive Summary (1-2 pages)**
+   - Comprehensive overview of assessment scope and methodology
+   - Key findings summary with quantitative data
+   - Critical recommendations overview
+   - Overall safety rating and risk assessment summary
+
+2. **Methodology and Scope (2-3 pages)**
+   - Detailed assessment methodology and approach
+   - Scope of evaluation including areas covered
+   - Standards and frameworks referenced
+   - Data collection methods and validation processes
+   - Assessment team qualifications and expertise
+   - Timeline and duration of assessment activities
+
+3. **Detailed Safety Analysis (4-6 pages)**
+   - Comprehensive analysis by domain (People, Process, Technology)
+   - Quantitative safety metrics and performance indicators
+   - Benchmark comparisons against industry standards
+   - Trend analysis and historical data review
+   - Incident analysis and near-miss evaluation
+   - Environmental and situational factors assessment
+
+4. **Risk Assessment Matrix (2-3 pages)**
+   - Comprehensive risk identification and categorization
+   - Detailed risk matrix with probability and impact analysis
+   - Critical, moderate, and low-risk classifications
+   - Risk mitigation strategies and controls evaluation
+   - Residual risk assessment after current controls
+   - Risk tolerance and acceptance criteria
+
+5. **Compliance Evaluation (2-3 pages)**
+   - Detailed review against applicable safety standards
+   - Federal, state, and local regulation compliance status
+   - Industry best practice alignment assessment
+   - Compliance gaps identification and analysis
+   - Regulatory change impact assessment
+   - Certification and accreditation status review
+
+6. **Recommendations and Action Plan (2-3 pages)**
+   - Immediate actions (0-30 days) with detailed implementation steps
+   - Short-term initiatives (30-90 days) with resource requirements
+   - Long-term strategic improvements (90+ days) with ROI analysis
+   - Implementation roadmap with milestones and success metrics
+   - Resource allocation and budget considerations
+   - Training and development recommendations
+
+7. **Conclusion (1 page)**
+   - Comprehensive summary of overall safety posture
+   - Key achievements and areas of excellence
+   - Priority focus areas for improvement
+   - Long-term safety vision and strategic direction
+
+**QUALITY STANDARDS:**
+- Each section must be substantive and detailed
+- Include specific examples and case studies where relevant
+- Provide quantitative data and metrics throughout
+- Reference specific questions and findings from the assessment
+- Use professional formatting with clear headings and subheadings
+- Include actionable recommendations with clear implementation guidance
+
+**DOMAIN FRAMEWORK (Enhanced):**
 Each domain section must include:
-- Strengths (bullet points with question references)
-- Areas for Improvement (bullet points with question references)
-- Site-Specific Observations (detailed contextual findings)
-- Recommendations (table with severity, timeline, references)
+- Detailed strengths analysis with supporting evidence
+- Comprehensive areas for improvement with root cause analysis
+- Site-specific observations with contextual factors
+- Quantitative metrics and performance indicators
+- Benchmark comparisons and industry standards alignment
+- Detailed recommendations with implementation roadmaps
+- Resource requirements and cost-benefit analysis
 
-Formatting Standards
-- Professional, objective tone throughout
-- Clear headings and consistent formatting
-- All recommendations must be actionable and specific
-- Question references [Q#] included for traceability
-- Related recommendations grouped together
-- Recommendations prioritized by severity and timeline
+**FORMATTING AND PRESENTATION:**
+- Professional, authoritative tone throughout
+- Clear hierarchical structure with numbered sections
+- Detailed explanations that demonstrate expertise
+- Specific data points and quantifiable findings
+- Professional tables, charts, and visual elements
+- Comprehensive cross-references and citations
+- Industry-standard terminology and best practices
 
-Data Handling Guidelines
-- Items labeled as "COMMENT" should be incorporated naturally into findings
-- Ignore comments about assessment process improvements
-- Fix all spelling mistakes or typos from raw assessment data
-- Convert raw data into professionally written observations
-- Ensure terminology consistency throughout the document
+**VALUE DEMONSTRATION:**
+- Provide detailed analysis that justifies premium pricing
+- Include comprehensive insights not available elsewhere
+- Demonstrate deep expertise and professional knowledge
+- Offer specific, actionable recommendations with clear ROI
+- Present findings in a way that enables immediate implementation
+- Show understanding of complex safety management challenges
 
-Severity and Timeline Definitions
-- Critical Severity: Critical safety issues requiring immediate attention
-- Medium Severity: Important issues that should be addressed but aren't immediately critical
-- Low Severity: Improvements that would enhance safety but aren't urgent
-- 30 days: Immediate action needed; can be implemented quickly with existing resources
-- 60 days: High priority; requires modest planning or coordination
-- 90 days: Important but allows time for thorough implementation
-- Long Term (120+ days): May require coordination with external resources
+**CONTENT DEPTH REQUIREMENTS:**
+- Each major section should contain multiple subsections
+- Provide detailed explanations and context for all findings
+- Include specific examples and case studies
+- Reference industry standards and regulatory requirements
+- Offer comparative analysis and benchmarking data
+- Present comprehensive implementation guidance
 
 Completion Data:
 {{completionData}}
@@ -114,8 +215,18 @@ Assignment Data:
 Account Name:
 {{{accountName}}}
 
-Please generate a comprehensive safety assessment report following the framework above. The report should be structured, professional, and provide actionable insights. Remember to maintain a coaching and encouraging tone throughout the report.
-Also, provide a concise, descriptive name for the report in the 'reportName' field, suitable for a file name or list entry.`;
+CRITICAL INSTRUCTIONS:
+- Generate a comprehensive, detailed report that meets the minimum 15-page requirement
+- Ensure each section is substantive and provides significant value
+- Include specific data points, metrics, and quantifiable findings throughout
+- Provide detailed explanations and context for all observations
+- Use professional language that demonstrates expertise and authority
+- Include comprehensive recommendations with detailed implementation guidance
+- Reference specific assessment questions and findings with [Q#] notation
+- Maintain a professional, coaching tone that encourages improvement
+- Ensure the report justifies premium pricing through exceptional depth and quality
+
+Remember: This is a premium assessment report that clients invest significantly in. Every section must demonstrate exceptional value, professional expertise, and comprehensive analysis that enables immediate implementation of safety improvements.`;
 
     // If there's a custom prompt and the mode is 'replace', use only the custom prompt
     if (input.customPrompt && input.promptMode === 'replace') {
