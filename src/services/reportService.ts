@@ -5,7 +5,6 @@ import { auth } from '@/lib/firebase';
 import type { User } from 'firebase/auth';
 import { getCompletionDetails, getAssignmentById } from '@/services/assignmentFunctionsService';
 import { generateReport, type GenerateReportInput, type GenerateReportOutput } from '@/ai/flows/generate-report-flow';
-import html2pdf from 'html2pdf.js';
 
 // Import the robust getIdToken function from assignmentFunctionsService
 import { getIdToken as getIdTokenRobust } from '@/services/assignmentFunctionsService';
@@ -132,7 +131,15 @@ export async function generateReportForCompletion(
  * @param fileName The name of the PDF file.
  */
 export async function exportToPdf(htmlContent: string, fileName: string = 'safety-assessment-report.pdf'): Promise<void> {
+  // Only import html2pdf on the client side to avoid SSR issues
+  if (typeof window === 'undefined') {
+    throw new Error('PDF export is only available in the browser environment.');
+  }
+
   try {
+    // Dynamic import to avoid SSR issues
+    const html2pdf = (await import('html2pdf.js')).default;
+    
     const options = {
       margin: [15, 15, 15, 15],
       filename: fileName,

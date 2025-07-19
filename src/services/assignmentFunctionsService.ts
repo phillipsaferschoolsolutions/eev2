@@ -192,8 +192,8 @@ export async function getIdToken(): Promise<string> {
                     reject(new Error("Could not get Firebase ID token."));
                 }
             } else {
-                console.error("No user is authenticated.");
-                reject(new Error("User not authenticated."));
+                // Return null instead of rejecting to allow graceful handling
+                resolve(null as any);
             }
         });
     });
@@ -234,7 +234,10 @@ async function authedFetch<T>(
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   } else {
-    console.warn(`[CRITICAL] authedFetch: No Authorization token available for endpoint: ${fullUrl}.`);
+    // Only warn if it's not a call to the auth endpoint itself
+    if (!fullUrl.includes('/auth')) {
+        console.warn(`[CRITICAL] authedFetch: No Authorization token available for endpoint: ${fullUrl}.`);
+    }
   }
 
   // Automatically get accountName from localStorage
