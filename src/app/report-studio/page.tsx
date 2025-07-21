@@ -226,20 +226,20 @@ export default function ReportStudioPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileEdit className="h-5 w-5 text-primary" />
-              Report Templates
+              Manage Templates
             </CardTitle>
             <CardDescription>
-              Manage report templates and layouts
+              Create and manage reusable report templates
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Create and manage templates for different types of reports. Define sections, styling, and content structure.
+              Design custom report layouts with placeholders for dynamic content. Ensure consistency across all reports.
             </p>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" className="w-full" disabled>
-              Coming Soon
+            <Button onClick={() => router.push('/report-studio/templates')} className="w-full">
+              Manage Templates
             </Button>
           </CardFooter>
         </Card>
