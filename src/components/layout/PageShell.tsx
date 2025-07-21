@@ -18,6 +18,8 @@ export const baseNavItems = [
   { href: "/map", label: "Campus Map", icon: "Map" },
   { href: "/assessment-forms", label: "Assignments", icon: "ClipboardList" },
   { href: "/drill-tracking", label: "Drill Tracking", icon: "Zap" },
+  { href: "/tasks", label: "Tasks", icon: "ListTodo" },
+  { href: "/assets", label: "Assets", icon: "HardDrive" },
   { href: "/resources", label: "Resources", icon: "FolderKanban" },
   { href: "/photo-analysis", label: "Photo Analysis", icon: "Camera" },
   { href: "/policy-analysis", label: "Policy Analysis", icon: "FileCheck2" },
