@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ListTodo, Plus, Search, Edit, Trash2, AlertTriangle, Loader2, 
-  CheckCircle2, Clock, AlertCircle, User, MapPin, Tag, X, Check
+  CheckCircle2, Clock, AlertCircle, User, MapPin, Tag, X, Check,
   ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
