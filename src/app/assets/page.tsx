@@ -626,15 +626,27 @@ export default function AssetsPage() {
                   />
                   <YAxis />
                   <Tooltip 
-                    formatter={(value: any, name: string) => [
-                      `${value} years`, 
-                      'Average Age'
-                    ]}
-                    labelFormatter={(label) => `Asset Type: ${label}`}
-                  />
-                  <Bar dataKey="averageAge" fill="#3B82F6" />
-                </BarChart>
-              </ResponsiveContainer>
+              {conditionDistribution().length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={conditionDistribution()} layout="horizontal">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" />
+                    <YAxis dataKey="condition" type="category" width={100} />
+                    <Tooltip 
+                      formatter={(value, name) => [value, 'Assets']}
+                      labelFormatter={(label) => `Condition: ${label}`}
+                    />
+                    <Bar dataKey="count" fill="#10B981" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <div className="text-center">
+                    <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No condition data available</p>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -665,24 +677,39 @@ export default function AssetsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsPieChart>
-                  <Tooltip />
-                  <Legend />
-                  <RechartsPieChart
-                    data={assetDistributionByLocation()}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    dataKey="count"
-                    nameKey="location"
-                  >
-                    {assetDistributionByLocation().map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
+              {assetDistributionByLocation().length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <RechartsPieChart
+                      data={assetDistributionByLocation()}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      dataKey="count"
+                      nameKey="location"
+                      label={({ location, count, percent }) => 
+                        `${location}: ${count} (${(percent * 100).toFixed(0)}%)`
+                      }
+                    >
+                      {assetDistributionByLocation().map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </RechartsPieChart>
+                    <Tooltip 
+                      formatter={(value, name) => [value, 'Assets']}
+                      labelFormatter={(label) => `Location: ${label}`}
+                    />
+                    <Legend />
                   </RechartsPieChart>
-                </RechartsPieChart>
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <div className="text-center">
+                    <MapPin className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No location data available</p>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
