@@ -12,9 +12,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { getAssignmentListMetadata, getLastCompletions, type AssignmentMetadata } from "@/services/assignmentFunctionsService";
 import { generateReportForCompletion, reportToHtml, exportToPdf, exportToDocx, saveReport, getPromptSettings } from "@/services/reportService";
+import { getTemplates, replacePlaceholders } from "@/services/templateService";
+import type { ReportTemplate } from "@/types/Report";
 import { ArrowLeft, FileText, Download, Loader2, FilePlus, AlertTriangle, FileDown, FileType2, Shield, Save, Lightbulb } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 // Define the type for completion items
 interface CompletionItem {
@@ -42,6 +46,12 @@ export default function GenerateReportPage() {
   const [completions, setCompletions] = useState<CompletionItem[]>([]);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>("");
   const [selectedCompletionId, setSelectedCompletionId] = useState<string>("");
+  
+  // State for templates
+  const [templates, setTemplates] = useState<ReportTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [reportGenerationMode, setReportGenerationMode] = useState<"ai" | "template">("ai");
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   
   // State for loading indicators
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(true);
@@ -73,6 +83,7 @@ export default function GenerateReportPage() {
     if (!authLoading && userProfile?.account) {
       fetchAssignments();
       fetchPromptSettings();
+      fetchTemplates();
     }
   }, [userProfile?.account, authLoading]);
   
@@ -146,10 +157,32 @@ export default function GenerateReportPage() {
     }
   };
   
+  // Function to fetch templates
+  const fetchTemplates = async () => {
+    if (!userProfile?.account) return;
+    
+    setIsLoadingTemplates(true);
+    
+    try {
+      const fetchedTemplates = await getTemplates(userProfile.account);
+      setTemplates(fetchedTemplates);
+    } catch (error) {
+      console.error("Failed to fetch templates:", error);
+      // Don't set an error state here, as templates are optional
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
+  
   // Function to generate a report
   const handleGenerateReport = async () => {
     if (!selectedAssignmentId || !selectedCompletionId || !userProfile?.account) {
       setReportError("Please select both an assignment and a completion.");
+      return;
+    }
+    
+    if (reportGenerationMode === "template" && !selectedTemplateId) {
+      setReportError("Please select a template for template-based report generation.");
       return;
     }
     
@@ -158,23 +191,48 @@ export default function GenerateReportPage() {
     setSavedReportId(null); // Reset saved status on new generation
     
     try {
-      // Determine if we should use custom prompt settings
-      const useCustomSettings = useCustomPrompt && promptSettings && promptSettings.customPrompt.trim() !== "";
-      
-      const report = await generateReportForCompletion(
-        selectedAssignmentId,
-        selectedCompletionId,
-        userProfile.account,
-        useCustomSettings ? {
-          customPrompt: promptSettings.customPrompt,
-          promptMode: promptSettings.promptMode
-        } : undefined
-      );
-      
-      // Convert the structured report data to HTML
-      const html = reportToHtml(report);
-      setReportHtml(html);
-      setReportName(report.reportName || report.title || "Untitled Report");
+      if (reportGenerationMode === "ai") {
+        // AI-generated report
+        const useCustomSettings = useCustomPrompt && promptSettings && promptSettings.customPrompt.trim() !== "";
+        
+        const report = await generateReportForCompletion(
+          selectedAssignmentId,
+          selectedCompletionId,
+          userProfile.account,
+          useCustomSettings ? {
+            customPrompt: promptSettings.customPrompt,
+            promptMode: promptSettings.promptMode
+          } : undefined
+        );
+        
+        // Convert the structured report data to HTML
+        const html = reportToHtml(report);
+        setReportHtml(html);
+        setReportName(report.reportName || report.title || "Untitled Report");
+      } else {
+        // Template-based report
+        const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+        if (!selectedTemplate) {
+          throw new Error("Selected template not found.");
+        }
+        
+        // We need to fetch the completion and assignment data for placeholder replacement
+        const { getCompletionDetails, getAssignmentById } = await import("@/services/assignmentFunctionsService");
+        const completionData = await getCompletionDetails(selectedAssignmentId, selectedCompletionId, userProfile.account);
+        const assignmentData = await getAssignmentById(selectedAssignmentId, userProfile.account);
+        
+        // Replace placeholders in the template
+        const html = replacePlaceholders(
+          selectedTemplate.htmlContent,
+          completionData,
+          assignmentData,
+          userProfile.account,
+          userProfile.email || "Unknown User"
+        );
+        
+        setReportHtml(html);
+        setReportName(`${selectedTemplate.name} - ${assignmentData?.assessmentName || "Report"}`);
+      }
       
       // Switch to the editor tab
       setActiveTab("editor");
