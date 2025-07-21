@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   ListTodo, Plus, Search, Edit, Trash2, AlertTriangle, Loader2, 
   CheckCircle2, Clock, AlertCircle, User, MapPin, Tag, X, Check
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getMyTasks, createTask, getIssueTypes, closeTasks, deleteTasks } from "@/services/taskService";
@@ -63,6 +64,10 @@ export default function TasksPage() {
   // State for task actions
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [isPerformingAction, setIsPerformingAction] = useState(false);
+  
+  // State for pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Fetch tasks when component mounts
   useEffect(() => {
@@ -233,6 +238,24 @@ export default function TasksPage() {
     (task.taskTitle || task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     task.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
+  const paginatedTasks = filteredTasks.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  
+  // Handler for changing items per page
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
+  
+  // Reset page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   if (authLoading) {
     return (
@@ -358,7 +381,7 @@ export default function TasksPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTasks.map((task) => (
+                  {paginatedTasks.map((task) => (
                     <TableRow key={task.id}>
                       <TableCell>
                         <Checkbox
@@ -429,6 +452,50 @@ export default function TasksPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          
+          {/* Pagination Controls */}
+          {filteredTasks.length > 0 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <span>Rows per page</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={handleItemsPerPageChange}
+                >
+                  <SelectTrigger className="w-[70px] h-8">
+                    <SelectValue placeholder={itemsPerPage} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[5, 10, 20, 50].map(size => (
+                      <SelectItem key={size} value={size.toString()}>{size}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages || 1}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
