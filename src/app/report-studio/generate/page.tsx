@@ -455,18 +455,23 @@ export default function GenerateReportPage() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground">
+              disabled={
+                !selectedAssignmentId || 
+                !selectedCompletionId || 
+                isGeneratingReport ||
+                (reportGenerationMode === "template" && !selectedTemplateId)
+              }
                       <p>No custom prompt has been set up yet.</p>
                       <Button 
                         variant="link" 
                         size="sm" 
                         className="p-0 h-auto text-xs"
-                        onClick={() => router.push('/report-studio/prompt-settings')}
+                  {reportGenerationMode === "ai" ? "Generating AI Report..." : "Generating Template Report..."}
                       >
                         Create a custom prompt
                       </Button>
                     </div>
-                  )}
+                  {reportGenerationMode === "ai" ? "Generate AI Report" : "Generate from Template"}
                 </div>
               )}
             </CardContent>
