@@ -3,30 +3,7 @@
 
 import { auth } from '@/lib/firebase';
 import type { User } from 'firebase/auth';
-
-// Define Task and IssueType interfaces here since they're used by this service
-export interface Task {
-  id: string;
-  taskTitle?: string;
-  title?: string; // Legacy field name
-  description?: string;
-  priority: 'Low' | 'Medium' | 'High' | 'Critical';
-  status: 'Open' | 'In Progress' | 'Blocked' | 'Resolved' | 'Closed';
-  issueType?: string;
-  issueTypeId?: string; // Legacy field name
-  issueTypeName?: string;
-  locationId?: string;
-  locationName?: string;
-  assignedToUserId?: string;
-  assigneeName?: string;
-  createdBy?: string;
-  createdTime?: any;
-  account?: string;
-  overdue?: boolean;
-  dueDate?: string;
-  latestAction?: string;
-  photoLink?: string;
-}
+import type { Task } from '@/types/Task';
 
 export interface IssueType {
   id: string;
