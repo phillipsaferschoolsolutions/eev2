@@ -455,41 +455,41 @@ export default function GenerateReportPage() {
                       </Button>
                     </div>
                   ) : (
-              disabled={
-                !selectedAssignmentId || 
-                !selectedCompletionId || 
-                isGeneratingReport ||
-                (reportGenerationMode === "template" && !selectedTemplateId)
-              }
+                    <div className="text-sm text-muted-foreground">
                       <p>No custom prompt has been set up yet.</p>
                       <Button 
                         variant="link" 
                         size="sm" 
                         className="p-0 h-auto text-xs"
-                  {reportGenerationMode === "ai" ? "Generating AI Report..." : "Generating Template Report..."}
+                        onClick={() => router.push('/report-studio/prompt-settings')}
                       >
                         Create a custom prompt
                       </Button>
                     </div>
-                  {reportGenerationMode === "ai" ? "Generate AI Report" : "Generate from Template"}
+                  )}
                 </div>
               )}
             </CardContent>
             <CardFooter>
               <Button 
                 onClick={handleGenerateReport} 
-                disabled={!selectedAssignmentId || !selectedCompletionId || isGeneratingReport}
+                disabled={
+                  !selectedAssignmentId || 
+                  !selectedCompletionId || 
+                  isGeneratingReport ||
+                  (reportGenerationMode === "template" && !selectedTemplateId)
+                }
                 className="ml-auto"
               >
                 {isGeneratingReport ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating Report...
+                    {reportGenerationMode === "ai" ? "Generating AI Report..." : "Generating Template Report..."}
                   </>
                 ) : (
                   <>
                     <FilePlus className="mr-2 h-4 w-4" />
-                    Generate Report
+                    {reportGenerationMode === "ai" ? "Generate AI Report" : "Generate from Template"}
                   </>
                 )}
               </Button>
