@@ -681,7 +681,7 @@ export default function TasksPage() {
                   <SelectContent>
                     {locations.map((location) => (
                       <SelectItem key={location.id} value={location.id}>
-                        {location.name}
+                        {location.locationName}
                       </SelectItem>
                     ))}
                   </SelectContent>
