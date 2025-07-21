@@ -113,9 +113,39 @@ export async function getAssets(account: string): Promise<Asset[]> {
 export async function createAsset(assetData: CreateAssetPayload & { account: string }): Promise<Asset> {
   try {
     const assetsCollection = collection(firestore, 'assets');
+    
+    // Resolve location name if locationId is provided
+    let locationName = '';
+    if (assetData.locationId) {
+      try {
+        const locationDoc = await getDoc(doc(firestore, 'locations', assetData.locationId));
+        if (locationDoc.exists()) {
+          locationName = locationDoc.data().locationName || '';
+        }
+      } catch (error) {
+        console.warn("Could not resolve location name:", error);
+      }
+    }
+    
+    // Resolve assignee name if assignedToId is provided
+    let assignedToName = '';
+    if (assetData.assignedToId) {
+      try {
+        const userDoc = await getDoc(doc(firestore, 'users', assetData.assignedToId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          assignedToName = userData.displayName || userData.email || '';
+        }
+      } catch (error) {
+        console.warn("Could not resolve assignee name:", error);
+      }
+    }
+    
     const newAsset = {
       ...assetData,
       accountId: assetData.account,
+      locationName,
+      assignedToName,
       createdBy: auth.currentUser?.email || 'unknown',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -128,17 +158,6 @@ export async function createAsset(assetData: CreateAssetPayload & { account: str
     const cleanedAsset = Object.fromEntries(
       Object.entries(assetToSave).filter(([_, value]) => value !== undefined)
     );
-    
-    // Add location and assignee names for display
-    if (cleanedAsset.locationId) {
-      // Note: In a real implementation, you might want to fetch location name
-      // For now, we'll let the frontend handle the display names
-    }
-    
-    if (cleanedAsset.assignedToId) {
-      // Note: In a real implementation, you might want to fetch user name
-      // For now, we'll let the frontend handle the display names
-    }
     
     const docRef = await addDoc(assetsCollection, cleanedAsset);
     
@@ -161,10 +180,45 @@ export async function updateAsset(assetId: string, updates: UpdateAssetPayload):
   try {
     const assetRef = doc(firestore, 'assets', assetId);
     
+    // Resolve location name if locationId is provided
+    let locationName = '';
+    if (updates.locationId) {
+      try {
+        const locationDoc = await getDoc(doc(firestore, 'locations', updates.locationId));
+        if (locationDoc.exists()) {
+          locationName = locationDoc.data().locationName || '';
+        }
+      } catch (error) {
+        console.warn("Could not resolve location name:", error);
+      }
+    }
+    
+    // Resolve assignee name if assignedToId is provided
+    let assignedToName = '';
+    if (updates.assignedToId) {
+      try {
+        const userDoc = await getDoc(doc(firestore, 'users', updates.assignedToId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          assignedToName = userData.displayName || userData.email || '';
+        }
+      } catch (error) {
+        console.warn("Could not resolve assignee name:", error);
+      }
+    }
+    
     // Filter out undefined values to prevent Firestore errors
     const cleanedUpdates = Object.fromEntries(
       Object.entries(updates).filter(([_, value]) => value !== undefined)
     );
+    
+    // Add resolved names to updates
+    if (updates.locationId !== undefined) {
+      cleanedUpdates.locationName = locationName;
+    }
+    if (updates.assignedToId !== undefined) {
+      cleanedUpdates.assignedToName = assignedToName;
+    }
     
     await updateDoc(assetRef, {
       ...cleanedUpdates,

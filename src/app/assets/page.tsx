@@ -253,7 +253,7 @@ export default function AssetsPage() {
     const locationGroups: Record<string, number> = {};
     
     filteredAssetsByType.forEach(asset => {
-      const location = asset.locationName || 'Unassigned';
+      const location = asset.locationName || 'Unassigned Location';
       locationGroups[location] = (locationGroups[location] || 0) + 1;
     });
     
