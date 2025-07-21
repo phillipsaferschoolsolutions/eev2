@@ -144,6 +144,11 @@ export default function DashboardPage() {
 
   // Fetch weather data based on user's location
   useEffect(() => {
+    // Only fetch weather if user profile is loaded and has account
+    if (authLoading || profileLoading || !userProfile?.account) {
+      return;
+    }
+    
     if (navigator.geolocation) {
       setWeatherLoading(true);
       navigator.geolocation.getCurrentPosition(
@@ -169,7 +174,6 @@ export default function DashboardPage() {
       setWeatherError("Geolocation not supported");
       setWeatherLoading(false);
     }
-  }, []);
 
   // Fetch widget data
   useEffect(() => {

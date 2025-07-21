@@ -277,13 +277,13 @@ export default function AssetsPage() {
                       asset.locationId || 
                       "Unassigned Location";
       
-      console.log("Asset location found:", location, "for asset:", asset.name);
+    const groups = filteredAssets.reduce((acc, asset) => {
       locationCounts[location] = (locationCounts[location] || 0) + 1;
     });
     
     console.log("Location counts:", locationCounts);
     
-    return Object.entries(conditionGroups).map(([condition, count]) => ({
+    return Object.entries(groups).map(([condition, count]) => ({
       condition,
       count
     }));
