@@ -174,7 +174,9 @@ export default function DashboardPage() {
       setWeatherError("Geolocation not supported");
       setWeatherLoading(false);
     }
+  }, [userProfile?.account, authLoading, profileLoading]);
 
+  // Fetch widget data
   // Fetch widget data
   useEffect(() => {
     if (!authLoading && !profileLoading && userProfile?.account) {
