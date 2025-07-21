@@ -23,11 +23,12 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { 
   HardDrive, Plus, Search, Edit, Trash2, AlertTriangle, Loader2, 
   Package, MapPin, User, Calendar, Building, Hash, Wrench, Camera,
-  X, BarChart3, PieChart, TrendingUp, Clock, Scan
+  X, BarChart3, PieChart, TrendingUp, Clock, Scan, Save
 } from "lucide-react";
 import { formatDisplayDateShort } from "@/lib/utils";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, PieChart as RechartsPieChart, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 // Common asset types for the dropdown
 const COMMON_ASSET_TYPES = [
@@ -83,6 +84,15 @@ export default function AssetsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   
+  // State for edit dialog
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  
+  // State for delete dialog
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   // State for barcode scanning
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -102,6 +112,22 @@ export default function AssetsPage() {
   
   // State for new asset form
   const [newAssetData, setNewAssetData] = useState({
+    name: "",
+    type: "",
+    customType: "",
+    serialNumber: "",
+    model: "",
+    manufacturer: "",
+    condition: "Good" as Asset['condition'],
+    locationId: "",
+    assignedToId: "unassigned", 
+    notes: "",
+    purchaseDate: undefined as Date | undefined,
+    warrantyExpiry: undefined as Date | undefined,
+  });
+  
+  // State for edit asset form
+  const [editAssetData, setEditAssetData] = useState({
     name: "",
     type: "",
     customType: "",
@@ -367,6 +393,126 @@ export default function AssetsPage() {
       });
     } finally {
       setIsCreating(false);
+    }
+  };
+  
+  // Function to open edit dialog
+  const openEditDialog = (asset: Asset) => {
+    setSelectedAsset(asset);
+    
+    // Convert date strings back to Date objects for the form
+    const purchaseDate = asset.purchaseDate ? new Date(asset.purchaseDate) : undefined;
+    const warrantyExpiry = asset.warrantyExpiry ? new Date(asset.warrantyExpiry) : undefined;
+    
+    // Determine if this is a custom type
+    const isCustomType = !COMMON_ASSET_TYPES.includes(asset.type);
+    
+    setEditAssetData({
+      name: asset.name,
+      type: isCustomType ? "Other" : asset.type,
+      customType: isCustomType ? asset.type : "",
+      serialNumber: asset.serialNumber || "",
+      model: asset.model || "",
+      manufacturer: asset.manufacturer || "",
+      condition: asset.condition,
+      locationId: asset.locationId || "",
+      assignedToId: asset.assignedToId || "unassigned",
+      notes: asset.notes || "",
+      purchaseDate,
+      warrantyExpiry,
+    });
+    
+    setIsEditDialogOpen(true);
+  };
+  
+  // Function to handle editing an asset
+  const handleEditAsset = async () => {
+    if (!selectedAsset || !userProfile?.account) return;
+    
+    setIsUpdating(true);
+    
+    try {
+      // Use custom type if "Other" is selected and custom type is provided
+      const finalType = editAssetData.type === "Other" && editAssetData.customType.trim() 
+        ? editAssetData.customType.trim()
+        : editAssetData.type;
+      
+      await updateAsset(selectedAsset.id, {
+        name: editAssetData.name,
+        type: finalType,
+        serialNumber: editAssetData.serialNumber,
+        model: editAssetData.model,
+        manufacturer: editAssetData.manufacturer,
+        condition: editAssetData.condition,
+        locationId: editAssetData.locationId,
+        assignedToId: editAssetData.assignedToId === "unassigned" ? "" : editAssetData.assignedToId,
+        notes: editAssetData.notes,
+        purchaseDate: editAssetData.purchaseDate?.toISOString(),
+        warrantyExpiry: editAssetData.warrantyExpiry?.toISOString(),
+      });
+      
+      // Update local state
+      setAssets(prevAssets => 
+        prevAssets.map(asset => 
+          asset.id === selectedAsset.id 
+            ? { ...asset, ...editAssetData, type: finalType }
+            : asset
+        )
+      );
+      
+      setIsEditDialogOpen(false);
+      setSelectedAsset(null);
+      
+      toast({
+        title: "Asset Updated",
+        description: "The asset has been successfully updated."
+      });
+    } catch (error) {
+      console.error("Failed to update asset:", error);
+      toast({
+        variant: "destructive",
+        title: "Error Updating Asset",
+        description: (error as Error).message
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+  
+  // Function to open delete dialog
+  const openDeleteDialog = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  // Function to handle deleting an asset
+  const handleDeleteAsset = async () => {
+    if (!selectedAsset) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      await deleteAsset(selectedAsset.id);
+      
+      // Update local state
+      setAssets(prevAssets => prevAssets.filter(asset => asset.id !== selectedAsset.id));
+      
+      setIsDeleteDialogOpen(false);
+      setSelectedAsset(null);
+      
+      toast({
+        title: "Asset Deleted",
+        description: "The asset has been successfully deleted."
+      });
+    } catch (error) {
+      console.error("Failed to delete asset:", error);
+      toast({
+        variant: "destructive",
+        title: "Error Deleting Asset",
+        description: (error as Error).message
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
   
@@ -684,10 +830,10 @@ export default function AssetsPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => openEditDialog(asset)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="outline" size="sm" className="text-destructive">
+                          <Button variant="outline" size="sm" className="text-destructive" onClick={() => openDeleteDialog(asset)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -952,6 +1098,225 @@ export default function AssetsPage() {
             </div>
           </DialogContent>
         </Dialog>
+      )}
+      
+      {/* Edit Asset Dialog */}
+      {isEditDialogOpen && selectedAsset && (
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Asset</DialogTitle>
+              <DialogDescription>
+                Update the details for {selectedAsset.name}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-name">Asset Name</Label>
+                <Input
+                  id="edit-name"
+                  value={editAssetData.name}
+                  onChange={(e) => setEditAssetData({ ...editAssetData, name: e.target.value })}
+                  placeholder="Enter asset name..."
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-type">Asset Type</Label>
+                <Select
+                  value={editAssetData.type}
+                  onValueChange={(value) => setEditAssetData({ ...editAssetData, type: value, customType: "" })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select or enter asset type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMMON_ASSET_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {editAssetData.type === "Other" && (
+                  <div className="mt-2">
+                    <Input
+                      value={editAssetData.customType}
+                      onChange={(e) => setEditAssetData({ ...editAssetData, customType: e.target.value })}
+                      placeholder="Enter custom asset type..."
+                    />
+                  </div>
+                )}
+              </div>
+              
+              <div className="md:col-span-2">
+                <Label htmlFor="edit-serialNumber">Serial Number</Label>
+                <Input
+                  id="edit-serialNumber"
+                  value={editAssetData.serialNumber}
+                  onChange={(e) => setEditAssetData({ ...editAssetData, serialNumber: e.target.value })}
+                  placeholder="Enter serial number..."
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-model">Model</Label>
+                <Input
+                  id="edit-model"
+                  value={editAssetData.model}
+                  onChange={(e) => setEditAssetData({ ...editAssetData, model: e.target.value })}
+                  placeholder="Enter model..."
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-manufacturer">Manufacturer</Label>
+                <Input
+                  id="edit-manufacturer"
+                  value={editAssetData.manufacturer}
+                  onChange={(e) => setEditAssetData({ ...editAssetData, manufacturer: e.target.value })}
+                  placeholder="Enter manufacturer..."
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-condition">Condition</Label>
+                <Select
+                  value={editAssetData.condition}
+                  onValueChange={(value) => setEditAssetData({ ...editAssetData, condition: value as Asset['condition'] })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select condition" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Good">Good</SelectItem>
+                    <SelectItem value="Needs Repair">Needs Repair</SelectItem>
+                    <SelectItem value="Retired">Retired</SelectItem>
+                    <SelectItem value="Missing">Missing</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-location">Location</Label>
+                <Select
+                  value={editAssetData.locationId}
+                  onValueChange={(value) => setEditAssetData({ ...editAssetData, locationId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((location) => (
+                      <SelectItem key={location.id} value={location.id}>
+                        {location.locationName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-assignee">Assigned To</Label>
+                <Select
+                  value={editAssetData.assignedToId}
+                  onValueChange={(value) => setEditAssetData({ ...editAssetData, assignedToId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select assignee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {users.map((user) => (
+                      <SelectItem key={user.uid} value={user.uid}>
+                        {user.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-purchaseDate">Purchase Date</Label>
+                <DatePicker
+                  date={editAssetData.purchaseDate}
+                  setDate={(date) => setEditAssetData({ ...editAssetData, purchaseDate: date })}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-warrantyExpiry">Warranty Expiry</Label>
+                <DatePicker
+                  date={editAssetData.warrantyExpiry}
+                  setDate={(date) => setEditAssetData({ ...editAssetData, warrantyExpiry: date })}
+                />
+              </div>
+              
+              <div className="md:col-span-2">
+                <Label htmlFor="edit-notes">Notes</Label>
+                <Textarea
+                  id="edit-notes"
+                  value={editAssetData.notes}
+                  onChange={(e) => setEditAssetData({ ...editAssetData, notes: e.target.value })}
+                  placeholder="Additional notes about this asset..."
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleEditAsset} disabled={isUpdating}>
+                {isUpdating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Update Asset
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {/* Delete Asset Confirmation Dialog */}
+      {isDeleteDialogOpen && selectedAsset && (
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Asset</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{selectedAsset.name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteAsset}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Asset
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

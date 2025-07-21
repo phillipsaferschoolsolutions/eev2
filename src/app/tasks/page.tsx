@@ -18,11 +18,12 @@ import {
   ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getMyTasks, createTask, getIssueTypes, closeTasks, deleteTasks } from "@/services/taskService";
+import { getMyTasks, createTask, updateTask, deleteTask, getIssueTypes, closeTasks, deleteTasks } from "@/services/taskService";
 import type { Task, IssueType } from "@/types/Task";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { getUsersForAccount, type ChatUser } from "@/services/messagingService";
 import { formatDisplayDateShort } from "@/lib/utils";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export default function TasksPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
@@ -52,6 +53,16 @@ export default function TasksPage() {
   // State for create task dialog
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  
+  // State for edit task dialog
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  
+  // State for delete task dialog
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   const [newTaskData, setNewTaskData] = useState({
     taskTitle: "",
     description: "",
@@ -59,6 +70,16 @@ export default function TasksPage() {
     issueType: "",
     locationId: "",
     assignedToUserId: "",
+  });
+  
+  const [editTaskData, setEditTaskData] = useState({
+    taskTitle: "",
+    description: "",
+    priority: "Medium",
+    issueType: "",
+    locationId: "",
+    assignedToUserId: "",
+    status: "Open",
   });
   
   // State for task actions
@@ -185,6 +206,84 @@ export default function TasksPage() {
       toast({ variant: "destructive", title: "Error", description: "Failed to create task. Please try again." });
     } finally {
       setIsCreating(false);
+    }
+  };
+  
+  // Function to open edit task dialog
+  const openEditTaskDialog = (task: any) => {
+    setSelectedTask(task);
+    setEditTaskData({
+      taskTitle: task.taskTitle || task.title || "",
+      description: task.description || "",
+      priority: task.priority || "Medium",
+      issueType: task.issueType || "",
+      locationId: task.locationId || "",
+      assignedToUserId: task.assignedToUserId || "",
+      status: task.status || "Open",
+    });
+    setIsEditDialogOpen(true);
+  };
+  
+  // Function to handle editing a task
+  const handleEditTask = async () => {
+    if (!selectedTask) return;
+    
+    setIsUpdating(true);
+    
+    try {
+      await updateTask({
+        id: selectedTask.id,
+        title: editTaskData.taskTitle,
+        description: editTaskData.description,
+        priority: editTaskData.priority,
+        status: editTaskData.status,
+        issueTypeId: editTaskData.issueType,
+        locationId: editTaskData.locationId,
+        assigneeId: editTaskData.assignedToUserId,
+      });
+      
+      toast({ title: "Success", description: "Task updated successfully." });
+      
+      setIsEditDialogOpen(false);
+      setSelectedTask(null);
+      
+      // Refresh tasks
+      fetchTasks();
+    } catch (error) {
+      console.error("Failed to update task:", error);
+      toast({ variant: "destructive", title: "Error", description: "Failed to update task. Please try again." });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+  
+  // Function to open delete task dialog
+  const openDeleteTaskDialog = (task: any) => {
+    setSelectedTask(task);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  // Function to handle deleting a single task
+  const handleDeleteTask = async () => {
+    if (!selectedTask) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      await deleteTask(selectedTask.id);
+      
+      toast({ title: "Success", description: "Task deleted successfully." });
+      
+      setIsDeleteDialogOpen(false);
+      setSelectedTask(null);
+      
+      // Refresh tasks
+      fetchTasks();
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+      toast({ variant: "destructive", title: "Error", description: "Failed to delete task. Please try again." });
+    } finally {
+      setIsDeleting(false);
     }
   };
   
@@ -440,10 +539,10 @@ export default function TasksPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => openEditTaskDialog(task)}>
                             <Edit className="h-3 w-3" />
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => openDeleteTaskDialog(task)}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
@@ -629,6 +728,189 @@ export default function TasksPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      )}
+      
+      {/* Edit Task Dialog */}
+      {isEditDialogOpen && selectedTask && (
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Edit Task</DialogTitle>
+              <DialogDescription>
+                Update the details for this task.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-taskTitle">Task Title</Label>
+                <Input
+                  id="edit-taskTitle"
+                  value={editTaskData.taskTitle}
+                  onChange={(e) => setEditTaskData({ ...editTaskData, taskTitle: e.target.value })}
+                  placeholder="Enter task title..."
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editTaskData.description}
+                  onChange={(e) => setEditTaskData({ ...editTaskData, description: e.target.value })}
+                  placeholder="Enter task description..."
+                  rows={3}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-status">Status</Label>
+                <Select
+                  value={editTaskData.status}
+                  onValueChange={(value) => setEditTaskData({ ...editTaskData, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Open">Open</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Blocked">Blocked</SelectItem>
+                    <SelectItem value="Resolved">Resolved</SelectItem>
+                    <SelectItem value="Closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-priority">Priority</Label>
+                <Select
+                  value={editTaskData.priority}
+                  onValueChange={(value) => setEditTaskData({ ...editTaskData, priority: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="High">High</SelectItem>
+                    <SelectItem value="Critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-issueType">Issue Type</Label>
+                <Select
+                  value={editTaskData.issueType}
+                  onValueChange={(value) => setEditTaskData({ ...editTaskData, issueType: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select issue type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {issueTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.name}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-location">Location</Label>
+                <Select
+                  value={editTaskData.locationId}
+                  onValueChange={(value) => setEditTaskData({ ...editTaskData, locationId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((location) => (
+                      <SelectItem key={location.id} value={location.id}>
+                        {location.locationName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-assignee">Assignee</Label>
+                <Select
+                  value={editTaskData.assignedToUserId}
+                  onValueChange={(value) => setEditTaskData({ ...editTaskData, assignedToUserId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select assignee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Unassigned</SelectItem>
+                    {users.map((user) => (
+                      <SelectItem key={user.uid} value={user.email}>
+                        {user.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleEditTask} disabled={isUpdating}>
+                {isUpdating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Update Task
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {/* Delete Task Confirmation Dialog */}
+      {isDeleteDialogOpen && selectedTask && (
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Task</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{selectedTask.taskTitle || selectedTask.title}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteTask}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Task
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );
