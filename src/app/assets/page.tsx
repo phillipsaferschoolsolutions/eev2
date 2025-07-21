@@ -189,7 +189,7 @@ export default function AssetsPage() {
         purchaseDate: newAssetData.purchaseDate?.toISOString(),
         warrantyExpiry: newAssetData.warrantyExpiry?.toISOString(),
         condition: newAssetData.condition,
-        locationId: newAssetData.locationId || undefined,
+        locationId: newAssetData.locationId === "none" ? undefined : newAssetData.locationId || undefined,
         assignedToId: finalAssignedToId,
         notes: newAssetData.notes || undefined,
         purchasePrice: newAssetData.purchasePrice ? parseFloat(newAssetData.purchasePrice) : undefined,
@@ -278,7 +278,7 @@ export default function AssetsPage() {
         purchaseDate: editAssetData.purchaseDate?.toISOString(),
         warrantyExpiry: editAssetData.warrantyExpiry?.toISOString(),
         condition: editAssetData.condition,
-        locationId: editAssetData.locationId || undefined,
+        locationId: editAssetData.locationId === "none" ? undefined : editAssetData.locationId || undefined,
         assignedToId: finalAssignedToId,
         notes: editAssetData.notes || undefined,
         purchasePrice: editAssetData.purchasePrice ? parseFloat(editAssetData.purchasePrice) : undefined,
@@ -796,7 +796,7 @@ export default function AssetsPage() {
                       <SelectValue placeholder="Select location" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Location</SelectItem>
+                      <SelectItem value="none">No Location</SelectItem>
                       {locations.map((location) => (
                         <SelectItem key={location.id} value={location.id}>
                           {location.locationName}
@@ -1012,7 +1012,7 @@ export default function AssetsPage() {
                       <SelectValue placeholder="Select location" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Location</SelectItem>
+                      <SelectItem value="none">No Location</SelectItem>
                       {locations.map((location) => (
                         <SelectItem key={location.id} value={location.id}>
                           {location.locationName}
