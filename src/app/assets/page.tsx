@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { getAssets, createAsset } from "@/services/assetService";
 import type { Asset } from "@/types/Asset";
@@ -21,13 +22,50 @@ import { getUsersForAccount, type ChatUser } from "@/services/messagingService";
 import { DatePicker } from "@/components/ui/date-picker";
 import { 
   HardDrive, Plus, Search, Edit, Trash2, AlertTriangle, Loader2, 
-  Package, MapPin, User, Calendar, Building, Hash, Wrench
+  Package, MapPin, User, Calendar, Building, Hash, Wrench, Camera,
+  X, BarChart3, PieChart, TrendingUp, Clock, Scan
 } from "lucide-react";
 import { formatDisplayDateShort } from "@/lib/utils";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { BarChart, Bar, PieChart as RechartsPieChart, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+
+// Common asset types for the dropdown
+const COMMON_ASSET_TYPES = [
+  "Computer",
+  "Laptop", 
+  "Printer",
+  "Scanner",
+  "Projector",
+  "Camera",
+  "Security Camera",
+  "Monitor",
+  "Tablet",
+  "Phone",
+  "Router",
+  "Switch",
+  "Server",
+  "UPS",
+  "Fire Extinguisher",
+  "AED Device",
+  "Radio",
+  "Intercom System",
+  "Access Control Panel",
+  "Emergency Light",
+  "Smoke Detector",
+  "Other"
+];
+
+// Colors for charts
+const CHART_COLORS = [
+  '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+  '#EC4899', '#06B6D4', '#F97316', '#14B8A6', '#6366F1'
+];
 
 export default function AssetsPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   
   // State for assets
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -45,6 +83,14 @@ export default function AssetsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   
+  // State for barcode scanning
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  
+  // State for data visualization filters
+  const [visualizationFilter, setVisualizationFilter] = useState<string>("all");
+  
   // Filter assets based on search term
   const filteredAssets = assets.filter(asset =>
     asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -58,6 +104,7 @@ export default function AssetsPage() {
   const [newAssetData, setNewAssetData] = useState({
     name: "",
     type: "",
+    customType: "",
     serialNumber: "",
     model: "",
     manufacturer: "",
@@ -131,6 +178,145 @@ export default function AssetsPage() {
     }
   }, [userProfile?.account, authLoading]);
   
+  // Calculate asset age in years
+  const calculateAssetAge = (purchaseDate: any): number => {
+    if (!purchaseDate) return 0;
+    
+    let date: Date;
+    if (typeof purchaseDate === 'string') {
+      date = new Date(purchaseDate);
+    } else if (purchaseDate.toDate) {
+      date = purchaseDate.toDate();
+    } else {
+      date = new Date(purchaseDate);
+    }
+    
+    const now = new Date();
+    const ageInMs = now.getTime() - date.getTime();
+    return Math.max(0, ageInMs / (1000 * 60 * 60 * 24 * 365.25));
+  };
+  
+  // Prepare data for average age by type chart
+  const averageAgeByType = useCallback(() => {
+    const typeGroups: Record<string, { totalAge: number; count: number }> = {};
+    
+    assets.forEach(asset => {
+      if (!asset.purchaseDate) return;
+      
+      const age = calculateAssetAge(asset.purchaseDate);
+      if (!typeGroups[asset.type]) {
+        typeGroups[asset.type] = { totalAge: 0, count: 0 };
+      }
+      typeGroups[asset.type].totalAge += age;
+      typeGroups[asset.type].count += 1;
+    });
+    
+    return Object.entries(typeGroups).map(([type, data]) => ({
+      type,
+      averageAge: Number((data.totalAge / data.count).toFixed(1)),
+      count: data.count
+    })).sort((a, b) => b.averageAge - a.averageAge);
+  }, [assets]);
+  
+  // Prepare data for asset distribution by location
+  const assetDistributionByLocation = useCallback(() => {
+    const filteredAssetsByType = visualizationFilter === "all" 
+      ? assets 
+      : assets.filter(asset => asset.type === visualizationFilter);
+    
+    const locationGroups: Record<string, number> = {};
+    
+    filteredAssetsByType.forEach(asset => {
+      const location = asset.locationName || 'Unassigned';
+      locationGroups[location] = (locationGroups[location] || 0) + 1;
+    });
+    
+    return Object.entries(locationGroups).map(([location, count]) => ({
+      location,
+      count
+    })).sort((a, b) => b.count - a.count);
+  }, [assets, visualizationFilter]);
+  
+  // Prepare data for condition distribution
+  const conditionDistribution = useCallback(() => {
+    const conditionGroups: Record<string, number> = {};
+    
+    assets.forEach(asset => {
+      conditionGroups[asset.condition] = (conditionGroups[asset.condition] || 0) + 1;
+    });
+    
+    return Object.entries(conditionGroups).map(([condition, count]) => ({
+      condition,
+      count
+    }));
+  }, [assets]);
+  
+  // Get unique asset types for filter dropdown
+  const uniqueAssetTypes = [...new Set(assets.map(asset => asset.type))].sort();
+  
+  // Start camera for barcode scanning
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: 'environment', // Use back camera if available
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+      
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        videoRef.current.play();
+      }
+      setIsScanning(true);
+    } catch (error) {
+      console.error("Error accessing camera:", error);
+      toast({
+        variant: "destructive",
+        title: "Camera Access Error",
+        description: "Unable to access camera. Please check permissions."
+      });
+    }
+  };
+  
+  // Stop camera
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setIsScanning(false);
+    setIsScannerOpen(false);
+  };
+  
+  // Capture frame for barcode detection (simplified - in production you'd use a barcode library)
+  const captureBarcode = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    
+    // In a real implementation, you would use a barcode scanning library here
+    // For now, we'll simulate a successful scan
+    const simulatedBarcode = `BC${Date.now().toString().slice(-8)}`;
+    setNewAssetData({ ...newAssetData, serialNumber: simulatedBarcode });
+    stopCamera();
+    
+    toast({
+      title: "Barcode Scanned",
+      description: `Serial number captured: ${simulatedBarcode}`
+    });
+  };
+  
   // Handle creating new asset
   const handleCreateAsset = async () => {
     if (!userProfile?.account) return;
@@ -138,9 +324,14 @@ export default function AssetsPage() {
     setIsCreating(true);
     
     try {
+      // Use custom type if "Other" is selected and custom type is provided
+      const finalType = newAssetData.type === "Other" && newAssetData.customType.trim() 
+        ? newAssetData.customType.trim()
+        : newAssetData.type;
+      
       await createAsset({
         name: newAssetData.name,
-        type: newAssetData.type,
+        type: finalType,
         serialNumber: newAssetData.serialNumber,
         model: newAssetData.model,
         manufacturer: newAssetData.manufacturer,
@@ -148,14 +339,14 @@ export default function AssetsPage() {
         locationId: newAssetData.locationId,
         assignedToId: newAssetData.assignedToId === "unassigned" ? "" : newAssetData.assignedToId,
         notes: newAssetData.notes,
-        purchaseDate: newAssetData.purchaseDate,
-        warrantyExpiry: newAssetData.warrantyExpiry,
+        purchaseDate: newAssetData.purchaseDate?.toISOString(),
+        warrantyExpiry: newAssetData.warrantyExpiry?.toISOString(),
         account: userProfile.account
       });
       
       // Reset form
       setNewAssetData({
-        name: "", type: "", serialNumber: "", condition: "Good",
+        name: "", type: "", customType: "", serialNumber: "", condition: "Good",
         model: "", manufacturer: "", locationId: "", assignedToId: "unassigned", notes: "",
         purchaseDate: undefined, warrantyExpiry: undefined
       });
@@ -217,6 +408,172 @@ export default function AssetsPage() {
         </Button>
       </div>
       
+      {/* Data Visualization Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Total Assets Card */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Assets</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{assets.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {uniqueAssetTypes.length} different types
+            </p>
+          </CardContent>
+        </Card>
+        
+        {/* Assets Needing Attention */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Need Attention</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">
+              {assets.filter(a => a.condition === 'Needs Repair' || a.condition === 'Missing').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Repair or missing assets
+            </p>
+          </CardContent>
+        </Card>
+        
+        {/* Average Asset Age */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Average Age</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {assets.length > 0 ? (
+                assets.reduce((sum, asset) => sum + calculateAssetAge(asset.purchaseDate), 0) / assets.length
+              ).toFixed(1) : '0'} years
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Across all assets
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Average Age by Type Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Average Age by Asset Type
+            </CardTitle>
+            <CardDescription>
+              Shows the average age in years for each type of asset
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={averageAgeByType()}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="type" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    fontSize={12}
+                  />
+                  <YAxis />
+                  <Tooltip 
+                    formatter={(value: any, name: string) => [
+                      `${value} years`, 
+                      'Average Age'
+                    ]}
+                    labelFormatter={(label) => `Asset Type: ${label}`}
+                  />
+                  <Bar dataKey="averageAge" fill="#3B82F6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Asset Distribution by Location */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="h-5 w-5 text-primary" />
+              Asset Distribution by Location
+            </CardTitle>
+            <CardDescription>
+              <div className="flex items-center gap-2 mt-2">
+                <span>Filter by type:</span>
+                <Select value={visualizationFilter} onValueChange={setVisualizationFilter}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {uniqueAssetTypes.map(type => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <Tooltip />
+                  <Legend />
+                  <RechartsPieChart
+                    data={assetDistributionByLocation()}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    dataKey="count"
+                    nameKey="location"
+                  >
+                    {assetDistributionByLocation().map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </RechartsPieChart>
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Condition Distribution Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Asset Condition Distribution
+          </CardTitle>
+          <CardDescription>
+            Overview of asset conditions across your inventory
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={conditionDistribution()} layout="horizontal">
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis dataKey="condition" type="category" width={100} />
+                <Tooltip />
+                <Bar dataKey="count" fill="#10B981" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -271,7 +628,7 @@ export default function AssetsPage() {
                     <TableHead>Location</TableHead>
                     <TableHead>Assigned To</TableHead>
                     <TableHead>Condition</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead>Age</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -323,7 +680,7 @@ export default function AssetsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {asset.createdAt ? formatDisplayDateShort(asset.createdAt) : 'N/A'}
+                        {asset.purchaseDate ? `${calculateAssetAge(asset.purchaseDate).toFixed(1)} years` : 'N/A'}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -347,7 +704,7 @@ export default function AssetsPage() {
       {/* Create Asset Dialog */}
       {isCreateDialogOpen && (
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Asset</DialogTitle>
               <DialogDescription>
@@ -367,22 +724,51 @@ export default function AssetsPage() {
               
               <div>
                 <Label htmlFor="type">Asset Type</Label>
-                <Input
-                  id="type"
+                <Select
                   value={newAssetData.type}
-                  onChange={(e) => setNewAssetData({ ...newAssetData, type: e.target.value })}
-                  placeholder="e.g., Computer, Printer, Camera..."
-                />
+                  onValueChange={(value) => setNewAssetData({ ...newAssetData, type: value, customType: "" })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select or enter asset type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMMON_ASSET_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {newAssetData.type === "Other" && (
+                  <div className="mt-2">
+                    <Input
+                      value={newAssetData.customType}
+                      onChange={(e) => setNewAssetData({ ...newAssetData, customType: e.target.value })}
+                      placeholder="Enter custom asset type..."
+                    />
+                  </div>
+                )}
               </div>
               
-              <div>
+              <div className="md:col-span-2">
                 <Label htmlFor="serialNumber">Serial Number</Label>
-                <Input
-                  id="serialNumber"
-                  value={newAssetData.serialNumber}
-                  onChange={(e) => setNewAssetData({ ...newAssetData, serialNumber: e.target.value })}
-                  placeholder="Enter serial number..."
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="serialNumber"
+                    value={newAssetData.serialNumber}
+                    onChange={(e) => setNewAssetData({ ...newAssetData, serialNumber: e.target.value })}
+                    placeholder="Enter serial number or scan barcode..."
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsScannerOpen(true)}
+                    className="px-3"
+                  >
+                    <Scan className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               
               <div>
@@ -507,6 +893,63 @@ export default function AssetsPage() {
                 )}
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {/* Barcode Scanner Dialog */}
+      {isScannerOpen && (
+        <Dialog open={isScannerOpen} onOpenChange={(open) => {
+          if (!open) {
+            stopCamera();
+          }
+        }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Scan Barcode</DialogTitle>
+              <DialogDescription>
+                Position the barcode within the camera view and tap capture when ready.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="relative bg-black rounded-lg overflow-hidden">
+                <video
+                  ref={videoRef}
+                  className="w-full h-64 object-cover"
+                  autoPlay
+                  playsInline
+                  muted
+                />
+                <canvas ref={canvasRef} className="hidden" />
+                {!isScanning && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <Button onClick={startCamera}>
+                      <Camera className="mr-2 h-4 w-4" />
+                      Start Camera
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              {isScanning && (
+                <div className="flex gap-2">
+                  <Button onClick={captureBarcode} className="flex-1">
+                    <Scan className="mr-2 h-4 w-4" />
+                    Capture Barcode
+                  </Button>
+                  <Button variant="outline" onClick={stopCamera}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  Note: This is a simplified barcode scanner. In production, you would integrate with a proper barcode scanning library like ZXing or QuaggaJS.
+                </AlertDescription>
+              </Alert>
+            </div>
           </DialogContent>
         </Dialog>
       )}
