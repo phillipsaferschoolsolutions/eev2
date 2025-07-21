@@ -626,27 +626,12 @@ export default function AssetsPage() {
                   />
                   <YAxis />
                   <Tooltip 
-              {conditionDistribution().length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={conditionDistribution()} layout="horizontal">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="condition" type="category" width={100} />
-                    <Tooltip 
-                      formatter={(value, name) => [value, 'Assets']}
-                      labelFormatter={(label) => `Condition: ${label}`}
-                    />
-                    <Bar dataKey="count" fill="#10B981" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <div className="text-center">
-                    <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No condition data available</p>
-                  </div>
-                </div>
-              )}
+                    formatter={(value, name) => [value, 'Average Age (years)']}
+                    labelFormatter={(label) => `Asset Type: ${label}`}
+                  />
+                  <Bar dataKey="averageAge" fill="#3B82F6" />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
@@ -728,15 +713,27 @@ export default function AssetsPage() {
         </CardHeader>
         <CardContent>
           <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={conditionDistribution()} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="condition" type="category" width={100} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#10B981" />
-              </BarChart>
-            </ResponsiveContainer>
+            {conditionDistribution().length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={conditionDistribution()} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis dataKey="condition" type="category" width={100} />
+                  <Tooltip 
+                    formatter={(value, name) => [value, 'Assets']}
+                    labelFormatter={(label) => `Condition: ${label}`}
+                  />
+                  <Bar dataKey="count" fill="#10B981" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <div className="text-center">
+                  <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No condition data available</p>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
