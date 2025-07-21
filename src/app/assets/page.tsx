@@ -265,11 +265,23 @@ export default function AssetsPage() {
   
   // Prepare data for condition distribution
   const conditionDistribution = useCallback(() => {
-    const conditionGroups: Record<string, number> = {};
+    console.log("Filtered assets for location chart:", filteredAssets);
+    console.log("Sample asset structure:", filteredAssets[0]);
     
-    assets.forEach(asset => {
-      conditionGroups[asset.condition] = (conditionGroups[asset.condition] || 0) + 1;
+    const locationCounts: Record<string, number> = {};
+    
+    filteredAssets.forEach(asset => {
+      // Try multiple possible location field names
+      const location = asset.locationName || 
+                      asset.location || 
+                      asset.locationId || 
+                      "Unassigned Location";
+      
+      console.log("Asset location found:", location, "for asset:", asset.name);
+      locationCounts[location] = (locationCounts[location] || 0) + 1;
     });
+    
+    console.log("Location counts:", locationCounts);
     
     return Object.entries(conditionGroups).map(([condition, count]) => ({
       condition,
