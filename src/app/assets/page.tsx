@@ -63,7 +63,7 @@ export default function AssetsPage() {
     manufacturer: "",
     condition: "Good" as Asset['condition'],
     locationId: "",
-    assignedToId: "", 
+    assignedToId: "unassigned", 
     notes: "",
     purchaseDate: undefined as Date | undefined,
     warrantyExpiry: undefined as Date | undefined,
@@ -146,7 +146,7 @@ export default function AssetsPage() {
         manufacturer: newAssetData.manufacturer,
         condition: newAssetData.condition,
         locationId: newAssetData.locationId,
-        assignedToId: newAssetData.assignedToId,
+        assignedToId: newAssetData.assignedToId === "unassigned" ? "" : newAssetData.assignedToId,
         notes: newAssetData.notes,
         purchaseDate: newAssetData.purchaseDate,
         warrantyExpiry: newAssetData.warrantyExpiry,
@@ -156,7 +156,7 @@ export default function AssetsPage() {
       // Reset form
       setNewAssetData({
         name: "", type: "", serialNumber: "", condition: "Good",
-        model: "", manufacturer: "", locationId: "", assignedToId: "", notes: "",
+        model: "", manufacturer: "", locationId: "", assignedToId: "unassigned", notes: "",
         purchaseDate: undefined, warrantyExpiry: undefined
       });
       
@@ -452,7 +452,7 @@ export default function AssetsPage() {
                     <SelectValue placeholder="Select assignee" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
                     {users.map((user) => (
                       <SelectItem key={user.uid} value={user.uid}>
                         {user.displayName}
