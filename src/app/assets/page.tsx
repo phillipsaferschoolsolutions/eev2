@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { getAssets, createAsset } from "@/services/assetService";
+import { getAssets, createAsset, updateAsset, deleteAsset } from "@/services/assetService";
 import type { Asset } from "@/types/Asset";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { getUsersForAccount, type ChatUser } from "@/services/messagingService";
@@ -363,7 +363,7 @@ export default function AssetsPage() {
         manufacturer: newAssetData.manufacturer,
         condition: newAssetData.condition,
         locationId: newAssetData.locationId,
-        assignedToId: newAssetData.assignedToId === "unassigned" ? "" : newAssetData.assignedToId,
+        assignedToId: newAssetData.assignedToId === "unassigned" ? undefined : newAssetData.assignedToId,
         notes: newAssetData.notes,
         purchaseDate: newAssetData.purchaseDate?.toISOString(),
         warrantyExpiry: newAssetData.warrantyExpiry?.toISOString(),
@@ -445,20 +445,14 @@ export default function AssetsPage() {
         manufacturer: editAssetData.manufacturer,
         condition: editAssetData.condition,
         locationId: editAssetData.locationId,
-        assignedToId: editAssetData.assignedToId === "unassigned" ? "" : editAssetData.assignedToId,
+        assignedToId: editAssetData.assignedToId === "unassigned" ? undefined : editAssetData.assignedToId,
         notes: editAssetData.notes,
         purchaseDate: editAssetData.purchaseDate?.toISOString(),
         warrantyExpiry: editAssetData.warrantyExpiry?.toISOString(),
       });
       
-      // Update local state
-      setAssets(prevAssets => 
-        prevAssets.map(asset => 
-          asset.id === selectedAsset.id 
-            ? { ...asset, ...editAssetData, type: finalType }
-            : asset
-        )
-      );
+      // Refresh assets list to get updated data with proper names
+      fetchAssets();
       
       setIsEditDialogOpen(false);
       setSelectedAsset(null);

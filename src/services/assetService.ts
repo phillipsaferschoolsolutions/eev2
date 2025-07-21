@@ -129,6 +129,17 @@ export async function createAsset(assetData: CreateAssetPayload & { account: str
       Object.entries(assetToSave).filter(([_, value]) => value !== undefined)
     );
     
+    // Add location and assignee names for display
+    if (cleanedAsset.locationId) {
+      // Note: In a real implementation, you might want to fetch location name
+      // For now, we'll let the frontend handle the display names
+    }
+    
+    if (cleanedAsset.assignedToId) {
+      // Note: In a real implementation, you might want to fetch user name
+      // For now, we'll let the frontend handle the display names
+    }
+    
     const docRef = await addDoc(assetsCollection, cleanedAsset);
     
     return {
@@ -149,8 +160,14 @@ export async function createAsset(assetData: CreateAssetPayload & { account: str
 export async function updateAsset(assetId: string, updates: UpdateAssetPayload): Promise<void> {
   try {
     const assetRef = doc(firestore, 'assets', assetId);
+    
+    // Filter out undefined values to prevent Firestore errors
+    const cleanedUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([_, value]) => value !== undefined)
+    );
+    
     await updateDoc(assetRef, {
-      ...updates,
+      ...cleanedUpdates,
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
