@@ -3,7 +3,39 @@
 
 import { auth } from '@/lib/firebase';
 import type { User } from 'firebase/auth';
-import type { Task, IssueType } from '@/types/Task';
+
+// Define Task and IssueType interfaces here since they're used by this service
+export interface Task {
+  id: string;
+  taskTitle?: string;
+  title?: string; // Legacy field name
+  description?: string;
+  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  status: 'Open' | 'In Progress' | 'Blocked' | 'Resolved' | 'Closed';
+  issueType?: string;
+  issueTypeId?: string; // Legacy field name
+  issueTypeName?: string;
+  locationId?: string;
+  locationName?: string;
+  assignedToUserId?: string;
+  assigneeName?: string;
+  createdBy?: string;
+  createdTime?: any;
+  account?: string;
+  overdue?: boolean;
+  dueDate?: string;
+  latestAction?: string;
+  photoLink?: string;
+}
+
+export interface IssueType {
+  id: string;
+  name: string;
+  description?: string;
+  accountId: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
 
 const TASKS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/task';
 
