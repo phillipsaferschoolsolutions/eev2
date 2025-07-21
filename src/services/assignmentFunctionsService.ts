@@ -240,14 +240,21 @@ async function authedFetch<T>(
     }
   }
 
-  // Automatically get accountName from localStorage
-  const accountName = localStorage.getItem('accountName');
-  if (accountName) {
-    headers.set('account', accountName);
-  } else {
+  // Await accountName from localStorage with polling to prevent race conditions
+  try {
+    const accountName = await getAccountName();
+    if (accountName) {
+      headers.set('account', accountName);
+    } else {
+      // Only warn if it's not a call to the auth endpoint itself
+      if (!fullUrl.includes('/auth')) {
+          console.warn(`[CRITICAL] authedFetch: 'account' header not found in localStorage for URL: ${fullUrl}.`);
+      }
+    }
+  } catch (error) {
     // Only warn if it's not a call to the auth endpoint itself
     if (!fullUrl.includes('/auth')) {
-        console.warn(`[CRITICAL] authedFetch: 'account' header not found in localStorage for URL: ${fullUrl}.`);
+        console.warn(`[CRITICAL] authedFetch: Failed to get account name for URL: ${fullUrl}. Error:`, error);
     }
   }
 

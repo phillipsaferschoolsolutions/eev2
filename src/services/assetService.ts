@@ -124,11 +124,16 @@ export async function createAsset(assetData: CreateAssetPayload & { account: str
     // Remove the account field since we're using accountId
     const { account, ...assetToSave } = newAsset;
     
-    const docRef = await addDoc(assetsCollection, assetToSave);
+    // Filter out undefined values to prevent Firestore errors
+    const cleanedAsset = Object.fromEntries(
+      Object.entries(assetToSave).filter(([_, value]) => value !== undefined)
+    );
+    
+    const docRef = await addDoc(assetsCollection, cleanedAsset);
     
     return {
       id: docRef.id,
-      ...assetToSave,
+      ...cleanedAsset,
     } as Asset;
   } catch (error) {
     console.error("Error creating asset:", error);
