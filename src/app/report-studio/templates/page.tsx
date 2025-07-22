@@ -428,7 +428,7 @@ export default function TemplateManagementPage() {
                       <RichTextEditor
                         value={field.value}
                         onChange={field.onChange}
-                        placeholder={"Enter your template content here. Use placeholders like " + "{{" + "assessmentName" + "}}" + "."}
+                        placeholder="Enter your template content here. Use placeholders like {{assessmentName}}."
                         className="min-h-[400px]"
                       />
                     )}
@@ -438,7 +438,7 @@ export default function TemplateManagementPage() {
                     <Info className="h-4 w-4" />
                     <AlertTitle>Available Placeholders</AlertTitle>
                     <AlertDescription>
-                      Use placeholders like `{{"{{" + "assessmentName" + "}}"}}`, `{{"{{" + "completedBy" + "}}"}}`, `{{"{{" + "locationName" + "}}"}}`, `{{"{{" + "reportGeneratedDate" + "}}"}}`, etc.
+                      Use placeholders like `{{assessmentName}}`, `{{completedBy}}`, `{{locationName}}`, `{{reportGeneratedDate}}`, etc.
                       A full list of available placeholders will be provided in the documentation.
                     </AlertDescription>
                   </Alert>
