@@ -239,7 +239,7 @@ export default function TasksPage() {
         status: editTaskData.status,
         issueTypeId: editTaskData.issueType,
         locationId: editTaskData.locationId,
-        assigneeId: editTaskData.assignedToUserId,
+        assigneeId: editTaskData.assignedToUserId === "unassigned" ? undefined : editTaskData.assignedToUserId,
       });
       
       toast({ title: "Success", description: "Task updated successfully." });
@@ -847,7 +847,7 @@ export default function TasksPage() {
                     <SelectValue placeholder="Select assignee" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
                     {users.map((user) => (
                       <SelectItem key={user.uid} value={user.email}>
                         {user.displayName}
