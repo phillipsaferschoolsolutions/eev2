@@ -438,7 +438,7 @@ export default function TemplateManagementPage() {
                     <Info className="h-4 w-4" />
                     <AlertTitle>Available Placeholders</AlertTitle>
                     <AlertDescription>
-                      Use placeholders like `{{assessmentName}}`, `{{completedBy}}`, `{{locationName}}`, `{{reportGeneratedDate}}`, etc.
+                      Use placeholders like {"{{assessmentName}}"}, {"{{completedBy}}"}, {"{{locationName}}"}, {"{{reportGeneratedDate}}"}, etc.
                       A full list of available placeholders will be provided in the documentation.
                     </AlertDescription>
                   </Alert>
