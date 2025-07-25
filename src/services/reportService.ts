@@ -337,17 +337,87 @@ export async function savePromptSettings(accountName: string, settings: PromptSe
 }
 
 /**
+ * Generates a comprehensive table of questions and responses for the appendix.
+ */
+function generateQuestionResponseTable(completionData: any, assignmentData: any): string {
+  if (!completionData?.content || !assignmentData?.questions) {
+    return '<p>No question and response data available.</p>';
+  }
+
+  let tableHtml = `
+    <table class="question-response-table">
+      <thead>
+        <tr>
+          <th class="question-cell">Question</th>
+          <th class="response-cell">Response</th>
+          <th class="comment-cell">Comments</th>
+          <th class="photo-cell">Photo</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  assignmentData.questions.forEach((question: any, index: number) => {
+    const answer = completionData.content[question.id];
+    const comment = completionData.commentsData?.[question.id];
+    const photo = completionData.uploadedPhotos?.[question.id];
+    
+    // Format the answer based on its type
+    let formattedAnswer = 'No response';
+    if (answer !== null && answer !== undefined && answer !== '') {
+      if (typeof answer === 'boolean') {
+        formattedAnswer = answer ? 'Yes' : 'No';
+      } else if (Array.isArray(answer)) {
+        formattedAnswer = answer.join(', ');
+      } else {
+        formattedAnswer = String(answer);
+      }
+    }
+    
+    tableHtml += `
+      <tr>
+        <td class="question-cell">
+          <strong>Q${index + 1}:</strong> ${question.label}
+          ${question.required ? '<span style="color: #d32f2f;"> *</span>' : ''}
+          <br><small style="color: #666;">Type: ${question.component}</small>
+        </td>
+        <td class="response-cell">
+          ${formattedAnswer === 'No response' ? '<span class="no-response">No response</span>' : formattedAnswer}
+        </td>
+        <td class="comment-cell">
+          ${comment ? `"${comment}"` : '<span class="no-response">No comment</span>'}
+        </td>
+        <td class="photo-cell">
+          ${photo?.link ? `<img src="${photo.link}" alt="Photo for question ${index + 1}" title="${photo.originalName || 'Uploaded photo'}" />` : '<span class="no-response">No photo</span>'}
+        </td>
+      </tr>
+    `;
+  });
+
+  tableHtml += '</tbody></table>';
+  return tableHtml;
+}
+
+/**
  * Converts the structured report data to HTML for display in the editor.
  * @param report The structured report data.
  * @param accountName The account name to replace placeholders with.
  * @param generatedBy The user who generated the report.
+ * @param completionData The completion data for generating the appendix.
+ * @param assignmentData The assignment data for generating the appendix.
  * @returns HTML string representation of the report.
  */
-export function reportToHtml(report: GenerateReportOutput, accountName: string, generatedBy: string): string {
+export function reportToHtml(
+  report: GenerateReportOutput, 
+  accountName: string, 
+  generatedBy: string,
+  completionData?: any,
+  assignmentData?: any
+): string {
   // Extract metadata from the report or completion data if available
   const assignmentName = report.title || "Safety Assessment Report";
-  const completedBy = ""; // This would need to be extracted from completionData
-  const completionDate = ""; // This would need to be extracted from completionData
+  const completedBy = completionData?.completedBy || "Not specified";
+  const completionDate = completionData?.completionDate || completionData?.date || "Not specified";
   
   // This function converts the structured report data to HTML with enhanced styling
   let html = `
@@ -501,6 +571,66 @@ export function reportToHtml(report: GenerateReportOutput, accountName: string, 
           background-color: #f1f1f1;
         }
         
+        /* Question Response Table Styles */
+        .question-response-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 15px;
+          font-size: 12px;
+        }
+        
+        .question-response-table th,
+        .question-response-table td {
+          border: 1px solid #ddd;
+          padding: 8px;
+          text-align: left;
+          vertical-align: top;
+        }
+        
+        .question-response-table th {
+          background-color: #E8EAF6;
+          color: #3F51B5;
+          font-weight: bold;
+          font-size: 13px;
+        }
+        
+        .question-response-table tr:nth-child(even) {
+          background-color: #f9f9f9;
+        }
+        
+        .question-response-table .question-cell {
+          width: 40%;
+          font-weight: 500;
+        }
+        
+        .question-response-table .response-cell {
+          width: 30%;
+        }
+        
+        .question-response-table .comment-cell {
+          width: 20%;
+          font-style: italic;
+          color: #666;
+        }
+        
+        .question-response-table .photo-cell {
+          width: 10%;
+          text-align: center;
+        }
+        
+        .question-response-table img {
+          max-width: 100px;
+          max-height: 100px;
+          object-fit: cover;
+          border-radius: 4px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .no-response {
+          color: #999;
+          font-style: italic;
+        }
+        
         /* Severity indicators */
         .severity-critical {
           color: #d32f2f;
@@ -547,6 +677,10 @@ export function reportToHtml(report: GenerateReportOutput, accountName: string, 
             page-break-inside: avoid;
           }
           
+          .question-response-table {
+            page-break-inside: avoid;
+          }
+          
           .report-section {
             page-break-after: always;
           }
@@ -567,8 +701,8 @@ export function reportToHtml(report: GenerateReportOutput, accountName: string, 
           <div class="report-company">Safer School Solutions, Inc.</div>
           <div class="report-metadata">
             <p><strong>Assignment:</strong> ${assignmentName}</p>
-            <p><strong>Completed By:</strong> ${completedBy || "Not specified"}</p>
-            <p><strong>Completion Date:</strong> ${completionDate || "Not specified"}</p>
+            <p><strong>Completed By:</strong> ${completedBy}</p>
+            <p><strong>Completion Date:</strong> ${completionDate}</p>
             <p><strong>Report Generated:</strong> ${new Date().toLocaleDateString()}</p>
           </div>
         </div>
@@ -840,6 +974,9 @@ export function reportToHtml(report: GenerateReportOutput, accountName: string, 
         <div class="report-section">
           <h2>Appendices</h2>
           <div>${report.appendices}</div>
+          
+          <h3>Appendix A: Complete Question and Response Details</h3>
+          ${generateQuestionResponseTable(completionData, assignmentData)}
         </div>
         
         <div class="report-section">

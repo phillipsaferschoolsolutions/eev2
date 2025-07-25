@@ -206,7 +206,13 @@ export default function GenerateReportPage() {
         );
         
         // Convert the structured report data to HTML
-        const html = reportToHtml(report, userProfile.account, userProfile.email || user?.email || "Unknown User");
+        const html = reportToHtml(
+          report, 
+          userProfile.account, 
+          userProfile.email || user?.email || "Unknown User",
+          completionData,
+          assignmentData
+        );
         setReportHtml(html);
         setReportName(report.reportName || report.title || "Untitled Report");
       } else {
