@@ -996,6 +996,7 @@ export function reportToHtml(
   // Final pass: Replace any remaining accountName and reportGeneratedBy placeholders
   // that might have been inserted by the AI model
   html = html.replace(/\{\{\{?accountName\}?\}\}/g, accountName);
+  html = html.replace(/\[Account Name\]/g, accountName);
   html = html.replace(/\{\{\{?reportGeneratedBy\}?\}\}/g, generatedBy);
   
   return html;
