@@ -339,16 +339,18 @@ export async function savePromptSettings(accountName: string, settings: PromptSe
 /**
  * Converts the structured report data to HTML for display in the editor.
  * @param report The structured report data.
+ * @param accountName The account name to replace placeholders with.
+ * @param generatedBy The user who generated the report.
  * @returns HTML string representation of the report.
  */
-export function reportToHtml(report: GenerateReportOutput): string {
+export function reportToHtml(report: GenerateReportOutput, accountName: string, generatedBy: string): string {
   // Extract metadata from the report or completion data if available
   const assignmentName = report.title || "Safety Assessment Report";
   const completedBy = ""; // This would need to be extracted from completionData
   const completionDate = ""; // This would need to be extracted from completionData
   
   // This function converts the structured report data to HTML with enhanced styling
-  const html = `
+  let html = `
     <!DOCTYPE html>
     <html>
     <head>
@@ -853,6 +855,11 @@ export function reportToHtml(report: GenerateReportOutput): string {
     </body>
     </html>
   `;
+  
+  // Final pass: Replace any remaining accountName and reportGeneratedBy placeholders
+  // that might have been inserted by the AI model
+  html = html.replace(/\{\{\{?accountName\}?\}\}/g, accountName);
+  html = html.replace(/\{\{\{?reportGeneratedBy\}?\}\}/g, generatedBy);
   
   return html;
 }
