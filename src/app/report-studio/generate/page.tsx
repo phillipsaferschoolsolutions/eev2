@@ -146,12 +146,11 @@ export default function GenerateReportPage() {
     
     try {
       const settings = await getPromptSettings(userProfile.account);
-      if (settings) {
-        setPromptSettings(settings);
-      }
+      setPromptSettings(settings || { customPrompt: '', promptMode: 'extend' });
     } catch (error) {
       console.error("Failed to fetch prompt settings:", error);
-      // Don't set an error state here, as this is not critical for the main functionality
+      // Set default empty settings if fetch fails
+      setPromptSettings({ customPrompt: '', promptMode: 'extend' });
     } finally {
       setIsLoadingPromptSettings(false);
     }
@@ -191,6 +190,11 @@ export default function GenerateReportPage() {
     setSavedReportId(null); // Reset saved status on new generation
     
     try {
+      // Fetch completion and assignment data at the beginning
+      const { getCompletionDetails, getAssignmentById } = await import("@/services/assignmentFunctionsService");
+      const fetchedCompletionData = await getCompletionDetails(selectedAssignmentId, selectedCompletionId, userProfile.account);
+      const fetchedAssignmentData = await getAssignmentById(selectedAssignmentId, userProfile.account);
+      
       if (reportGenerationMode === "ai") {
         // AI-generated report
         const useCustomSettings = useCustomPrompt && promptSettings && promptSettings.customPrompt.trim() !== "";
@@ -210,8 +214,8 @@ export default function GenerateReportPage() {
           report, 
           userProfile.account, 
           userProfile.email || user?.email || "Unknown User",
-          completionData,
-          assignmentData
+          fetchedCompletionData,
+          fetchedAssignmentData
         );
         setReportHtml(html);
         setReportName(report.reportName || report.title || "Untitled Report");
@@ -222,22 +226,17 @@ export default function GenerateReportPage() {
           throw new Error("Selected template not found.");
         }
         
-        // We need to fetch the completion and assignment data for placeholder replacement
-        const { getCompletionDetails, getAssignmentById } = await import("@/services/assignmentFunctionsService");
-        const completionData = await getCompletionDetails(selectedAssignmentId, selectedCompletionId, userProfile.account);
-        const assignmentData = await getAssignmentById(selectedAssignmentId, userProfile.account);
-        
         // Replace placeholders in the template
         const html = replacePlaceholders(
           selectedTemplate.htmlContent,
-          completionData,
-          assignmentData,
+          fetchedCompletionData,
+          fetchedAssignmentData,
           userProfile.account,
           userProfile.email || "Unknown User"
         );
         
         setReportHtml(html);
-        setReportName(`${selectedTemplate.name} - ${assignmentData?.assessmentName || "Report"}`);
+        setReportName(`${selectedTemplate.name} - ${fetchedAssignmentData?.assessmentName || "Report"}`);
       }
       
       // Switch to the editor tab
