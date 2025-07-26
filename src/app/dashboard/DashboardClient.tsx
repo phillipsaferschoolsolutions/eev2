@@ -22,7 +22,6 @@ import {
 } from "@/services/assignmentFunctionsService";
 import { getDashboardWidgetsSandbox, getWidgetTrends } from "@/services/analysisService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
-import type { WidgetSandboxData, TrendsResponse } from "@/types/Analysis";
 import {
   Activity,
   MapPin,
