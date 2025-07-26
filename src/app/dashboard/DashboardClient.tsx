@@ -1070,6 +1070,10 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">Jul 18</p>
               </div>
               <Button variant="link" size="sm" className="text-primary">
+                Read More
+              </Button>
+            </div>
+
             {/* News Item 3 */}
             <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
               <div className="flex-1">
@@ -1085,7 +1089,7 @@ export default function DashboardPage() {
                 Read More
               </Button>
             </div>
-                Read More
+
             {/* News Item 4 */}
             <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
               <div className="flex-1">
@@ -1101,7 +1105,7 @@ export default function DashboardPage() {
                 Read More
               </Button>
             </div>
-              </Button>
+
             {/* News Item 5 */}
             <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
               <div className="flex-1">
@@ -1120,6 +1124,6 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
-            </div>
+    </div>
   );
 }
