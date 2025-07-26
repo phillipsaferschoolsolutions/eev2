@@ -26,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePermissions } from "@/hooks/use-permissions";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 // You will likely need these for the permission change dialog
 // import { updateUserPermission } from "@/services/adminService";
 
@@ -39,8 +40,8 @@ export default function UserManagementPage() {
   const [error, setError] = useState<string | null>(null);
 
   // --- Pagination State ---
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = usePersistedState('admin-users-current-page', 1);
+  const [itemsPerPage, setItemsPerPage] = usePersistedState('admin-users-items-per-page', 10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalUsers, setTotalUsers] = useState(0);
   

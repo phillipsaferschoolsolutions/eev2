@@ -27,6 +27,7 @@ import { getUsersForAccount, type ChatUser } from "@/services/messagingService";
 import { formatDisplayDateShort } from "@/lib/utils";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 
 export default function AssetsPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
@@ -45,8 +46,8 @@ export default function AssetsPage() {
   
   // State for search and pagination
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = usePersistedState('assets-current-page', 1);
+  const [itemsPerPage, setItemsPerPage] = usePersistedState('assets-items-per-page', 10);
   
   // State for create asset dialog
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);

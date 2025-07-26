@@ -28,6 +28,7 @@ import {
   generateResourceSummary
 } from "@/services/resourceService"; 
 import Link from "next/link";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 
 const MAX_AUDIO_RECORDING_MS = 30000; // 30 seconds
 
@@ -494,7 +495,7 @@ export default function ResourcesPage() {
             </Table>
           </ScrollArea>
           <CardFooter className="pt-4 dark:bg-transparent">
-            <p className="text-xs text-muted-foreground dark:text-slate-300">Showing {filteredDocuments.length} of {documents.length} documents. Pagination coming soon.</p>
+            <p className="text-xs text-muted-foreground dark:text-slate-300">Showing {filteredDocuments.length} of {documents.length} documents.</p>
           </CardFooter>
         </CardContent>
       </Card>

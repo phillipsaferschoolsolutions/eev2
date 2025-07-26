@@ -14,6 +14,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation"; 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 
 const sampleTemplates = [
   { id: "env1", name: "Environmental Safety Checklist", description: "General campus environment assessment.", icon: CheckSquare },
@@ -32,12 +33,12 @@ export default function AssessmentFormsPage() {
   const [allAccountAssignmentsError, setAllAccountAssignmentsError] = useState<string | null>(null);
   
   // Pagination states for My Assignments
-  const [myAssignmentsPage, setMyAssignmentsPage] = useState(1);
-  const [myAssignmentsPerPage, setMyAssignmentsPerPage] = useState(5);
+  const [myAssignmentsPage, setMyAssignmentsPage] = usePersistedState('assessment-forms-my-assignments-page', 1);
+  const [myAssignmentsPerPage, setMyAssignmentsPerPage] = usePersistedState('assessment-forms-my-assignments-per-page', 5);
   
   // Pagination states for All Account Assignments
-  const [allAssignmentsPage, setAllAssignmentsPage] = useState(1);
-  const [allAssignmentsPerPage, setAllAssignmentsPerPage] = useState(5);
+  const [allAssignmentsPage, setAllAssignmentsPage] = usePersistedState('assessment-forms-all-assignments-page', 1);
+  const [allAssignmentsPerPage, setAllAssignmentsPerPage] = usePersistedState('assessment-forms-all-assignments-per-page', 5);
 
   const pathname = usePathname(); 
 

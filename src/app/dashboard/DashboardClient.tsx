@@ -55,6 +55,7 @@ import {
 import { formatDisplayDateShort } from "@/lib/utils";
 import Link from "next/link";
 import Image from "next/image";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 
 interface CompletionItem {
   id: string;
@@ -122,8 +123,8 @@ export default function DashboardPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>("last30days");
   
   // Pagination states
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [currentPage, setCurrentPage] = usePersistedState('dashboard-completions-current-page', 1);
+  const [itemsPerPage, setItemsPerPage] = usePersistedState('dashboard-completions-items-per-page', 5);
   
   // Assignments and locations for dropdowns
   const [assignments, setAssignments] = useState<AssignmentMetadata[]>([]);
@@ -134,8 +135,8 @@ export default function DashboardPage() {
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
   // News widget state
-  const [newsCurrentPage, setNewsCurrentPage] = useState(1);
-  const [newsItemsPerPage, setNewsItemsPerPage] = useState(3);
+  const [newsCurrentPage, setNewsCurrentPage] = usePersistedState('dashboard-news-current-page', 1);
+  const [newsItemsPerPage, setNewsItemsPerPage] = usePersistedState('dashboard-news-items-per-page', 3);
   const [selectedNewsArticle, setSelectedNewsArticle] = useState<NewsArticle | null>(null);
   const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);

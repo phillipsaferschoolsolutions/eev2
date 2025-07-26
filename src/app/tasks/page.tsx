@@ -24,6 +24,7 @@ import { getLocationsForLookup, type Location } from "@/services/locationService
 import { getUsersForAccount, type ChatUser } from "@/services/messagingService";
 import { formatDisplayDateShort } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 
 export default function TasksPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
@@ -87,8 +88,8 @@ export default function TasksPage() {
   const [isPerformingAction, setIsPerformingAction] = useState(false);
   
   // State for pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = usePersistedState('tasks-current-page', 1);
+  const [itemsPerPage, setItemsPerPage] = usePersistedState('tasks-items-per-page', 10);
   
   // Fetch tasks when component mounts
   useEffect(() => {

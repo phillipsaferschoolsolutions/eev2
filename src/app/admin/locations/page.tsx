@@ -37,6 +37,7 @@ import { getLocationsForLookup, createLocation, updateLocation, deleteLocation }
 import type { Location } from "@/types/Location";
 import Link from "next/link";
 import { usePermissions } from '@/hooks/use-permissions';
+import { usePersistedState } from "@/hooks/use-persisted-state";
 
 // Define admin roles that can access this page
 const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
@@ -132,8 +133,8 @@ export default function LocationManagementPage() {
   const [locationsError, setLocationsError] = useState<string | null>(null);
   
   // State for pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = usePersistedState('admin-locations-current-page', 1);
+  const [itemsPerPage, setItemsPerPage] = usePersistedState('admin-locations-items-per-page', 10);
   const [totalLocations, setTotalLocations] = useState(0);
   
   // State for search
