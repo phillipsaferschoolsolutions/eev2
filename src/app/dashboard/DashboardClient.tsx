@@ -1053,7 +1053,12 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-xs text-muted-foreground">Jul 25</p>
               </div>
-              <Button variant="link" size="sm" className="text-primary">
+              <Button 
+                variant="link" 
+                size="sm" 
+                className="text-primary"
+                onClick={() => window.open('https://www.k12dive.com/news/education-department-ai-priorities-agency-closure/722345/', '_blank')}
+              >
                 Read More
               </Button>
             </div>
@@ -1069,7 +1074,12 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-xs text-muted-foreground">Jul 18</p>
               </div>
-              <Button variant="link" size="sm" className="text-primary">
+              <Button 
+                variant="link" 
+                size="sm" 
+                className="text-primary"
+                onClick={() => window.open('https://edtechmagazine.com/k12/article/2024/07/k-12-schools-deploy-smarter-security-solutions', '_blank')}
+              >
                 Read More
               </Button>
             </div>
@@ -1085,7 +1095,12 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-xs text-muted-foreground">Jul 21</p>
               </div>
-              <Button variant="link" size="sm" className="text-primary">
+              <Button 
+                variant="link" 
+                size="sm" 
+                className="text-primary"
+                onClick={() => window.open('https://www.eschoolnews.com/cybersecurity/2024/07/21/rethinking-k-12-cyber-strategies-federal-budget-cuts/', '_blank')}
+              >
                 Read More
               </Button>
             </div>
@@ -1101,7 +1116,12 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-xs text-muted-foreground">Jul 16</p>
               </div>
-              <Button variant="link" size="sm" className="text-primary">
+              <Button 
+                variant="link" 
+                size="sm" 
+                className="text-primary"
+                onClick={() => window.open('https://statescoop.com/schools-washington-cybersecurity-funding-leadership/', '_blank')}
+              >
                 Read More
               </Button>
             </div>
@@ -1117,7 +1137,12 @@ export default function DashboardPage() {
                 </p>
                 <p className="text-xs text-muted-foreground">Jun 27</p>
               </div>
-              <Button variant="link" size="sm" className="text-primary">
+              <Button 
+                variant="link" 
+                size="sm" 
+                className="text-primary"
+                onClick={() => window.open('https://www.niccs.cisa.gov/education-training/cybersecurity-school-administrators', '_blank')}
+              >
                 Read More
               </Button>
             </div>
