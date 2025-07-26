@@ -1,10 +1,8 @@
-// File: src/app/dashboard/DashboardClient.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   getLastCompletions,
@@ -50,12 +49,29 @@ import {
   ChevronRight,
   Umbrella,
   Sunrise,
-  Sunset
+  Sunset,
+  Loader2
 } from "lucide-react";
 import { formatDisplayDateShort } from "@/lib/utils";
 import Link from "next/link";
 import Image from "next/image";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+interface CompletionItem {
+  id: string;
+  data: {
+    assignmentId?: string;
+    assessmentName?: string;
+    completedBy: string;
+    completionDate?: string;
+    submittedTimeServer?: any;
+    locationName?: string;
+    status?: string;
+    content?: Record<string, any>;
+    [key: string]: any;
+  };
+  parentAssignmentId?: string;
+  assignmentId?: string;
+}
 
 interface WeatherForecast {
   date: string;
@@ -66,17 +82,13 @@ interface WeatherForecast {
   precipitation: number;
 }
 
-interface CompletionItem {
+interface NewsArticle {
   id: string;
-  parentAssignmentId?: string;
-  data: {
-    assessmentName?: string;
-    locationName?: string;
-    completedBy?: string;
-    completionDate?: string;
-    submittedTimeServer?: string;
-    [key: string]: any;
-  };
+  title: string;
+  description: string;
+  date: string;
+  source: string;
+  url: string;
 }
 
 export default function DashboardPage() {
@@ -113,14 +125,6 @@ export default function DashboardPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   
-  // State for School Security News
-  const [newsCurrentPage, setNewsCurrentPage] = useState(1);
-  const [newsItemsPerPage, setNewsItemsPerPage] = useState(3);
-  const [selectedNewsItem, setSelectedNewsItem] = useState<any>(null);
-  const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
-  const [newsModalLoading, setNewsModalLoading] = useState(false);
-  const [newsSummary, setNewsSummary] = useState<string>("");
-  
   // Assignments and locations for dropdowns
   const [assignments, setAssignments] = useState<AssignmentMetadata[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -129,48 +133,61 @@ export default function DashboardPage() {
   const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
+  // News widget state
+  const [newsCurrentPage, setNewsCurrentPage] = useState(1);
+  const [newsItemsPerPage, setNewsItemsPerPage] = useState(3);
+  const [selectedNewsArticle, setSelectedNewsArticle] = useState<NewsArticle | null>(null);
+  const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [articleSummary, setArticleSummary] = useState<string>("");
+
   // Create a mapping of assignment IDs to names for quick lookup
   const [assignmentMap, setAssignmentMap] = useState<Record<string, string>>({});
 
-  const isAdmin = !profileLoading && userProfile && (userProfile.role === 'admin' || userProfile.role === 'superAdmin');
-  
-  // School Security News data
-  const newsArticles = [
+  const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
+
+  // Mock news data
+  const newsArticles: NewsArticle[] = [
     {
-      id: 1,
+      id: "1",
       title: "Education Department issues AI priorities. But what if the agency closes? - K-12 Dive",
       description: "Education Department issues AI priorities. But what if the agency closes? K-12 Dive",
       date: "Jul 25",
-      url: "https://www.k12dive.com/news/education-department-ai-priorities-agency-closure/",
+      source: "K-12 Dive",
+      url: "https://example.com/article1"
     },
     {
-      id: 2,
+      id: "2",
       title: "K-12 Schools Deploy Smarter Security Solutions - EdTech Magazine",
       description: "K-12 Schools Deploy Smarter Security Solutions EdTech Magazine",
       date: "Jul 18",
-      url: "https://edtechmagazine.com/k12/article/2024/07/k-12-schools-deploy-smarter-security-solutions",
+      source: "EdTech Magazine",
+      url: "https://example.com/article2"
     },
     {
-      id: 3,
+      id: "3",
       title: "Rethinking K-12 cyber strategies amid federal budget cuts - eSchool News",
       description: "Rethinking K-12 cyber strategies amid federal budget cuts eSchool News",
       date: "Jul 21",
-      url: "https://www.eschoolnews.com/2024/07/21/rethinking-k-12-cyber-strategies-federal-budget-cuts/",
+      source: "eSchool News",
+      url: "https://example.com/article3"
     },
     {
-      id: 4,
+      id: "4",
       title: "Schools urge Washington to restore cybersecurity funding and leadership - StateScoop",
       description: "Schools urge Washington to restore cybersecurity funding and leadership StateScoop",
       date: "Jul 16",
-      url: "https://statescoop.com/schools-cybersecurity-funding-leadership-washington/",
+      source: "StateScoop",
+      url: "https://example.com/article4"
     },
     {
-      id: 5,
+      id: "5",
       title: "Cybersecurity for School Administrators - NICCS (.gov)",
       description: "Cybersecurity for School Administrators NICCS (.gov)",
       date: "Jun 27",
-      url: "https://www.niccs.cisa.gov/education-training/cybersecurity-school-administrators",
-    },
+      source: "NICCS (.gov)",
+      url: "https://example.com/article5"
+    }
   ];
 
   // Generate mock forecast data based on current weather
@@ -396,42 +413,32 @@ export default function DashboardPage() {
     setCurrentPage(1); // Reset to first page when changing items per page
   };
 
-  // Handler for changing news items per page
-  const handleNewsItemsPerPageChange = (value: string) => {
-    setNewsItemsPerPage(Number(value));
-    setNewsCurrentPage(1); // Reset to first page when changing items per page
-  };
-  
-  // Calculate news pagination
-  const totalNewsPages = Math.ceil(newsArticles.length / newsItemsPerPage);
+  // News pagination
+  const newsTotalPages = Math.max(1, Math.ceil(newsArticles.length / newsItemsPerPage));
   const paginatedNewsArticles = newsArticles.slice(
     (newsCurrentPage - 1) * newsItemsPerPage,
     newsCurrentPage * newsItemsPerPage
   );
-  
-  // Handle news article click
-  const handleNewsArticleClick = async (article: any) => {
-    setSelectedNewsItem(article);
-    setIsNewsModalOpen(true);
-    setNewsModalLoading(true);
-    setNewsSummary("");
-    
-    // Simulate AI summary generation (replace with actual Gemini API call)
-    try {
-      // Mock delay for AI processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock AI-generated summary
-      const mockSummary = `This article discusses important developments in K-12 school security and cybersecurity. Key points include policy changes, funding considerations, and implementation strategies for educational institutions. The content is relevant for school administrators and security professionals working to enhance campus safety measures.`;
-      
-      setNewsSummary(mockSummary);
-    } catch (error) {
-      console.error("Error generating summary:", error);
-      setNewsSummary("Unable to generate summary at this time.");
-    } finally {
-      setNewsModalLoading(false);
-    }
+
+  const handleNewsItemsPerPageChange = (value: string) => {
+    setNewsItemsPerPage(Number(value));
+    setNewsCurrentPage(1);
   };
+
+  // Handle news article click
+  const handleNewsArticleClick = async (article: NewsArticle) => {
+    setSelectedNewsArticle(article);
+    setIsNewsModalOpen(true);
+    setIsGeneratingSummary(true);
+    setArticleSummary("");
+
+    // Simulate AI summary generation
+    setTimeout(() => {
+      setArticleSummary(`This article discusses recent developments in ${article.source} regarding school security and cybersecurity initiatives. The piece covers key policy changes, funding considerations, and implementation strategies that are relevant to K-12 educational institutions. It provides insights into current challenges and emerging solutions in the educational security landscape.`);
+      setIsGeneratingSummary(false);
+    }, 2000);
+  };
+
   if (authLoading || profileLoading || claimsLoading) {
     return (
       <div className="space-y-6">
@@ -1139,38 +1146,32 @@ export default function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="space-y-4">
-            {paginatedNewsArticles.map((article, index) => (
-              <div 
-                key={article.id} 
-                className={`border-b pb-3 p-3 rounded-md transition-colors hover:bg-muted/50 cursor-pointer ${
-                  index === paginatedNewsArticles.length - 1 ? 'border-b-0' : ''
-                }`}
+          <div className="space-y-2">
+            {paginatedNewsArticles.map((article) => (
+              <div
+                key={article.id}
+                className="p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
                 onClick={() => handleNewsArticleClick(article)}
               >
-                <h4 className="font-medium text-sm mb-1">{article.title}</h4>
-                <p className="text-xs text-muted-foreground mb-2">{article.description}</p>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground">{article.date}</span>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="text-xs h-6"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleNewsArticleClick(article);
-                    }}
-                  >
-                    Read More
-                  </Button>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-sm mb-1">{article.title}</h4>
+                    <p className="text-xs text-muted-foreground mb-2">{article.description}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-muted-foreground">{article.date}</span>
+                      <Button variant="outline" size="sm" className="text-xs">
+                        Read More
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
-          
+
           {/* News Pagination Controls */}
-          {newsArticles.length > newsItemsPerPage && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+          {newsArticles.length > 0 && (
+            <div className="flex items-center justify-between mt-4">
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <span>Articles per page</span>
                 <Select
@@ -1190,7 +1191,7 @@ export default function DashboardPage() {
               
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-muted-foreground">
-                  Page {newsCurrentPage} of {totalNewsPages || 1}
+                  Page {newsCurrentPage} of {newsTotalPages || 1}
                 </span>
                 <Button
                   variant="outline"
@@ -1203,53 +1204,48 @@ export default function DashboardPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setNewsCurrentPage(prev => Math.min(prev + 1, totalNewsPages))}
-                  disabled={newsCurrentPage === totalNewsPages || totalNewsPages === 0}
+                  onClick={() => setNewsCurrentPage(prev => Math.min(prev + 1, newsTotalPages))}
+                  disabled={newsCurrentPage === newsTotalPages || newsTotalPages === 0}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           )}
-          </div>
         </CardContent>
       </Card>
-      
+
       {/* News Article Modal */}
       <Dialog open={isNewsModalOpen} onOpenChange={setIsNewsModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold">
-              {selectedNewsItem?.title}
-            </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              Published on {selectedNewsItem?.date}
+            <DialogTitle>{selectedNewsArticle?.title}</DialogTitle>
+            <DialogDescription>
+              {selectedNewsArticle?.source} • {selectedNewsArticle?.date}
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-medium mb-2">AI-Generated Summary</h3>
-              {newsModalLoading ? (
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                  <span className="text-sm text-muted-foreground">Generating summary...</span>
+          <div className="py-4">
+            {isGeneratingSummary ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin mr-2" />
+                <span>Generating AI summary...</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-2">AI Summary</h4>
+                  <p className="text-sm text-muted-foreground">{articleSummary}</p>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {newsSummary}
-                </p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-          
-          <DialogFooter className="flex justify-between">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewsModalOpen(false)}>
               Close
             </Button>
             <Button 
-              onClick={() => window.open(selectedNewsItem?.url, '_blank')}
-              disabled={!selectedNewsItem?.url}
+              onClick={() => window.open(selectedNewsArticle?.url, '_blank')}
+              disabled={!selectedNewsArticle?.url}
             >
               Read Full Article
             </Button>
