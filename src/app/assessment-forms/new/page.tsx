@@ -178,7 +178,7 @@ export default function NewAssignmentPage() {
       schoolSelectorId: data.locationId, // Assuming locationId corresponds to schoolSelectorId
       assignmentType: data.assignmentType,
       questions: data.questions.map(q => ({ // Use 'questions' key as per backend
-        id: q._uid || q.id, // Ensure an ID is present
+        id: q.id, // Ensure an ID is present
         label: q.label,
         component: q.component,
         options: (q.component === 'select' || q.component === 'options' || q.component === 'checkbox' || q.component === 'buttonSelect' || q.component === 'multiButtonSelect')

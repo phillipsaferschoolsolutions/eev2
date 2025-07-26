@@ -23,7 +23,6 @@ import { Separator } from "@/components/ui/separator";
 
 // Schema for a single question
 const questionSchema = z.object({
-  _uid: z.string().optional(), // Temporary frontend ID
   id: z.string().min(1, "Question ID is required."),
   label: z.string().min(1, "Question label is required."),
   component: z.string().min(1, "Component type is required."),
@@ -298,6 +297,7 @@ export default function EditAssignmentPage() {
               const questionType = watch(`questions.${index}.component`);
               const questionOptionsString = watch(`questions.${index}.options`);
               const currentQuestionOptions = parseOptionsString(questionOptionsString);
+              const questionIndex = index; // Create a stable reference for the question index
 
               return (
                 <Card key={field.id} className="p-4 bg-muted/30 border relative">
@@ -440,13 +440,13 @@ export default function EditAssignmentPage() {
                         <div className="space-y-2 mt-1 p-2 border rounded-md max-h-40 overflow-y-auto">
                         {currentQuestionOptions.map((opt, index) => (
                           // CORRECTED: Use the option string and its index for a unique key
-                          <div key={`${opt}-${index}`} className="flex items-center space-x-2">
+                          <div key={`${opt}-${questionIndex}`} className="flex items-center space-x-2">
                             <Controller
-                              name={`questions.${index}.deficiencyValues`}
+                              name={`questions.${questionIndex}.deficiencyValues`}
                               control={control}
                               render={({ field: controllerField }) => (
                                 <Checkbox
-                                  id={`questions.${index}.deficiencyValues.${opt}`}
+                                  id={`questions.${questionIndex}.deficiencyValues.${opt}`}
                                   checked={controllerField.value?.includes(opt)}
                                   onCheckedChange={(checked) => {
                                     const currentValues = controllerField.value || [];
@@ -459,7 +459,7 @@ export default function EditAssignmentPage() {
                                 />
                               )}
                             />
-                            <Label htmlFor={`questions.${index}.deficiencyValues.${opt}`} className="font-normal">{opt}</Label>
+                            <Label htmlFor={`questions.${questionIndex}.deficiencyValues.${opt}`} className="font-normal">{opt}</Label>
                           </div>
                         ))}
                         </div>

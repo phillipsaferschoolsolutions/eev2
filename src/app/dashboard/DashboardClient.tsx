@@ -1,8 +1,10 @@
-'use client';
+// File: src/app/dashboard/DashboardClient.tsx
+
+"use client";
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,9 +13,9 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  getLastCompletions, 
-  getWeatherAndLocation, 
+import {
+  getLastCompletions,
+  getWeatherAndLocation,
   getAssignmentListMetadata,
   type WeatherLocationData,
   type AssignmentMetadata
@@ -21,20 +23,19 @@ import {
 import { getDashboardWidgetsSandbox, getWidgetTrends } from "@/services/analysisService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import type { WidgetSandboxData, TrendsResponse } from "@/types/Analysis";
-import { 
-  Activity, 
-  MapPin, 
-  Thermometer, 
-  Wind, 
-  Droplets, 
+import {
+  Activity,
+  MapPin,
+  Thermometer,
+  Wind,
+  Droplets,
   Eye,
-  FileText,
-  Calendar, 
-  Users, 
-  TrendingUp, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Clock, 
+  Calendar,
+  Users,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
   Target,
   Zap,
   Sun,
@@ -54,14 +55,9 @@ import {
 import { formatDisplayDateShort } from "@/lib/utils";
 import Link from "next/link";
 import Image from "next/image";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ExternalLink, Loader2 } from "lucide-react";
-import { summarizeDocument } from "@/ai/flows/summarize-document-flow";
 import type { WeatherForecast, CompletionItem } from "@/types/DashboardTypes";
 
-// Keep all your DashboardPage component code here
 export default function DashboardPage() {
-  // ⬇ All the state, hooks, useEffect, rendering logic, etc. from your original `page.tsx`
   const { user, userProfile, customClaims, loading: authLoading, profileLoading, claimsLoading } = useAuth();
   const { toast } = useToast();
 
@@ -70,12 +66,6 @@ export default function DashboardPage() {
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
   const [forecast, setForecast] = useState<WeatherForecast[]>([]);
-
-  // State for School News modal
-  const [selectedArticle, setSelectedArticle] = useState<any>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [articleSummary, setArticleSummary] = useState<string>("");
-  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
 
   // Widget data state
   const [widgetData, setWidgetData] = useState<WidgetSandboxData | null>(null);
@@ -114,37 +104,6 @@ export default function DashboardPage() {
 
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
 
-  // Function to handle Read More click
-  const handleReadMore = async (article: any) => {
-    setSelectedArticle(article);
-    setIsModalOpen(true);
-    setIsLoadingSummary(true);
-    setArticleSummary("");
-
-    try {
-      // Create a mock article content for summarization
-      const mockContent = `${article.title}. ${article.description || 'This article discusses important school security and safety topics relevant to educational institutions.'}`;
-      
-      const result = await summarizeDocument({
-        textContent: mockContent
-      });
-      
-      setArticleSummary(result.summary);
-    } catch (error) {
-      console.error("Error generating summary:", error);
-      setArticleSummary("Unable to generate summary at this time. Please click the link below to read the full article.");
-    } finally {
-      setIsLoadingSummary(false);
-    }
-  };
-
-  // Function to close modal
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedArticle(null);
-    setArticleSummary("");
-  };
-
   // Generate mock forecast data based on current weather
   useEffect(() => {
     if (weather && weather.current) {
@@ -171,9 +130,9 @@ export default function DashboardPage() {
           day: days[forecastDate.getDay()],
           temp: Math.round(baseTemp + variation),
           condition: conditions[conditionIndex],
-          icon: conditionIndex === 0 ? 'sun' : 
-                conditionIndex === 1 ? 'cloud-sun' : 
-                conditionIndex === 2 ? 'cloud' : 
+          icon: conditionIndex === 0 ? 'sun' :
+                conditionIndex === 1 ? 'cloud-sun' :
+                conditionIndex === 2 ? 'cloud' :
                 conditionIndex === 3 ? 'cloud-rain' : 'sun',
           precipitation: conditionIndex === 3 ? Math.round(Math.random() * 50) : 0
         });
@@ -185,11 +144,6 @@ export default function DashboardPage() {
 
   // Fetch weather data based on user's location
   useEffect(() => {
-    // Only fetch weather if user profile is loaded and has account
-    if (authLoading || profileLoading || !userProfile?.account) {
-      return;
-    }
-    
     if (navigator.geolocation) {
       setWeatherLoading(true);
       navigator.geolocation.getCurrentPosition(
@@ -215,9 +169,8 @@ export default function DashboardPage() {
       setWeatherError("Geolocation not supported");
       setWeatherLoading(false);
     }
-  }, [userProfile?.account, authLoading, profileLoading]);
+  }, []);
 
-  // Fetch widget data
   // Fetch widget data
   useEffect(() => {
     if (!authLoading && !profileLoading && userProfile?.account) {
@@ -436,10 +389,10 @@ export default function DashboardPage() {
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-indigo-700/80 z-0"></div>
         {/* Background image from Pexels */}
         <div className="absolute inset-0 z-[-1]">
-          <Image 
-            src="https://images.pexels.com/photos/256490/pexels-photo-256490.jpeg" 
-            alt="Campus background" 
-            fill 
+          <Image
+            src="https://images.pexels.com/photos/256490/pexels-photo-256490.jpeg"
+            alt="Campus background"
+            fill
             className="object-cover"
             priority
           />
@@ -476,14 +429,14 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="flex items-center gap-2">
-                      <div className="text-3xl font-bold text-black dark:text-white">
+                      <div className="text-3xl font-bold">
                         {Math.round(weather.current?.temp || weather.main?.temp || 0)}°F
                       </div>
-                      <div className="text-sm capitalize text-black dark:text-white">
+                      <div className="text-sm text-muted-foreground capitalize">
                         {weather.current?.weather?.[0]?.description || 'Clear'}
                       </div>
                     </div>
-                    <p className="text-sm mt-1 text-black dark:text-white">
+                    <p className="text-sm text-muted-foreground mt-1">
                       {weather.name || 'Current Location'}
                     </p>
                   </div>
@@ -492,16 +445,16 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-1 text-sm">
                       <Sunrise className="h-4 w-4 text-amber-500" />
                       <span>
-                        {weather.current?.sunrise 
-                          ? new Date(weather.current.sunrise * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) 
+                        {weather.current?.sunrise
+                          ? new Date(weather.current.sunrise * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                           : '6:30 AM'}
                       </span>
                     </div>
                     <div className="flex items-center gap-1 text-sm">
                       <Sunset className="h-4 w-4 text-orange-500" />
                       <span>
-                        {weather.current?.sunset 
-                          ? new Date(weather.current.sunset * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) 
+                        {weather.current?.sunset
+                          ? new Date(weather.current.sunset * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                           : '7:45 PM'}
                       </span>
                     </div>
@@ -509,28 +462,28 @@ export default function DashboardPage() {
                 </div>
                 
                 <div className="grid grid-cols-3 gap-4 mt-4">
-                  <div className="flex flex-col items-center p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-                    <Wind className="h-5 w-5 text-blue-500 dark:text-blue-400 mb-1" />
-                    <span className="text-sm font-medium text-black dark:text-white">
+                  <div className="flex flex-col items-center p-2 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                    <Wind className="h-5 w-5 text-blue-500 mb-1" />
+                    <span className="text-sm font-medium">
                       {Math.round(weather.current?.wind_speed || weather.wind?.speed || 0)} mph
                     </span>
-                    <span className="text-xs text-black dark:text-white">Wind</span>
+                    <span className="text-xs text-muted-foreground">Wind</span>
                   </div>
                   
-                  <div className="flex flex-col items-center p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-                    <Droplets className="h-5 w-5 text-blue-400 dark:text-blue-300 mb-1" />
-                    <span className="text-sm font-medium text-black dark:text-white">
+                  <div className="flex flex-col items-center p-2 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                    <Droplets className="h-5 w-5 text-blue-400 mb-1" />
+                    <span className="text-sm font-medium">
                       {weather.current?.humidity || weather.main?.humidity || 0}%
                     </span>
-                    <span className="text-xs text-black dark:text-white">Humidity</span>
+                    <span className="text-xs text-muted-foreground">Humidity</span>
                   </div>
                   
-                  <div className="flex flex-col items-center p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-                    <Umbrella className="h-5 w-5 text-purple-500 dark:text-purple-400 mb-1" />
-                    <span className="text-sm font-medium text-black dark:text-white">
+                  <div className="flex flex-col items-center p-2 bg-sky-50 dark:bg-sky-900/20 rounded-lg">
+                    <Umbrella className="h-5 w-5 text-purple-500 mb-1" />
+                    <span className="text-sm font-medium">
                       {weather.current?.uvi || 0}
                     </span>
-                    <span className="text-xs text-black dark:text-white">UV Index</span>
+                    <span className="text-xs text-muted-foreground">UV Index</span>
                   </div>
                 </div>
               </div>
@@ -538,23 +491,23 @@ export default function DashboardPage() {
               {/* 5-Day Forecast */}
               <div className="grid grid-cols-5 divide-x border-t">
                 {forecast.map((day, index) => (
-                  <div key={index} className="p-3 text-center bg-white dark:bg-slate-800">
-                    <p className="text-xs font-medium text-black dark:text-white">{day.day}</p>
+                  <div key={index} className="p-3 text-center">
+                    <p className="text-xs font-medium">{day.day}</p>
                     <div className="my-2">
                       {day.condition.toLowerCase().includes('rain') ? (
-                        <CloudRain className="h-6 w-6 mx-auto text-blue-500 dark:text-blue-400" />
+                        <CloudRain className="h-6 w-6 mx-auto text-blue-500" />
                       ) : day.condition.toLowerCase().includes('cloud') ? (
-                        <Cloud className="h-6 w-6 mx-auto text-gray-500 dark:text-gray-400" />
+                        <Cloud className="h-6 w-6 mx-auto text-gray-500" />
                       ) : day.condition.toLowerCase().includes('snow') ? (
-                        <Snowflake className="h-6 w-6 mx-auto text-blue-300 dark:text-blue-200" />
+                        <Snowflake className="h-6 w-6 mx-auto text-blue-300" />
                       ) : (
-                        <Sun className="h-6 w-6 mx-auto text-amber-500 dark:text-amber-400" />
+                        <Sun className="h-6 w-6 mx-auto text-amber-500" />
                       )}
                     </div>
-                    <p className="text-sm font-bold text-black dark:text-white">{day.temp}°F</p>
-                    <p className="text-xs text-black dark:text-white">{day.condition}</p>
+                    <p className="text-sm font-bold">{day.temp}°F</p>
+                    <p className="text-xs text-muted-foreground">{day.condition}</p>
                     {day.precipitation > 0 && (
-                      <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">{day.precipitation}% rain</p>
+                      <p className="text-xs text-blue-500 mt-1">{day.precipitation}% rain</p>
                     )}
                   </div>
                 ))}
@@ -687,8 +640,8 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Progress 
-                        value={(item.totalCompleted / item.totalAssigned) * 100} 
+                      <Progress
+                        value={(item.totalCompleted / item.totalAssigned) * 100}
                         className="w-16"
                       />
                       <Badge variant={item.totalCompleted === item.totalAssigned ? "default" : "secondary"}>
@@ -737,14 +690,14 @@ export default function DashboardPage() {
                         {item.assessmentName}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {item.status === 'completed' 
+                        {item.status === 'completed'
                           ? `Completed ${formatDisplayDateShort(item.completedDate)}`
                           : `Due ${formatDisplayDateShort(item.dueDate)}`
                         }
                       </p>
                     </div>
                     <Badge variant={
-                      item.status === 'completed' ? 'default' : 
+                      item.status === 'completed' ? 'default' :
                       item.status === 'overdue' ? 'destructive' : 'secondary'
                     }>
                       {item.status === 'completed' && <CheckCircle2 className="w-3 h-3 mr-1" />}
@@ -922,7 +875,7 @@ export default function DashboardPage() {
                         {completion.data.completedBy || 'Unknown'}
                       </div>
                       <div className="text-sm">
-                        {completion.data.completionDate 
+                        {completion.data.completionDate
                           ? formatDisplayDateShort(completion.data.completionDate)
                           : completion.data.submittedTimeServer
                           ? formatDisplayDateShort(completion.data.submittedTimeServer)
@@ -1068,201 +1021,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* School Security News Section */}
-      <Card className="rounded-lg border shadow-md">
-        <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-t-lg">
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            School Security News
-          </CardTitle>
-          <CardDescription className="text-white/80">
-            Latest updates relevant to K-12 school security and cybersecurity.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            {/* News Item 1 */}
-            <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-              <div className="flex-1">
-                <h3 className="font-medium text-sm mb-1">
-                  Education Department issues AI priorities. But what if the agency closes? - K-12 Dive
-                </h3>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Education Department issues AI priorities. But what if the agency closes? K-12 Dive
-                </p>
-                <p className="text-xs text-muted-foreground">Jul 25</p>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-primary"
-                onClick={() => handleReadMore({
-                  title: "Education Department issues AI priorities. But what if the agency closes? - K-12 Dive",
-                  description: "Education Department issues AI priorities. But what if the agency closes? K-12 Dive",
-                  date: "Jul 25",
-                  source: "K-12 Dive",
-                  url: "https://www.k12dive.com/news/education-department-ai-priorities-agency-closure/722345/"
-                })}
-              >
-                Read More
-              </Button>
-            </div>
-
-            {/* News Item 2 */}
-            <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-              <div className="flex-1">
-                <h3 className="font-medium text-sm mb-1">
-                  K-12 Schools Deploy Smarter Security Solutions - EdTech Magazine
-                </h3>
-                <p className="text-xs text-muted-foreground mb-2">
-                  K-12 Schools Deploy Smarter Security Solutions EdTech Magazine
-                </p>
-                <p className="text-xs text-muted-foreground">Jul 18</p>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-primary"
-                onClick={() => handleReadMore({
-                  title: "K-12 Schools Deploy Smarter Security Solutions - EdTech Magazine",
-                  description: "K-12 Schools Deploy Smarter Security Solutions EdTech Magazine",
-                  date: "Jul 18",
-                  source: "EdTech Magazine",
-                  url: "https://edtechmagazine.com/k12/article/2024/07/k-12-schools-deploy-smarter-security-solutions"
-                })}
-              >
-                Read More
-              </Button>
-            </div>
-
-            {/* News Item 3 */}
-            <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-              <div className="flex-1">
-                <h3 className="font-medium text-sm mb-1">
-                  Rethinking K-12 cyber strategies amid federal budget cuts - eSchool News
-                </h3>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Rethinking K-12 cyber strategies amid federal budget cuts eSchool News
-                </p>
-                <p className="text-xs text-muted-foreground">Jul 21</p>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-primary"
-                onClick={() => handleReadMore({
-                  title: "Rethinking K-12 cyber strategies amid federal budget cuts - eSchool News",
-                  description: "Rethinking K-12 cyber strategies amid federal budget cuts eSchool News",
-                  date: "Jul 21",
-                  source: "eSchool News",
-                  url: "https://www.eschoolnews.com/cybersecurity/2024/07/21/rethinking-k-12-cyber-strategies-federal-budget-cuts/"
-                })}
-              >
-                Read More
-              </Button>
-            </div>
-
-            {/* News Item 4 */}
-            <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-              <div className="flex-1">
-                <h3 className="font-medium text-sm mb-1">
-                  Schools urge Washington to restore cybersecurity funding and leadership - StateScoop
-                </h3>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Schools urge Washington to restore cybersecurity funding and leadership StateScoop
-                </p>
-                <p className="text-xs text-muted-foreground">Jul 16</p>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-primary"
-                onClick={() => handleReadMore({
-                  title: "Schools urge Washington to restore cybersecurity funding and leadership - StateScoop",
-                  description: "Schools urge Washington to restore cybersecurity funding and leadership StateScoop",
-                  date: "Jul 16",
-                  source: "StateScoop",
-                  url: "https://statescoop.com/schools-washington-cybersecurity-funding-leadership/"
-                })}
-              >
-                Read More
-              </Button>
-            </div>
-
-            {/* News Item 5 */}
-            <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-              <div className="flex-1">
-                <h3 className="font-medium text-sm mb-1">
-                  Cybersecurity for School Administrators - NICCS (.gov)
-                </h3>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Cybersecurity for School Administrators NICCS (.gov)
-                </p>
-                <p className="text-xs text-muted-foreground">Jun 27</p>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-primary"
-                onClick={() => handleReadMore({
-                  title: "Cybersecurity for School Administrators - NICCS (.gov)",
-                  description: "Cybersecurity for School Administrators NICCS (.gov)",
-                  date: "Jun 27",
-                  source: "NICCS (.gov)",
-                  url: "https://www.niccs.cisa.gov/education-training/cybersecurity-school-administrators"
-                })}
-              >
-                Read More
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* School News Article Modal */}
-      <Dialog open={isModalOpen} onOpenChange={closeModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold pr-8">
-              {selectedArticle?.title}
-            </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              {selectedArticle?.source} • {selectedArticle?.date}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="py-4">
-            {isLoadingSummary ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                <span>Generating summary...</span>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="prose prose-sm max-w-none">
-                  <p className="text-foreground leading-relaxed">
-                    {articleSummary}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <DialogFooter className="flex justify-between items-center">
-            <Button variant="outline" onClick={closeModal}>
-              Close
-            </Button>
-            <Button 
-              onClick={() => window.open(selectedArticle?.url, '_blank')}
-              className="flex items-center gap-2"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Read Full Article
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

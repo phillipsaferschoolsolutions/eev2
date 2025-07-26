@@ -65,6 +65,34 @@ export interface StreakData {
   lastContributionDate?: string | Date;
 }
 
+// For Trends Response
+export interface TrendsResponse {
+  weekCompletions?: number;
+  monthCompletions?: number;
+  yearCompletions?: number;
+  currentStreak?: number;
+}
+
+// For Last Completions Response
+export interface LastCompletionsResponse {
+  status: string;
+  data: any[];
+}
+
+// For Completed Assignment Summary
+export interface CompletedAssignmentSummary {
+  id: string;
+  assessmentName: string;
+  totalAssigned: number;
+  totalCompleted: number;
+  lastCompletionDate?: string | Date;
+  details?: Array<{ 
+    locationName: string; 
+    completedCount: number; 
+    lastCompletedBy?: string; 
+  }>;
+}
+
 // For Common Responses (/schoolswithquestions/:assignmentId/:period)
 export interface SchoolQuestionAnswers {
   [answer: string]: number; // e.g., "Yes": 10, "No": 5
