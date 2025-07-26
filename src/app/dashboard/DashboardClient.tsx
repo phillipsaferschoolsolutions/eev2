@@ -154,7 +154,7 @@ export default function DashboardPage() {
       description: "Education Department issues AI priorities. But what if the agency closes? K-12 Dive",
       date: "Jul 25",
       source: "K-12 Dive",
-      url: "https://example.com/article1"
+      url: "https://www.k12dive.com/news/education-department-ai-priorities-agency-closes/722847/"
     },
     {
       id: "2",
@@ -162,7 +162,7 @@ export default function DashboardPage() {
       description: "K-12 Schools Deploy Smarter Security Solutions EdTech Magazine",
       date: "Jul 18",
       source: "EdTech Magazine",
-      url: "https://example.com/article2"
+      url: "https://edtechmagazine.com/k12/article/2024/07/k-12-schools-deploy-smarter-security-solutions"
     },
     {
       id: "3",
@@ -170,7 +170,7 @@ export default function DashboardPage() {
       description: "Rethinking K-12 cyber strategies amid federal budget cuts eSchool News",
       date: "Jul 21",
       source: "eSchool News",
-      url: "https://example.com/article3"
+      url: "https://www.eschoolnews.com/2024/07/21/rethinking-k-12-cyber-strategies-federal-budget-cuts/"
     },
     {
       id: "4",
@@ -178,7 +178,7 @@ export default function DashboardPage() {
       description: "Schools urge Washington to restore cybersecurity funding and leadership StateScoop",
       date: "Jul 16",
       source: "StateScoop",
-      url: "https://example.com/article4"
+      url: "https://statescoop.com/schools-washington-cybersecurity-funding-leadership/"
     },
     {
       id: "5",
@@ -186,7 +186,7 @@ export default function DashboardPage() {
       description: "Cybersecurity for School Administrators NICCS (.gov)",
       date: "Jun 27",
       source: "NICCS (.gov)",
-      url: "https://example.com/article5"
+      url: "https://www.niccs.cisa.gov/education-training/cybersecurity-school-administrators"
     }
   ];
 
