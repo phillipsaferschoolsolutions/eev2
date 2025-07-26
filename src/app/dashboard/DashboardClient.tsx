@@ -1028,5 +1028,98 @@ export default function DashboardPage() {
         </Card>
       </div>
     </div>
+
+      {/* School Security News Section */}
+      <Card className="rounded-lg border shadow-md">
+        <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-t-lg">
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            School Security News
+          </CardTitle>
+          <CardDescription className="text-white/80">
+            Latest updates relevant to K-12 school security and cybersecurity.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            {/* News Item 1 */}
+            <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex-1">
+                <h3 className="font-medium text-sm mb-1">
+                  Education Department issues AI priorities. But what if the agency closes? - K-12 Dive
+                </h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Education Department issues AI priorities. But what if the agency closes? K-12 Dive
+                </p>
+                <p className="text-xs text-muted-foreground">Jul 25</p>
+              </div>
+              <Button variant="link" size="sm" className="text-primary">
+                Read More
+              </Button>
+            </div>
+
+            {/* News Item 2 */}
+            <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex-1">
+                <h3 className="font-medium text-sm mb-1">
+                  K-12 Schools Deploy Smarter Security Solutions - EdTech Magazine
+                </h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  K-12 Schools Deploy Smarter Security Solutions EdTech Magazine
+                </p>
+                <p className="text-xs text-muted-foreground">Jul 18</p>
+              </div>
+              <Button variant="link" size="sm" className="text-primary">
+            {/* News Item 3 */}
+            <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex-1">
+                <h3 className="font-medium text-sm mb-1">
+                  Rethinking K-12 cyber strategies amid federal budget cuts - eSchool News
+                </h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Rethinking K-12 cyber strategies amid federal budget cuts eSchool News
+                </p>
+                <p className="text-xs text-muted-foreground">Jul 21</p>
+              </div>
+              <Button variant="link" size="sm" className="text-primary">
+                Read More
+              </Button>
+            </div>
+                Read More
+            {/* News Item 4 */}
+            <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex-1">
+                <h3 className="font-medium text-sm mb-1">
+                  Schools urge Washington to restore cybersecurity funding and leadership - StateScoop
+                </h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Schools urge Washington to restore cybersecurity funding and leadership StateScoop
+                </p>
+                <p className="text-xs text-muted-foreground">Jul 16</p>
+              </div>
+              <Button variant="link" size="sm" className="text-primary">
+                Read More
+              </Button>
+            </div>
+              </Button>
+            {/* News Item 5 */}
+            <div className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex-1">
+                <h3 className="font-medium text-sm mb-1">
+                  Cybersecurity for School Administrators - NICCS (.gov)
+                </h3>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Cybersecurity for School Administrators NICCS (.gov)
+                </p>
+                <p className="text-xs text-muted-foreground">Jun 27</p>
+              </div>
+              <Button variant="link" size="sm" className="text-primary">
+                Read More
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+            </div>
   );
 }
