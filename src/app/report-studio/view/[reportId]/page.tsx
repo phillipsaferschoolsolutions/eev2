@@ -27,7 +27,7 @@ export default function ViewReportPage() {
   const [error, setError] = useState<string | null>(null);
   
   // Check if user has admin permissions
-  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.permission);
+  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
   
   useEffect(() => {
     if (!reportId) {

@@ -144,7 +144,7 @@ export function AppHeader({ navItems }: AppHeaderProps) {
   const pathname = usePathname();
 
   const isDark = mounted && resolvedTheme === "dark";
-  const isSuperAdmin = !authLoading && (userProfile?.permission === 'superAdmin' || customClaims?.superAdmin === true);
+  const isSuperAdmin = !authLoading && (userProfile?.role === 'superAdmin' || customClaims?.superAdmin === true);
 
   useEffect(() => setMounted(true), []);
 

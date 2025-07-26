@@ -41,7 +41,7 @@ export default function AssessmentFormsPage() {
 
   const pathname = usePathname(); 
 
-  const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
+  const isAdmin = !profileLoading && userProfile && (userProfile.role === 'admin' || userProfile.role === 'superAdmin');
   
   // Calculate paginated assignments
   const paginatedMyAssignments = useMemo(() => {

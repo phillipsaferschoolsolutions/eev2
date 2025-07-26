@@ -90,7 +90,7 @@ export default function TemplateManagementPage() {
   });
 
   // Check if user has admin permissions
-  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.permission);
+  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
 
   // Fetch templates when the component mounts
   useEffect(() => {

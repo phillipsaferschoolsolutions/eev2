@@ -102,7 +102,7 @@ export default function DashboardPage() {
   // Create a mapping of assignment IDs to names for quick lookup
   const [assignmentMap, setAssignmentMap] = useState<Record<string, string>>({});
 
-  const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
+  const isAdmin = !profileLoading && userProfile && (userProfile.role === 'admin' || userProfile.role === 'superAdmin');
 
   // Generate mock forecast data based on current weather
   useEffect(() => {

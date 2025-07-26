@@ -45,7 +45,7 @@ export default function ReportStudioPage() {
   const [reportToDelete, setReportToDelete] = useState<string | null>(null);
   
   // Check if user has admin permissions
-  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.permission);
+  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
   
   // Fetch saved reports when the component mounts
   useEffect(() => {

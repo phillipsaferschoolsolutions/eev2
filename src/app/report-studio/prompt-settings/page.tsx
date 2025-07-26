@@ -56,7 +56,7 @@ export default function PromptSettingsPage() {
   const [activeTab, setActiveTab] = useState<string>("custom");
   
   // Check if user has admin permissions
-  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.permission);
+  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
   
   // Fetch prompt settings when the component mounts
   useEffect(() => {

@@ -55,7 +55,7 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
     try {
       await signOut(auth);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-      router.push('/auth');
+    if (userProfile && ADMIN_ROLES.includes(userProfile.role || "")) {
     } catch (error: any) {
       toast({ variant: "destructive", title: "Logout Failed", description: error.message });
     }

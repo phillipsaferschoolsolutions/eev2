@@ -76,7 +76,7 @@ export default function GenerateReportPage() {
   const [isLoadingPromptSettings, setIsLoadingPromptSettings] = useState(false);
   
   // Check if user has admin permissions
-  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.permission);
+  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
   
   // Fetch assignments when the component mounts
   useEffect(() => {

@@ -65,7 +65,7 @@ export default function DataAnalysisPage() {
   const [chartType, setChartType] = useState<"bar" | "line" | "pie">("bar");
   
   // Check if user has admin permissions
-  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.permission);
+  const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
   
   // Fetch assignments and locations when the component mounts
   useEffect(() => {
