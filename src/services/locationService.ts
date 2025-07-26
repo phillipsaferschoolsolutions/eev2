@@ -87,6 +87,9 @@ export async function getLocationsForLookup(accountName: string): Promise<Locati
   return result || [];
 }
 
+// Re-export the Location type for convenience
+export type { Location };
+
 /**
  * Fetches a specific location by ID.
  */
