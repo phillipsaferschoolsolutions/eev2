@@ -54,6 +54,9 @@ import {
 import { formatDisplayDateShort } from "@/lib/utils";
 import Link from "next/link";
 import Image from "next/image";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ExternalLink, Loader2 } from "lucide-react";
+import { summarizeDocument } from "@/ai/flows/summarize-document-flow";
 import type { WeatherForecast, CompletionItem } from "@/types/DashboardTypes";
 
 // Keep all your DashboardPage component code here
@@ -67,6 +70,12 @@ export default function DashboardPage() {
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
   const [forecast, setForecast] = useState<WeatherForecast[]>([]);
+
+  // State for School News modal
+  const [selectedArticle, setSelectedArticle] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [articleSummary, setArticleSummary] = useState<string>("");
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
 
   // Widget data state
   const [widgetData, setWidgetData] = useState<WidgetSandboxData | null>(null);
@@ -104,6 +113,37 @@ export default function DashboardPage() {
   const [assignmentMap, setAssignmentMap] = useState<Record<string, string>>({});
 
   const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
+
+  // Function to handle Read More click
+  const handleReadMore = async (article: any) => {
+    setSelectedArticle(article);
+    setIsModalOpen(true);
+    setIsLoadingSummary(true);
+    setArticleSummary("");
+
+    try {
+      // Create a mock article content for summarization
+      const mockContent = `${article.title}. ${article.description || 'This article discusses important school security and safety topics relevant to educational institutions.'}`;
+      
+      const result = await summarizeDocument({
+        textContent: mockContent
+      });
+      
+      setArticleSummary(result.summary);
+    } catch (error) {
+      console.error("Error generating summary:", error);
+      setArticleSummary("Unable to generate summary at this time. Please click the link below to read the full article.");
+    } finally {
+      setIsLoadingSummary(false);
+    }
+  };
+
+  // Function to close modal
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedArticle(null);
+    setArticleSummary("");
+  };
 
   // Generate mock forecast data based on current weather
   useEffect(() => {
@@ -1054,10 +1094,16 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">Jul 25</p>
               </div>
               <Button 
-                variant="link" 
+                variant="outline" 
                 size="sm" 
                 className="text-primary"
-                onClick={() => window.open('https://www.k12dive.com/news/education-department-ai-priorities-agency-closure/722345/', '_blank')}
+                onClick={() => handleReadMore({
+                  title: "Education Department issues AI priorities. But what if the agency closes? - K-12 Dive",
+                  description: "Education Department issues AI priorities. But what if the agency closes? K-12 Dive",
+                  date: "Jul 25",
+                  source: "K-12 Dive",
+                  url: "https://www.k12dive.com/news/education-department-ai-priorities-agency-closure/722345/"
+                })}
               >
                 Read More
               </Button>
@@ -1075,10 +1121,16 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">Jul 18</p>
               </div>
               <Button 
-                variant="link" 
+                variant="outline" 
                 size="sm" 
                 className="text-primary"
-                onClick={() => window.open('https://edtechmagazine.com/k12/article/2024/07/k-12-schools-deploy-smarter-security-solutions', '_blank')}
+                onClick={() => handleReadMore({
+                  title: "K-12 Schools Deploy Smarter Security Solutions - EdTech Magazine",
+                  description: "K-12 Schools Deploy Smarter Security Solutions EdTech Magazine",
+                  date: "Jul 18",
+                  source: "EdTech Magazine",
+                  url: "https://edtechmagazine.com/k12/article/2024/07/k-12-schools-deploy-smarter-security-solutions"
+                })}
               >
                 Read More
               </Button>
@@ -1096,10 +1148,16 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">Jul 21</p>
               </div>
               <Button 
-                variant="link" 
+                variant="outline" 
                 size="sm" 
                 className="text-primary"
-                onClick={() => window.open('https://www.eschoolnews.com/cybersecurity/2024/07/21/rethinking-k-12-cyber-strategies-federal-budget-cuts/', '_blank')}
+                onClick={() => handleReadMore({
+                  title: "Rethinking K-12 cyber strategies amid federal budget cuts - eSchool News",
+                  description: "Rethinking K-12 cyber strategies amid federal budget cuts eSchool News",
+                  date: "Jul 21",
+                  source: "eSchool News",
+                  url: "https://www.eschoolnews.com/cybersecurity/2024/07/21/rethinking-k-12-cyber-strategies-federal-budget-cuts/"
+                })}
               >
                 Read More
               </Button>
@@ -1117,10 +1175,16 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">Jul 16</p>
               </div>
               <Button 
-                variant="link" 
+                variant="outline" 
                 size="sm" 
                 className="text-primary"
-                onClick={() => window.open('https://statescoop.com/schools-washington-cybersecurity-funding-leadership/', '_blank')}
+                onClick={() => handleReadMore({
+                  title: "Schools urge Washington to restore cybersecurity funding and leadership - StateScoop",
+                  description: "Schools urge Washington to restore cybersecurity funding and leadership StateScoop",
+                  date: "Jul 16",
+                  source: "StateScoop",
+                  url: "https://statescoop.com/schools-washington-cybersecurity-funding-leadership/"
+                })}
               >
                 Read More
               </Button>
@@ -1138,10 +1202,16 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">Jun 27</p>
               </div>
               <Button 
-                variant="link" 
+                variant="outline" 
                 size="sm" 
                 className="text-primary"
-                onClick={() => window.open('https://www.niccs.cisa.gov/education-training/cybersecurity-school-administrators', '_blank')}
+                onClick={() => handleReadMore({
+                  title: "Cybersecurity for School Administrators - NICCS (.gov)",
+                  description: "Cybersecurity for School Administrators NICCS (.gov)",
+                  date: "Jun 27",
+                  source: "NICCS (.gov)",
+                  url: "https://www.niccs.cisa.gov/education-training/cybersecurity-school-administrators"
+                })}
               >
                 Read More
               </Button>
@@ -1149,6 +1219,50 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* School News Article Modal */}
+      <Dialog open={isModalOpen} onOpenChange={closeModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold pr-8">
+              {selectedArticle?.title}
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              {selectedArticle?.source} • {selectedArticle?.date}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {isLoadingSummary ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                <span>Generating summary...</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="prose prose-sm max-w-none">
+                  <p className="text-foreground leading-relaxed">
+                    {articleSummary}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter className="flex justify-between items-center">
+            <Button variant="outline" onClick={closeModal}>
+              Close
+            </Button>
+            <Button 
+              onClick={() => window.open(selectedArticle?.url, '_blank')}
+              className="flex items-center gap-2"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Read Full Article
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
