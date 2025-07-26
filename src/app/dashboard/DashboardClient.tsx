@@ -1028,7 +1028,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
 
       {/* School Security News Section */}
       <Card className="rounded-lg border shadow-md">
@@ -1126,5 +1125,5 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     </div>
-  );
+
 }
