@@ -4,7 +4,7 @@
 import type React from 'react';
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { type User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, browserLocalPersistence } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import type { UserProfile, UserProfileWithRole } from '@/types/User'; 
 import { getUserProfile } from '@/services/userService'; 
@@ -41,6 +41,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const router = useRouter();
 
   useEffect(() => {
+    // Set Firebase persistence within the component lifecycle
+    auth.setPersistence(browserLocalPersistence).catch(error => 
+      console.error('Failed to set Firebase persistence:', error)
+    );
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setLoading(false); 

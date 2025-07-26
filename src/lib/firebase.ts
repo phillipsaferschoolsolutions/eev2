@@ -32,13 +32,6 @@ firestore = getFirestore(app);
 functions = getFunctions(app);
 storage = getStorage(app); // Initialized
 
-// Set persistence
-auth.setPersistence(browserLocalPersistence).then(() => {
-  // The problematic line that caused the error has been removed.
-  // If Firebase Auth debugging is needed, it's typically done through
-  // browser network inspection and console logs from the SDK itself.
-});
-
 // Check if all required environment variables are set
 // This is more of a developer-time check; consider more robust checks for production
 if (
