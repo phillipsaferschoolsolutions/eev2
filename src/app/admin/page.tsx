@@ -77,7 +77,7 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
              <Button asChild>
-               <Link href="/admin/locations" disabled={!can("admin.locations.manage")}>Manage Locations</Link>
+               <Link href="/admin/locations">Manage Locations</Link>
              </Button>
           </CardContent>
         </Card>
@@ -89,8 +89,8 @@ export default function AdminPage() {
             <CardDescription>Define and manage roles and their access permissions.</CardDescription>
           </CardHeader>
           <CardContent>
-             <Button asChild disabled={!can("admin.roles.manage")}>
-               <Link href="/admin/roles">Manage Roles</Link>
+             <Button asChild>
+               <Link href="/admin/roles" className={!can("admin.roles.manage") ? "pointer-events-none opacity-50" : ""}>Manage Roles</Link>
              </Button>
           </CardContent>
         </Card>
