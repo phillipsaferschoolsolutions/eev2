@@ -55,6 +55,9 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
     try {
       await signOut(auth);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
+    try {
+      await signOut(auth);
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Logout Failed", description: error.message });
     }
