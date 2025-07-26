@@ -3,8 +3,8 @@
 
 import type React from 'react';
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { type User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
-import { auth, browserLocalPersistence } from '@/lib/firebase';
+import { type User as FirebaseUser, onAuthStateChanged, browserLocalPersistence } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import type { UserProfile, UserProfileWithRole } from '@/types/User'; 
 import { getUserProfile } from '@/services/userService'; 
