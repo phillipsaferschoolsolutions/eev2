@@ -256,7 +256,7 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
       case 'checkbox':
         if (question.options) {
           const options = parseOptions(question.options);
-          return options.some(opt => formData[`${question.id}.${opt}`] === true);
+          return options.some(opt => formData[`${question.id}.${opt.value}`] === true);
         } else {
           return value === true;
         }
@@ -264,7 +264,7 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
       case 'multiSelect':
         if (question.options) {
           const options = parseOptions(question.options);
-          return options.some(opt => formData[`${question.id}.${opt}`] === true);
+          return options.some(opt => formData[`${question.id}.${opt.value}`] === true);
         }
         return false;
       case 'photoUpload':
@@ -504,7 +504,7 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
                 };
             } else if (q.component === 'checkbox' && q.options) {
               parseOptions(q.options).forEach(opt => {
-                defaultVals[`${q.id}.${opt}`] = false;
+                defaultVals[`${q.id}.${opt.value}`] = false;
               });
             } else {
               defaultVals[q.id] = '';
@@ -752,7 +752,7 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
         audio.pause();
       }
     } catch (error: unknown) {
-      console.error(`[togglePlayPause] Error for ${questionId}: ${error.name} - ${error.message}`);
+      console.error(`[togglePlayPause] Error for ${questionId}: ${(error as Error).name} - ${(error as Error).message}`);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({ variant: "destructive", title: "Playback Error", description: errorMessage });
       if (audio.paused && audioPlayerStates[questionId]?.isPlaying) {
@@ -892,7 +892,7 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
         } catch (err) {
             console.error("Failed to get download URL for " + questionId + ":", err);
           const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-        const errorMessage = uploadError instanceof Error ? uploadError.message : "Unknown error";
+          setUploadErrors(prev => ({ ...prev, [questionId]: errorMessage }));
             setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
         }
       }
@@ -1044,4 +1044,976 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
         } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
             questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
         } else if ((question.component === 'time' || question.component === 'completionTime')) {
-            const
+            const timeValue = data[question.id];
+            if (typeof timeValue === 'object' && timeValue !== null && timeValue.hour && timeValue.minute && timeValue.period) {
+                questionAnswer = `${timeValue.hour}:${timeValue.minute} ${timeValue.period}`;
+            } else {
+                questionAnswer = '';
+            }
+        } else if (question.component === 'photoUpload') {
+            const fileDetail = uploadedFileDetails[question.id];
+            if (fileDetail) {
+                photoLinksForSync[question.id] = fileDetail.url;
+                questionAnswer = fileDetail.name;
+            } else {
+                questionAnswer = '';
+            }
+        } else {
+            questionAnswer = data[question.id] ?? '';
+        }
+
+        answersObject[question.id] = questionAnswer;
+
+        if (question.comment && data[`${question.id}_comment`]) {
+            commentsObject[question.id] = data[`${question.id}_comment`];
+        }
+    });
+
+    formDataForSubmission.append('assignmentId', assignment.id);
+    formDataForSubmission.append('answers', JSON.stringify(answersObject));
+    formDataForSubmission.append('comments', JSON.stringify(commentsObject));
+    formDataForSubmission.append('photoLinks', JSON.stringify(photoLinksForSync));
+    formDataForSubmission.append('audioNotes', JSON.stringify(finalAudioNotesForSubmission));
+    formDataForSubmission.append('userEmail', user.email);
+    formDataForSubmission.append('account', userProfile.account);
+
+    try {
+        const result = await submitCompletedAssignment(formDataForSubmission);
+        if (result.success) {
+            toast({ title: "Assignment Submitted Successfully", description: "Your assignment has been submitted." });
+            router.push('/assignments');
+        } else {
+            throw new Error(result.error || "Submission failed");
+        }
+    } catch (error) {
+        console.error("Submission error:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+        toast({ variant: "destructive", title: "Submission Failed", description: errorMessage });
+    } finally {
+        setIsSubmitting(false);
+    }
+  };
+
+  if (authLoading || profileLoading || isLoading) {
+    return (
+      <div className="container mx-auto p-6 space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-full" />
+        <div className="space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-10 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <Alert variant="destructive">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (!assignment) {
+    return (
+      <div className="container mx-auto p-6">
+        <Alert>
+          <AlertTitle>Assignment Not Found</AlertTitle>
+          <AlertDescription>The requested assignment could not be loaded.</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">{assignment.title}</h1>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleSaveDraft}
+              disabled={isSubmitting}
+            >
+              Save Draft
+            </Button>
+          </div>
+        </div>
+        
+        {assignment.description && (
+          <p className="text-muted-foreground">{assignment.description}</p>
+        )}
+
+        {/* Overall Progress */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Overall Progress</span>
+            <span>{Math.round(overallProgress)}%</span>
+          </div>
+          <ShadProgress value={overallProgress} className="w-full" />
+        </div>
+      </div>
+
+      {/* Filters and Navigation */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Navigation & Filters</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Page Navigation */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <Separator />
+
+          {/* Section Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Section</Label>
+              <Select value={selectedSection} onValueChange={setSelectedSection}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sections</SelectItem>
+                  {availableSections.map(section => (
+                    <SelectItem key={section} value={section}>
+                      {section === UNASSIGNED_FILTER_VALUE ? "Unassigned" : section}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Sub-Section</Label>
+              <Select value={selectedSubSection} onValueChange={setSelectedSubSection}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sub-Sections</SelectItem>
+                  {availableSubSections.map(subSection => (
+                    <SelectItem key={subSection} value={subSection}>
+                      {subSection === UNASSIGNED_FILTER_VALUE ? "Unassigned" : subSection}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={answeredStatusFilter} onValueChange={(value: 'all' | 'answered' | 'unanswered') => setAnsweredStatusFilter(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Questions</SelectItem>
+                  <SelectItem value="answered">Answered</SelectItem>
+                  <SelectItem value="unanswered">Unanswered</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Section Progress */}
+          {Object.keys(sectionProgress).length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-medium">Section Progress</h4>
+              {Object.entries(sectionProgress).map(([sectionName, subSections]) => (
+                <div key={sectionName} className="space-y-2">
+                  <h5 className="text-sm font-medium">
+                    {sectionName === 'Uncategorized' ? 'Unassigned' : sectionName}
+                  </h5>
+                  {Object.entries(subSections).map(([subSectionName, progress]) => (
+                    <div key={`${sectionName}-${subSectionName}`} className="ml-4 space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span>{subSectionName === 'General' ? 'Unassigned' : subSectionName}</span>
+                        <span>{progress.answered}/{progress.total} ({Math.round(progress.progress)}%)</span>
+                      </div>
+                      <ShadProgress value={progress.progress} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Photo Bank */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Photo Bank</CardTitle>
+          <CardDescription>
+            Upload photos here to reuse across multiple questions
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handlePhotoBankUpload}
+              className="mb-4"
+            />
+          </div>
+
+          {/* Upload Progress */}
+          {Object.keys(photoBankUploads).length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-medium">Uploading...</h4>
+              {Object.entries(photoBankUploads).map(([fileName, upload]) => (
+                <div key={fileName} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="truncate">{fileName}</span>
+                    <span>{Math.round(upload.progress)}%</span>
+                  </div>
+                  <ShadProgress value={upload.progress} />
+                  {upload.error && (
+                    <p className="text-sm text-destructive">{upload.error}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Uploaded Photos */}
+          {photoBankFiles.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-medium">Available Photos ({photoBankFiles.length})</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {photoBankFiles.map((photo, index) => (
+                  <div key={index} className="relative group">
+                    <Image
+                      src={photo.url}
+                      alt={photo.name}
+                      width={100}
+                      height={100}
+                      className="w-full h-24 object-cover rounded border"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                      <span className="text-white text-xs text-center p-1">
+                        {photo.name}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Questions Form */}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {questionsToRender.length === 0 ? (
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-center text-muted-foreground">
+                No questions match the current filters.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          questionsToRender.map((question) => (
+            <Card key={question.id} className="relative">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2 flex-1">
+                    <CardTitle className="text-lg">
+                      {question.label}
+                      {question.required && <span className="text-destructive ml-1">*</span>}
+                    </CardTitle>
+                    
+                    {/* Section/Sub-section Pills */}
+                    <div className="flex flex-wrap gap-2">
+                      {question.section && (
+                        <span className={cn(
+                          "px-2 py-1 rounded-full text-xs font-medium",
+                          getGradientClassForText(question.section)
+                        )}>
+                          {question.section}
+                        </span>
+                      )}
+                      {question.subSection && (
+                        <span className={cn(
+                          "px-2 py-1 rounded-full text-xs font-medium",
+                          getGradientClassForText(question.subSection)
+                        )}>
+                          {question.subSection}
+                        </span>
+                      )}
+                    </div>
+
+                    {question.description && (
+                      <CardDescription>{question.description}</CardDescription>
+                    )}
+                  </div>
+
+                  {/* Answer Status Indicator */}
+                  <div className={cn(
+                    "w-3 h-3 rounded-full ml-4 mt-1 flex-shrink-0",
+                    isQuestionAnswered(question, allWatchedValues) 
+                      ? "bg-green-500" 
+                      : "bg-gray-300"
+                  )} />
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                {/* Question Input Based on Component Type */}
+                {question.component === 'text' && (
+                  <Input
+                    {...register(question.id)}
+                    placeholder={question.placeholder}
+                    className={formErrors[question.id] ? "border-destructive" : ""}
+                  />
+                )}
+
+                {question.component === 'textarea' && (
+                  <Textarea
+                    {...register(question.id)}
+                    placeholder={question.placeholder}
+                    rows={4}
+                    className={formErrors[question.id] ? "border-destructive" : ""}
+                  />
+                )}
+
+                {question.component === 'email' && (
+                  <Input
+                    type="email"
+                    {...register(question.id)}
+                    placeholder={question.placeholder}
+                    className={formErrors[question.id] ? "border-destructive" : ""}
+                  />
+                )}
+
+                {question.component === 'url' && (
+                  <Input
+                    type="url"
+                    {...register(question.id)}
+                    placeholder={question.placeholder}
+                    className={formErrors[question.id] ? "border-destructive" : ""}
+                  />
+                )}
+
+                {question.component === 'telephone' && (
+                  <Input
+                    type="tel"
+                    {...register(question.id)}
+                    placeholder={question.placeholder}
+                    className={formErrors[question.id] ? "border-destructive" : ""}
+                  />
+                )}
+
+                {question.component === 'number' && (
+                  <Input
+                    type="number"
+                    {...register(question.id)}
+                    placeholder={question.placeholder}
+                    className={formErrors[question.id] ? "border-destructive" : ""}
+                  />
+                )}
+
+                {question.component === 'select' && (
+                  <Controller
+                    name={question.id}
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger className={formErrors[question.id] ? "border-destructive" : ""}>
+                          <SelectValue placeholder="Select an option" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {parseOptions(question.options).map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                )}
+
+                {question.component === 'options' && (
+                  <Controller
+                    name={question.id}
+                    control={control}
+                    render={({ field }) => (
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="space-y-2"
+                      >
+                        {parseOptions(question.options).map((option) => (
+                          <div key={option.value} className="flex items-center space-x-2">
+                            <RadioGroupItem value={option.value} id={`${question.id}-${option.value}`} />
+                            <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    )}
+                  />
+                )}
+
+                {question.component === 'buttonSelect' && (
+                  <Controller
+                    name={question.id}
+                    control={control}
+                    render={({ field }) => (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {parseOptions(question.options).map((option) => (
+                          <Button
+                            key={option.value}
+                            type="button"
+                            variant={field.value === option.value ? "default" : "outline"}
+                            onClick={() => field.onChange(option.value)}
+                            className="justify-start"
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  />
+                )}
+
+                {question.component === 'multiButtonSelect' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {parseOptions(question.options).map((option) => (
+                      <Controller
+                        key={option.value}
+                        name={`${question.id}.${option.value}`}
+                        control={control}
+                        render={({ field }) => (
+                          <Button
+                            type="button"
+                            variant={field.value ? "default" : "outline"}
+                            onClick={() => field.onChange(!field.value)}
+                            className="justify-start"
+                          >
+                            {option.label}
+                          </Button>
+                        )}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {question.component === 'multiSelect' && (
+                  <div className="space-y-2">
+                    {parseOptions(question.options).map((option) => (
+                      <Controller
+                        key={option.value}
+                        name={`${question.id}.${option.value}`}
+                        control={control}
+                        render={({ field }) => (
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`${question.id}-${option.value}`}
+                              checked={field.value || false}
+                              onCheckedChange={field.onChange}
+                            />
+                            <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
+                          </div>
+                        )}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {question.component === 'checkbox' && question.options && (
+                  <div className="space-y-2">
+                    {parseOptions(question.options).map((option) => (
+                      <Controller
+                        key={option.value}
+                        name={`${question.id}.${option.value}`}
+                        control={control}
+                        render={({ field }) => (
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`${question.id}-${option.value}`}
+                              checked={field.value || false}
+                              onCheckedChange={field.onChange}
+                            />
+                            <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
+                          </div>
+                        )}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {question.component === 'checkbox' && !question.options && (
+                  <Controller
+                    name={question.id}
+                    control={control}
+                    render={({ field }) => (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id={question.id}
+                          checked={field.value || false}
+                          onCheckedChange={field.onChange}
+                        />
+                        <Label htmlFor={question.id}>{question.label}</Label>
+                      </div>
+                    )}
+                  />
+                )}
+
+                {question.component === 'range' && (
+                  <Controller
+                    name={question.id}
+                    control={control}
+                    render={({ field }) => (
+                      <div className="space-y-2">
+                        <Slider
+                          value={[field.value || 0]}
+                          onValueChange={(value) => field.onChange(value[0])}
+                          max={question.max || 100}
+                          min={question.min || 0}
+                          step={question.step || 1}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>{question.min || 0}</span>
+                          <span>Current: {field.value || 0}</span>
+                          <span>{question.max || 100}</span>
+                        </div>
+                      </div>
+                    )}
+                  />
+                )}
+
+                {(question.component === 'date' || question.component === 'completionDate') && (
+                  <Controller
+                    name={question.id}
+                    control={control}
+                    render={({ field }) => (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground",
+                              formErrors[question.id] && "border-destructive"
+                            )}
+                          >
+                            {field.value ? format(field.value, "PPP") : "Pick a date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                  />
+                )}
+
+                {(question.component === 'time' || question.component === 'completionTime') && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <Controller
+                      name={`${question.id}.hour`}
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Hour" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {hours12.map((hour) => (
+                              <SelectItem key={hour} value={hour}>
+                                {hour}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    <Controller
+                      name={`${question.id}.minute`}
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Min" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {minutes.map((minute) => (
+                              <SelectItem key={minute} value={minute}>
+                                {minute}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    <Controller
+                      name={`${question.id}.period`}
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="AM/PM" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {amPm.map((period) => (
+                              <SelectItem key={period} value={period}>
+                                {period}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {question.component === 'schoolSelector' && (
+                  <Controller
+                    name={question.id}
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingLocations}>
+                        <SelectTrigger className={formErrors[question.id] ? "border-destructive" : ""}>
+                          <SelectValue placeholder={isLoadingLocations ? "Loading locations..." : "Select a school"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {locationsError ? (
+                            <SelectItem value="" disabled>
+                              Error loading locations
+                            </SelectItem>
+                          ) : (
+                            locations.map((location) => (
+                              <SelectItem key={location.id} value={location.id}>
+                                {location.name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                )}
+
+                {question.component === 'photoUpload' && (
+                  <div className="space-y-4">
+                    <div className="flex gap-2">
+                      <Input
+                        id={`${question.id}_file`}
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleFileUpload(question.id, file);
+                          }
+                        }}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleOpenPhotoBank(question.id)}
+                        disabled={photoBankFiles.length === 0}
+                      >
+                        Photo Bank
+                      </Button>
+                    </div>
+
+                    {/* Upload Progress */}
+                    {uploadProgress[question.id] > 0 && uploadProgress[question.id] < 100 && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Uploading...</span>
+                          <span>{Math.round(uploadProgress[question.id])}%</span>
+                        </div>
+                        <ShadProgress value={uploadProgress[question.id]} />
+                      </div>
+                    )}
+
+                    {/* Upload Error */}
+                    {uploadErrors[question.id] && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{uploadErrors[question.id]}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Image Preview */}
+                    {imagePreviewUrls[question.id] && (
+                      <div className="relative">
+                        <Image
+                          src={imagePreviewUrls[question.id]!}
+                          alt="Preview"
+                          width={200}
+                          height={200}
+                          className="rounded border object-cover"
+                        />
+                      </div>
+                    )}
+
+                    {/* Uploaded File */}
+                    {uploadedFileDetails[question.id] && (
+                      <div className="flex items-center justify-between p-3 border rounded">
+                        <div className="flex items-center gap-3">
+                          <Image
+                            src={uploadedFileDetails[question.id]!.url}
+                            alt={uploadedFileDetails[question.id]!.name}
+                            width={50}
+                            height={50}
+                            className="rounded object-cover"
+                          />
+                          <span className="text-sm">{uploadedFileDetails[question.id]!.name}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeUploadedFile(question.id)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Audio Note Section */}
+                <div className="space-y-3 border-t pt-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Audio Note (Optional)</Label>
+                    {hasMicPermission === false && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={requestMicPermission}
+                      >
+                        Enable Microphone
+                      </Button>
+                    )}
+                  </div>
+
+                  {micPermissionError && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{micPermissionError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    {!audioNotes[question.id] && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleStartRecording(question.id)}
+                        disabled={isRecordingQuestionId !== null || hasMicPermission === false}
+                      >
+                        {isRecordingQuestionId === question.id ? "Recording..." : "Start Recording"}
+                      </Button>
+                    )}
+
+                    {isRecordingQuestionId === question.id && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleStopRecording(question.id)}
+                      >
+                        Stop Recording
+                      </Button>
+                    )}
+
+                    {audioNotes[question.id] && (
+                      <div className="flex items-center gap-2 flex-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => togglePlayPause(question.id)}
+                          disabled={audioNotes[question.id]?.isUploading}
+                        >
+                          {audioPlayerStates[question.id]?.isPlaying ? "Pause" : "Play"}
+                        </Button>
+                        
+                        <div className="flex-1 text-sm">
+                          <div className="flex justify-between">
+                            <span>{audioNotes[question.id]?.name}</span>
+                            <span>
+                              {formatAudioTime(audioPlayerStates[question.id]?.currentTime || 0)} / 
+                              {formatAudioTime(audioPlayerStates[question.id]?.duration || 0)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeAudioNote(question.id)}
+                          disabled={audioNotes[question.id]?.isUploading}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Audio Upload Progress */}
+                  {audioNotes[question.id]?.isUploading && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Uploading audio...</span>
+                        <span>{Math.round(audioNotes[question.id]?.uploadProgress || 0)}%</span>
+                      </div>
+                      <ShadProgress value={audioNotes[question.id]?.uploadProgress || 0} />
+                    </div>
+                  )}
+
+                  {/* Audio Upload Error */}
+                  {audioNotes[question.id]?.uploadError && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{audioNotes[question.id]?.uploadError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Hidden Audio Element */}
+                  {audioNotes[question.id]?.url && (
+                    <audio
+                      ref={(el) => {
+                        audioRefs.current[question.id] = el;
+                      }}
+                      onTimeUpdate={(e) => handleAudioTimeUpdate(e, question.id)}
+                      onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, question.id)}
+                      onPlay={() => setAudioPlayerStates(prev => ({ ...prev, [question.id]: { ...prev[question.id]!, isPlaying: true } }))}
+                      onPause={() => setAudioPlayerStates(prev => ({ ...prev, [question.id]: { ...prev[question.id]!, isPlaying: false } }))}
+                      onEnded={() => handleAudioEnded(question.id)}
+                      style={{ display: 'none' }}
+                    />
+                  )}
+                </div>
+
+                {/* Comment Section */}
+                {question.comment && (
+                  <div className="space-y-2 border-t pt-4">
+                    <Label htmlFor={`${question.id}_comment`} className="text-sm font-medium">
+                      Additional Comments
+                    </Label>
+                    <Textarea
+                      id={`${question.id}_comment`}
+                      {...register(`${question.id}_comment`)}
+                      placeholder="Add any additional comments or notes..."
+                      rows={3}
+                    />
+                  </div>
+                )}
+
+                {/* Form Validation Error */}
+                {formErrors[question.id] && (
+                  <Alert variant="destructive">
+                    <AlertDescription>
+                      This field is required.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          ))
+        )}
+
+        {/* Submit Button */}
+        <div className="flex justify-center pt-6">
+          <Button
+            type="submit"
+            size="lg"
+            disabled={isSubmitting}
+            className="min-w-[200px]"
+          >
+            {isSubmitting ? "Submitting..." : "Submit Assignment"}
+          </Button>
+        </div>
+      </form>
+
+      {/* Photo Bank Modal */}
+      <Dialog open={isPhotoBankModalOpen} onOpenChange={setIsPhotoBankModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Select Photo from Bank</DialogTitle>
+            <DialogDescription>
+              Choose a photo from your uploaded collection
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[60vh]">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+              {photoBankFiles.map((photo, index) => (
+                <div
+                  key={index}
+                  className="relative cursor-pointer group"
+                  onClick={() => handleSelectPhotoFromBank(photo)}
+                >
+                  <Image
+                    src={photo.url}
+                    alt={photo.name}
+                    width={200}
+                    height={200}
+                    className="w-full h-32 object-cover rounded border hover:border-primary transition-colors"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                    <span className="text-white text-sm text-center p-2">
+                      {photo.name}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
