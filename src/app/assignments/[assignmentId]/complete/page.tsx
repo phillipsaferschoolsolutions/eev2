@@ -1541,11 +1541,11 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
                           render={({ field }) => (
                               <div className="flex items-center space-x-2 bg-background p-2 rounded-md">
                                   <Checkbox
-                                    id={`${question.id}-${opt.value}`}
+                                    id={`${question.id}-checkbox`}
                                     checked={field.value || false}
                                     onCheckedChange={(checked) => field.onChange(checked === true)}
                                   />
-                                  <Label htmlFor={question.id} className="font-normal">Confirm</Label>
+                                  <Label htmlFor={`${question.id}-checkbox`} className="cursor-pointer">
                               </div>
                           )}
                       />
