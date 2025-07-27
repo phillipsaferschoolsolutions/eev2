@@ -15,12 +15,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
-  Dialog, DialogContent, DialogDescription, DialogFooter, 
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
@@ -119,6 +120,7 @@ const usStates = [
   { value: "DC", label: "District of Columbia" },
 ];
 
+export default function LocationManagement() {
   const { userProfile, loading: authLoading } = useAuth();
   const { can } = usePermissions();
   const { toast } = useToast();
@@ -161,34 +163,6 @@ const usStates = [
     can("admin.locations.manage")
   );
   
-  // Fetch locations when the component mounts
-  useEffect(() => {
-    if (!authLoading && userProfile?.account) {
-      fetchLocations();
-    }
-  }, [userProfile?.account, authLoading, fetchLocations]);
-  
-  // Filter locations when search term changes
-  useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredLocations(locations);
-    } else {
-      const filtered = locations.filter(location => 
-        location.locationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (location.locationType && location.locationType.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (location.schoolCity && location.schoolCity.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (location.schoolState && location.schoolState.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-      setFilteredLocations(filtered);
-    }
-  }, [searchTerm, locations]);
-  
-  // Calculate pagination
-  const paginatedLocations = filteredLocations.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-  
   // Function to fetch locations
   const fetchLocations = async () => {
     if (!userProfile?.account) return;
@@ -208,6 +182,35 @@ const usStates = [
       setIsLoadingLocations(false);
     }
   };
+  
+  // Fetch locations when the component mounts
+  useEffect(() => {
+    if (!authLoading && userProfile?.account) {
+      fetchLocations();
+    }
+  }, [userProfile?.account, authLoading]);
+  
+  // Filter locations when search term changes
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setFilteredLocations(locations);
+    } else {
+      const filtered = locations.filter(location => 
+        location.locationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (location.locationType && location.locationType.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (location.schoolCity && location.schoolCity.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (location.schoolState && location.schoolState.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      setFilteredLocations(filtered);
+    }
+  }, [searchTerm, locations]);
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredLocations.length / itemsPerPage);
+  const paginatedLocations = filteredLocations.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
   
   // Function to handle adding a new location
   const handleAddLocation = async (data: LocationFormData) => {
