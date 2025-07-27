@@ -721,7 +721,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
 
     if (!audio || !noteUrl) {
       console.error("Audio element or note URL missing for playback:", questionId, noteUrl);
-      toast({variant: "destructive", title: "Playback Error", description: "Audio source missing."})
+      toast({variant: "destructive", title: "Playback Error", description: "Audio source missing."});
       return;
     }
 
@@ -1037,7 +1037,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
                    selectedOptions.push(opt.value);
                 }
             });
-            questionAnswer = selectedOptions//.join(',');
+            questionAnswer = selectedOptions;//.join(',');
         } else if (question.component === 'checkbox' && !question.options) {
              questionAnswer = data[question.id] ?? false;
         } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
@@ -1546,6 +1546,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
                                     onCheckedChange={(checked) => field.onChange(checked === true)}
                                   />
                                   <Label htmlFor={`${question.id}-checkbox`} className="cursor-pointer">
+                                  </Label>
                               </div>
                           )}
                       />
@@ -1774,7 +1775,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
 
                         {audioNotes[question.id]?.url && (
                           <audio
-                              ref={(el) => {audioRefs.current[question.id] = el}}
+                              ref={(el) => {audioRefs.current[question.id] = el;}}
                               onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, question.id)}
                               onTimeUpdate={(e) => handleAudioTimeUpdate(e, question.id)}
                               onEnded={() => handleAudioEnded(question.id)}
