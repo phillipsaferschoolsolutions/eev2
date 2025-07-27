@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, ChangeEvent, useMemo, useRef } from "react";
@@ -1164,9 +1163,9 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr,300px] gap-8 items-start p-4 md:p-6">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start p-4 md:p-6">
       {/* Main Content Column */}
-      <div className="space-y-6">
+      <div className="space-y-6 lg:col-span-3">
         <Card className="shadow-xl">
           <CardHeader>
             <CardTitle className="text-3xl font-bold">{assignment.assessmentName || "Assignment"}</CardTitle>
@@ -1969,32 +1968,36 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
           </DialogContent>
         </Dialog>
       </div>
-      {/* Right Sidebar for Progress (we will add this in the next step) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Section Progress</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {Object.keys(sectionProgress).length > 0 ? (
-            Object.entries(sectionProgress).map(([sectionName, subSections]) => (
-              <div key={sectionName} className="space-y-3">
-                <h4 className="font-semibold">{sectionName}</h4>
-                {Object.entries(subSections).map(([subSectionName, data]) => (
-                  <div key={subSectionName} className="text-sm">
-                    <div className="flex justify-between mb-1">
-                      <span>{subSectionName}</span>
-                      <span className="font-medium">{Math.round(data.progress)}%</span>
+
+      {/* Sidebar Column */}
+      <div className="space-y-6 lg:col-span-1">
+        {/* Progress Card */}
+        <Card className="sticky top-4">
+          <CardHeader>
+            <CardTitle className="text-lg">Section Progress</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {Object.keys(sectionProgress).length > 0 ? (
+              Object.entries(sectionProgress).map(([sectionName, subSections]) => (
+                <div key={sectionName} className="space-y-3">
+                  <h4 className="font-semibold">{sectionName}</h4>
+                  {Object.entries(subSections).map(([subSectionName, data]) => (
+                    <div key={subSectionName} className="text-sm">
+                      <div className="flex justify-between mb-1">
+                        <span>{subSectionName}</span>
+                        <span className="font-medium">{Math.round(data.progress)}%</span>
+                      </div>
+                      <ShadProgress value={data.progress} className="h-1.5" />
                     </div>
-                    <ShadProgress value={data.progress} className="h-1.5" />
-                  </div>
-                ))}
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-muted-foreground text-center">No sections with questions found.</p>
-          )}
-        </CardContent>
-      </Card>
+                  ))}
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center">No sections with questions found.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
