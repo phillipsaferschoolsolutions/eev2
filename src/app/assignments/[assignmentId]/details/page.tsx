@@ -103,7 +103,7 @@ export default function AssignmentDetailsPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const fetchedAssignment = await getAssignmentById(assignmentId, userProfile.account);
+        const fetchedAssignment = await getAssignmentById(assignmentId, userProfile!.account);
         // ADD THIS LOG to see exactly what the server returns
         console.log("Fetched Assignment Data from Server:", fetchedAssignment);
         if (fetchedAssignment) {
