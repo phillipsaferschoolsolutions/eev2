@@ -5,7 +5,7 @@ import { useAuth } from "@/context/auth-context";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Users, MapPin, KeyRound, LockIcon } from "lucide-react";
+import { Shield, Users, MapPin, LockIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/hooks/use-permissions";

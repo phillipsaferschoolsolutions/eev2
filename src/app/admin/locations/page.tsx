@@ -122,8 +122,7 @@ const usStates = [
 ];
 
 export default function LocationManagementPage() {
-  const router = useRouter();
-  const { user, userProfile, loading: authLoading } = useAuth();
+  const { userProfile, loading: authLoading } = useAuth();
   const { can } = usePermissions();
   const { toast } = useToast();
   
@@ -134,8 +133,7 @@ export default function LocationManagementPage() {
   
   // State for pagination
   const [currentPage, setCurrentPage] = usePersistedState('admin-locations-current-page', 1);
-  const [itemsPerPage, setItemsPerPage] = usePersistedState('admin-locations-items-per-page', 10);
-  const [totalLocations, setTotalLocations] = useState(0);
+  const [itemsPerPage] = usePersistedState('admin-locations-items-per-page', 10);
   
   // State for search
   const [searchTerm, setSearchTerm] = useState("");
@@ -167,6 +165,7 @@ export default function LocationManagementPage() {
   );
   
   // Fetch locations when the component mounts
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!authLoading && userProfile?.account) {
       fetchLocations();
@@ -206,7 +205,6 @@ export default function LocationManagementPage() {
       const fetchedLocations = await getLocationsForLookup(userProfile.account);
       setLocations(fetchedLocations);
       setFilteredLocations(fetchedLocations);
-      setTotalLocations(fetchedLocations.length);
     } catch (error) {
       console.error("Failed to fetch locations:", error);
       setLocationsError("Failed to load locations. Please try again.");

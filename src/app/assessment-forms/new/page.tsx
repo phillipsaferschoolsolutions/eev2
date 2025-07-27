@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Building, Save, AlertTriangle, PlusCircle, Trash2, Settings2, Users, Globe, Briefcase, FileText } from "lucide-react";
+import { ArrowLeft, Building, Save, AlertTriangle, PlusCircle, Trash2, Settings2, Users, Globe, Briefcase } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 // Schema for a single question
@@ -204,11 +204,11 @@ export default function NewAssignmentPage() {
       });
       reset();
       router.push("/assessment-forms");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Failed to create assignment",
-        description: error.message || "An unknown error occurred."
+        description: error instanceof Error ? error.message : "An unknown error occurred."
       });
     } finally {
       setIsSubmitting(false);

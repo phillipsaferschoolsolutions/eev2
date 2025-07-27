@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,20 +12,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { 
   HardDrive, Plus, Search, Edit, Trash2, AlertTriangle, Loader2, 
-  CheckCircle2, Clock, AlertCircle, User, MapPin, Tag, X, Check,
-  ChevronLeft, ChevronRight, BarChart3, PieChart
+  User, MapPin, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { getAssets, createAsset, updateAsset, deleteAsset } from "@/services/assetService";
 import type { Asset, CreateAssetPayload, UpdateAssetPayload } from "@/types/Asset";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { getUsersForAccount } from "@/services/messagingService";
 import type { ChatUser } from "@/types/Message";
-import { formatDisplayDateShort } from "@/lib/utils";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 import { usePersistedState } from "@/hooks/use-persisted-state";
@@ -42,7 +38,9 @@ export default function AssetsPage() {
   // State for locations and users
   const [locations, setLocations] = useState<Location[]>([]);
   const [users, setUsers] = useState<ChatUser[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   
   // State for search and pagination
@@ -101,6 +99,7 @@ export default function AssetsPage() {
   ];
 
   // Fetch assets when component mounts
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!authLoading && userProfile?.account) {
       fetchAssets();
@@ -108,6 +107,7 @@ export default function AssetsPage() {
   }, [userProfile?.account, authLoading]);
 
   // Fetch locations and users when needed
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!authLoading && userProfile?.account) {
       fetchLocations();
@@ -355,6 +355,7 @@ export default function AssetsPage() {
   };
 
   // Reset page when search term changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
@@ -921,7 +922,7 @@ export default function AssetsPage() {
                     id="edit-customType"
                     value={editAssetData.customType}
                     onChange={(e) => setEditAssetData({ ...editAssetData, customType: e.target.value })}
-                    placeholder="Enter custom asset type..."
+                    placeholder="Enter custom asset type&hellip;"
                   />
                 </div>
               )}
@@ -933,7 +934,7 @@ export default function AssetsPage() {
                     id="edit-serialNumber"
                     value={editAssetData.serialNumber}
                     onChange={(e) => setEditAssetData({ ...editAssetData, serialNumber: e.target.value })}
-                    placeholder="Enter serial number..."
+                    placeholder="Enter serial number&hellip;"
                   />
                 </div>
                 <div>

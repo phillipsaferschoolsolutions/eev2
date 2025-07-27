@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle, UserCircle, FolderKanban, ServerIcon, Briefcase } from "lucide-react";
+import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle, FolderKanban, ServerIcon, Briefcase } from "lucide-react";
 import type { AssignmentMetadata } from "@/services/assignmentFunctionsService";
 import { getMyAssignments, getAssignmentListMetadata } from "@/services/assignmentFunctionsService";
 import { Skeleton } from "@/components/ui/skeleton"; 
@@ -180,10 +180,12 @@ export default function AssessmentFormsPage() {
   }, [isAdmin, userProfile, customClaims, authLoading, profileLoading, claimsLoading]);
 
   // Reset page when changing items per page
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setMyAssignmentsPage(1);
   }, [myAssignmentsPerPage]);
   
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setAllAssignmentsPage(1);
   }, [allAssignmentsPerPage]);
@@ -256,7 +258,7 @@ export default function AssessmentFormsPage() {
               <ListOrdered className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-xl font-semibold mb-2">No Assignments Displayed</h3>
               <p className="text-muted-foreground mb-4">
-                Either no assignments are currently assigned to you, or there was an issue loading them.
+                Let&apos;s get started... Please fill out your DSS today.
               </p>
             </div>
           )}

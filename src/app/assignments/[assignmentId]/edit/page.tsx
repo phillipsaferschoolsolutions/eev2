@@ -7,7 +7,7 @@ import { useForm, useFieldArray, Controller, type SubmitHandler } from "react-ho
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/context/auth-context";
-import { getAssignmentById, updateAssignment, type AssignmentWithPermissions, type AssignmentQuestion, type UpdateAssignmentPayload } from "@/services/assignmentFunctionsService";
+import { getAssignmentById, updateAssignment, type AssignmentWithPermissions, type UpdateAssignmentPayload } from "@/services/assignmentFunctionsService";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, PlusCircle, Trash2, Settings2, FileText, Users, Globe, Briefcase, HelpCircle } from "lucide-react";
+import { ArrowLeft, Save, PlusCircle, Trash2, Settings2, FileText, Users, Globe, Briefcase } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 // Schema for a single question
@@ -92,6 +92,7 @@ export default function EditAssignmentPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
 
   const assignmentId = typeof params.assignmentId === 'string' ? params.assignmentId : '';
@@ -101,6 +102,7 @@ export default function EditAssignmentPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { control, register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AssignmentFormData>({
     resolver: zodResolver(assignmentFormSchema),
     defaultValues: {
@@ -111,11 +113,13 @@ export default function EditAssignmentPage() {
     },
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { fields, append, remove, update } = useFieldArray({
     control,
     name: "questions",
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!assignmentId) {
       setError("Assignment ID is missing.");
@@ -155,7 +159,7 @@ export default function EditAssignmentPage() {
           setError("Assignment not found or you do not have permission to access it.");
           toast({ variant: "destructive", title: "Error", description: "Assignment not found." });
         }
-      } catch (err) {
+      } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
         setError(`Failed to load assignment: ${errorMessage}`);
         toast({ variant: "destructive", title: "Loading Failed", description: errorMessage });
@@ -191,8 +195,8 @@ export default function EditAssignmentPage() {
       await updateAssignment(assignment.id, payload, userProfile.account);
       toast({ title: "Success", description: "Assignment updated successfully." });
       router.push(`/assignments/${assignment.id}/details`);
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Update Failed", description: err.message || "An unknown error occurred." });
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "Update Failed", description: err instanceof Error ? err.message : "An unknown error occurred." });
     } finally {
       setIsSubmitting(false);
     }
@@ -440,7 +444,7 @@ export default function EditAssignmentPage() {
                         <div className="space-y-2 mt-1 p-2 border rounded-md max-h-40 overflow-y-auto">
                         {currentQuestionOptions.map((opt, index) => (
                           // CORRECTED: Use the option string and its index for a unique key
-                          <div key={`${opt}-${questionIndex}`} className="flex items-center space-x-2">
+                          <div key={`${opt}-${questionIndex}-${index}`} className="flex items-center space-x-2">
                             <Controller
                               name={`questions.${questionIndex}.deficiencyValues`}
                               control={control}

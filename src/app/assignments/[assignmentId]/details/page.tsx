@@ -4,23 +4,25 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
-import { getAssignmentById, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
+import { getAssignmentById, type AssignmentWithPermissions } from "@/services/assignmentFunctionsService";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Edit3, AlertTriangle, ArrowLeft, ListChecks, CheckSquare, MessageSquare, Paperclip, FileText, CalendarDays, User, Tag, Info } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 
 // A more robust parseOptions function that handles multiple possible data formats
-const parseOptions = (options: any): { label: string; value: string }[] => {
+const parseOptions = (options: unknown): { label: string; value: string }[] => {
   if (!options) return [];
   
   // Case 1: It's already the correct format (array of objects with label/value)
   if (Array.isArray(options) && options.length > 0 && typeof options[0] === 'object' && options[0] !== null && 'label' in options[0]) {
-    return options.map(opt => ({ label: String(opt.label), value: String(opt.value || opt.label) }));
+    return options.map(opt => ({ 
+      label: String((opt as { label: unknown }).label), 
+      value: String((opt as { value?: unknown; label: unknown }).value || (opt as { label: unknown }).label) 
+    }));
   }
 
   // Case 2: It's a simple array of strings
@@ -44,7 +46,7 @@ const formatDisplayDate = (dateString?: string) => {
     return new Date(dateString).toLocaleDateString(undefined, {
       year: 'numeric', month: 'long', day: 'numeric'
     });
-  } catch (e) {
+  } catch {
     return dateString;
   }
 };

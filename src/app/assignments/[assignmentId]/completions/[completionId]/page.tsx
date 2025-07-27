@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, AlertTriangle, CheckCircle2, XCircle, HelpCircle, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle2, XCircle, HelpCircle } from "lucide-react";
 import { getCompletionDetails } from "@/services/assignmentFunctionsService";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -17,12 +17,12 @@ import Image from "next/image";
 export default function CompletionDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, userProfile, loading: authLoading } = useAuth();
+  const { userProfile, loading: authLoading } = useAuth();
 
   const assignmentId = typeof params.assignmentId === 'string' && params.assignmentId !== 'undefined' ? params.assignmentId : '';
   const completionId = typeof params.completionId === 'string' && params.completionId !== 'undefined' ? params.completionId : '';
 
-  const [completionData, setCompletionData] = useState<any>(null); // Use a proper type later
+  const [completionData, setCompletionData] = useState<Record<string, unknown> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,9 +51,9 @@ export default function CompletionDetailsPage() {
         } else {
           setError("Completion data not found.");
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching completion details:", err);
-        setError(err.message || "An unknown error occurred while fetching details.");
+        setError(err instanceof Error ? err.message : "An unknown error occurred while fetching details.");
       } finally {
         setIsLoading(false);
       }
@@ -95,12 +95,12 @@ export default function CompletionDetailsPage() {
   }
 
   // Helper function to determine if a value is a valid answer (not null, undefined, or empty string)
-  const hasValidAnswer = (value: any) => {
+  const hasValidAnswer = (value: unknown) => {
     return value !== null && value !== undefined && value !== '';
   };
 
   // Helper function to format answer display based on type
-  const formatAnswer = (answer: any) => {
+  const formatAnswer = (answer: unknown) => {
     if (answer === null || answer === undefined) return <span className="italic text-muted-foreground/70">No answer provided</span>;
     
     if (typeof answer === 'boolean') {
@@ -151,18 +151,26 @@ export default function CompletionDetailsPage() {
                     {Object.entries(completionData.content).map(([questionId, answer], index) => {
                       // Try to find the question label from questions array if available
                       let questionLabel = "Question";
-                      if (completionData.questions && Array.isArray(completionData.questions)) {
-                        const question = completionData.questions.find((q: any) => q.id === questionId);
+                      if (completionData.questions && Array.isArray(completionData.questions as unknown[])) {
+                        const question = (completionData.questions as unknown[]).find((q: unknown) => 
+                          typeof q === 'object' && q !== null && 'id' in q && (q as { id: string }).id === questionId
+                        );
                         if (question && question.label) {
-                          questionLabel = question.label;
+                          questionLabel = (question as { label: string }).label;
                         }
                       }
                       
                       // Get comment for this question if it exists
-                      const comment = completionData.commentsData && completionData.commentsData[questionId];
+                      const comment = completionData.commentsData && 
+                        typeof completionData.commentsData === 'object' && 
+                        completionData.commentsData !== null &&
+                        (completionData.commentsData as Record<string, unknown>)[questionId];
                       
                       // Get photo URL for this question if it exists
-                      const photoUrl = completionData.uploadedPhotos && completionData.uploadedPhotos[questionId]?.link;
+                      const photoUrl = completionData.uploadedPhotos && 
+                        typeof completionData.uploadedPhotos === 'object' && 
+                        completionData.uploadedPhotos !== null &&
+                        (completionData.uploadedPhotos as Record<string, { link?: string }>)[questionId]?.link;
                       
                       return (
                         <div key={questionId} className="p-4 border rounded-md bg-muted/20">
@@ -182,7 +190,7 @@ export default function CompletionDetailsPage() {
                           {comment && (
                             <div className="mt-2 p-2 bg-background rounded-md border">
                                 <p className="text-xs font-semibold text-muted-foreground">Comment</p>
-                                <p className="text-sm italic">"{comment}"</p>
+                                <p className="text-sm italic">&quot;{String(comment)}&quot;</p>
                             </div>
                           )}
 
@@ -210,7 +218,7 @@ export default function CompletionDetailsPage() {
                     <HelpCircle className="h-4 w-4" />
                     <AlertTitle>No Content Found</AlertTitle>
                     <AlertDescription>
-                      This completion record doesn't contain any question responses.
+                      This completion record doesn&apos;t contain any question responses.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -221,15 +229,17 @@ export default function CompletionDetailsPage() {
                 <div>
                   <h3 className="text-lg font-semibold mb-3">All Uploaded Photos</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {Object.entries(completionData.uploadedPhotos).map(([questionId, photoData]: [string, any]) => {
-                      if (!photoData.link) return null;
+                    {Object.entries(completionData.uploadedPhotos as Record<string, { link?: string; date?: string }>).map(([questionId, photoData]) => {
+                      if (!photoData?.link) return null;
                       
                       // Try to find question label
                       let questionLabel = "Unknown Question";
-                      if (completionData.questions && Array.isArray(completionData.questions)) {
-                        const question = completionData.questions.find((q: any) => q.id === questionId);
+                      if (completionData.questions && Array.isArray(completionData.questions as unknown[])) {
+                        const question = (completionData.questions as unknown[]).find((q: unknown) => 
+                          typeof q === 'object' && q !== null && 'id' in q && (q as { id: string }).id === questionId
+                        );
                         if (question && question.label) {
-                          questionLabel = question.label;
+                          questionLabel = (question as { label: string }).label;
                         }
                       }
                       

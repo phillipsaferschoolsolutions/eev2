@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,8 +33,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { 
   ArrowLeft, Shield, Plus, Edit, Trash2, 
-  Search, ChevronLeft, ChevronRight, AlertTriangle, Loader2, 
-  Check, X, Info, Copy, Key, LockIcon, UnlockIcon
+  Search, AlertTriangle, Loader2, 
+  Info, Copy, Key, LockIcon, UnlockIcon
 } from "lucide-react";
 import { getRoles, createRole, updateRole, deleteRole } from "@/services/roleService";
 import type { Role, PermissionKey } from "@/types/Role";
@@ -150,7 +150,6 @@ const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap(group =>
 );
 
 export default function RoleManagementPage() {
-  const router = useRouter();
   const { userProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const { can } = usePermissions();
@@ -176,7 +175,7 @@ export default function RoleManagementPage() {
   const [activeTab, setActiveTab] = useState<string>("details");
   
   // Form setup
-  const { control, register, handleSubmit, formState: { errors }, reset, setValue } = useForm<RoleFormData>({
+  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<RoleFormData>({
     resolver: zodResolver(roleSchema),
     defaultValues: {
       name: "",
@@ -189,6 +188,7 @@ export default function RoleManagementPage() {
     (ADMIN_ROLES.includes(userProfile.role || "") || can("admin.roles.manage"));
   
   // Fetch roles when the component mounts
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!authLoading && userProfile?.account) {
       fetchRoles();

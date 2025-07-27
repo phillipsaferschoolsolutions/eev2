@@ -32,7 +32,6 @@ import { usePersistedState } from "@/hooks/use-persisted-state";
 
 export default function UserManagementPage() {
   const { userProfile, loading: authLoading } = useAuth();
-  const { toast } = useToast();
   const { can } = usePermissions();
 
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -43,12 +42,10 @@ export default function UserManagementPage() {
   const [currentPage, setCurrentPage] = usePersistedState('admin-users-current-page', 1);
   const [itemsPerPage, setItemsPerPage] = usePersistedState('admin-users-items-per-page', 10);
   const [totalPages, setTotalPages] = useState(0);
-  const [totalUsers, setTotalUsers] = useState(0);
   
   // --- Permission Change State ---
   const [permissionChange, setPermissionChange] = useState<{ userId: string; newPermission: string; userEmail: string; } | null>(null);
   const [signature, setSignature] = useState("");
-  const [isSubmittingChange, setIsSubmittingChange] = useState(false);
 
   // Check if user has permission to manage users
   const hasAccess = !authLoading && (
@@ -64,7 +61,6 @@ export default function UserManagementPage() {
         .then(data => {
           setUsers(data.users || []);
           setTotalPages(data.totalPages || 0);
-          setTotalUsers(data.totalUsers || 0);
         })
         .catch(err => {
           console.error("Failed to fetch users:", err);
@@ -72,7 +68,7 @@ export default function UserManagementPage() {
         })
         .finally(() => setIsLoadingUsers(false));
     }
-  }, [userProfile, currentPage, itemsPerPage]);
+  }, [userProfile, currentPage, itemsPerPage, hasAccess]);
 
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(Number(value));

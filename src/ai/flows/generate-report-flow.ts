@@ -91,6 +91,7 @@ export async function generateReport(
   return generateReportFlow(input);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const generateReportPrompt = ai.definePrompt({
   name: 'generateReportPrompt',
   input: { schema: GenerateReportInputSchema },
