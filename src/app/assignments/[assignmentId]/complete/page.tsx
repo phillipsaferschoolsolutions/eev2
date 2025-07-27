@@ -1033,8 +1033,8 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
         } else if ((question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && Array.isArray(parseOptions(question.options))) {
              const selectedOptions: string[] = [];
              parseOptions(question.options).forEach(opt => {
-                if (data[`${question.id}.${opt}`]) {
-                    selectedOptions.push(opt);
+               if (data[`${question.id}.${opt.value}`]) {
+                   selectedOptions.push(opt.value);
                 }
             });
             questionAnswer = selectedOptions//.join(',');
