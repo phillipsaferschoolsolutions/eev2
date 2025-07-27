@@ -472,7 +472,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
         setAssignment(fetchedAssignment);
 
         // Step 2: Try to fetch the user's draft for this assignment
-        const draftData = await getAssignmentDraft(assignmentId, userProfile.account);
+        const draftData = userProfile?.account ? await getAssignmentDraft(assignmentId, userProfile.account) : null;
         
         const defaultVals: FieldValues = {};
         
