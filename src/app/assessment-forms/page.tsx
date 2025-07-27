@@ -338,7 +338,7 @@ export default function AssessmentFormsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setMyAssignmentsPage(prev => Math.max(prev - 1, 1))}
+                   onClick={() => setAllAssignmentsPage(Math.max(allAssignmentsPage - 1, 1))}
                     disabled={myAssignmentsPage === 1}
                   >
                     Previous
@@ -346,7 +346,7 @@ export default function AssessmentFormsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setMyAssignmentsPage(prev => Math.min(prev + 1, totalMyAssignmentsPages))}
+                   onClick={() => setAllAssignmentsPage(Math.min(allAssignmentsPage + 1, totalAllAssignmentsPages))}
                     disabled={myAssignmentsPage === totalMyAssignmentsPages || totalMyAssignmentsPages === 0}
                   >
                     Next
