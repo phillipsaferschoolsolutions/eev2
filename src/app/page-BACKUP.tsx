@@ -179,7 +179,7 @@ export default function DashboardPage() {
 
  // Fetch weather data based on user's location
  useEffect(() => {
-  if (!authLoading && user && navigator.geolocation) {
+  if (!authLoading && !profileLoading && user && userProfile?.account && navigator.geolocation) {
      setWeatherLoading(true);
      navigator.geolocation.getCurrentPosition(
        async (position) => {
@@ -201,14 +201,16 @@ export default function DashboardPage() {
        }
      );
    } else {
-    if (!authLoading && !user) {
+    if (!authLoading && !profileLoading && !user) {
       setWeatherError("Please log in to view weather data");
+    } else if (!authLoading && !profileLoading && user && !userProfile?.account) {
+      setWeatherError("Account information not available");
     } else if (!navigator.geolocation) {
       setWeatherError("Geolocation not supported");
     }
      setWeatherLoading(false);
    }
-}, [authLoading, user]);
+}, [authLoading, profileLoading, user, userProfile?.account]);
 
 
  // Fetch widget data
