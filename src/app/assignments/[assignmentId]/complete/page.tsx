@@ -1202,8 +1202,8 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
                 </div>
                 <div>
                   <Label htmlFor="filter-subsection">Sub-Section</Label>
-                  <Select value={selectedSubSection} onValueChange={setSelectedSubSection} disabled={selectedSection === "all" && availableSubSections.length <= 1 && availableSubSections.every(s => s === UNASSIGNED_FILTER_VALUE) }>
-                    <SelectTrigger id="filter-subsection"><SelectValue placeholder="Filter by sub-section..." /></SelectTrigger>
+                  <Select value={selectedSubSection} onValueChange={setSelectedSubSection}>
+                    <SelectTrigger id="filter-subsection" disabled={selectedSection === "all" && availableSubSections.length <= 1 && availableSubSections.every(s => s === UNASSIGNED_FILTER_VALUE)}><SelectValue placeholder="Filter by sub-section..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Sub-Sections</SelectItem>
                       {availableSubSections.map(sub => (
