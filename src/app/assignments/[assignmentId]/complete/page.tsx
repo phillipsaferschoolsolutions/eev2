@@ -200,7 +200,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
       if (triggerQuestion.options) {
         const options = parseOptions(triggerQuestion.options);
         return options.some(opt =>
-          conditionValues.includes(opt) && allWatchedValues[`${triggerFieldId}.${opt}`] === true
+          conditionValues.includes(opt.value) && allWatchedValues[`${triggerFieldId}.${opt.value}`] === true
         );
       } else {
         return conditionValues.some(cv => cv.toLowerCase() === String(watchedValue).toLowerCase());
