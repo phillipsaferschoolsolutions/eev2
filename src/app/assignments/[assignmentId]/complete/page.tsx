@@ -1420,7 +1420,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
                                   </Select>
                                   <Select
                                       value={timeValue.period}
-                                      onValueChange={(period: "AM" | "PM") => field.onChange({ ...timeValue, period })}
+                                       onValueChange={(period: string) => field.onChange({ ...timeValue, period: period as "AM" | "PM" })}
                                   >
                                       <SelectTrigger className="w-[90px]"><SelectValue placeholder="AM/PM" /></SelectTrigger>
                                       <SelectContent>{amPm.map(p => <SelectItem key={`p-${p}`} value={p}>{p}</SelectItem>)}</SelectContent>
