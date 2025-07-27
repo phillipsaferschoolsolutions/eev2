@@ -17,6 +17,8 @@ export interface AssignmentQuestion {
   comment?: boolean; // Allow text comments
   photoUpload?: boolean; // Allow file/image uploads
   pageNumber?: number;
+  section?: string; // Section name for grouping questions
+  subSection?: string; // Sub-section name for further grouping
   conditional?: {
     field: string; // ID of the question this one depends on
     value: string | string[]; // Value(s) of the dependent question that trigger this one
