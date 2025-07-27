@@ -299,7 +299,7 @@ export default function AssignmentDetailsPage() {
                      <div className="mt-2 p-2 bg-muted/50 rounded-md text-xs">
                         <div className="font-medium">Conditional Logic:</div>
                         <div>
-                           Show if question ID <Badge variant="outline" size="sm">{question.conditional.field}</Badge> has value(s): <Badge variant="outline" size="sm">{Array.isArray(question.conditional.value) ? question.conditional.value.join(', ') : question.conditional.value}</Badge>
+                           Show if question ID <Badge variant="outline">{question.conditional.field}</Badge> has value(s): <Badge variant="outline">{Array.isArray(question.conditional.value) ? question.conditional.value.join(', ') : question.conditional.value}</Badge>
                         </div>
                      </div>
                   )}
