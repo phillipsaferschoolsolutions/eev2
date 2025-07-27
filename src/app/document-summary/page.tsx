@@ -41,9 +41,9 @@ export default function DocumentSummaryPage() {
         title: "Summary Generated",
         description: "The document summary has been successfully created.",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error generating summary:", err);
-      const errorMessage = err.message || "An unknown error occurred while generating the summary.";
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred while generating the summary.";
       setError(errorMessage);
       toast({
         variant: "destructive",

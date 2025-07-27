@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,7 +25,6 @@ import type { WidgetSandboxData, TrendsResponse } from "@/types/Analysis";
 import {
   Activity,
   MapPin,
-  Thermometer,
   Wind,
   Droplets,
   Eye,
@@ -36,7 +35,6 @@ import {
   CheckCircle2,
   Clock,
   Target,
-  Zap,
   Sun,
   CloudRain,
   Cloud,
@@ -64,11 +62,11 @@ interface CompletionItem {
     assessmentName?: string;
     completedBy: string;
     completionDate?: string;
-    submittedTimeServer?: any;
+    submittedTimeServer?: unknown;
     locationName?: string;
     status?: string;
-    content?: Record<string, any>;
-    [key: string]: any;
+    content?: Record<string, unknown>;
+    [key: string]: unknown;
   };
   parentAssignmentId?: string;
   assignmentId?: string;
@@ -93,7 +91,10 @@ interface NewsArticle {
 }
 
 export default function DashboardPage() {
-  const { user, userProfile, customClaims, loading: authLoading, profileLoading, claimsLoading } = useAuth();
+  const { user, userProfile, loading: authLoading, profileLoading, claimsLoading } = useAuth();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const customClaims = null;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { toast } = useToast();
 
   // Weather state
@@ -110,6 +111,7 @@ export default function DashboardPage() {
   // Trends data state
   const [trendsData, setTrendsData] = useState<TrendsResponse | null>(null);
   const [trendsLoading, setTrendsLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [trendsError, setTrendsError] = useState<string | null>(null);
 
   // Last completions state
@@ -370,6 +372,7 @@ export default function DashboardPage() {
   };
 
   // Function to get assignment name from either completion data or assignments list
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getAssignmentName = (completion: CompletionItem): string => {
     // First check if assessmentName is directly in the completion data
     if (completion.data.assessmentName) {
@@ -1075,7 +1078,7 @@ export default function DashboardPage() {
               <ListChecks className="mx-auto h-12 w-12 mb-4 text-muted-foreground opacity-50" />
               <p className="text-lg font-semibold">No Critical Tasks</p>
               <p className="text-sm text-muted-foreground">
-                You're all caught up! No urgent tasks at this time.
+                You&apos;re all caught up! No urgent tasks at this time.
               </p>
             </div>
           </CardContent>
