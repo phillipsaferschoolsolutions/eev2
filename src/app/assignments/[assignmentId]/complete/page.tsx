@@ -1164,7 +1164,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8 items-start p-4 md:p-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr,300px] gap-8 items-start p-4 md:p-6">
       {/* Main Content Column */}
       <div className="space-y-6">
         <Card className="shadow-xl">
