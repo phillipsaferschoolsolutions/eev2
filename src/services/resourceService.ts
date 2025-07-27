@@ -17,10 +17,10 @@ async function getIdToken(): Promise<string | null> {
       return await currentUser.getIdToken();
     } catch (error) {
       console.error("Error getting ID token:", error);
-      return null;
+      throw new Error("Could not get Firebase ID token.");
     }
   }
-  return null;
+  throw new Error("User not authenticated.");
 }
 
 // --- Generic Fetch Wrapper (consistent with other services) ---

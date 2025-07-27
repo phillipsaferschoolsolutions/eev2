@@ -183,8 +183,8 @@ export async function getIdToken(): Promise<string> {
                     reject(new Error("Could not get Firebase ID token."));
                 }
             } else {
-                // Return null instead of rejecting to allow graceful handling
-                resolve(null as any);
+                // Reject if no authenticated user is found
+                reject(new Error("User not authenticated."));
             }
         });
     });
