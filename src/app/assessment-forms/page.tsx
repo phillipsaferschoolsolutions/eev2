@@ -130,7 +130,7 @@ export default function AssessmentFormsPage() {
     async function fetchAllAccountTasks() {
       console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 1: isAdmin, Auth/Profile/Claims loading state:", { isAdmin, authLoading, profileLoading, claimsLoading });
       if (isAdmin && !authLoading && !profileLoading && !claimsLoading) {
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 2: Admin, Auth/Profile/Claims loaded. Profile data:", { userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission, customClaims });
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks CheckPoint 2: Admin, Auth/Profile/Claims loaded. Profile data:", { userProfileAccount: userProfile?.account, userProfileRole: userProfile?.role, customClaims });
         let specificAdminError = "Admin view: Cannot fetch all account assignments. ";
         if (!userProfile) specificAdminError += "User profile is not loaded. ";
         else if (!userProfile.account || userProfile.account.trim() === '') {
