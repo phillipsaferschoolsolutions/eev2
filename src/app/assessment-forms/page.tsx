@@ -148,7 +148,7 @@ export default function AssessmentFormsPage() {
         try {
           setIsLoadingAllAccountAssignments(true);
           setAllAccountAssignmentsError(null);
-          const fetchedData = await getAssignmentListMetadata(userProfile.account);
+          const fetchedData = await getAssignmentListMetadata();
            console.log("[TEMP DEBUG AssessmentFormsPage] fetchAllAccountTasks ADMIN API CALL SUCCEEDED. Data:", fetchedData);
           setAllAccountAssignments(fetchedData || []);
         } catch (err) {
