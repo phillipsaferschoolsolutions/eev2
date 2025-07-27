@@ -27,7 +27,7 @@ import type { District } from "@/types/Admin";
 import { 
   Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check, Menu,
   LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon, Settings, FolderKanban, FileText, Zap, // Added Zap
-  Thermometer, AlertCircle, MapPin as LocationIcon, ListTodo, HardDrive
+ Thermometer, AlertCircle, MapPin as LocationIcon
 } from "lucide-react";
 
 
