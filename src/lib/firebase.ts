@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth, browserLocalPersistence } from 'firebase/auth';
+import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore'; // Added
 import { getFunctions, type Functions } from 'firebase/functions';
 import { getStorage, type FirebaseStorage } from 'firebase/storage'; // Added
@@ -16,9 +16,13 @@ const firebaseConfig = {
 };
 
 let app: FirebaseApp;
+// eslint-disable-next-line prefer-const
 let auth: Auth;
+// eslint-disable-next-line prefer-const
 let firestore: Firestore;
+// eslint-disable-next-line prefer-const
 let functions: Functions;
+// eslint-disable-next-line prefer-const
 let storage: FirebaseStorage; // Added
 
 if (getApps().length === 0) {

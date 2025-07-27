@@ -71,17 +71,19 @@ async function authedFetch<T>(
   let response;
   try {
     response = await fetch(fullUrl, { ...options, headers });
-  } catch (networkError: any) {
+  } catch (networkError: unknown) {
     console.error(`Network error for ${fullUrl} (drillTrackingService):`, networkError);
-    throw new Error(`Network Error: Could not connect to ${fullUrl}. (${networkError.message || 'Failed to fetch'}). Check connection and CORS.`);
+    const errorMessage = networkError instanceof Error ? networkError.message : 'Failed to fetch';
+    throw new Error(`Network Error: Could not connect to ${fullUrl}. (${errorMessage}). Check connection and CORS.`);
   }
 
   if (!response.ok) {
     let errorData;
+    // eslint-disable-next-line prefer-const
     let errorText = await response.text();
     try {
       errorData = JSON.parse(errorText);
-    } catch (e) {
+    } catch {
       errorData = { message: errorText || response.statusText || `HTTP error ${response.status}` };
     }
     console.error(`API Error ${response.status} for ${fullUrl} (drillTrackingService):`, errorData);
@@ -104,10 +106,10 @@ async function authedFetch<T>(
   
   // If not JSON, but there's text, return it (handles plain text or unexpected responses)
   if (textResponse) {
-    return textResponse as any as T;
+    return textResponse as unknown as T;
   }
   
-  return undefined as any as T; // Fallback for empty responses or truly no content
+  return undefined as unknown as T; // Fallback for empty responses or truly no content
 }
 
 /**

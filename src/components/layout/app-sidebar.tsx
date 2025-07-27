@@ -47,6 +47,7 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
   const pathname = usePathname();
   const sidebarContext = useSidebar();
   const { user } = useAuth();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
   const { toast } = useToast();
   const { layoutMode, isMobileViewForLayout } = useLayout();
@@ -55,8 +56,8 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
     try {
       await signOut(auth);
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Logout Failed", description: error.message });
+    } catch (error: unknown) {
+      toast({ variant: "destructive", title: "Logout Failed", description: error instanceof Error ? error.message : "Logout failed" });
     }
   };
 

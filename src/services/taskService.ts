@@ -3,15 +3,17 @@
 
 import { auth } from '@/lib/firebase';
 import type { User } from 'firebase/auth';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { Task } from '@/types/Task';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface IssueType {
   id: string;
   name: string;
   description?: string;
   accountId: string;
-  createdAt?: any;
-  updatedAt?: any;
+  createdAt?: unknown;
+  updatedAt?: unknown;
 }
 
 const TASKS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/task';
@@ -71,8 +73,8 @@ async function authedFetch<T>(
   const textResponse = await response.text();
   try {
     return JSON.parse(textResponse);
-  } catch (e) {
-    return textResponse as any as T;
+  } catch {
+    return textResponse as unknown as T;
   }
 }
 
@@ -97,8 +99,8 @@ export async function getMyTasks(taskType: string = "Open"): Promise<{ tasks: Ta
  * @param taskData The task data to create
  * @returns Promise that resolves to the created task
  */
-export async function createTask(taskData: Partial<Task>): Promise<{ id: string; createdTime: any }> {
-  const result = await authedFetch<{ id: string; createdTime: any }>(`${TASKS_BASE_URL}/addNewTaskNoForm`, {
+export async function createTask(taskData: Partial<Task>): Promise<{ id: string; createdTime: unknown }> {
+  const result = await authedFetch<{ id: string; createdTime: unknown }>(`${TASKS_BASE_URL}/addNewTaskNoForm`, {
     method: 'POST',
     body: JSON.stringify(taskData),
   });
@@ -137,10 +139,10 @@ export async function updateTask(taskData: Partial<Task> & { id: string }): Prom
  * @param taskIds Single task ID or array of task IDs to close
  * @returns Promise that resolves to updated task data or array
  */
-export async function closeTasks(taskIds: string | string[]): Promise<any> {
+export async function closeTasks(taskIds: string | string[]): Promise<unknown> {
   const payload = Array.isArray(taskIds) ? taskIds : { id: taskIds };
   
-  const result = await authedFetch<any>(`${TASKS_BASE_URL}/closeTask`, {
+  const result = await authedFetch<unknown>(`${TASKS_BASE_URL}/closeTask`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });
@@ -214,25 +216,25 @@ export async function getAssignedToMe(): Promise<{ tasks: Task[] }> {
 export async function getIssueTypes(): Promise<IssueType[]> {
   // This would need a backend endpoint - for now return mock data
   return [
-    { id: 'electrical', name: 'Electrical Issue', description: 'Electrical problems and repairs', accountId: '', createdAt: new Date() as any, updatedAt: new Date() as any },
-    { id: 'hvac', name: 'HVAC Issue', description: 'Heating, ventilation, and air conditioning', accountId: '', createdAt: new Date() as any, updatedAt: new Date() as any },
-    { id: 'plumbing', name: 'Plumbing Issue', description: 'Water and plumbing related problems', accountId: '', createdAt: new Date() as any, updatedAt: new Date() as any },
-    { id: 'security', name: 'Security Issue', description: 'Security and safety concerns', accountId: '', createdAt: new Date() as any, updatedAt: new Date() as any },
-    { id: 'maintenance', name: 'General Maintenance', description: 'General maintenance and repairs', accountId: '', createdAt: new Date() as any, updatedAt: new Date() as any },
+    { id: 'electrical', name: 'Electrical Issue', description: 'Electrical problems and repairs', accountId: '', createdAt: new Date() as unknown, updatedAt: new Date() as unknown },
+    { id: 'hvac', name: 'HVAC Issue', description: 'Heating, ventilation, and air conditioning', accountId: '', createdAt: new Date() as unknown, updatedAt: new Date() as unknown },
+    { id: 'plumbing', name: 'Plumbing Issue', description: 'Water and plumbing related problems', accountId: '', createdAt: new Date() as unknown, updatedAt: new Date() as unknown },
+    { id: 'security', name: 'Security Issue', description: 'Security and safety concerns', accountId: '', createdAt: new Date() as unknown, updatedAt: new Date() as unknown },
+    { id: 'maintenance', name: 'General Maintenance', description: 'General maintenance and repairs', accountId: '', createdAt: new Date() as unknown, updatedAt: new Date() as unknown },
   ];
 }
 
-export async function createIssueType(issueType: Omit<IssueType, 'id' | 'createdAt' | 'updatedAt'>): Promise<IssueType> {
+export async function createIssueType(): Promise<IssueType> {
   // This would need a backend endpoint
   throw new Error('createIssueType not implemented - needs backend endpoint');
 }
 
-export async function updateIssueType(id: string, updates: Partial<IssueType>): Promise<void> {
+export async function updateIssueType(): Promise<void> {
   // This would need a backend endpoint
   throw new Error('updateIssueType not implemented - needs backend endpoint');
 }
 
-export async function deleteIssueType(id: string): Promise<void> {
+export async function deleteIssueType(): Promise<void> {
   // This would need a backend endpoint
   throw new Error('deleteIssueType not implemented - needs backend endpoint');
 }

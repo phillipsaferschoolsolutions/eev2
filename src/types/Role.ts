@@ -10,8 +10,8 @@ export interface Role {
   permissions: Record<string, boolean>; // Map of permission keys to boolean values
   account?: string;     // Optional account ID if role is account-specific
   isSystem?: boolean;   // Whether this is a system-defined role that cannot be modified
-  createdAt?: any;      // Timestamp when the role was created
-  updatedAt?: any;      // Timestamp when the role was last updated
+  createdAt?: unknown;      // Timestamp when the role was created
+  updatedAt?: unknown;      // Timestamp when the role was last updated
 }
 
 /**

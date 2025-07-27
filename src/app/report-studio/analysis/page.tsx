@@ -5,18 +5,20 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox"; 
 import { getAssignmentListMetadata, type AssignmentMetadata } from "@/services/assignmentFunctionsService";
 import { getAggregatedCompletions } from "@/services/analysisService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
-import { ArrowLeft, BarChart2, PieChart, LineChart, Table as TableIcon, Download, RefreshCw, Filter, Shield, Loader2, X, CalendarIcon } from "lucide-react";
+import { ArrowLeft, BarChart2, PieChart, LineChart, Table as TableIcon, Download, RefreshCw, Shield, Loader2, X, CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import PivotTableComponent from "@/components/analysis/PivotTableComponent";
 import VisualizationComponent from "@/components/analysis/VisualizationComponent";
@@ -29,6 +31,7 @@ const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
 
 export default function DataAnalysisPage() {
   const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user, userProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
   
@@ -107,7 +110,7 @@ export default function DataAnalysisPage() {
       // If all are selected but the toggle is turned off, deselect all
       setSelectedAssignmentIds([]);
     }
-  }, [selectAllAssignments, assignments]);
+  }, [selectAllAssignments, assignments, selectedAssignmentIds.length]);
   
   // Handle "Select All Locations" toggle
   useEffect(() => {
@@ -118,7 +121,7 @@ export default function DataAnalysisPage() {
       // If all are selected but the toggle is turned off, deselect all
       setSelectedLocationIds([]);
     }
-  }, [selectAllLocations, locations]);
+  }, [selectAllLocations, locations, selectedLocationIds.length]);
   
   // Prepare data for the pivot table
   const pivotData = useMemo(() => {

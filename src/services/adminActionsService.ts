@@ -1,4 +1,3 @@
-
 // src/services/adminActionsService.ts
 'use client';
 
@@ -27,6 +26,7 @@ async function getIdToken(): Promise<string | null> {
 async function authedFetch<T>(
   fullUrl: string,
   options: RequestInit = {},
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   currentAccountName?: string // For passing the 'account' header if needed by specific admin endpoints
 ): Promise<T> {
   const token = await getIdToken();

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { UserCircle, Bell, ShieldCheck, Palette, LayoutList, SidebarOpen, Rows3, Settings as SettingsIcon } from "lucide-react"; // Renamed Settings to SettingsIcon
+import { UserCircle, Bell, ShieldCheck, Palette, LayoutList, SidebarOpen, Rows3 } from "lucide-react";
 import { useLayout, type LayoutMode } from "@/context/layout-context";
 
 

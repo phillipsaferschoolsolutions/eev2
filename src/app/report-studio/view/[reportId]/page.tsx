@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getReportById, exportToPdf, exportToDocx } from "@/services/reportService";
-import { ArrowLeft, FileDown, FileType2, Shield, AlertTriangle, Loader2 } from "lucide-react";
+import { ArrowLeft, FileDown, FileType2, Shield, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // Define admin roles that can access this page
@@ -17,12 +17,13 @@ const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
 export default function ViewReportPage() {
   const params = useParams();
   const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user, userProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
   
   const reportId = typeof params.reportId === 'string' ? params.reportId : '';
   
-  const [report, setReport] = useState<any | null>(null);
+  const [report, setReport] = useState<Record<string, unknown> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -39,7 +40,7 @@ export default function ViewReportPage() {
     if (!authLoading && userProfile?.account) {
       fetchReport();
     }
-  }, [reportId, userProfile?.account, authLoading]);
+  }, [reportId, userProfile?.account, authLoading, fetchReport]);
   
   const fetchReport = async () => {
     if (!userProfile?.account) return;
@@ -168,7 +169,7 @@ export default function ViewReportPage() {
   );
   
   // Format date for display
-  function formatDate(timestamp: any) {
+  function formatDate(timestamp: unknown) {
     console.log("formatDate received:", timestamp, "Type:", typeof timestamp);
     if (!timestamp) return "N/A";
     

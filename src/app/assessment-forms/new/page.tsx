@@ -204,11 +204,11 @@ export default function NewAssignmentPage() {
       });
       reset();
       router.push("/assessment-forms");
-    } catch (error: unknown) {
+   } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Failed to create assignment",
-        description: error instanceof Error ? error.message : "An unknown error occurred."
+       description: error instanceof Error ? error.message : "An unknown error occurred."
       });
     } finally {
       setIsSubmitting(false);

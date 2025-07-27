@@ -16,6 +16,7 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import type { Role, PermissionKey } from '@/types/Role';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { DEFAULT_ROLE_PERMISSIONS, SYSTEM_ROLES } from '@/types/Role';
 
 // --- Helper to get ID Token ---
@@ -32,51 +33,6 @@ async function getIdToken(): Promise<string | null> {
   return null;
 }
 
-// --- Generic Fetch Wrapper for Role Service ---
-async function authedFetch<T>(
-  fullUrl: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = await getIdToken();
-  const headers = new Headers(options.headers || {});
-
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  } else {
-    console.warn(`[CRITICAL] authedFetch (roleService): No Authorization token available for endpoint: ${fullUrl}.`);
-  }
-
-  // Automatically get accountName from localStorage
-  const accountName = localStorage.getItem('accountName');
-  if (accountName) {
-    headers.set('account', accountName);
-  } else {
-    console.warn(`[CRITICAL] authedFetch (roleService): 'account' header not found in localStorage for URL: ${fullUrl}.`);
-  }
-
-  if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  const response = await fetch(fullUrl, { ...options, headers });
-
-  if (!response.ok) {
-    const errorData = await response.text();
-    console.error(`API Error ${response.status} for ${fullUrl}:`, errorData);
-    throw new Error(`API Error: ${response.status} ${errorData || response.statusText}`);
-  }
-
-  if (response.status === 204) {
-    return undefined as any as T;
-  }
-  
-  const textResponse = await response.text();
-  try {
-    return JSON.parse(textResponse);
-  } catch (e) {
-    return textResponse as any as T; // Fallback for non-JSON responses
-  }
-}
 
 /**
  * Fetches a role by its ID

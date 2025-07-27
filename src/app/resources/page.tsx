@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useCallback, type ChangeEvent } from "react";
-import { useForm, Controller, type SubmitHandler } from "react-hook-form";
+import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/context/auth-context";
@@ -16,19 +16,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { UploadCloud, FileText, Search, Filter, Info, Mic, PlayIcon, PauseIcon, Trash2, Brain, Loader2, Radio, Users, Globe, History, Download, Eye as EyeIcon } from "lucide-react"; // Changed Versions to History, Added EyeIcon
+import { UploadCloud, FileText, Search, Filter, Info, Mic, PlayIcon, PauseIcon, Trash2, Brain, Loader2, Radio, Eye as EyeIcon } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { Progress as ShadProgress } from "@/components/ui/progress";
-import type { ResourceDocument, AccessControlPayload } from "@/types/Resource";
+import type { ResourceDocument } from "@/types/Resource";
 import { 
   uploadResourceDocument, 
   getResourceDocuments, 
   addAudioNoteToResource, 
-  updateResourcePermissions,
   generateResourceSummary
 } from "@/services/resourceService"; 
 import Link from "next/link";
-import { usePersistedState } from "@/hooks/use-persisted-state";
 
 const MAX_AUDIO_RECORDING_MS = 30000; // 30 seconds
 
@@ -48,6 +45,7 @@ interface AudioPlayerState {
 }
 
 export default function ResourcesPage() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
   const { toast } = useToast();
   const [documents, setDocuments] = useState<ResourceDocument[]>([]);
@@ -67,7 +65,7 @@ export default function ResourcesPage() {
   const [audioPlayerStates, setAudioPlayerStates] = useState<Record<string, AudioPlayerState>>({});
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
 
-  const { control, register, handleSubmit, formState: { errors }, reset } = useForm<ResourceFormData>({
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<ResourceFormData>({
     resolver: zodResolver(resourceFormSchema),
   });
 
@@ -122,7 +120,7 @@ export default function ResourcesPage() {
     }
   };
   
-  const handleGenerateSummary = async (docId: string, docName: string, storagePath?: string) => {
+  const handleGenerateSummary = async (docId: string, docName: string) => {
     if (!userProfile?.account) return;
 
     setDocuments(prevDocs => prevDocs.map(d => d.id === docId ? { ...d, summaryGenerating: true, geminiSummary: "Generating..." } : d));
@@ -223,6 +221,7 @@ export default function ResourcesPage() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleStopRecording = (resourceId: string, playTheStopChime: boolean = true) => {
     if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
     else if(isRecordingResourceId === resourceId) setIsRecordingResourceId(null);
@@ -268,12 +267,6 @@ export default function ResourcesPage() {
   };
   const handleAudioEnded = (resourceId: string) => {
     setAudioPlayerStates(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, isPlaying: false, currentTime: 0 } }));
-  };
-  const formatAudioTime = (timeInSeconds: number) => {
-     if (isNaN(timeInSeconds) || !isFinite(timeInSeconds) || timeInSeconds < 0) return "0:00";
-     const minutes = Math.floor(timeInSeconds / 60);
-     const seconds = Math.floor(timeInSeconds % 60);
-     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
 

@@ -15,10 +15,8 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  Label
 } from 'recharts';
 import type { PivotTableData } from '@/types/Analysis';
-import { Skeleton } from '@/components/ui/skeleton';
 
 interface VisualizationComponentProps {
   data: PivotTableData[];
@@ -38,30 +36,30 @@ export default function VisualizationComponent({
     if (!data.length) return [];
     
     // Group data by the first dimension
-    const groupedData = data.reduce((acc, item) => {
+    const groupedData = data.reduce((acc, item: Record<string, unknown>) => {
       const dimensionKey = dimensions[0];
       const dimensionValue = item[dimensionKey] || 'Unknown';
       
-      if (!acc[dimensionValue]) {
-        acc[dimensionValue] = {
+      if (!acc[dimensionValue as string]) {
+        acc[dimensionValue as string] = {
           name: item.questionLabel || item.locationName || dimensionValue,
         };
         
         // Initialize measures
         measures.forEach(measure => {
-          acc[dimensionValue][measure] = 0;
+          acc[dimensionValue as string][measure] = 0;
         });
       }
       
       // Sum up measures
       measures.forEach(measure => {
         if (item[measure] !== undefined) {
-          acc[dimensionValue][measure] += Number(item[measure]);
+          acc[dimensionValue as string][measure] += Number(item[measure]);
         }
       });
       
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, Record<string, unknown>>);
     
     // Convert to array for Recharts
     return Object.values(groupedData);

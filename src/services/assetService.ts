@@ -30,53 +30,6 @@ async function getIdToken(): Promise<string | null> {
   return null;
 }
 
-// --- Generic Fetch Wrapper ---
-async function authedFetch<T>(
-  fullUrl: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = await getIdToken();
-  const headers = new Headers(options.headers || {});
-
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  } else {
-    console.warn(`[CRITICAL] authedFetch (assetService): No Authorization token available for endpoint: ${fullUrl}.`);
-  }
-
-  // Automatically get accountName from localStorage
-  const accountName = localStorage.getItem('accountName');
-  if (accountName) {
-    headers.set('account', accountName);
-  } else {
-    console.warn(`[CRITICAL] authedFetch (assetService): 'account' header not found in localStorage for URL: ${fullUrl}.`);
-  }
-
-  if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  const response = await fetch(fullUrl, { ...options, headers });
-
-  if (!response.ok) {
-    const errorData = await response.text();
-    console.error(`API Error ${response.status} for ${fullUrl}:`, errorData);
-    throw new Error(`API Error: ${response.status} ${errorData || response.statusText}`);
-  }
-
-  if (response.status === 204) {
-    return undefined as any as T;
-  }
-  
-  const textResponse = await response.text();
-  try {
-    return JSON.parse(textResponse);
-  } catch (e) {
-    return textResponse as any as T;
-  }
-}
-
-const ASSETS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/assets';
 
 /**
  * Fetches all assets for a given account.
@@ -152,11 +105,11 @@ export async function createAsset(assetData: CreateAssetPayload & { account: str
     };
     
     // Remove the account field since we're using accountId
-    const { account, ...assetToSave } = newAsset;
+    const { account: _, ...assetToSave } = newAsset;
     
     // Filter out undefined values to prevent Firestore errors
     const cleanedAsset = Object.fromEntries(
-      Object.entries(assetToSave).filter(([_, value]) => value !== undefined)
+      Object.entries(assetToSave).filter(([, value]) => value !== undefined)
     );
     
     const docRef = await addDoc(assetsCollection, cleanedAsset);
@@ -209,7 +162,7 @@ export async function updateAsset(assetId: string, updates: UpdateAssetPayload):
     
     // Filter out undefined values to prevent Firestore errors
     const cleanedUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([_, value]) => value !== undefined)
+      Object.entries(updates).filter(([, value]) => value !== undefined)
     );
     
     // Add resolved names to updates

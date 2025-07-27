@@ -1,400 +1,467 @@
-'use server';
-/**
- * @fileOverview AI flow to generate a comprehensive safety assessment report.
- *
- * - generateReport - A function that generates a detailed report from completion data.
- * - GenerateReportInput - The input type for the generateReport function.
- * - GenerateReportOutput - The return type for the generateReport function.
- */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+"use client";
 
-const GenerateReportInputSchema = z.object({
-  completionData: z.record(z.any()).describe('The full completion data including questions, answers, and metadata.'),
-  assignmentData: z.record(z.any()).describe('The assignment data including questions and metadata.'),
-  accountName: z.string().describe('The account name for the report.'),
-  customPrompt: z.string().optional().describe('Optional custom prompt to use for report generation.'),
-  promptMode: z.enum(['replace', 'extend']).optional().describe('How to use the custom prompt: replace or extend the default.'),
-});
-export type GenerateReportInput = z.infer<typeof GenerateReportInputSchema>;
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm, Controller, useFieldArray, type SubmitHandler } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { format } from "date-fns";
 
-const DomainSection = z.object({
-  strengths: z.array(z.string()),
-  improvements: z.array(z.string()),
-  observations: z.string(),
-  recommendations: z.array(z.object({
-    recommendation: z.string(),
-    severity: z.enum(['Critical', 'Medium', 'Low']),
-    timeline: z.enum(['30 days', '60 days', '90 days', 'Long Term (120+ days)']),
-    reference: z.string().optional(),
-  })),
-});
-
-const GenerateReportOutputSchema = z.object({
-  title: z.string().describe('The title of the report.'),
-  reportName: z.string().describe('A concise, descriptive name for the report, suitable for a file name or list entry.'), // New field
-  executiveSummary: z.string().describe('A concise summary of key findings.'),
-  methodology: z.string().describe('Detailed methodology and scope of the assessment.'),
-  riskAssessment: z.object({
-    riskMatrix: z.string().describe('Comprehensive risk assessment matrix with detailed analysis.'),
-    criticalRisks: z.array(z.string()).describe('List of critical risks identified.'),
-    moderateRisks: z.array(z.string()).describe('List of moderate risks identified.'),
-    lowRisks: z.array(z.string()).describe('List of low-level risks identified.'),
-  }).describe('Comprehensive risk assessment section.'),
-  complianceEvaluation: z.object({
-    overview: z.string().describe('Overview of compliance status.'),
-    standardsReviewed: z.array(z.string()).describe('List of safety standards and regulations reviewed.'),
-    complianceGaps: z.array(z.string()).describe('Identified compliance gaps.'),
-    complianceStrengths: z.array(z.string()).describe('Areas of strong compliance.'),
-  }).describe('Detailed compliance evaluation section.'),
-  domains: z.object({
-    people: DomainSection.describe('Staff, training, supervision aspects.'),
-    process: DomainSection.describe('Procedures, protocols, plans aspects.'),
-    technology: DomainSection.describe('Physical security, equipment, infrastructure aspects.'),
-  }),
-  detailedFindings: z.object({
-    safetyMetrics: z.string().describe('Quantitative safety metrics and data analysis.'),
-    benchmarkComparison: z.string().describe('Comparison against industry benchmarks and standards.'),
-    trendAnalysis: z.string().describe('Analysis of safety trends and patterns.'),
-    incidentAnalysis: z.string().describe('Analysis of any incidents or near-misses.'),
-  }).describe('Detailed findings and analysis section.'),
-  actionPlan: z.object({
-    immediateActions: z.array(z.object({
-      action: z.string(),
-      timeline: z.string(),
-      responsibility: z.string(),
-      resources: z.string(),
-    })).describe('Immediate actions required (0-30 days).'),
-    shortTermActions: z.array(z.object({
-      action: z.string(),
-      timeline: z.string(),
-      responsibility: z.string(),
-      resources: z.string(),
-    })).describe('Short-term actions (30-90 days).'),
-    longTermActions: z.array(z.object({
-      action: z.string(),
-      timeline: z.string(),
-      responsibility: z.string(),
-      resources: z.string(),
-    })).describe('Long-term strategic actions (90+ days).'),
-  }).describe('Comprehensive action plan with detailed implementation roadmap.'),
-  nextSteps: z.array(z.string()).describe('Prioritized next steps for site leadership.'),
-  appendices: z.string().describe('Methodology and question references.'),
-  conclusion: z.string().describe('Comprehensive conclusion summarizing key findings and overall assessment.'),
-});
-export type GenerateReportOutput = z.infer<typeof GenerateReportOutputSchema>;
-
-export async function generateReport(
-  input: GenerateReportInput
-): Promise<GenerateReportOutput> {
-  return generateReportFlow(input);
-}
-
+import { useAuth } from "@/context/auth-context";
+import type { Location } from "@/services/locationService"; 
+import { getLocationsForLookup } from "@/services/locationService";
+import type { CreateDrillEventPayload } from "@/services/drillTrackingService"; 
+import { createDrillEvent } from "@/services/drillTrackingService";
+//import { COMMON_DRILL_TYPES, type DrillType } from "@/types/Drill"; 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PlusCircle, Minus, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { ArrowLeft, Save, CalendarIcon, AlertTriangle, Building, CheckSquare, Info } from "lucide-react";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const generateReportPrompt = ai.definePrompt({
-  name: 'generateReportPrompt',
-  input: { schema: GenerateReportInputSchema },
-  output: { schema: GenerateReportOutputSchema },
-  prompt: `You are an expert school safety assessment analyst at Safer School Solutions, Inc. Your task is to generate a comprehensive, premium-quality safety assessment report that justifies significant investment and demonstrates exceptional value. This report must be thorough, detailed, and professionally comprehensive - minimum 15 pages of substantive content.
+import { Loader2 } from "lucide-react";
 
-**PREMIUM SAFETY ASSESSMENT REPORT FRAMEWORK**
-
-**CONTENT REQUIREMENTS:**
-- Generate comprehensive, detailed content that demonstrates exceptional value
-- Minimum 15 pages of substantive analysis and recommendations
-- Include specific data points, metrics, and quantifiable findings
-- Provide detailed explanations and context for all findings
-- Use professional language and industry-standard terminology
-- Reference relevant safety standards, regulations, and best practices
-
-**MANDATORY REPORT STRUCTURE:**
-
-1. **Executive Summary (1-2 pages)**
-   - Comprehensive overview of assessment scope and methodology
-   - Key findings summary with quantitative data
-   - Critical recommendations overview
-   - Overall safety rating and risk assessment summary
-
-2. **Methodology and Scope (2-3 pages)**
-   - Detailed assessment methodology and approach
-   - Scope of evaluation including areas covered
-   - Standards and frameworks referenced
-   - Data collection methods and validation processes
-   - Assessment team qualifications and expertise
-   - Timeline and duration of assessment activities
-
-3. **Detailed Safety Analysis (4-6 pages)**
-   - Comprehensive analysis by domain (People, Process, Technology)
-   - Quantitative safety metrics and performance indicators
-   - Benchmark comparisons against industry standards
-   - Trend analysis and historical data review
-   - Incident analysis and near-miss evaluation
-   - Environmental and situational factors assessment
-
-4. **Risk Assessment Matrix (2-3 pages)**
-   - Comprehensive risk identification and categorization
-   - Detailed risk matrix with probability and impact analysis
-   - Critical, moderate, and low-risk classifications
-   - Risk mitigation strategies and controls evaluation
-   - Residual risk assessment after current controls
-   - Risk tolerance and acceptance criteria
-
-5. **Compliance Evaluation (2-3 pages)**
-   - Detailed review against applicable safety standards
-   - Federal, state, and local regulation compliance status
-   - Industry best practice alignment assessment
-   - Compliance gaps identification and analysis
-   - Regulatory change impact assessment
-   - Certification and accreditation status review
-
-6. **Recommendations and Action Plan (2-3 pages)**
-   - Immediate actions (0-30 days) with detailed implementation steps
-   - Short-term initiatives (30-90 days) with resource requirements
-   - Long-term strategic improvements (90+ days) with ROI analysis
-   - Implementation roadmap with milestones and success metrics
-   - Resource allocation and budget considerations
-   - Training and development recommendations
-
-7. **Conclusion (1 page)**
-   - Comprehensive summary of overall safety posture
-   - Key achievements and areas of excellence
-   - Priority focus areas for improvement
-   - Long-term safety vision and strategic direction
-
-**QUALITY STANDARDS:**
-- Each section must be substantive and detailed
-- Include specific examples and case studies where relevant
-- Provide quantitative data and metrics throughout
-- Reference specific questions and findings from the assessment
-- Use professional formatting with clear headings and subheadings
-- Include actionable recommendations with clear implementation guidance
-
-**DOMAIN FRAMEWORK (Enhanced):**
-Each domain section must include:
-- Detailed strengths analysis with supporting evidence
-- Comprehensive areas for improvement with root cause analysis
-- Site-specific observations with contextual factors
-- Quantitative metrics and performance indicators
-- Benchmark comparisons and industry standards alignment
-- Detailed recommendations with implementation roadmaps
-- Resource requirements and cost-benefit analysis
-
-**FORMATTING AND PRESENTATION:**
-- Professional, authoritative tone throughout
-- Clear hierarchical structure with numbered sections
-- Detailed explanations that demonstrate expertise
-- Specific data points and quantifiable findings
-- Professional tables, charts, and visual elements
-- Comprehensive cross-references and citations
-- Industry-standard terminology and best practices
-
-**VALUE DEMONSTRATION:**
-- Provide detailed analysis that justifies premium pricing
-- Include comprehensive insights not available elsewhere
-- Demonstrate deep expertise and professional knowledge
-- Offer specific, actionable recommendations with clear ROI
-- Present findings in a way that enables immediate implementation
-- Show understanding of complex safety management challenges
-
-**CONTENT DEPTH REQUIREMENTS:**
-- Each major section should contain multiple subsections
-- Provide detailed explanations and context for all findings
-- Include specific examples and case studies
-- Reference industry standards and regulatory requirements
-- Offer comparative analysis and benchmarking data
-- Present comprehensive implementation guidance
-
-Completion Data:
-{{completionData}}
-
-Assignment Data:
-{{assignmentData}}
-
-Account Name:
-{{{accountName}}}
-
-CRITICAL INSTRUCTIONS:
-- Generate a comprehensive, detailed report that meets the minimum 15-page requirement
-- Ensure each section is substantive and provides significant value
-- Include specific data points, metrics, and quantifiable findings throughout
-- Provide detailed explanations and context for all observations
-- Use professional language that demonstrates expertise and authority
-- Include comprehensive recommendations with detailed implementation guidance
-- Reference specific assessment questions and findings with [Q#] notation
-- Maintain a professional, coaching tone that encourages improvement
-- Ensure the report justifies premium pricing through exceptional depth and quality
-
-Remember: This is a premium assessment report that clients invest significantly in. Every section must demonstrate exceptional value, professional expertise, and comprehensive analysis that enables immediate implementation of safety improvements.`,
+const requiredDrillSchema = z.object({
+  typeId: z.string().min(1, "Drill type is required."),
+  quantity: z.number().min(1, "Quantity must be at least 1.").default(1),
 });
 
-const generateReportFlow = ai.defineFlow(
-  {
-    name: 'generateReportFlow',
-    inputSchema: GenerateReportInputSchema,
-    outputSchema: GenerateReportOutputSchema,
-  },
-  async input => {
-    // Define the default prompt content as a constant
-    const defaultPromptContent = `You are an expert school safety assessment analyst at Safer School Solutions, Inc. Your task is to generate a comprehensive, premium-quality safety assessment report that justifies significant investment and demonstrates exceptional value. This report must be thorough, detailed, and professionally comprehensive - minimum 15 pages of substantive content.
+const newDrillEventSchema = z.object({
+  name: z.string().min(3, { message: "Drill name must be at least 3 characters." }),
+  description: z.string().optional(),
+  startDate: z.date({ required_error: "Start date is required." }),
+  endDate: z.date({ required_error: "End date is required." }),
+  requiredDrills: z.array(requiredDrillSchema).min(1, "At least one required drill must be added."), // Updated to array of requiredDrillSchema
+  assignedToSites: z.array(z.string()).min(1, "At least one site must be assigned."), // Added min(1) validation
+}).refine(data => data.endDate >= data.startDate, {
+  message: "End date cannot be before start date.",
+  path: ["endDate"],
+});
 
-**PREMIUM SAFETY ASSESSMENT REPORT FRAMEWORK**
+type NewDrillEventFormData = z.infer<typeof newDrillEventSchema>;
 
-**CONTENT REQUIREMENTS:**
-- Generate comprehensive, detailed content that demonstrates exceptional value
-- Minimum 15 pages of substantive analysis and recommendations
-- Include specific data points, metrics, and quantifiable findings
-- Provide detailed explanations and context for all findings
-- Use professional language and industry-standard terminology
-- Reference relevant safety standards, regulations, and best practices
+const COMMON_DRILL_TYPES = [
+  { id: "fire-drill", name: "Fire Drill", description: "Standard fire evacuation procedure." },
+  { id: "hurricane", name: "Hurricane", description: "Prepare for extreme weather events." },
+  { id: "lockdown", name: "Lockdown", description: "Secure the premises." },
+  { id: "shelter-in-place", name: "Shelter in Place", description: "Seek internal shelter." },
+  // Add other common drill types here
+];
 
-**MANDATORY REPORT STRUCTURE:**
 
-1. **Executive Summary (1-2 pages)**
-   - Comprehensive overview of assessment scope and methodology
-   - Key findings summary with quantitative data
-   - Critical recommendations overview
-   - Overall safety rating and risk assessment summary
+type DrillEventFormData = z.infer<typeof newDrillEventSchema>;
 
-2. **Methodology and Scope (2-3 pages)**
-   - Detailed assessment methodology and approach
-   - Scope of evaluation including areas covered
-   - Standards and frameworks referenced
-   - Data collection methods and validation processes
-   - Assessment team qualifications and expertise
-   - Timeline and duration of assessment activities
+export default function NewDrillEventPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
 
-3. **Detailed Safety Analysis (4-6 pages)**
-   - Comprehensive analysis by domain (People, Process, Technology)
-   - Quantitative safety metrics and performance indicators
-   - Benchmark comparisons against industry standards
-   - Trend analysis and historical data review
-   - Incident analysis and near-miss evaluation
-   - Environmental and situational factors assessment
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(true);
+  const [locationsError, setLocationsError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedDrillTypeIdToAdd, setSelectedDrillTypeIdToAdd] = useState<string | null>(null);
 
-4. **Risk Assessment Matrix (2-3 pages)**
-   - Comprehensive risk identification and categorization
-   - Detailed risk matrix with probability and impact analysis
-   - Critical, moderate, and low-risk classifications
-   - Risk mitigation strategies and controls evaluation
-   - Residual risk assessment after current controls
-   - Risk tolerance and acceptance criteria
+  const { control, register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<DrillEventFormData>({
+    resolver: zodResolver(newDrillEventSchema),
+    defaultValues: {
+      description: "",
+      startDate: undefined,
+      endDate: undefined,
+      requiredDrills: [],
+      assignedToSites: [],
+    },
+  });
 
-5. **Compliance Evaluation (2-3 pages)**
-   - Detailed review against applicable safety standards
-   - Federal, state, and local regulation compliance status
-   - Industry best practice alignment assessment
-   - Compliance gaps identification and analysis
-   - Regulatory change impact assessment
-   - Certification and accreditation status review
+  const handleAddDrill = () => {
+    if (selectedDrillTypeIdToAdd) {
+      append({ typeId: selectedDrillTypeIdToAdd, quantity: 1 });
+      setSelectedDrillTypeIdToAdd(null); // Reset the select dropdown
+    }
+  };
 
-6. **Recommendations and Action Plan (2-3 pages)**
-   - Immediate actions (0-30 days) with detailed implementation steps
-   - Short-term initiatives (30-90 days) with resource requirements
-   - Long-term strategic improvements (90+ days) with ROI analysis
-   - Implementation roadmap with milestones and success metrics
-   - Resource allocation and budget considerations
-   - Training and development recommendations
+  const { fields, append, remove } = useFieldArray({ control, name: "requiredDrills" });
 
-7. **Conclusion (1 page)**
-   - Comprehensive summary of overall safety posture
-   - Key achievements and areas of excellence
-   - Priority focus areas for improvement
-   - Long-term safety vision and strategic direction
+  useEffect(() => {
+    if (!authLoading && !profileLoading && user && userProfile?.account) {
+      setIsLoadingLocations(true);
+      setLocationsError(null);
+      getLocationsForLookup(userProfile.account)
+        .then(fetchedLocations => {
+          setLocations(fetchedLocations);
+        })
+        .catch(err => {
+          console.error("Failed to fetch locations:", err);
+          setLocationsError(err.message || "Could not load locations for site assignment.");
+          toast({ variant: "destructive", title: "Error Loading Locations", description: err.message });
+        })
+        .finally(() => setIsLoadingLocations(false));
+    } else if (!authLoading && !profileLoading && (!user || !userProfile?.account)) {
+      setLocationsError("User or account information not available. Cannot load locations.");
+      setIsLoadingLocations(false);
+    }
+  }, [user, userProfile, authLoading, profileLoading, toast]);
 
-**QUALITY STANDARDS:**
-- Each section must be substantive and detailed
-- Include specific examples and case studies where relevant
-- Provide quantitative data and metrics throughout
-- Reference specific questions and findings from the assessment
-- Use professional formatting with clear headings and subheadings
-- Include actionable recommendations with clear implementation guidance
-
-**DOMAIN FRAMEWORK (Enhanced):**
-Each domain section must include:
-- Detailed strengths analysis with supporting evidence
-- Comprehensive areas for improvement with root cause analysis
-- Site-specific observations with contextual factors
-- Quantitative metrics and performance indicators
-- Benchmark comparisons and industry standards alignment
-- Detailed recommendations with implementation roadmaps
-- Resource requirements and cost-benefit analysis
-
-**FORMATTING AND PRESENTATION:**
-- Professional, authoritative tone throughout
-- Clear hierarchical structure with numbered sections
-- Detailed explanations that demonstrate expertise
-- Specific data points and quantifiable findings
-- Professional tables, charts, and visual elements
-- Comprehensive cross-references and citations
-- Industry-standard terminology and best practices
-
-**VALUE DEMONSTRATION:**
-- Provide detailed analysis that justifies premium pricing
-- Include comprehensive insights not available elsewhere
-- Demonstrate deep expertise and professional knowledge
-- Offer specific, actionable recommendations with clear ROI
-- Present findings in a way that enables immediate implementation
-- Show understanding of complex safety management challenges
-
-**CONTENT DEPTH REQUIREMENTS:**
-- Each major section should contain multiple subsections
-- Provide detailed explanations and context for all findings
-- Include specific examples and case studies
-- Reference industry standards and regulatory requirements
-- Offer comparative analysis and benchmarking data
-- Present comprehensive implementation guidance
-
-Completion Data:
-{{completionData}}
-
-Assignment Data:
-{{assignmentData}}
-
-Account Name:
-{{{accountName}}}
-
-CRITICAL INSTRUCTIONS:
-- Generate a comprehensive, detailed report that meets the minimum 15-page requirement
-- Ensure each section is substantive and provides significant value
-- Include specific data points, metrics, and quantifiable findings throughout
-- Provide detailed explanations and context for all observations
-- Use professional language that demonstrates expertise and authority
-- Include comprehensive recommendations with detailed implementation guidance
-- Reference specific assessment questions and findings with [Q#] notation
-- Maintain a professional, coaching tone that encourages improvement
-- Ensure the report justifies premium pricing through exceptional depth and quality
-
-Remember: This is a premium assessment report that clients invest significantly in. Every section must demonstrate exceptional value, professional expertise, and comprehensive analysis that enables immediate implementation of safety improvements.`;
-
-    // Handle custom prompt logic
-    let finalPrompt: string;
-    
-    if (input.customPrompt) {
-      if (input.promptMode === 'replace') {
-        finalPrompt = input.customPrompt;
-      } else {
-        // Default to 'extend' mode
-        finalPrompt = `${input.customPrompt}
-
-${defaultPromptContent}`;
-      }
-    } else {
-      finalPrompt = defaultPromptContent;
+  const onSubmit: SubmitHandler<NewDrillEventFormData> = async (data) => {
+    setIsSubmitting(true);
+    if (!userProfile?.account) {
+      toast({ variant: "destructive", title: "Error", description: "User account not found." });
+      setIsSubmitting(false);
+      return;
     }
 
-    // Create a dynamic prompt with the final prompt content
-    const dynamicPrompt = ai.definePrompt({
-      name: 'dynamicGenerateReportPrompt',
-      input: { schema: GenerateReportInputSchema },
-      output: { schema: GenerateReportOutputSchema },
-      prompt: finalPrompt,
-    });
-    
-    const { output } = await dynamicPrompt(input);
-    if (!output) {
-      throw new Error("Failed to generate report from the prompt.");
+    // Ensure dates are valid before converting to ISO string
+    if (!data.startDate || !(data.startDate instanceof Date) || isNaN(data.startDate.getTime())) {
+         toast({ variant: "destructive", title: "Validation Error", description: "Invalid start date." });
+         setIsSubmitting(false);
+         return;
     }
-    return output;
+     if (!data.endDate || !(data.endDate instanceof Date) || isNaN(data.endDate.getTime())) {
+         toast({ variant: "destructive", title: "Validation Error", description: "Invalid end date." });
+         setIsSubmitting(false);
+         return;
+    }
+
+
+    const payload: CreateDrillEventPayload = {
+      name: data.name,
+      description: data.description || "", // Ensure description is a string
+      accountId: userProfile.account, // accountId will be set by the service
+      startDate: data.startDate.toISOString(), // Convert Date to ISO string
+      endDate: data.endDate.toISOString(), // Convert Date to ISO string
+      requiredDrills: data.requiredDrills, // Include the array of objects with typeId and quantity
+      assignedToSites: data.assignedToSites, // Assuming this is an array of strings
+    };
+
+     // Basic validation to ensure requiredDrills and assignedToSites are not empty
+     if (!payload.requiredDrills || payload.requiredDrills.length === 0) {
+         toast({ variant: "destructive", title: "Validation Error", description: "At least one required drill must be added." });
+         setIsSubmitting(false);
+         return;
+     }
+      if (!payload.assignedToSites || payload.assignedToSites.length === 0) {
+         toast({ variant: "destructive", title: "Validation Error", description: "At least one site must be assigned." });
+         setIsSubmitting(false);
+         return;
+     }
+
+
+    try {
+      // Pass the payload and accountName to the service function
+      await createDrillEvent(payload, userProfile.account);
+      toast({
+        title: "Success",
+        description: `Drill event "${data.name}" created successfully.`
+      });
+      reset(); // Reset form after successful submission
+      router.push("/drill-tracking"); // Navigate back after submission
+    } catch (error: any) {
+      console.error("Failed to create drill event:", error);
+      const errorMessage = error.message || "An unknown error occurred.";
+      toast({
+        variant: "destructive",
+        title: "Failed to create drill event",
+        description: errorMessage
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
+  if (authLoading || profileLoading) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <Skeleton className="h-8 w-1/4 mb-2" />
+        <Skeleton className="h-10 w-1/2 mb-6" />
+        <Card><CardHeader><Skeleton className="h-6 w-1/3" /></CardHeader><CardContent className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-20 w-full" /></CardContent></Card>
+      </div>
+    );
   }
-);
+
+  if (!user || !userProfile?.account) {
+    return (
+      <Alert variant="destructive" className="m-4">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Authentication Required</AlertTitle>
+        <AlertDescription>
+          You must be logged in and have an account associated to create a drill event.
+          <Button onClick={() => router.push('/auth')} className="mt-2 ml-auto block">Login</Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return(
+    <div className="container mx-auto py-8 px-4 space-y-6">
+      <Button variant="outline" onClick={() => router.push('/drill-tracking')} className="mb-4">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Drill Tracking
+      </Button>
+
+      <Card className="max-w-3xl mx-auto shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-2xl font-semibold">Create New Drill Event Window</CardTitle>
+          <CardDescription>Define the parameters for the upcoming drill event.</CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <CardContent className="space-y-6">
+            <div>
+              <Label htmlFor="name">Event Name</Label>
+              <Input id="name" {...register("name")} placeholder="e.g., Q4 Campus Fire Drills" />
+              {errors.name && <p className="text-sm text-destructive mt-1">{errors.name.message}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description (Optional)</Label>
+              <Textarea id="description" {...register("description")} placeholder="Provide details about this drill event window..." />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="startDate">Start Date</Label>
+                <Controller
+                  name="startDate"
+                  control={control}
+                  render={({ field }) => (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value ? format(field.value, "PPP") : <span>Pick a start date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                />
+                {errors.startDate && <p className="text-sm text-destructive mt-1">{errors.startDate.message}</p>}
+              </div>
+              <div>
+                <Label htmlFor="endDate">End Date</Label>
+                <Controller
+                  name="endDate"
+                  control={control}
+                  render={({ field }) => (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value ? format(field.value, "PPP") : <span>Pick an end date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                />
+                {errors.endDate && <p className="text-sm text-destructive mt-1">{errors.endDate.message}</p>}
+              </div>
+            </div>
+
+            <Card className="bg-muted/30">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2"><CheckSquare className="h-5 w-5 text-primary"/>Required Drills</CardTitle>
+                    <CardDescription>Select one or more drills to be completed during this event window and specify the quantity.</CardDescription> {/* Updated description */}
+                </CardHeader>
+                <CardContent className="space-y-4"> {/* Added space-y for spacing */}
+                    {/* Placeholder for rendering added drills */}
+                    {fields.length > 0 ? (
+                       <div className="space-y-3">
+                           {/* TODO: Map over fields and render added drills with quantity input and remove button */}
+                           {fields.map((field, index) => {
+                            // Find the drill details from COMMON_DRILL_TYPES based on typeId
+                            const drillDetails = COMMON_DRILL_TYPES.find(drill => drill.id === field.typeId);
+                            return (
+                                <div key={field.id} className="flex items-center justify-between p-2 border rounded-md">
+                                    <div className="flex items-center gap-2 flex-grow"> {/* Added flex-grow */}
+                                        <p className="font-medium">{drillDetails?.name || 'Unknown Drill'}</p> {/* Display drill name */}
+
+                                        {/* Quantity Increment Widget */}
+                                        <div className="flex items-center gap-1">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-6 w-6"
+                                                onClick={() => {
+                                                    // Decrement quantity, ensure it doesn't go below 1
+                                                    const currentQuantity = watch(`requiredDrills.${index}.quantity`);
+                                                    if (currentQuantity > 1) {
+                                                        setValue(`requiredDrills.${index}.quantity`, currentQuantity - 1);
+                                                    }
+                                                }}
+                                            >
+                                                <Minus className="h-3 w-3" />
+                                            </Button>
+                                            {/* Use Controller for the quantity input */}
+                                            <Controller
+                                                name={`requiredDrills.${index}.quantity`}
+                                                control={control}
+                                                render={({ field: quantityField }) => (
+                                                    <Input
+                                                        {...quantityField}
+                                                        type="number"
+                                                        min={1}
+                                                        className="w-14 text-center"
+                                                        onChange={(e) => {
+                                                            const value = parseInt(e.target.value, 10);
+                                                            if (!isNaN(value) && value >= 1) {
+                                                                quantityField.onChange(value);
+                                                            } else if (e.target.value === '') {
+                                                                quantityField.onChange(''); // Allow empty input temporarily
+                                                            }
+                                                        }}
+                                                        onBlur={(e) => {
+                                                            // On blur, if empty or invalid, set to 1
+                                                            const value = parseInt(e.target.value, 10);
+                                                            if (isNaN(value) || value < 1) {
+                                                                setValue(`requiredDrills.${index}.quantity`, 1);
+                                                            } else {
+                                                                quantityField.onChange(value); // Ensure number type on blur
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-6 w-6"
+                                                onClick={() => {
+                                                    // Increment quantity
+                                                    const currentQuantity = watch(`requiredDrills.${index}.quantity`);
+                                                    setValue(`requiredDrills.${index}.quantity`, (currentQuantity || 0) + 1);
+                                                }}
+                                            >
+                                                <Plus className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => remove(index)}>Remove</Button>
+                                </div>
+                            );
+                        })}
+
+                       </div>
+                    ) : (
+                        <div className="text-center text-muted-foreground">
+                           <p>No required drills added yet.</p>
+                        </div>
+                    )}
+
+                    {/* Add Drill Section with Select */}
+                    <div className="flex items-center gap-2"> {/* Flex container for select and button */}
+                        <Label htmlFor="select-drill-type" className="sr-only">Select Drill Type</Label> {/*sr-only to hide label visually */}
+                        <Select onValueChange={(value) => setSelectedDrillTypeIdToAdd(value)} value={selectedDrillTypeIdToAdd}>
+                           <SelectTrigger id="select-drill-type" className="w-[200px]"> {/* Adjust width as needed */}
+                               <SelectValue placeholder="Select drill to add..." />
+                           </SelectTrigger>
+                           <SelectContent>
+                               {COMMON_DRILL_TYPES.map((drill) => (
+                                   <SelectItem key={drill.id} value={drill.id}>
+                                       {drill.name}
+                                   </SelectItem>
+                               ))}
+                           </SelectContent>
+                       </Select>
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleAddDrill} // Call a new handler function
+                            disabled={!selectedDrillTypeIdToAdd} // Disable if no drill type is selected
+                        >
+                            <PlusCircle className="mr-1 h-4 w-4" /> Add Drill
+                        </Button>
+                    </div>
+
+                </CardContent>
+            </Card>
+
+            <Card className="bg-muted/30">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2"><Building className="h-5 w-5 text-primary"/>Assign to Sites/Locations</CardTitle>
+                    <CardDescription>Select the sites/locations where these drills must be performed.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {isLoadingLocations ? (
+                        <Skeleton className="h-24 w-full" />
+                    ) : locationsError ? (
+                         <Alert variant="destructive" className="text-sm">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription>{locationsError}</AlertDescription>
+                        </Alert>
+                    ) : (
+                        <Controller
+                            name="assignedToSites"
+                            control={control}
+                            render={({ field }) => (
+                                <ScrollArea className="h-40 border rounded-md p-2">
+                                <div className="space-y-2">
+                                    {locations.length > 0 ? locations.map((loc) => (
+                                    <div key={loc.id} className="flex items-center space-x-2 p-1.5 rounded hover:bg-background/50">
+                                        <Checkbox
+                                            id={`site-${loc.id}`}
+                                            checked={field.value?.includes(loc.id)}
+                                            onCheckedChange={(checked) => {
+                                                return checked
+                                                ? field.onChange([...(field.value || []), loc.id])
+                                                : field.onChange(field.value?.filter((value) => value !== loc.id));
+                                            }}
+                                        />
+                                        <Label htmlFor={`site-${loc.id}`} className="font-normal cursor-pointer">{loc.locationName}</Label>
+                                    </div>
+                                    )) : (
+                                        <p className="text-xs text-muted-foreground text-center p-4">No locations found for this account.</p>
+                                    )}
+                                </div>
+                                </ScrollArea>
+                            )}
+                        />
+                    )}
+                    {errors.assignedToSites && <p className="text-sm text-destructive mt-2">{errors.assignedToSites.message}</p>}
+                  <CardFooter>
+                    <Button type="submit" className="ml-auto" disabled={isSubmitting} size="lg">
+                      <Save className="mr-2 h-5 w-5" />
+                      {isSubmitting ? "Saving Event..." : "Create Drill Event"}
+                    </Button>
+                  </CardFooter>
+                </CardContent>
+            </Card>
+            
+            <Alert variant="default" className="bg-sky-50 border-sky-200 dark:bg-sky-900/30 dark:border-sky-700">
+                <Info className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+                <AlertTitle className="text-sky-700 dark:text-sky-300">Coming Soon</AlertTitle>
+                <AlertDescription className="text-sky-600 dark:text-sky-400">
+                    Features like recurrence rules, calendar integration, user-specific assignments, and detailed checklists will be added in future updates.
+                </AlertDescription>
+            </Alert> 
+          </CardContent>         
+        </form>
+      </Card>
+    </div>
+  );
+}

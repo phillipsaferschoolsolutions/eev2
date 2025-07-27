@@ -18,19 +18,6 @@ import {
 } from 'firebase/firestore';
 import type { ReportTemplate } from '@/types/Report';
 
-// --- Helper to get ID Token (consistent with other services) ---
-async function getIdToken(): Promise<string | null> {
-  const currentUser: User | null = auth.currentUser;
-  if (currentUser) {
-    try {
-      return await currentUser.getIdToken();
-    } catch (error) {
-      console.error("Error getting ID token for templateService:", error);
-      return null;
-    }
-  }
-  return null;
-}
 
 /**
  * Creates a new report template.
@@ -167,8 +154,8 @@ export async function deleteTemplate(templateId: string): Promise<void> {
  */
 export function replacePlaceholders(
   htmlContent: string,
-  completionData: any,
-  assignmentData: any,
+  completionData: Record<string, unknown>,
+  assignmentData: Record<string, unknown>,
   accountName: string,
   generatedBy: string
 ): string {
@@ -219,7 +206,7 @@ export function replacePlaceholders(
 /**
  * Generates an HTML table of questions and answers.
  */
-function generateQuestionAnswersTable(completionData: any, assignmentData: any): string {
+function generateQuestionAnswersTable(completionData: Record<string, unknown>, assignmentData: Record<string, unknown>): string {
   if (!completionData?.content || !assignmentData?.questions) {
     return '<p>No question data available.</p>';
   }
@@ -235,11 +222,11 @@ function generateQuestionAnswersTable(completionData: any, assignmentData: any):
       <tbody>
   `;
 
-  assignmentData.questions.forEach((question: any) => {
-    const answer = completionData.content[question.id] || 'No answer provided';
+  (assignmentData.questions as Record<string, unknown>[]).forEach((question: Record<string, unknown>) => {
+    const answer = (completionData.content as Record<string, unknown>)[question.id as string] || 'No answer provided';
     tableHtml += `
       <tr>
-        <td class="border border-gray-300 p-2">${question.label}</td>
+        <td class="border border-gray-300 p-2">${question.label as string}</td>
         <td class="border border-gray-300 p-2">${answer}</td>
       </tr>
     `;
@@ -252,17 +239,17 @@ function generateQuestionAnswersTable(completionData: any, assignmentData: any):
 /**
  * Generates an HTML list of identified deficiencies.
  */
-function generateDeficiencyList(completionData: any, assignmentData: any): string {
+function generateDeficiencyList(completionData: Record<string, unknown>, assignmentData: Record<string, unknown>): string {
   const deficiencies: string[] = [];
 
   if (completionData?.content && assignmentData?.questions) {
-    assignmentData.questions.forEach((question: any) => {
-      const answer = completionData.content[question.id];
+    (assignmentData.questions as Record<string, unknown>[]).forEach((question: Record<string, unknown>) => {
+      const answer = (completionData.content as Record<string, unknown>)[question.id as string];
       
       // Check if this answer represents a deficiency
       if (question.deficiencyValues && Array.isArray(question.deficiencyValues)) {
-        if (question.deficiencyValues.includes(answer)) {
-          deficiencies.push(`${question.label}: ${answer}`);
+        if ((question.deficiencyValues as unknown[]).includes(answer)) {
+          deficiencies.push(`${question.label as string}: ${answer}`);
         }
       }
     });
@@ -284,21 +271,21 @@ function generateDeficiencyList(completionData: any, assignmentData: any): strin
 /**
  * Generates an HTML gallery of uploaded photos.
  */
-function generatePhotoGallery(completionData: any): string {
+function generatePhotoGallery(completionData: Record<string, unknown>): string {
   if (!completionData?.uploadedPhotos || Object.keys(completionData.uploadedPhotos).length === 0) {
     return '<p>No photos uploaded.</p>';
   }
 
   let galleryHtml = '<div class="grid grid-cols-2 md:grid-cols-3 gap-4">';
   
-  Object.entries(completionData.uploadedPhotos).forEach(([questionId, photoData]: [string, any]) => {
+  Object.entries(completionData.uploadedPhotos as Record<string, Record<string, unknown>>).forEach(([questionId, photoData]) => {
     if (photoData?.link) {
       galleryHtml += `
         <div class="border rounded-lg overflow-hidden">
-          <img src="${photoData.link}" alt="Photo for question ${questionId}" class="w-full h-48 object-cover" />
+          <img src="${photoData.link as string}" alt="Photo for question ${questionId}" class="w-full h-48 object-cover" />
           <div class="p-2">
-            <p class="text-sm text-gray-600">${photoData.originalName || 'Uploaded photo'}</p>
-            <p class="text-xs text-gray-500">${photoData.date || ''}</p>
+            <p class="text-sm text-gray-600">${(photoData.originalName as string) || 'Uploaded photo'}</p>
+            <p class="text-xs text-gray-500">${(photoData.date as string) || ''}</p>
           </div>
         </div>
       `;
@@ -312,19 +299,19 @@ function generatePhotoGallery(completionData: any): string {
 /**
  * Generates an HTML section of comments.
  */
-function generateCommentsSection(completionData: any): string {
+function generateCommentsSection(completionData: Record<string, unknown>): string {
   if (!completionData?.commentsData || Object.keys(completionData.commentsData).length === 0) {
     return '<p>No comments provided.</p>';
   }
 
   let commentsHtml = '<div class="space-y-4">';
   
-  Object.entries(completionData.commentsData).forEach(([questionId, comment]: [string, any]) => {
+  Object.entries(completionData.commentsData as Record<string, unknown>).forEach(([questionId, comment]) => {
     if (comment && comment.trim()) {
       commentsHtml += `
         <div class="border-l-4 border-blue-500 pl-4">
           <p class="font-medium">Question ${questionId}</p>
-          <p class="text-gray-700 italic">"${comment}"</p>
+          <p class="text-gray-700 italic">"${comment as string}"</p>
         </div>
       `;
     }

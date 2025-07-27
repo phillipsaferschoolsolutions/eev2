@@ -1,8 +1,6 @@
 // src/services/reportService.ts
 'use client';
 
-import { auth } from '@/lib/firebase';
-import type { User } from 'firebase/auth';
 import { getCompletionDetails, getAssignmentById } from '@/services/assignmentFunctionsService';
 import { generateReport, type GenerateReportInput, type GenerateReportOutput } from '@/ai/flows/generate-report-flow';
 
@@ -67,8 +65,8 @@ async function authedFetch<T>(
   const textResponse = await response.text();
   try {
     return JSON.parse(textResponse);
-  } catch (e) {
-    return textResponse as any as T; // Fallback for non-JSON responses
+  } catch {
+    return textResponse as unknown as T; // Fallback for non-JSON responses
   }
 }
 
@@ -170,6 +168,7 @@ export async function exportToDocx(htmlContent: string, fileName: string = 'safe
     // 3. Return the DOCX file for download
     
     // For now, we'll just show an alert
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     alert("DOCX export functionality is under development. Please use PDF export for now.");
     
     // In the future, this might look like:
@@ -339,7 +338,7 @@ export async function savePromptSettings(accountName: string, settings: PromptSe
 /**
  * Generates a comprehensive table of questions and responses for the appendix.
  */
-function generateQuestionResponseTable(completionData: any, assignmentData: any): string {
+function generateQuestionResponseTable(completionData?: Record<string, unknown>, assignmentData?: Record<string, unknown>): string {
   if (!completionData?.content || !assignmentData?.questions) {
     return '<p>No question and response data available.</p>';
   }
@@ -357,10 +356,10 @@ function generateQuestionResponseTable(completionData: any, assignmentData: any)
       <tbody>
   `;
 
-  assignmentData.questions.forEach((question: any, index: number) => {
-    const answer = completionData.content[question.id];
-    const comment = completionData.commentsData?.[question.id];
-    const photo = completionData.uploadedPhotos?.[question.id];
+  (assignmentData.questions as Record<string, unknown>[]).forEach((question: Record<string, unknown>, index: number) => {
+    const answer = (completionData.content as Record<string, unknown>)[question.id as string];
+    const comment = (completionData.commentsData as Record<string, unknown>)?.[question.id as string];
+    const photo = (completionData.uploadedPhotos as Record<string, Record<string, unknown>>)?.[question.id as string];
     
     // Format the answer based on its type
     let formattedAnswer = 'No response';
@@ -377,9 +376,9 @@ function generateQuestionResponseTable(completionData: any, assignmentData: any)
     tableHtml += `
       <tr>
         <td class="question-cell">
-          <strong>Q${index + 1}:</strong> ${question.label}
+          <strong>Q${index + 1}:</strong> ${question.label as string}
           ${question.required ? '<span style="color: #d32f2f;"> *</span>' : ''}
-          <br><small style="color: #666;">Type: ${question.component}</small>
+          <br><small style="color: #666;">Type: ${question.component as string}</small>
         </td>
         <td class="response-cell">
           ${formattedAnswer === 'No response' ? '<span class="no-response">No response</span>' : formattedAnswer}
@@ -388,7 +387,7 @@ function generateQuestionResponseTable(completionData: any, assignmentData: any)
           ${comment ? `"${comment}"` : '<span class="no-response">No comment</span>'}
         </td>
         <td class="photo-cell">
-          ${photo?.link ? `<img src="${photo.link}" alt="Photo for question ${index + 1}" title="${photo.originalName || 'Uploaded photo'}" />` : '<span class="no-response">No photo</span>'}
+          ${(photo as Record<string, unknown>)?.link ? `<img src="${(photo as Record<string, unknown>).link}" alt="Photo for question ${index + 1}" title="${(photo as Record<string, unknown>).originalName || 'Uploaded photo'}" />` : '<span class="no-response">No photo</span>'}
         </td>
       </tr>
     `;
@@ -411,13 +410,13 @@ export function reportToHtml(
   report: GenerateReportOutput, 
   accountName: string, 
   generatedBy: string,
-  completionData?: any,
-  assignmentData?: any
+  completionData?: Record<string, unknown>,
+  assignmentData?: Record<string, unknown>
 ): string {
   // Extract metadata from the report or completion data if available
   const assignmentName = report.title || "Safety Assessment Report";
-  const completedBy = completionData?.completedBy || "Not specified";
-  const completionDate = completionData?.completionDate || completionData?.date || "Not specified";
+  const completedBy = (completionData?.completedBy as string) || "Not specified";
+  const completionDate = (completionData?.completionDate as string) || (completionData?.date as string) || "Not specified";
   
   // This function converts the structured report data to HTML with enhanced styling
   let html = `

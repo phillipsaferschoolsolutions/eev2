@@ -16,13 +16,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Dialog, DialogContent, DialogDescription, DialogFooter, 
-  DialogHeader, DialogTitle, DialogTrigger 
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
-  AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
@@ -121,7 +119,6 @@ const usStates = [
   { value: "DC", label: "District of Columbia" },
 ];
 
-export default function LocationManagementPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const { can } = usePermissions();
   const { toast } = useToast();
@@ -133,7 +130,7 @@ export default function LocationManagementPage() {
   
   // State for pagination
   const [currentPage, setCurrentPage] = usePersistedState('admin-locations-current-page', 1);
-  const [itemsPerPage] = usePersistedState('admin-locations-items-per-page', 10);
+  const [itemsPerPage, setItemsPerPage] = usePersistedState('admin-locations-items-per-page', 10);
   
   // State for search
   const [searchTerm, setSearchTerm] = useState("");
@@ -165,12 +162,11 @@ export default function LocationManagementPage() {
   );
   
   // Fetch locations when the component mounts
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!authLoading && userProfile?.account) {
       fetchLocations();
     }
-  }, [userProfile?.account, authLoading]);
+  }, [userProfile?.account, authLoading, fetchLocations]);
   
   // Filter locations when search term changes
   useEffect(() => {
@@ -188,7 +184,6 @@ export default function LocationManagementPage() {
   }, [searchTerm, locations]);
   
   // Calculate pagination
-  const totalPages = Math.ceil(filteredLocations.length / itemsPerPage);
   const paginatedLocations = filteredLocations.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage

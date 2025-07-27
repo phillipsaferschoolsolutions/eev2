@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuRadioGroup, DropdownMenuRadioItem,
-  DropdownMenuGroup
+ ListTodo, HardDrive
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -61,7 +61,7 @@ const AccountSwitcher: React.FC = () => {
         })
         .catch(err => {
           console.error("Failed to fetch districts:", err);
-          toast({ variant: "destructive", title: "Error Loading Districts", description: "Could not load districts. " + (err.message || '') });
+        toast({ variant: "destructive", title: "Error Loading Districts", description: "Could not load districts. " + (err instanceof Error ? err.message : '') });
           setDistricts([]);
         })
         .finally(() => setIsLoadingDistricts(false));
@@ -88,8 +88,8 @@ const AccountSwitcher: React.FC = () => {
       updateCurrentAccountInProfile(selectedDistrictId); 
       toast({ title: "Account Switched", description: `Successfully switched to account ID: ${selectedDistrictId}. Reloading...` });
       setTimeout(() => window.location.reload(), 1500);
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Account Switch Failed", description: err.message || "Could not switch accounts." });
+    } catch (err: unknown) {
+      toast({ variant: "destructive", title: "Account Switch Failed", description: err instanceof Error ? err.message : "Could not switch accounts." });
     } finally {
       setIsSwitchingAccount(false);
     }

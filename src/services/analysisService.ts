@@ -11,7 +11,6 @@ import type {
   AggregatedCompletionsResponse,
   SchoolsWithQuestionsResponse,
   SavedReportMetadata,
-  LastCompletionsResponse,
   TrendsResponse,
   CompletedAssignmentSummary, // Assuming you have a type for completed assignment summaries
 } from '@/types/Analysis';
@@ -79,8 +78,8 @@ async function authedFetch<T>(
   const textResponse = await response.text();
   try {
     return JSON.parse(textResponse);
-  } catch (e) {
-    return textResponse as any as T; // Fallback for non-JSON responses
+  } catch {
+    return textResponse as unknown as T; // Fallback for non-JSON responses
   }
 }
 

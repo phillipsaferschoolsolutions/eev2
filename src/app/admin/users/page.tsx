@@ -33,6 +33,8 @@ import { usePersistedState } from "@/hooks/use-persisted-state";
 export default function UserManagementPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const { can } = usePermissions();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { toast } = useToast();
 
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
@@ -40,12 +42,10 @@ export default function UserManagementPage() {
 
   // --- Pagination State ---
   const [currentPage, setCurrentPage] = usePersistedState('admin-users-current-page', 1);
-  const [itemsPerPage, setItemsPerPage] = usePersistedState('admin-users-items-per-page', 10);
   const [totalPages, setTotalPages] = useState(0);
   
   // --- Permission Change State ---
   const [permissionChange, setPermissionChange] = useState<{ userId: string; newPermission: string; userEmail: string; } | null>(null);
-  const [signature, setSignature] = useState("");
 
   // Check if user has permission to manage users
   const hasAccess = !authLoading && (

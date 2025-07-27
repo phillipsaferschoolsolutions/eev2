@@ -361,7 +361,7 @@ export default function DashboardPage() {
         })
         .finally(() => setCompletionsLoading(false));
     }
-  }, [userProfile?.account, authLoading, profileLoading, selectedAssignment, selectedSchool, selectedPeriod]);
+  }, [userProfile?.account, authLoading, profileLoading, selectedAssignment, selectedSchool, selectedPeriod, setCurrentPage]);
 
   const getWeatherIcon = (condition: string) => {
     const lowerCondition = condition.toLowerCase();

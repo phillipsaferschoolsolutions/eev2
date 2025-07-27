@@ -17,6 +17,7 @@ import Image from "next/image";
 export default function CompletionDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { userProfile, loading: authLoading } = useAuth();
 
   const assignmentId = typeof params.assignmentId === 'string' && params.assignmentId !== 'undefined' ? params.assignmentId : '';
@@ -155,7 +156,7 @@ export default function CompletionDetailsPage() {
                         const question = (completionData.questions as unknown[]).find((q: unknown) => 
                           typeof q === 'object' && q !== null && 'id' in q && (q as { id: string }).id === questionId
                         );
-                        if (question && question.label) {
+                        if (question && typeof question === 'object' && 'label' in question) {
                           questionLabel = (question as { label: string }).label;
                         }
                       }
@@ -225,7 +226,7 @@ export default function CompletionDetailsPage() {
               </div>
               
               {/* Additional Sections for Photos, Comments, etc. */}
-              {completionData.uploadedPhotos && Object.keys(completionData.uploadedPhotos).length > 0 && (
+              {completionData.uploadedPhotos && Object.keys(completionData.uploadedPhotos as Record<string, unknown>).length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold mb-3">All Uploaded Photos</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -238,7 +239,7 @@ export default function CompletionDetailsPage() {
                         const question = (completionData.questions as unknown[]).find((q: unknown) => 
                           typeof q === 'object' && q !== null && 'id' in q && (q as { id: string }).id === questionId
                         );
-                        if (question && question.label) {
+                        if (question && typeof question === 'object' && 'label' in question) {
                           questionLabel = (question as { label: string }).label;
                         }
                       }

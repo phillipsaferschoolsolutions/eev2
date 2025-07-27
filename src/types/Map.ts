@@ -7,7 +7,7 @@ export interface MapLocation {
   lng: number;
   accountId: string;
   createdBy: string;
-  createdAt: any; // Firestore Timestamp
+  createdAt: unknown; // Firestore Timestamp
 }
 
 export interface PointOfInterest extends MapLocation {
@@ -37,7 +37,7 @@ export interface MapSettings {
   };
   defaultZoom?: number;
   lastViewport?: MapViewport;
-  updatedAt: any; // Firestore Timestamp
+  updatedAt: unknown; // Firestore Timestamp
   updatedBy: string;
 }
 
@@ -58,8 +58,8 @@ export interface ReunificationRoute {
   description?: string;
   accountId: string;
   createdBy: string;
-  createdAt: any; // Firestore Timestamp
-  updatedAt?: any; // Firestore Timestamp
+  createdAt: unknown; // Firestore Timestamp
+  updatedAt?: unknown; // Firestore Timestamp
   updatedBy?: string;
   points: RoutePoint[];
   color?: string;

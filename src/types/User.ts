@@ -14,7 +14,7 @@ export interface UserProfile {
   first?: string;
   last?: string;
   locationName?: string;
-  assignedToMe?: Array<{ assignmentId: string; [key: string]: any }>;
+  assignedToMe?: Array<{ assignmentId: string; [key: string]: unknown }>;
   born?: string;
   dailySiteSnapshotId?: string;
   messageToken?: string;

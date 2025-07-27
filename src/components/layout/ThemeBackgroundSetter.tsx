@@ -2,21 +2,12 @@
 
 import React, { useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import { fetchPexelsImageURL } from '@/services/pexelsService';
 import { motion } from 'framer-motion';
 
 export function ThemeBackgroundSetter() {
   const { resolvedTheme } = useTheme();
 
   useEffect(() => {
-    const setBg = async (themeId: string, query: string, cssVariable: string) => {
-      if (resolvedTheme === themeId) {
-        // For enhanced themes, we're using glassmorphism instead of background images
-        // Clear any existing background image
-        document.documentElement.style.removeProperty(cssVariable);
-        return;
-      }
-    };
 
     const clearOtherThemeVariables = (currentThemeVar: string) => {
       const themeVariables = [

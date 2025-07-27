@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ListTodo, Plus, Search, Edit, Trash2, AlertTriangle, Loader2, 
-  CheckCircle2, Clock, AlertCircle, User, MapPin, Tag, X, Check,
+  User, MapPin, Tag, Check,
   ChevronLeft, ChevronRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -32,21 +32,24 @@ export default function TasksPage() {
   const { toast } = useToast();
   
   // State for tasks
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [taskCounts, setTaskCounts] = useState<Record<string, number>>({});
   const [isLoadingTasks, setIsLoadingTasks] = useState(true);
   const [tasksError, setTasksError] = useState<string | null>(null);
   
   // State for issue types
   const [issueTypes, setIssueTypes] = useState<IssueType[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isLoadingIssueTypes, setIsLoadingIssueTypes] = useState(false);
   
   // State for locations
   const [locations, setLocations] = useState<Location[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   
   // State for users
   const [users, setUsers] = useState<ChatUser[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   
   // State for search
@@ -92,13 +95,6 @@ export default function TasksPage() {
   const [currentPage, setCurrentPage] = usePersistedState('tasks-current-page', 1);
   const [itemsPerPage, setItemsPerPage] = usePersistedState('tasks-items-per-page', 10);
   
-  // Fetch tasks when component mounts
-  useEffect(() => {
-    if (!authLoading && userProfile?.account && user?.email) {
-      fetchTasks();
-    }
-  }, [userProfile?.account, authLoading, user?.email]);
-  
   // Function to fetch tasks
   const fetchTasks = useCallback(async () => {
     if (!userProfile?.account || !user?.email) return;
@@ -118,6 +114,13 @@ export default function TasksPage() {
       setIsLoadingTasks(false);
     }
   }, [userProfile?.account, user?.email, toast]);
+  
+  // Fetch tasks when component mounts
+  useEffect(() => {
+    if (!authLoading && userProfile?.account && user?.email) {
+      fetchTasks();
+    }
+  }, [userProfile?.account, authLoading, user?.email, fetchTasks]);
   
   // Fetch issue types
   useEffect(() => {
@@ -212,7 +215,7 @@ export default function TasksPage() {
   };
   
   // Function to open edit task dialog
-  const openEditTaskDialog = (task: any) => {
+  const openEditTaskDialog = (task: Task) => {
     setSelectedTask(task);
     setEditTaskData({
       taskTitle: task.taskTitle || task.title || "",
@@ -260,7 +263,7 @@ export default function TasksPage() {
   };
   
   // Function to open delete task dialog
-  const openDeleteTaskDialog = (task: any) => {
+  const openDeleteTaskDialog = (task: Task) => {
     setSelectedTask(task);
     setIsDeleteDialogOpen(true);
   };
@@ -356,7 +359,7 @@ export default function TasksPage() {
   // Reset page when search term changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, setCurrentPage]);
 
   if (authLoading) {
     return (
@@ -888,7 +891,7 @@ export default function TasksPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Task</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete "{selectedTask.taskTitle || selectedTask.title}"? This action cannot be undone.
+                Are you sure you want to delete &quot;{selectedTask.taskTitle || selectedTask.title}&quot;? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

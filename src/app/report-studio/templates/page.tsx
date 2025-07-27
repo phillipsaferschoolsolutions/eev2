@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,7 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle, DialogTrigger
+  DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -32,7 +32,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, FileText, Plus, Edit, Trash2,
-  Search, Loader2, Shield, Lightbulb, Info, Save
+  Search, Loader2, Shield, Info, Save, AlertTriangle
 } from "lucide-react";
 import {
   createTemplate,
@@ -59,6 +59,7 @@ const templateSchema = z.object({
 type TemplateFormData = z.infer<typeof templateSchema>;
 
 export default function TemplateManagementPage() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
   const { userProfile, loading: authLoading, user } = useAuth();
   const { toast } = useToast();
@@ -92,26 +93,6 @@ export default function TemplateManagementPage() {
   // Check if user has admin permissions
   const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
 
-  // Fetch templates when the component mounts
-  useEffect(() => {
-    if (!authLoading && userProfile?.account) {
-      fetchTemplates();
-    }
-  }, [userProfile?.account, authLoading]);
-
-  // Filter templates when search term changes
-  useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredTemplates(templates);
-    } else {
-      const filtered = templates.filter(template =>
-        template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (template.description && template.description.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-      setFilteredTemplates(filtered);
-    }
-  }, [searchTerm, templates]);
-
   // Function to fetch templates
   const fetchTemplates = async () => {
     if (!userProfile?.account) return;
@@ -131,6 +112,26 @@ export default function TemplateManagementPage() {
       setIsLoadingTemplates(false);
     }
   };
+
+  // Fetch templates when the component mounts
+  useEffect(() => {
+    if (!authLoading && userProfile?.account) {
+      fetchTemplates();
+    }
+  }, [userProfile?.account, authLoading, fetchTemplates]);
+
+  // Filter templates when search term changes
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setFilteredTemplates(templates);
+    } else {
+      const filtered = templates.filter(template =>
+        template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (template.description && template.description.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      setFilteredTemplates(filtered);
+    }
+  }, [searchTerm, templates]);
 
   // Function to handle adding a new template
   const handleAddTemplate = async (data: TemplateFormData) => {

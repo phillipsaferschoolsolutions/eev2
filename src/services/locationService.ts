@@ -67,8 +67,8 @@ async function authedFetch<T>(
   const textResponse = await response.text();
   try {
     return JSON.parse(textResponse);
-  } catch (e) {
-    return textResponse as any as T; // Fallback for non-JSON responses
+  } catch {
+    return textResponse as unknown as T; // Fallback for non-JSON responses
   }
 }
 

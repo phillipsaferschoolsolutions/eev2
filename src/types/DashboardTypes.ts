@@ -16,6 +16,6 @@ export interface WeatherForecast {
       completedBy?: string;
       completionDate?: string; // ISO string or readable
       submittedTimeServer?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     };
   }

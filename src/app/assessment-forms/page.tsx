@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckSquare, FilePlus2, ListOrdered, Edit, AlertTriangle, FolderKanban, ServerIcon, Briefcase } from "lucide-react";
 import type { AssignmentMetadata } from "@/services/assignmentFunctionsService";
 import { getMyAssignments, getAssignmentListMetadata } from "@/services/assignmentFunctionsService";
 import { Skeleton } from "@/components/ui/skeleton"; 
@@ -180,15 +179,13 @@ export default function AssessmentFormsPage() {
   }, [isAdmin, userProfile, customClaims, authLoading, profileLoading, claimsLoading]);
 
   // Reset page when changing items per page
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setMyAssignmentsPage(1);
-  }, [myAssignmentsPerPage]);
+  }, [myAssignmentsPerPage, setMyAssignmentsPage]);
   
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setAllAssignmentsPage(1);
-  }, [allAssignmentsPerPage]);
+  }, [allAssignmentsPerPage, setAllAssignmentsPage]);
 
   const overallLoadingMyAssignments = authLoading || profileLoading || claimsLoading || isLoadingMyAssignments;
   const overallLoadingAllAccountAssignments = authLoading || profileLoading || claimsLoading || isLoadingAllAccountAssignments;

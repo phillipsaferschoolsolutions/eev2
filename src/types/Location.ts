@@ -15,9 +15,9 @@ export interface Location {
   photoReference?: string;
   photoURL?: string;
   lastAction?: string;
-  timestamp?: any; // Firestore timestamp
+  timestamp?: unknown; // Firestore timestamp
   updatedAt?: string;
   searchableIndex?: Record<string, boolean>;
   // Add any other relevant fields that your API might return
-  [key: string]: any; // Allow other properties
+  [key: string]: unknown; // Allow other properties
 }

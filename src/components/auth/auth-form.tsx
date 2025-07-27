@@ -184,7 +184,7 @@ export function AuthForm() {
         try {
           recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
             'size': 'invisible',
-            'callback': (response: any) => {
+            'callback': (response: unknown) => {
               // console.log("reCAPTCHA solved:", response);
             },
             'expired-callback': () => {
@@ -192,12 +192,12 @@ export function AuthForm() {
               resetRecaptcha();
             }
           });
-          recaptchaVerifierRef.current.render().catch(renderErr => {
+          recaptchaVerifierRef.current.render().catch((renderErr: unknown) => {
              console.error("Recaptcha render error inside useEffect:", renderErr);
              setError("Failed to render reCAPTCHA. Please refresh or try again later.");
              resetRecaptcha(); 
           });
-        } catch (initErr) {
+        } catch (initErr: unknown) {
           console.error("RecaptchaVerifier initialization error:", initErr);
           setError("Failed to initialize reCAPTCHA. Please refresh or try again later.");
           resetRecaptcha(); 
@@ -213,7 +213,7 @@ export function AuthForm() {
       if (signupPasswordTimerRef.current) clearTimeout(signupPasswordTimerRef.current);
       if (signupConfirmPasswordTimerRef.current) clearTimeout(signupConfirmPasswordTimerRef.current);
     };
-  }, [currentTab, phoneStep]); // Removed toast from dependencies
+  }, [currentTab, phoneStep, toast]);
 
 
   const handleEmailPasswordSubmit = async (data: EmailPasswordFormData | SignupEmailPasswordFormData, isSignUp: boolean) => {
@@ -229,7 +229,7 @@ export function AuthForm() {
         toast({ title: "Logged In!", description: "Welcome back!" });
         loginForm.reset();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const firebaseError = err as { code?: string; message?: string };
       setError(firebaseError.message || 'An unknown error occurred.');
       toast({ variant: "destructive", title: "Authentication Failed", description: firebaseError.message });
@@ -241,7 +241,7 @@ export function AuthForm() {
   const handleSocialLogin = async (providerName: 'google' | 'microsoft' | 'apple') => {
     setIsLoading(true);
     setError(null);
-    let provider;
+    let provider: GoogleAuthProvider | OAuthProvider;
     if (providerName === 'google') {
       provider = new GoogleAuthProvider();
     } else if (providerName === 'microsoft') {
@@ -255,12 +255,12 @@ export function AuthForm() {
     }
 
     try {
-      const result = await signInWithPopup(auth, provider);
+      await signInWithPopup(auth, provider);
       toast({
         title: 'Logged In!',
-        description: `Successfully signed in with ${result.providerId}.`,
+        description: `Successfully signed in with ${providerName}.`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       const firebaseError = err as { code?: string; message?: string };
       if (firebaseError.code === 'auth/account-exists-with-different-credential') {
         setError(
@@ -300,7 +300,7 @@ export function AuthForm() {
       setPhoneStep('otp');
       phoneForm.reset();
       toast({ title: "OTP Sent", description: "Please check your phone for the verification code." });
-    } catch (err: any)
+    } catch (err: unknown)
        {
       const firebaseError = err as { code?: string; message?: string };
       setError(firebaseError.message || 'Failed to send OTP.');
@@ -325,7 +325,7 @@ export function AuthForm() {
       setPhoneStep('input');
       otpForm.reset();
       resetRecaptcha();
-    } catch (err: any) {
+    } catch (err: unknown) {
       const firebaseError = err as { code?: string; message?: string };
       setError(firebaseError.message || 'Failed to verify OTP.');
       toast({ variant: "destructive", title: "OTP Verification Failed", description: firebaseError.message });

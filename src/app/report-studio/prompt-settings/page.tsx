@@ -45,6 +45,7 @@ Each domain section must include:
 
 export default function PromptSettingsPage() {
   const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user, userProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
   
@@ -57,13 +58,6 @@ export default function PromptSettingsPage() {
   
   // Check if user has admin permissions
   const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
-  
-  // Fetch prompt settings when the component mounts
-  useEffect(() => {
-    if (!authLoading && userProfile?.account) {
-      fetchPromptSettings();
-    }
-  }, [userProfile?.account, authLoading]);
   
   // Function to fetch prompt settings
   const fetchPromptSettings = async () => {
@@ -85,6 +79,13 @@ export default function PromptSettingsPage() {
       setIsLoading(false);
     }
   };
+  
+  // Fetch prompt settings when the component mounts
+  useEffect(() => {
+    if (!authLoading && userProfile?.account) {
+      fetchPromptSettings();
+    }
+  }, [userProfile?.account, authLoading, fetchPromptSettings]);
   
   // Function to save prompt settings
   const handleSaveSettings = async () => {

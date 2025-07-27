@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Palette, Sun, Moon, Contrast, Terminal, Waves, Leaf, Sunset, Building, Flame, Sparkles, Trees, Cpu, Snowflake, Mountain, Fish, Scroll, Edit3, Binary, Wand2, CircuitBoard, Zap, Gem, Layers, Shield, BookOpen, Network, Camera, Compass, Cloud, Coffee, Landmark, Rocket, Droplets, Wind, Umbrella, Lightbulb, Flower, Palmtree, Plane, Sailboat } from "lucide-react";
+import { Palette, Sun, Moon, Contrast, Terminal, Waves, Leaf, Sunset, Building, Flame, Sparkles, Trees, Cpu, Snowflake, Mountain, Fish, Scroll, Wand2, CircuitBoard, Zap, Gem, Layers, Shield, BookOpen, Network, Camera, Umbrella, Lightbulb, Palmtree, Sailboat } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -333,7 +333,7 @@ export default function ThemingPage() {
           <CardContent>
             <p className="text-muted-foreground">
                   Each theme has been carefully designed with complementary color palettes for both light and dark modes, 
-                  with special attention to accessibility and readability.
+                with special attention to accessibility and readability.
             </p>
           </CardContent>
         </Card>

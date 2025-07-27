@@ -9,13 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Edit3, AlertTriangle, ArrowLeft, ListChecks, CheckSquare, MessageSquare, Paperclip, FileText, CalendarDays, User, Tag, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
 // A more robust parseOptions function that handles multiple possible data formats
 const parseOptions = (options: unknown): { label: string; value: string }[] => {
-  if (!options) return [];
+const parseOptions = (options: unknown): { label: string; value: string }[] => {
   
   // Case 1: It's already the correct format (array of objects with label/value)
   if (Array.isArray(options) && options.length > 0 && typeof options[0] === 'object' && options[0] !== null && 'label' in options[0]) {

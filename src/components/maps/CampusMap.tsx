@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { GoogleMap, useLoadScript, Marker, InfoWindow, Polyline, DrawingManager } from '@react-google-maps/api';
+import { GoogleMap, useLoadScript, Marker, InfoWindow, Polyline } from '@react-google-maps/api';
 import { useAuth } from '@/context/auth-context';
 import { getPOIsForAccount, savePOI, getRoutesForAccount } from '@/services/mapService';
 import type { PointOfInterest, RoutePoint, ReunificationRoute } from '@/types/Map';
@@ -11,11 +11,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, MapPin, Plus, X, Info, Route as RouteIcon, Layers, Eye, EyeOff } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Plus, X, Info, Route as RouteIcon, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import RouteEditor from '@/components/maps/RouteEditor';
-import * as turf from '@turf/turf';
 
 // Define the libraries we need
 const libraries: ("places" | "drawing" | "geometry" | "localContext" | "visualization")[] = ["places", "drawing"];
@@ -67,6 +66,7 @@ export default function CampusMap() {
   
   // State for Google Maps
   const [center, setCenter] = useState(defaultCenter);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [zoom, setZoom] = useState(15);
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
   
@@ -283,7 +283,7 @@ export default function CampusMap() {
   };
   
   // Handle route save completion
-  const handleRouteSaved = (routeId: string) => {
+  const handleRouteSaved = () => {
     setIsCreatingRoute(false);
     setIsDrawingRoute(false);
     setRoutePoints([]);
@@ -340,6 +340,7 @@ export default function CampusMap() {
   // Get POI icon based on type and properties
   const getPoiIcon = (poi: PointOfInterest) => {
     // Base icon URL
+    // eslint-disable-next-line prefer-const
     let iconUrl = `/map-icons/${poi.type}.svg`;
     
     // Scale based on importance
@@ -353,6 +354,7 @@ export default function CampusMap() {
   };
   
   // Get zone style based on zone type
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getZoneStyle = (zoneType: string) => {
     switch (zoneType) {
       case 'safe':

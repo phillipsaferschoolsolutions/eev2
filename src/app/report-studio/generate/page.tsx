@@ -14,9 +14,10 @@ import { getAssignmentListMetadata, getLastCompletions, type AssignmentMetadata 
 import { generateReportForCompletion, reportToHtml, exportToPdf, exportToDocx, saveReport, getPromptSettings } from "@/services/reportService";
 import { getTemplates, replacePlaceholders } from "@/services/templateService";
 import type { ReportTemplate } from "@/types/Report";
-import { ArrowLeft, FileText, Download, Loader2, FilePlus, AlertTriangle, FileDown, FileType2, Shield, Save, Lightbulb } from "lucide-react";
+import { ArrowLeft, Loader2, FilePlus, AlertTriangle, FileDown, FileType2, Shield, Save, Lightbulb } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
@@ -29,7 +30,7 @@ interface CompletionItem {
     locationName?: string;
     completedBy?: string;
     completionDate?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -49,8 +50,11 @@ export default function GenerateReportPage() {
   
   // State for templates
   const [templates, setTemplates] = useState<ReportTemplate[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [reportGenerationMode, setReportGenerationMode] = useState<"ai" | "template">("ai");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   
   // State for loading indicators
@@ -85,7 +89,7 @@ export default function GenerateReportPage() {
       fetchPromptSettings();
       fetchTemplates();
     }
-  }, [userProfile?.account, authLoading]);
+  }, [userProfile?.account, authLoading, fetchAssignments, fetchPromptSettings, fetchTemplates]);
   
   // Fetch completions when an assignment is selected
   useEffect(() => {
@@ -95,7 +99,7 @@ export default function GenerateReportPage() {
       setCompletions([]);
       setSelectedCompletionId("");
     }
-  }, [selectedAssignmentId, userProfile?.account]);
+  }, [selectedAssignmentId, userProfile?.account, fetchCompletions]);
   
   // Function to fetch assignments
   const fetchAssignments = async () => {

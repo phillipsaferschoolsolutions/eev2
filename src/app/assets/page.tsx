@@ -98,23 +98,6 @@ export default function AssetsPage() {
     "Fire Extinguisher", "AED", "First Aid Kit", "Other"
   ];
 
-  // Fetch assets when component mounts
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!authLoading && userProfile?.account) {
-      fetchAssets();
-    }
-  }, [userProfile?.account, authLoading]);
-
-  // Fetch locations and users when needed
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!authLoading && userProfile?.account) {
-      fetchLocations();
-      fetchUsers();
-    }
-  }, [userProfile?.account, authLoading]);
-
   // Function to fetch assets
   const fetchAssets = useCallback(async () => {
     if (!userProfile?.account) return;
@@ -135,7 +118,7 @@ export default function AssetsPage() {
   }, [userProfile?.account, toast]);
 
   // Function to fetch locations
-  const fetchLocations = async () => {
+  const fetchLocations = useCallback(async () => {
     if (!userProfile?.account) return;
     
     setIsLoadingLocations(true);
@@ -147,10 +130,10 @@ export default function AssetsPage() {
     } finally {
       setIsLoadingLocations(false);
     }
-  };
+  }, [userProfile?.account]);
 
   // Function to fetch users
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     if (!userProfile?.account) return;
     
     setIsLoadingUsers(true);
@@ -162,7 +145,22 @@ export default function AssetsPage() {
     } finally {
       setIsLoadingUsers(false);
     }
-  };
+  }, [userProfile?.account, user?.uid, user?.email]);
+
+  // Fetch assets when component mounts
+  useEffect(() => {
+    if (!authLoading && userProfile?.account) {
+      fetchAssets();
+    }
+  }, [userProfile?.account, authLoading, fetchAssets]);
+
+  // Fetch locations and users when needed
+  useEffect(() => {
+    if (!authLoading && userProfile?.account) {
+      fetchLocations();
+      fetchUsers();
+    }
+  }, [userProfile?.account, authLoading, fetchLocations, fetchUsers]);
 
   // Function to handle creating a new asset
   const handleCreateAsset = async () => {
@@ -355,10 +353,9 @@ export default function AssetsPage() {
   };
 
   // Reset page when search term changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, setCurrentPage]);
 
   // Calculate asset distribution by type
   const typeDistribution = assets.reduce((acc, asset) => {
@@ -922,7 +919,7 @@ export default function AssetsPage() {
                     id="edit-customType"
                     value={editAssetData.customType}
                     onChange={(e) => setEditAssetData({ ...editAssetData, customType: e.target.value })}
-                    placeholder="Enter custom asset type&hellip;"
+                    placeholder="Enter custom asset type..."
                   />
                 </div>
               )}
@@ -934,7 +931,7 @@ export default function AssetsPage() {
                     id="edit-serialNumber"
                     value={editAssetData.serialNumber}
                     onChange={(e) => setEditAssetData({ ...editAssetData, serialNumber: e.target.value })}
-                    placeholder="Enter serial number&hellip;"
+                    placeholder="Enter serial number..."
                   />
                 </div>
                 <div>

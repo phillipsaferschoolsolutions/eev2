@@ -11,7 +11,7 @@ export interface ShareWithLocationValue {
   // Define specific properties if known, e.g.
   // locationName: string;
   // status: string;
-  [key: string]: any; // Allows for arbitrary properties until structure is fully known
+  [key: string]: unknown; // Allows for arbitrary properties until structure is fully known
 }
 export interface ShareWith {
   assignToLocations?: Record<string, ShareWithLocationValue>;

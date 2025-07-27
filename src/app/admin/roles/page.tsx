@@ -17,13 +17,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Dialog, DialogContent, DialogDescription, DialogFooter, 
-  DialogHeader, DialogTitle, DialogTrigger 
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
-  AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
@@ -35,8 +33,6 @@ import {
   ArrowLeft, Shield, Plus, Edit, Trash2, 
   Search, AlertTriangle, Loader2, 
   Info, Copy, Key, LockIcon, UnlockIcon
-} from "lucide-react";
-import { getRoles, createRole, updateRole, deleteRole } from "@/services/roleService";
 import type { Role, PermissionKey } from "@/types/Role";
 import { SYSTEM_ROLES } from "@/types/Role";
 import Link from "next/link";
@@ -149,7 +145,6 @@ const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap(group =>
   group.permissions.map(p => ({ ...p, group: group.name }))
 );
 
-export default function RoleManagementPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const { can } = usePermissions();
@@ -175,7 +170,7 @@ export default function RoleManagementPage() {
   const [activeTab, setActiveTab] = useState<string>("details");
   
   // Form setup
-  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<RoleFormData>({
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<RoleFormData>({
     resolver: zodResolver(roleSchema),
     defaultValues: {
       name: "",
@@ -188,12 +183,11 @@ export default function RoleManagementPage() {
     (ADMIN_ROLES.includes(userProfile.role || "") || can("admin.roles.manage"));
   
   // Fetch roles when the component mounts
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!authLoading && userProfile?.account) {
       fetchRoles();
     }
-  }, [userProfile?.account, authLoading]);
+  }, [userProfile?.account, authLoading, fetchRoles]);
   
   // Filter roles when search term changes
   useEffect(() => {

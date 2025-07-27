@@ -6,15 +6,17 @@ import { createContext, useContext, useEffect, useState, useCallback, useMemo } 
 import { type User as FirebaseUser, onAuthStateChanged, browserLocalPersistence } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { UserProfile, UserProfileWithRole } from '@/types/User'; 
 import { getUserProfile } from '@/services/userService'; 
 import { getRole } from '@/services/roleService';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { Role } from '@/types/Role';
 
 interface CustomClaims {
   admin?: boolean;
   superAdmin?: boolean;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface AuthContextType {
@@ -38,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profileLoading, setProfileLoading] = useState(true);
   const [claimsLoading, setClaimsLoading] = useState(true);
   const [roleLoading, setRoleLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
 
   useEffect(() => {

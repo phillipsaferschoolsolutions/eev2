@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import PivotTableUI from 'react-pivottable/PivotTableUI';
 import 'react-pivottable/pivottable.css';
 import type { PivotTableData } from '@/types/Analysis';
-import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface PivotTableComponentProps {
@@ -48,7 +47,7 @@ export default function PivotTableComponent({ data }: PivotTableComponentProps) 
     rendererName: 'Table',
     sorters: {},
     tableOptions: {
-      clickCallback: (e: any, value: any, filters: any, pivotData: any) => {
+      clickCallback: (e: unknown, value: unknown, filters: unknown, pivotData: unknown) => {
         console.log(e, value, filters, pivotData);
       }
     }

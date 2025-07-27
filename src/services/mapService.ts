@@ -3,7 +3,7 @@
 
 import { auth, firestore } from '@/lib/firebase';
 import type { User } from 'firebase/auth';
-import type { PointOfInterest, MapSettings, ReunificationRoute, RoutePoint } from '@/types/Map';
+import type { PointOfInterest, MapSettings, ReunificationRoute } from '@/types/Map';
 import {
   collection,
   doc,
@@ -17,19 +17,6 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 
-// --- Helper to get ID Token ---
-async function getIdToken(): Promise<string | null> {
-  const currentUser: User | null = auth.currentUser;
-  if (currentUser) {
-    try {
-      return await currentUser.getIdToken();
-    } catch (error) {
-      console.error("Error getting ID token:", error);
-      return null;
-    }
-  }
-  return null;
-}
 
 /**
  * Saves a new Point of Interest to Firestore

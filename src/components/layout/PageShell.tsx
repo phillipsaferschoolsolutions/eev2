@@ -54,7 +54,7 @@ export function PageShell({ children }: { children: React.ReactNode }) {
     }
     // You can add other role-based links here as well
     return navItems;
-  }, [userProfile]);
+  }, [userProfile, ADMIN_ROLES]);
 
   // Determine if we should show animated backgrounds based on theme
   const showAnimatedBackground = React.useMemo(() => {
@@ -95,7 +95,7 @@ export function PageShell({ children }: { children: React.ReactNode }) {
         }
       }
     }
-  }, [layoutMode, isMobileViewForLayout, sidebarContext.state, sidebarContext.toggleSidebar]);
+  }, [layoutMode, isMobileViewForLayout, sidebarContext]);
   
   const showSidebar = layoutMode === "standard" || layoutMode === "minimalIcon";
 

@@ -2,6 +2,7 @@
 'use client';
 
 import { auth } from '@/lib/firebase';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { User } from 'firebase/auth';
 
 // --- Interfaces based on your summary and NewItem component ---
@@ -52,21 +53,12 @@ interface AssignmentField {
   createdDate?: string; // Added based on details page
 }
 
-interface AssignmentContentItem { // This was an earlier, simpler version. We'll use AssignmentQuestion.
-  questionId: string;
-  questionLabel: string;
-  type: string;
-  options?: string[];
-  deficiency?: string;
-}
 
 export interface FullAssignment extends AssignmentField {
   questions: AssignmentQuestion[]; // Standardized to 'questions'
 }
 
-export interface AssignmentMetadata extends AssignmentField {
-  // Currently same as AssignmentField, can be expanded if metadata differs more
-}
+export interface AssignmentMetadata extends AssignmentField {}
 
 // Updated to reflect that 'questions' is an array of detailed AssignmentQuestion objects
 export interface AssignmentWithPermissions extends AssignmentField {
@@ -117,7 +109,7 @@ export interface WeatherLocationData {
     wind?: { // Added for consistency
         speed: number;
     };
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface QuestionsBySchoolResponse {
@@ -137,10 +129,7 @@ export interface SchoolsWithQuestionsResponse {
 }
 
 export interface DailySnapshotResponse {
-  [questionId: string]: {
-    [answer: string]: number;
-    questionLabel: string;
-  };
+  [questionId: string]: Record<string, unknown>;
 }
 
 export interface AssignmentWithCompletions extends AssignmentMetadata {
@@ -151,7 +140,7 @@ export type AssignedToUserResponse = AssignmentWithCompletions[];
 export interface CompletedByMeItem {
   id: string;
   assignmentId: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 export interface CompletedByMeResponse {
   completedAssignments: CompletedByMeItem[];
@@ -162,14 +151,14 @@ export interface SaveDataResponse {
 }
 
 export interface PendingAssignment {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 export type PendingAssignmentsResponse = PendingAssignment[];
 
 export interface DraftAssignmentPayload {
   assessmentName?: string;
   questions?: AssignmentQuestion[]; // Standardized to 'questions'
-  [key: string]: any;
+  [key: string]: unknown;
 }
 export interface PostPendingResponse {
   message: string;
@@ -279,8 +268,8 @@ async function authedFetch<T>(
   const textResponse = await response.text();
   try {
     return JSON.parse(textResponse);
-  } catch (e) {
-    return textResponse as any as T; // Fallback for non-JSON responses
+  } catch {
+    return textResponse as unknown as T; // Fallback for non-JSON responses
   }
 }
 
@@ -402,7 +391,7 @@ export async function submitCompletedAssignment(
  * @param accountName The account associated with this action.
  * @returns A promise that resolves with the server's response.
  */
-export async function saveAssignmentDraft(assignmentId: string, draftData: any, accountName: string): Promise<any> {
+export async function saveAssignmentDraft(assignmentId: string, draftData: Record<string, unknown>, accountName: string): Promise<Record<string, unknown>> {
   if (!assignmentId) {
     throw new Error("Assignment ID is required to save a draft.");
   }
@@ -414,7 +403,7 @@ export async function saveAssignmentDraft(assignmentId: string, draftData: any, 
   // This will be a PUT request to update or create the draft.
   const url = `${ASSIGNMENTS_V2_BASE_URL}/draft/${assignmentId}`;
 
-  return authedFetch<any>(url, {
+  return authedFetch<Record<string, unknown>>(url, {
     method: 'PUT',
     body: JSON.stringify(draftData),
   });
@@ -425,7 +414,7 @@ export async function saveAssignmentDraft(assignmentId: string, draftData: any, 
  * @param accountName The account associated with this action.
  * @returns A promise that resolves to an array of draft objects.
  */
-export async function getMyDrafts(accountName: string): Promise<any[]> {
+export async function getMyDrafts(accountName: string): Promise<Record<string, unknown>[]> {
   if (!accountName) {
     throw new Error("Account name is required to get drafts.");
   }
@@ -433,7 +422,7 @@ export async function getMyDrafts(accountName: string): Promise<any[]> {
   // This will call a new endpoint to list all of a user's drafts
   const url = `${ASSIGNMENTS_V2_BASE_URL}/drafts`; 
 
-  const result = await authedFetch<any[]>(url, {
+  const result = await authedFetch<Record<string, unknown>[]>(url, {
     method: 'GET',
   });
   return result || [];
@@ -468,7 +457,7 @@ export async function deleteAssignmentDraft(assignmentId: string, draftId: strin
  * @param accountName The account associated with this action.
  * @returns A promise that resolves to the draft data object or null if not found.
  */
-export async function getAssignmentDraft(assignmentId: string, accountName: string): Promise<any | null> {
+export async function getAssignmentDraft(assignmentId: string, accountName: string): Promise<Record<string, unknown> | null> {
   if (!assignmentId) {
     throw new Error("Assignment ID is required to get a draft.");
   }
@@ -526,7 +515,7 @@ export async function getAssignmentDraft(assignmentId: string, accountName: stri
  * @param accountName The account associated with this action.
  * @returns A promise that resolves to the completion data object.
  */
-export async function getCompletionDetails(assignmentId: string, completionId: string, accountName: string): Promise<any> {
+export async function getCompletionDetails(assignmentId: string, completionId: string, accountName: string): Promise<Record<string, unknown>> {
   if (!assignmentId || !completionId) {
     throw new Error("Both Assignment ID and Completion ID are required.");
   }
@@ -537,7 +526,7 @@ export async function getCompletionDetails(assignmentId: string, completionId: s
   // This will call a new endpoint to get a specific completion
   const url = `${ASSIGNMENTS_V2_BASE_URL}/${assignmentId}/completions/${completionId}`;
 
-  const result = await authedFetch<any>(url, {
+  const result = await authedFetch<Record<string, unknown>>(url, {
     method: 'GET',
   });
   return result;
@@ -556,7 +545,7 @@ export async function getLastCompletions(
   assignmentId: string | null, 
   selectedSchool: string | null, // Allow null for "All Schools"
   period: string
-): Promise<any[]> {
+): Promise<Record<string, unknown>[]> {
   if (!accountId) {
     throw new Error("Account ID is required to fetch last completions.");
   }
@@ -575,7 +564,7 @@ export async function getLastCompletions(
   const url = `${WIDGETS_BASE_URL}/completed-assignments?${params.toString()}`;
 
   try {
-    const response = await authedFetch<{ status: string; data: any[] }>(url, {
+    const response = await authedFetch<{ status: string; data: Record<string, unknown>[] }>(url, {
       method: 'GET',
     });
 

@@ -103,7 +103,7 @@ export default function EditAssignmentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { control, register, handleSubmit, formState: { errors }, reset, watch, setValue } = useForm<AssignmentFormData>({
+  const { control, register, handleSubmit, formState: { errors }, reset, watch } = useForm<AssignmentFormData>({
     resolver: zodResolver(assignmentFormSchema),
     defaultValues: {
       assessmentName: "",
@@ -114,7 +114,7 @@ export default function EditAssignmentPage() {
   });
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control,
     name: "questions",
   });
@@ -168,7 +168,7 @@ export default function EditAssignmentPage() {
       }
     }
     fetchAssignment();
-  }, [assignmentId, userProfile?.account, authLoading, profileLoading, reset, toast]);
+  }, [assignmentId, userProfile?.account, authLoading, profileLoading, reset, toast, userProfile]);
   
   const onSubmit: SubmitHandler<AssignmentFormData> = async (data) => {
     if (!assignment || !userProfile?.account) {
@@ -442,9 +442,9 @@ export default function EditAssignmentPage() {
                       <div>
                         <Label>Mark options as deficient:</Label>
                         <div className="space-y-2 mt-1 p-2 border rounded-md max-h-40 overflow-y-auto">
-                        {currentQuestionOptions.map((opt, index) => (
+                       {currentQuestionOptions.map((opt) => (
                           // CORRECTED: Use the option string and its index for a unique key
-                          <div key={`${opt}-${questionIndex}-${index}`} className="flex items-center space-x-2">
+                         <div key={`${opt}-${questionIndex}`} className="flex items-center space-x-2">
                             <Controller
                               name={`questions.${questionIndex}.deficiencyValues`}
                               control={control}

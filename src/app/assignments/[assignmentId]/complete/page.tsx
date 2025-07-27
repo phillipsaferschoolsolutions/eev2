@@ -29,7 +29,6 @@ import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, getAssignmentDraft, submitCompletedAssignment, saveAssignmentDraft, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, ArrowLeft, ArrowRight, Paperclip, MessageSquare, Save, Send, XCircle, CheckCircle2, Building, Mic, CalendarIcon, Clock, Filter, Trash2, Radio, PlayIcon, PauseIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
@@ -143,7 +142,7 @@ export default function CompleteAssignmentPage() {
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
 
 
-  const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, setValue, getValues } = useForm<FormDataSchema>({
+  const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, getValues } = useForm<FormDataSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {},
   });
@@ -151,7 +150,7 @@ export default function CompleteAssignmentPage() {
   const allWatchedValues = watch();
 
   // A more robust parseOptions function that handles multiple possible data formats
-const parseOptions = (options: any): { label: string; value: string }[] => {
+const parseOptions = (options: unknown): { label: string; value: string }[] => {
   if (!options) return [];
   
   // Case 1: It's already the correct format (array of objects with label/value)
@@ -215,7 +214,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
   const conditionallyVisibleQuestions = useMemo(() => {
     if (!assignment?.questions) return [];
     return assignment.questions.filter(q => shouldBeVisible(q.conditional, q.id));
-  }, [assignment?.questions, allWatchedValues]);
+  }, [assignment?.questions, allWatchedValues, shouldBeVisible]);
 
   // Add this useMemo hook near your other useMemo hooks
   const totalPages = useMemo(() => {
@@ -282,7 +281,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
     }
     const answeredCount = conditionallyVisibleQuestions.filter(q => isQuestionAnswered(q, allWatchedValues)).length;
     return (answeredCount / totalQuestions) * 100;
-  }, [conditionallyVisibleQuestions, allWatchedValues]);
+  }, [conditionallyVisibleQuestions, allWatchedValues, isQuestionAnswered]);
 
   // Add this near your other useMemo hooks
   const sectionProgress = useMemo(() => {
@@ -316,7 +315,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
     }
 
     return progressData;
-  }, [conditionallyVisibleQuestions, allWatchedValues]);
+  }, [conditionallyVisibleQuestions, allWatchedValues, isQuestionAnswered]);
 
   const availableSections = useMemo(() => {
     const sections = new Set<string>();
@@ -354,7 +353,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
       const answered = isQuestionAnswered(q, allWatchedValues);
       return answeredStatusFilter === 'answered' ? answered : !answered;
     });
-  }, [conditionallyVisibleQuestions, selectedSection, selectedSubSection, answeredStatusFilter, allWatchedValues, currentPage]);
+  }, [conditionallyVisibleQuestions, selectedSection, selectedSubSection, answeredStatusFilter, allWatchedValues, currentPage, isQuestionAnswered]);
 
   const handlePhotoBankUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -543,7 +542,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
         })
         .finally(() => setIsLoadingLocations(false));
     }
-  }, [assignment, userProfile?.account, toast, isLoading]);
+  }, [assignment, userProfile?.account, toast, isLoading, userProfile]);
 
   useEffect(() => {
     setSelectedSubSection("all");
@@ -551,6 +550,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
 
 
   useEffect(() => {
+    const audioRefsSnapshot = audioRefs.current;
     return () => {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
         mediaRecorderRef.current.stop();
@@ -558,7 +558,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
       if (maxRecordingTimerRef.current) {
         clearTimeout(maxRecordingTimerRef.current);
       }
-      Object.values(audioRefs.current).forEach(audioEl => {
+      Object.values(audioRefsSnapshot).forEach(audioEl => {
         if (audioEl) {
           audioEl.pause();
           audioEl.removeAttribute('src');
@@ -571,7 +571,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
         }
       });
     };
-  }, []);
+  }, [audioNotes]);
 
   const requestMicPermission = async () => {
     if (hasMicPermission) return true;
@@ -684,6 +684,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleStopRecording = (questionId: string, playTheStopChime: boolean = true) => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop(); // This will trigger 'onstop' where isRecordingQuestionId is set to null
@@ -750,9 +751,10 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
       } else {
         audio.pause();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`[togglePlayPause] Error for ${questionId}: ${error.name} - ${error.message}`);
-      toast({ variant: "destructive", title: "Playback Error", description: error.message });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ variant: "destructive", title: "Playback Error", description: errorMessage });
       if (audio.paused && audioPlayerStates[questionId]?.isPlaying) {
         setAudioPlayerStates(prev => ({
           ...prev,
@@ -889,8 +891,8 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
           setUploadProgress(prev => ({ ...prev, [questionId]: 100 }));
         } catch (err) {
             console.error("Failed to get download URL for " + questionId + ":", err);
-            const errorMessage = err instanceof Error ? err.message : "Unknown error getting URL.";
-            setUploadErrors(prev => ({ ...prev, [questionId]: "Failed to get file URL: " + errorMessage }));
+          const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+        const errorMessage = uploadError instanceof Error ? uploadError.message : "Unknown error";
             setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
         }
       }
@@ -1018,7 +1020,7 @@ const parseOptions = (options: any): { label: string; value: string }[] => {
     console.log("--- Processing questions for submission ---");
     conditionallyVisibleQuestions.forEach((question, idx) => {
         console.log(`Processing question ${idx + 1} (ID: ${question.id}, Label: ${question.label})`);
-        let questionAnswer: any;
+        let questionAnswer: unknown;
 
         // Check if the component is a multi-option checkbox
         // Clean, single‐pass checkbox handler:

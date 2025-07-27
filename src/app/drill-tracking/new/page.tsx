@@ -29,7 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Save, CalendarIcon, AlertTriangle, Building, CheckSquare, Loader2, Info } from "lucide-react";
+import { ArrowLeft, Save, CalendarIcon, AlertTriangle, Building, CheckSquare, Info } from "lucide-react";
 
 const requiredDrillSchema = z.object({
   typeId: z.string().min(1, "Drill type is required."),
@@ -165,9 +165,9 @@ export default function NewDrillEventPage() {
       });
       reset(); // Reset form after successful submission
       router.push("/drill-tracking"); // Navigate back after submission
-    } catch (error: any) {
+   } catch (error: unknown) {
       console.error("Failed to create drill event:", error);
-      const errorMessage = error.message || "An unknown error occurred.";
+     const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
       toast({
         variant: "destructive",
         title: "Failed to create drill event",

@@ -1,6 +1,5 @@
 // src/types/Analysis.ts
 
-import type { AssignmentQuestion, AssignmentMetadata } from "./assignmentFunctionsService";
 
 // For /aggregated-completions endpoint
 export interface AggregatedCompletionsPayload {
@@ -11,13 +10,13 @@ export interface AggregatedCompletionsPayload {
   dimensions: string[]; // Fields to group by (e.g., 'questionId', 'locationName')
   measures: string[]; // Metrics to calculate (e.g., 'count', 'average')
   filters?: {
-    [key: string]: any; // Additional filters
+    [key: string]: unknown; // Additional filters
   };
 }
 
 export interface AggregatedCompletionsResponse {
   data: {
-    [key: string]: any; // Aggregated data in a format suitable for pivot tables
+    [key: string]: unknown; // Aggregated data in a format suitable for pivot tables
   };
   dimensions: {
     [key: string]: string[]; // Available values for each dimension
@@ -76,7 +75,7 @@ export interface TrendsResponse {
 // For Last Completions Response
 export interface LastCompletionsResponse {
   status: string;
-  data: any[];
+  data: unknown[];
 }
 
 // For Completed Assignment Summary
@@ -113,8 +112,8 @@ export interface RawResponse {
   completedBy: string; // User email or ID
   completionDate: string | Date;
   locationName: string;
-  responses: Record<string, any>; // Key is questionId, value is the answer
-  [key: string]: any; // Allow other properties
+  responses: Record<string, unknown>; // Key is questionId, value is the answer
+  [key: string]: unknown; // Allow other properties
 }
 
 export interface RawResponsesPayload {
@@ -136,7 +135,7 @@ export interface SavedReportMetadata {
   reportName: string;
   generatedDate: string | Date;
   generatedBy: string;
-  filtersApplied?: any; // Store the filters used to generate this report
+  filtersApplied?: unknown; // Store the filters used to generate this report
   downloadUrl?: string; // If report is stored and downloadable directly
 }
 

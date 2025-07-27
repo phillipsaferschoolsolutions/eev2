@@ -53,9 +53,10 @@ async function authedFetch<T>(
   let response;
   try {
     response = await fetch(fullUrl, { ...options, headers });
-  } catch (networkError: any) {
+  } catch (networkError: unknown) {
     console.error(`Network error for ${fullUrl} (resourceService):`, networkError);
-    let detailedMessage = `Network Error: Could not connect to ${fullUrl}. (${networkError.message || 'Failed to fetch'}). `;
+    const errorMessage = networkError instanceof Error ? networkError.message : 'Failed to fetch';
+    let detailedMessage = `Network Error: Could not connect to ${fullUrl}. (${errorMessage}). `;
     detailedMessage += "This could be due to a network issue, the backend service not being available, or a CORS policy blocking the request. ";
     detailedMessage += "Please ensure the backend function is deployed correctly and CORS is configured if necessary.";
     throw new Error(detailedMessage);
@@ -82,11 +83,11 @@ async function authedFetch<T>(
   if (response.ok && textResponse) {
  try {
  return JSON.parse(textResponse) as T;
- } catch (e) {
+ } catch {
       console.warn(`Failed to parse non-JSON response as JSON for ${fullUrl}. Content-Type: ${contentType || 'none'}. Response text: ${textResponse.substring(0, 100)}...`);
     }
   }
- return [] as any as T; // Default to empty array or appropriate default if response wasn't JSON and couldn't be parsed.
+ return [] as unknown as T; // Default to empty array or appropriate default if response wasn't JSON and couldn't be parsed.
 }
 /**
  * Uploads a new resource document.
