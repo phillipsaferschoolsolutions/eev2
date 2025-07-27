@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -338,7 +337,7 @@ export default function AssessmentFormsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                   onClick={() => setAllAssignmentsPage(Math.max(allAssignmentsPage - 1, 1))}
+                   onClick={() => setMyAssignmentsPage(Math.max(myAssignmentsPage - 1, 1))}
                     disabled={myAssignmentsPage === 1}
                   >
                     Previous
@@ -346,7 +345,7 @@ export default function AssessmentFormsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                   onClick={() => setAllAssignmentsPage(Math.min(allAssignmentsPage + 1, totalAllAssignmentsPages))}
+                   onClick={() => setMyAssignmentsPage(Math.min(myAssignmentsPage + 1, totalMyAssignmentsPages))}
                     disabled={myAssignmentsPage === totalMyAssignmentsPages || totalMyAssignmentsPages === 0}
                   >
                     Next
@@ -450,7 +449,7 @@ export default function AssessmentFormsPage() {
                    <Button
                      variant="outline"
                      size="sm"
-                     onClick={() => setAllAssignmentsPage(prev => Math.max(prev - 1, 1))}
+                     onClick={() => setAllAssignmentsPage(Math.max(allAssignmentsPage - 1, 1))}
                      disabled={allAssignmentsPage === 1}
                    >
                      Previous
@@ -458,7 +457,7 @@ export default function AssessmentFormsPage() {
                    <Button
                      variant="outline"
                      size="sm"
-                     onClick={() => setAllAssignmentsPage(prev => Math.min(prev + 1, totalAllAssignmentsPages))}
+                     onClick={() => setAllAssignmentsPage(Math.min(allAssignmentsPage + 1, totalAllAssignmentsPages))}
                      disabled={allAssignmentsPage === totalAllAssignmentsPages || totalAllAssignmentsPages === 0}
                    >
                      Next
