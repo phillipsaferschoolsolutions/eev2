@@ -23,7 +23,8 @@ import {
 import { getAssets, createAsset, updateAsset, deleteAsset } from "@/services/assetService";
 import type { Asset, CreateAssetPayload, UpdateAssetPayload } from "@/types/Asset";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
-import { getUsersForAccount, type ChatUser } from "@/services/messagingService";
+import { getUsersForAccount } from "@/services/messagingService";
+import type { ChatUser } from "@/types/Message";
 import { formatDisplayDateShort } from "@/lib/utils";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
