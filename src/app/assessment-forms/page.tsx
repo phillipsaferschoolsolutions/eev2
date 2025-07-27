@@ -67,7 +67,7 @@ export default function AssessmentFormsPage() {
     async function fetchMyTasks() {
       console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 1: Auth/Profile/Claims loading state:", { authLoading, profileLoading, claimsLoading });
       if (!authLoading && !profileLoading && !claimsLoading) {
-        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 2: Auth/Profile/Claims loaded. User, Profile, Claims data:", { user, userProfileEmail: userProfile?.email, userProfileAccount: userProfile?.account, userProfilePermission: userProfile?.permission, customClaims });
+        console.log("[TEMP DEBUG AssessmentFormsPage] fetchMyTasks CheckPoint 2: Auth/Profile/Claims loaded. User, Profile, Claims data:", { user, userProfileEmail: userProfile?.email, userProfileAccount: userProfile?.account, userProfileRole: userProfile?.role, customClaims });
 
         let specificError = "Cannot fetch your assignments. ";
         if (!user) specificError += "You must be logged in. ";
