@@ -87,7 +87,7 @@ export interface CompletedAssignmentResponse {
   message: string;
 }
 
-export interface ByLocationPayload { location: string; }
+export interface ByLocationPayload { location: string }
 
 export interface WeatherLocationData {
     name: string;
@@ -97,7 +97,7 @@ export interface WeatherLocationData {
       uvi?: number;
       sunrise?: number;
       sunset?: number;
-      weather?: { description: string; icon?: string; }[];
+      weather?: { description: string; icon?: string }[];
       wind_speed: number;
       humidity: number;
     };
@@ -114,7 +114,7 @@ export interface WeatherLocationData {
 
 export interface QuestionsBySchoolResponse {
   counts: Record<string, Record<string, Record<string, number>>>;
-  content: Array<{ questionLabel: string; questionId: string; deficiency?: string; }>;
+  content: Array<{ questionLabel: string, questionId: string, deficiency?: string }>;
 }
 export interface SchoolQuestionAnswers {
   [answer: string]: number;
@@ -551,7 +551,7 @@ export async function getLastCompletions(
   const url = `${WIDGETS_BASE_URL}/completed-assignments?${params.toString()}`;
 
   try {
-    const result = await authedFetch<{ status: string; data: Record<string, unknown>[]; }>(url, {
+    const result = await authedFetch<{ status: string; data: Record<string, unknown>[] }>(url, {
       method: 'GET',
     }, accountId);
 
