@@ -154,6 +154,7 @@ export default function CompleteAssignmentPage() {
   const parseOptions = (options: OptionInput, question?: AssignmentQuestion): { label: string; value: string }[] => {
     // Special handling for schoolSelector - use locations instead of question.options
     if (question?.component === 'schoolSelector') {
+      console.log("this is a school selector question: ", locations)
       return locations.map(location => {
         console.log('Location data:', location); // Debug log
         return {
@@ -546,10 +547,12 @@ export default function CompleteAssignmentPage() {
   useEffect(() => {
     const hasSchoolSelector = assignment?.questions.some(q => q.component === 'schoolSelector');
     if (hasSchoolSelector && userProfile?.account && !isLoading) {
+      console.log("There is a schoolSelector Item")
       setIsLoadingLocations(true);
       setLocationsError(null);
       getLocationsForLookup(userProfile.account)
         .then(fetchedLocations => {
+          console.log("These are the fetched locations: ", fetchedLocations);
           setLocations(fetchedLocations);
         })
         .catch(err => {
