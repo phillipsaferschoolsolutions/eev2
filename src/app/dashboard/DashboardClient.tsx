@@ -245,7 +245,7 @@ export default function DashboardPage() {
             console.error("Error fetching weather:", error);
             setWeatherError("Could not load weather data");
           } finally {
-          const weatherData = await getWeatherAndLocation(latitude, longitude, userProfile?.account);
+          const weatherData = await getWeatherAndLocation(latitude, longitude, userProfile.account);
           }
         },
         (error) => {
