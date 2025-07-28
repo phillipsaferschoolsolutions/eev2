@@ -172,7 +172,7 @@ const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap(group =>
   const [activeTab, setActiveTab] = useState<string>("details");
   
   // Form setup
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<RoleFormData>({
+  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<RoleFormData>({
     resolver: zodResolver(roleSchema),
     defaultValues: {
       name: "",
@@ -189,7 +189,7 @@ const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap(group =>
     if (!authLoading && userProfile?.account) {
       fetchRoles();
     }
-  }, [userProfile?.account, authLoading, fetchRoles]);
+  }, [userProfile?.account, authLoading /* , fetchRoles */ ]);
   
   // Filter roles when search term changes
   useEffect(() => {
