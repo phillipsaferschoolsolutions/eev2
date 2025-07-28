@@ -180,6 +180,26 @@ export default function RoleManagementPage() {
       description: "",
     },
   });
+
+  // Function to fetch roles
+  const fetchRoles = useCallback(async () => {
+    if (!userProfile?.account) return;
+    
+    setIsLoadingRoles(true);
+    setRolesError(null);
+    
+    try {
+      const fetchedRoles = await getRoles(userProfile.account);
+      setRoles(fetchedRoles);
+      setFilteredRoles(fetchedRoles);
+    } catch (error) {
+      console.error("Failed to fetch roles:", error);
+      setRolesError("Failed to load roles. Please try again.");
+      toast({ variant: "destructive", title: "Error Loading Roles", description: error instanceof Error error.message : "An unknown error occurred." });
+    } finally {
+      setIsLoadingRoles(false);
+    }
+  }, [userProfile?.account, toast]);
   
   // Check if user has admin permissions
   const hasAccess = !authLoading && userProfile && 
@@ -205,25 +225,6 @@ export default function RoleManagementPage() {
     }
   }, [searchTerm, roles]);
   
-  // Function to fetch roles
-  const fetchRoles = useCallback(async () => {
-    if (!userProfile?.account) return;
-    
-    setIsLoadingRoles(true);
-    setRolesError(null);
-    
-    try {
-      const fetchedRoles = await getRoles(userProfile.account);
-      setRoles(fetchedRoles);
-      setFilteredRoles(fetchedRoles);
-    } catch (error) {
-      console.error("Failed to fetch roles:", error);
-      setRolesError("Failed to load roles. Please try again.");
-      toast({ variant: "destructive", title: "Error Loading Roles", description: error instanceof Error ? error.message : "An unknown error occurred." });
-    } finally {
-      setIsLoadingRoles(false);
-    }
-  }, [userProfile?.account, toast]);
   
   // Function to handle adding a new role
   const handleAddRole = async (data: RoleFormData) => {
