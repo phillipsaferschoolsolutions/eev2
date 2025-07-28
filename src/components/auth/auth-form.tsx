@@ -326,7 +326,7 @@ export function AuthForm() {
       otpForm.reset();
       resetRecaptcha();
     } catch (err: unknown) {
-      const firebaseError = error as { code?: string; message?: string };
+      const firebaseError = err as { code?: string; message?: string };
       setError(firebaseError.message || 'Failed to verify OTP.');
       toast({ variant: "destructive", title: "OTP Verification Failed", description: firebaseError.message });
     } finally {
