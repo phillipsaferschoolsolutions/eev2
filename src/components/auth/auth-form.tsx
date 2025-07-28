@@ -190,7 +190,7 @@ export function AuthForm() {
 
   useEffect(() => {
     if (currentTab === 'phone' && phoneStep === 'input' && recaptchaContainerRef.current && !recaptchaVerifierRef.current) {
-      if (typeof window !== 'undefined' && (window as any).grecaptcha && typeof (window as any).grecaptcha.render === 'function') {
+      if (typeof window !== 'undefined' && window.grecaptcha && typeof window.grecaptcha.render === 'function') {
         try {
           recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
             'size': 'invisible',
