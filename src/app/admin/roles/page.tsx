@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -16,12 +15,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
-  Dialog, DialogContent, DialogDescription, DialogFooter, 
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
@@ -147,6 +147,7 @@ const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap(group =>
   group.permissions.map(p => ({ ...p, group: group.name }))
 );
 
+export default function RoleManagementPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const { can } = usePermissions();
@@ -189,7 +190,7 @@ const ALL_PERMISSIONS = PERMISSION_GROUPS.flatMap(group =>
     if (!authLoading && userProfile?.account) {
       fetchRoles();
     }
-  }, [userProfile?.account, authLoading /* , fetchRoles */ ]);
+  }, [userProfile?.account, authLoading]);
   
   // Filter roles when search term changes
   useEffect(() => {
