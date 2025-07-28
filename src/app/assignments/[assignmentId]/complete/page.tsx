@@ -959,12 +959,13 @@ export default function CompleteAssignmentPage() {
         title: "Draft Saved Successfully",
         description: "Your progress has been saved.",
       });
-    } catch (submitError) {
+    } catch (submitError: unknown) {
       console.error("Error saving draft:");
+      const errMsg = error instanceof Error ? error.message : "An unknown error occurred.";
       toast({
         variant: "destructive",
         title: "Error Saving Draft",
-        description: error instanceof Error ? error.message : "An unknown error occurred.",
+        description: errMsg,
       });
     } finally {
       setIsSubmitting(false); // Re-enable buttons
