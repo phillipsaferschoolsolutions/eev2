@@ -43,7 +43,7 @@ export default function UserManagementPage() {
   // --- Pagination State ---
   const [currentPage, setCurrentPage] = usePersistedState('admin-users-current-page', 1);
   const [totalPages, setTotalPages] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState<number | null>(null);
+  const [itemsPerPage, setItemsPerPage] = useState<number | null>(10);
   
   // --- Permission Change State ---
   const [permissionChange, setPermissionChange] = useState<{ userId: string; newPermission: string; userEmail: string; } | null>(null);
