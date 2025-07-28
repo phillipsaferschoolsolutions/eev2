@@ -90,7 +90,7 @@ async function authedFetch<T>(
   }
   
   const contentType = response.headers.get("content-type");
-  if (response.status === 204) { return undefined as any as T; } // No Content
+  if (response.status === 204) { return undefined as unknown as T; } // No Content
   
   const textResponse = await response.text(); // Get text first
   if (contentType && contentType.includes("application/json")) { 
