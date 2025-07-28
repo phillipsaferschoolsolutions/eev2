@@ -1094,7 +1094,7 @@ export default function CompleteAssignmentPage() {
     });
     console.log("src/app/assignments/[assignmentId]/complete/page - line 1095 - assignmentId: ", assignmentId);
     console.log("src/app/assignments/[assignmentId]/complete/page - line 1095 - assignment.id: ", assignment.id);
-    formDataForSubmission.append('assignmentId', assignment.id);
+    formDataForSubmission.append('assignmentId', assignment.assessmentName);
     formDataForSubmission.append('answers', JSON.stringify(answersObject));
     formDataForSubmission.append('comments', JSON.stringify(commentsObject));
     formDataForSubmission.append('photoLinks', JSON.stringify(photoLinksForSync));
@@ -1104,7 +1104,7 @@ export default function CompleteAssignmentPage() {
 
     try {
         const result = await submitCompletedAssignment(
-          assignmentId, 
+          assignment.assessmentName, 
           formDataForSubmission, 
           userProfile.account
         );
