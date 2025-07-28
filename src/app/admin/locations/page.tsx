@@ -1,23 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, MapPin, Plus, Edit, Trash2, Search, AlertTriangle, Loader2 } from "lucide-react";
-import { getLocationsForLookup, createLocation, updateLocation, deleteLocation, type Location } from "@/services/locationService";
+import { ArrowLeft, MapPin, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { usePermissions } from "@/hooks/use-permissions";
 
@@ -27,11 +17,15 @@ const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
 export default function LocationManagementPage() {
   const { userProfile, loading: authLoading } = useAuth();
   const { can } = usePermissions();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { toast } = useToast();
 
   // State for locations
-  const [locations, setLocations] = useState<Location[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [locations, setLocations] = useState([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isLoadingLocations, setIsLoadingLocations] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
   // Show a loading state while user profile is being fetched
