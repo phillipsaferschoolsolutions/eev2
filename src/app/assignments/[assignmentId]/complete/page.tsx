@@ -153,7 +153,7 @@ export default function CompleteAssignmentPage() {
   type OptionInput = string | string[] | { label: string; value?: string }[];
   const parseOptions = (options: OptionInput, question?: AssignmentQuestion): { label: string; value: string }[] => {
     // Special handling for schoolSelector - use locations instead of question.options
-    console.log("app/assignments/[assignmentId]/completed - Line 156 - options & question: ", options, question);
+    console.log("app/assignments/[assignmentId]/completed - Line 156 - options & question: ", question.component, question);
     if (question?.component === 'schoolSelector') {
       console.log("this is a school selector question: ", locations)
       return locations.map(location => {
