@@ -304,7 +304,7 @@ export async function getAssignmentById(id: string, accountName: string): Promis
 export async function createAssignment(payload: CreateAssignmentPayload, accountName: string): Promise<FullAssignment> {
    if (!accountName || accountName.trim() === "") {
     throw new Error("Account name is required for createAssignment.");
-  }
+     }
   // Ensure accountSubmittedFor is present in payload, or set it from accountName
   const finalPayload = {
     ...payload,
@@ -325,7 +325,7 @@ export async function updateAssignment(id: string, payload: UpdateAssignmentPayl
   if (!id) throw new Error('Assignment ID is required.');
    if (!accountName || accountName.trim() === "") {
     throw new Error("Account name is required for updateAssignment.");
-  }
+     }
   // Ensure accountSubmittedFor is part of the payload if the backend needs it for updates
   const finalPayload = {
     ...payload,
@@ -552,6 +552,8 @@ export async function getLastCompletions(
 
   try {
     const response = await authedFetch<{ status: string; data: Record<string, unknown>[] }>(url, {
+    }
+    )
     const result = await authedFetch<{ status: string; data: Record<string, unknown>[] }>(url, {
     }, accountId);
 
