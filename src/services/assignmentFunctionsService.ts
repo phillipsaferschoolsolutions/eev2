@@ -529,8 +529,8 @@ export async function getCompletionDetails(assignmentId: string, completionId: s
  */
 export async function getLastCompletions(
   accountId: string, 
-  assignmentId: string | null, 
-  selectedSchool: string | null, // Allow null for "All Schools"
+  assignmentId?: string, 
+  selectedSchool?: string, // Allow undefined for "All Schools"
   period: string
 ): Promise<Record<string, unknown>[]> {
   if (!accountId) {
@@ -539,10 +539,10 @@ export async function getLastCompletions(
 
   // Build query parameters
   const params = new URLSearchParams();
-  if (assignmentId) {
+  if (assignmentId && assignmentId !== "all") {
     params.append('assignmentId', assignmentId);
   }
-  if (selectedSchool) {
+  if (selectedSchool && selectedSchool !== "all") {
     params.append('selectedSchool', selectedSchool);
   }
   params.append('timePeriod', period);
@@ -552,8 +552,8 @@ export async function getLastCompletions(
 
   try {
     const response = await authedFetch<{ status: string; data: Record<string, unknown>[] }>(url, {
-      method: 'GET',
-    });
+    const result = await authedFetch<{ status: string; data: Record<string, unknown>[] }>(url, {
+    }, accountId);
 
     // IMPORTANT: Access the .data property from the response object
     if (response && response.status === 'success' && Array.isArray(response.data)) {
@@ -564,7 +564,7 @@ export async function getLastCompletions(
     }
   } catch (error) {
     console.error("Error in getLastCompletions service function:", error);
-    throw error;
+    return [];
   }
 }
 

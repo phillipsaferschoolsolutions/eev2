@@ -350,13 +350,13 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!authLoading && !profileLoading && userProfile?.account) {
       setCompletionsLoading(true);
-      const assignmentFilter = selectedAssignment === "all" ? null : selectedAssignment;
-      const schoolFilter = selectedSchool === "all" ? null : selectedSchool;
+      const assignmentFilter = selectedAssignment === "all" ? undefined : selectedAssignment;
+      const schoolFilter = selectedSchool === "all" ? undefined : selectedSchool;
       
       getLastCompletions(userProfile.account, assignmentFilter, schoolFilter, selectedPeriod)
         .then(data => {
           console.log("Fetched completions:", data);
-          setLastCompletions(data);
+          setLastCompletions(data || []);
           setCompletionsError(null);
           // Reset to first page when data changes
           setCurrentPage(1);
@@ -364,6 +364,7 @@ export default function DashboardPage() {
         .catch(err => {
           console.error("Error fetching last completions:", err);
           setCompletionsError("Could not load recent completions");
+          setLastCompletions([]);
         })
         .finally(() => setCompletionsLoading(false));
     }
