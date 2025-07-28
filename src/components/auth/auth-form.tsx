@@ -109,6 +109,16 @@ const SocialLoginButtons = ({ isLoading, onSocialLogin }: { isLoading: boolean, 
   );
 };
 
+interface Grecaptcha {
+  render: (...args: unknown[]) => unknown;
+  reset: (widgetId?: number) => void;
+}
+
+declare global {
+  interface Window {
+    grecaptcha?: Grecaptcha;
+  }
+}
 
 export function AuthForm() {
   const { user, loading: authLoading } = useAuth();
