@@ -981,6 +981,11 @@ export default function CompleteAssignmentPage() {
         toast({ variant: "destructive", title: "Submission Error", description: "Cannot submit, critical assignment or user account data missing." });
         return;
     }
+    console.log("[DEBUG] Starting assignment submission...");
+    console.log("[DEBUG] Form responses:", formResponses);
+    console.log("[DEBUG] Photo bank:", photoBank);
+    console.log("[DEBUG] Comments:", comments);
+    
     setIsSubmitting(true);
 
     const finalAudioNotesForSubmission: Record<string, { name?: string; url?: string }> = {};
@@ -1065,10 +1070,14 @@ export default function CompleteAssignmentPage() {
             });
             questionAnswer = selectedOptions;//.join(',');
         } else if (question.component === 'checkbox' && !question.options) {
-             questionAnswer = data[question.id] ?? false;
+      const contentToSubmit = { ...formResponses };
+      console.log("[DEBUG] Content being submitted:", contentToSubmit);
+      formData.append('content', JSON.stringify(contentToSubmit));
         } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
             questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
-        } else if ((question.component === 'time' || question.component === 'completionTime')) {
+      const commentsToSubmit = { ...comments };
+      console.log("[DEBUG] Comments being submitted:", commentsToSubmit);
+      formData.append('commentsData', JSON.stringify(commentsToSubmit));
             const timeValue = data[question.id];
             if (typeof timeValue === 'object' && timeValue !== null && timeValue.hour && timeValue.minute && timeValue.period) {
                 questionAnswer = `${timeValue.hour}:${timeValue.minute} ${timeValue.period}`;
@@ -1084,16 +1093,29 @@ export default function CompleteAssignmentPage() {
                 questionAnswer = '';
             }
         } else {
+      console.log("[DEBUG] Photo links being submitted:", syncPhotoLinks);
             questionAnswer = data[question.id] ?? '';
         }
 
         answersObject[question.id] = questionAnswer as string;
 
+          console.log("[DEBUG] Adding file upload for question:", questionId, "File:", file.name);
         if (question.comment && data[`${question.id}_comment`]) {
             commentsObject[question.id] = data[`${question.id}_comment`];
         }
+      
+      // Log all FormData entries for debugging
+      console.log("[DEBUG] FormData entries:");
+      for (const [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`  ${key}: [File] ${value.name} (${value.size} bytes)`);
+        } else {
+          console.log(`  ${key}:`, value);
+        }
+      }
     });
     formDataForSubmission.append('assignmentId', assignment.id);
+      console.log("[DEBUG] Submission result:", result);
     formDataForSubmission.append('answers', JSON.stringify(answersObject));
     formDataForSubmission.append('comments', JSON.stringify(commentsObject));
     formDataForSubmission.append('photoLinks', JSON.stringify(photoLinksForSync));
@@ -1111,11 +1133,12 @@ export default function CompleteAssignmentPage() {
             toast({ title: "Assignment Submitted Successfully", description: "Your assignment has been submitted." });
             router.push('/assignments');
         } else {
+      console.log("[DEBUG] Full error object:", error);
             throw new Error(result.error || "Submission failed");
         }
     } catch (error) {
         console.error("Submission error:", error);
-        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+        description: `Submission failed: ${error instanceof Error ? error.message : 'An unknown error occurred'}. Check console for details.`
         toast({ variant: "destructive", title: "Submission Failed", description: errorMessage });
     } finally {
         setIsSubmitting(false);
