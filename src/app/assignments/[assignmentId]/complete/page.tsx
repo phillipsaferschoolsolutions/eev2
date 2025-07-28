@@ -151,8 +151,6 @@ export default function CompleteAssignmentPage() {
 
   // A more robust parseOptions function that handles multiple possible data formats
 const parseOptions = (options: unknown): { label: string; value: string }[] => {
-  }, [assignment]);
-  
   // Case 1: It's already the correct format (array of objects with label/value)
   if (Array.isArray(options) && options.length > 0 && typeof options[0] === 'object' && options[0] !== null && 'label' in options[0]) {
     return options.map(opt => ({ label: String(opt.label), value: String(opt.value || opt.label) }));
@@ -512,11 +510,11 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
           });
           reset(defaultVals);
-        const errorMessage = error instanceof Error ? error.message : "Failed to save draft";
+        }
 
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-          description: errorMessage,
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to save draft";
+        setError(errorMessage);
         toast({ variant: "destructive", title: "Loading Failed", description: errorMessage });
       } finally {
         setIsLoading(false);
@@ -2014,6 +2012,6 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
           </ScrollArea>
         </DialogContent>
       </Dialog>
-    [assignment, userProfile?.account, toast]
+    </div>
   );
 }
