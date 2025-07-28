@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,7 +25,6 @@ import type { WidgetSandboxData, TrendsResponse } from "@/types/Analysis";
 import {
  Activity,
  MapPin,
- Thermometer,
  Wind,
  Droplets,
  Eye,
@@ -36,7 +35,6 @@ import {
  CheckCircle2,
  Clock,
  Target,
- Zap,
  Sun,
  CloudRain,
  Cloud,
@@ -63,11 +61,11 @@ interface CompletionItem {
    assessmentName?: string;
    completedBy: string;
    completionDate?: string;
-   submittedTimeServer?: any;
+   submittedTimeServer?: unknown;
    locationName?: string;
    status?: string;
-   content?: Record<string, any>;
-   [key: string]: any;
+   content?: Record<string, unknown>;
+   [key: string]: unknown;
  };
  parentAssignmentId?: string;
  assignmentId?: string; // Some API responses might include this at the top level
@@ -87,7 +85,6 @@ interface WeatherForecast {
 
 export default function DashboardPage() {
  const { user, userProfile, customClaims, loading: authLoading, profileLoading, claimsLoading } = useAuth();
- const { toast } = useToast();
 
 
  // Weather state
@@ -106,7 +103,6 @@ export default function DashboardPage() {
  // Trends data state
  const [trendsData, setTrendsData] = useState<TrendsResponse | null>(null);
  const [trendsLoading, setTrendsLoading] = useState(false);
- const [trendsError, setTrendsError] = useState<string | null>(null);
 
 
  // Last completions state
@@ -129,10 +125,6 @@ export default function DashboardPage() {
  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
  const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
  const [locationsError, setLocationsError] = useState<string | null>(null);
-
-
- // Create a mapping of assignment IDs to names for quick lookup
- const [assignmentMap, setAssignmentMap] = useState<Record<string, string>>({});
 
 
  const isAdmin = !profileLoading && userProfile && (userProfile.permission === 'admin' || userProfile.permission === 'superAdmin');
@@ -238,11 +230,9 @@ export default function DashboardPage() {
      getWidgetTrends(userProfile.account)
        .then(data => {
          setTrendsData(data);
-         setTrendsError(null);
        })
        .catch(err => {
          console.error("Error fetching trends data:", err);
-         setTrendsError("Could not load trends data");
        })
        .finally(() => setTrendsLoading(false));
    }
@@ -257,15 +247,6 @@ export default function DashboardPage() {
        .then(data => {
          console.log("Fetched assignments:", data);
          setAssignments(data);
-        
-         // Create a mapping of assignment IDs to names for quick lookup
-         const mapping: Record<string, string> = {};
-         data.forEach(assignment => {
-           if (assignment.id && assignment.assessmentName) {
-             mapping[assignment.id] = assignment.assessmentName;
-           }
-         });
-         setAssignmentMap(mapping);
         
          setAssignmentsError(null);
        })
@@ -338,12 +319,7 @@ export default function DashboardPage() {
    }
   
    // Next, check if we can find the name in our assignment map using parentAssignmentId
-   if (completion.parentAssignmentId && assignmentMap[completion.parentAssignmentId]) {
-     return assignmentMap[completion.parentAssignmentId];
-   }
-  
-   // If not, try to find it in the assignments list using parentAssignmentId
-   if (completion.parentAssignmentId && assignments.length > 0) {
+   if (completion.parentAssignmentId) {
      const matchingAssignment = assignments.find(a => a.id === completion.parentAssignmentId);
      if (matchingAssignment && matchingAssignment.assessmentName) {
        return matchingAssignment.assessmentName;
@@ -912,15 +888,10 @@ export default function DashboardPage() {
                 
                  // If we have a parentAssignmentId from the API, use it to look up the name
                  if (completion.parentAssignmentId) {
-                   // Check if we have this assignment in our map
-                   if (assignmentMap[completion.parentAssignmentId]) {
-                     assignmentName = assignmentMap[completion.parentAssignmentId];
-                   } else {
-                     // Try to find it in the assignments list
-                     const matchingAssignment = assignments.find(a => a.id === completion.parentAssignmentId);
-                     if (matchingAssignment?.assessmentName) {
-                       assignmentName = matchingAssignment.assessmentName;
-                     }
+                   // Try to find it in the assignments list
+                   const matchingAssignment = assignments.find(a => a.id === completion.parentAssignmentId);
+                   if (matchingAssignment?.assessmentName) {
+                     assignmentName = matchingAssignment.assessmentName;
                    }
                  }
                 
@@ -1029,7 +1000,7 @@ export default function DashboardPage() {
              <ListChecks className="mx-auto h-12 w-12 mb-4 text-muted-foreground opacity-50" />
              <p className="text-lg font-semibold">No Critical Tasks</p>
              <p className="text-sm text-muted-foreground">
-               You're all caught up! No urgent tasks at this time.
+               You&apos;re all caught up! No urgent tasks at this time.
              </p>
            </div>
          </CardContent>
@@ -1093,5 +1064,3 @@ export default function DashboardPage() {
    </div>
  );
 }
-
-

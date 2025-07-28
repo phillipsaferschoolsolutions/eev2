@@ -55,30 +55,29 @@ export default function ReportStudioPage() {
   
   // Fetch saved reports when the component mounts
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fetchSavedReports = useCallback(async () => {
+    if (!authLoading && userProfile?.account) {
+      setIsLoadingReports(true);
+      setReportsError(null);
+      
+      try {
+        const reports = await getSavedReports(userProfile.account);
+        setSavedReports(reports);
+      } catch (error) {
+        console.error("Failed to fetch saved reports:", error);
+        setReportsError("Failed to load saved reports. Please try again.");
+      } finally {
+        setIsLoadingReports(false);
+      }
+    }
+  }, [userProfile?.account, authLoading]);
+
   useEffect(() => {
     if (!authLoading && userProfile?.account) {
       fetchSavedReports();
     }
-  }, [userProfile?.account, authLoading]);
+  }, [userProfile?.account, authLoading, fetchSavedReports]);
   
-  // Function to fetch saved reports
-  const fetchSavedReports = useCallback(async () => {
-    if (!userProfile?.account) return;
-    
-    setIsLoadingReports(true);
-    setReportsError(null);
-    
-    try {
-      const reports = await getSavedReports(userProfile.account);
-      setSavedReports(reports);
-    } catch (error) {
-      console.error("Failed to fetch saved reports:", error);
-      setReportsError("Failed to load saved reports. Please try again.");
-    } finally {
-      setIsLoadingReports(false);
-    }
-  }, [userProfile?.account]);
-
   // Function to handle report deletion
   const handleDeleteReport = async (reportId: string) => {
     if (!userProfile?.account) {
@@ -278,7 +277,6 @@ export default function ReportStudioPage() {
         <CardHeader>
           <CardTitle>Report Viewer</CardTitle>
           <CardDescription>
-              Each theme has been carefully designed with complementary color palettes and contrasting accent colors for the logo,
             View and manage your safety assessment reports
           </CardDescription>
         </CardHeader>

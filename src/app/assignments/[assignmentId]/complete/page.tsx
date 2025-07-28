@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, ChangeEvent, useMemo, useRef } from "react";
+import { useEffect, useState, ChangeEvent, useMemo, useRef, useCallback } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -226,7 +226,7 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
     return maxPage;
   }, [conditionallyVisibleQuestions]);
 
-  const isQuestionAnswered = (question: AssignmentQuestion, formData: FieldValues): boolean => {
+  const isQuestionAnswered = useCallback((question: AssignmentQuestion, formData: FieldValues): boolean => {
     const value = formData[question.id];
     switch (question.component) {
       case 'text':
@@ -272,7 +272,7 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
       default:
         return false;
     }
-  };
+  }, [uploadedFileDetails]);
 
   const overallProgress = useMemo(() => {
     const totalQuestions = conditionallyVisibleQuestions.length;

@@ -83,44 +83,57 @@ export default function GenerateReportPage() {
   const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
   
   // Fetch assignments when the component mounts
-  useEffect(() => {
+  const fetchAssignments = useCallback(async () => {
     if (!authLoading && userProfile?.account) {
-      fetchAssignments();
-      fetchPromptSettings();
-      fetchTemplates();
+      setIsLoadingAssignments(true);
+      setAssignmentsError(null);
+      
+      try {
+        const fetchedAssignments = await getAssignmentListMetadata();
+        setAssignments(fetchedAssignments);
+      } catch (error) {
+        console.error("Failed to fetch assignments:", error);
+        setAssignmentsError("Failed to load assignments. Please try again.");
+      } finally {
+        setIsLoadingAssignments(false);
+      }
     }
-  }, [userProfile?.account, authLoading, fetchAssignments, fetchPromptSettings, fetchTemplates]);
-  
-  // Fetch completions when an assignment is selected
-  useEffect(() => {
-    if (selectedAssignmentId && userProfile?.account) {
-      fetchCompletions(selectedAssignmentId);
-    } else {
-      setCompletions([]);
-      setSelectedCompletionId("");
-    }
-  }, [selectedAssignmentId, userProfile?.account, fetchCompletions]);
-  
-  // Function to fetch assignments
-  const fetchAssignments = async () => {
+  }, [userProfile?.account, authLoading]);
+
+  const fetchPromptSettings = useCallback(async () => {
     if (!userProfile?.account) return;
     
-    setIsLoadingAssignments(true);
-    setAssignmentsError(null);
+    setIsLoadingPromptSettings(true);
     
     try {
-      const fetchedAssignments = await getAssignmentListMetadata();
-      setAssignments(fetchedAssignments);
+      const settings = await getPromptSettings(userProfile.account);
+      setPromptSettings(settings || { customPrompt: '', promptMode: 'extend' });
     } catch (error) {
-      console.error("Failed to fetch assignments:", error);
-      setAssignmentsError("Failed to load assignments. Please try again.");
+      console.error("Failed to fetch prompt settings:", error);
+      // Set default empty settings if fetch fails
+      setPromptSettings({ customPrompt: '', promptMode: 'extend' });
     } finally {
-      setIsLoadingAssignments(false);
+      setIsLoadingPromptSettings(false);
     }
-  };
-  
-  // Function to fetch completions for a selected assignment
-  const fetchCompletions = async (assignmentId: string) => {
+  }, [userProfile?.account]);
+
+  const fetchTemplates = useCallback(async () => {
+    if (!userProfile?.account) return;
+    
+    setIsLoadingTemplates(true);
+    
+    try {
+      const fetchedTemplates = await getTemplates(userProfile.account);
+      setTemplates(fetchedTemplates);
+    } catch (error) {
+      console.error("Failed to fetch templates:", error);
+      // Don't set an error state here, as templates are optional
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  }, [userProfile?.account]);
+
+  const fetchCompletions = useCallback(async (assignmentId: string) => {
     if (!userProfile?.account) return;
     
     setIsLoadingCompletions(true);
@@ -140,42 +153,25 @@ export default function GenerateReportPage() {
     } finally {
       setIsLoadingCompletions(false);
     }
-  };
-  
-  // Function to fetch prompt settings
-  const fetchPromptSettings = async () => {
-    if (!userProfile?.account) return;
-    
-    setIsLoadingPromptSettings(true);
-    
-    try {
-      const settings = await getPromptSettings(userProfile.account);
-      setPromptSettings(settings || { customPrompt: '', promptMode: 'extend' });
-    } catch (error) {
-      console.error("Failed to fetch prompt settings:", error);
-      // Set default empty settings if fetch fails
-      setPromptSettings({ customPrompt: '', promptMode: 'extend' });
-    } finally {
-      setIsLoadingPromptSettings(false);
+  }, [userProfile?.account]);
+
+  useEffect(() => {
+    if (!authLoading && userProfile?.account) {
+      fetchAssignments();
+      fetchPromptSettings();
+      fetchTemplates();
     }
-  };
+  }, [userProfile?.account, authLoading, fetchAssignments, fetchPromptSettings, fetchTemplates]);
   
-  // Function to fetch templates
-  const fetchTemplates = async () => {
-    if (!userProfile?.account) return;
-    
-    setIsLoadingTemplates(true);
-    
-    try {
-      const fetchedTemplates = await getTemplates(userProfile.account);
-      setTemplates(fetchedTemplates);
-    } catch (error) {
-      console.error("Failed to fetch templates:", error);
-      // Don't set an error state here, as templates are optional
-    } finally {
-      setIsLoadingTemplates(false);
+  // Fetch completions when an assignment is selected
+  useEffect(() => {
+    if (selectedAssignmentId && userProfile?.account) {
+      fetchCompletions(selectedAssignmentId);
+    } else {
+      setCompletions([]);
+      setSelectedCompletionId("");
     }
-  };
+  }, [selectedAssignmentId, userProfile?.account, fetchCompletions]);
   
   // Function to generate a report
   const handleGenerateReport = async () => {
