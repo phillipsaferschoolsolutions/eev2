@@ -25,7 +25,7 @@ async function getIdToken(): Promise<string | null> {
   const currentUser: User | null = auth.currentUser;
   if (currentUser) {
     try {
-      return await currentUser.getIdToken(true); // Force refresh
+      return await currentUser.getIdToken(); // Let Firebase manage token caching
     } catch (error) {
       console.error("Error getting ID token for analysisService:", error);
       throw new Error("Could not get Firebase ID token.");

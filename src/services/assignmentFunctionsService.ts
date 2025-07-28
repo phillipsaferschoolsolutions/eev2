@@ -174,7 +174,7 @@ export async function getIdToken(): Promise<string> {
     try {
         const user = auth.currentUser;
         if (user) {
-            const token = await user.getIdToken(true); // Force refresh
+            const token = await user.getIdToken(); // Let Firebase manage token caching
             return token;
         } else {
             throw new Error("User not authenticated.");
