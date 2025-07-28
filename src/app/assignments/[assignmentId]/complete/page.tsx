@@ -129,6 +129,7 @@ export default function CompleteAssignmentPage() {
   const [isUploadingToBank, setIsUploadingToBank] = useState(false);
   const [uploadingQuestionId, setUploadingQuestionId] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
+  const [modalPhoto, setModalPhoto] = useState<{ url: string; name: string } | null>(null);
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
@@ -1466,18 +1467,20 @@ export default function CompleteAssignmentPage() {
                   <div key={photo.id} className="relative group border rounded-lg overflow-hidden">
                     <button
                       type="button"
-                      onClick={() => deletePhotoFromBank(photo.id)}
-                      className="absolute top-1 right-1 z-10 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Remove photo"
+                      onClick={() => removeFromPhotoBank(photo.id)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{ lineHeight: 1 }}
                     >
-                      <X className="h-3 w-3" />
+                      ×
                     </button>
                     <Image
                       src={photo.url}
                       alt={photo.name}
-                      width={150}
-                      height={150}
-                      className="w-full h-32 object-cover"
+                      width={120}
+                      height={120}
+                      className="w-full h-24 object-cover rounded border cursor-pointer"
+                      onClick={() => setModalPhoto({ url: photo.url, name: photo.name })}
+                      style={{ cursor: 'pointer' }}
                     />
                     <div className="p-2">
                       <p className="text-xs truncate mb-2">{photo.name}</p>
@@ -2054,18 +2057,31 @@ export default function CompleteAssignmentPage() {
                                   <Image
                                     src={photo.url}
                                     alt={photo.name}
-                                    width={100}
-                                    height={100}
-                                    className="w-full h-20 object-cover rounded border"
+                                    width={80}
+                                    height={80}
+                                    className="w-16 h-16 object-cover rounded border mr-2 cursor-pointer relative group"
+                                    onClick={() => setModalPhoto({ url: photo.url, name: photo.name })}
                                   />
                                   <button
                                     type="button"
-                                    onClick={() => assignPhotoToQuestion(photo.id, null)}
-                                    className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title="Unassign photo"
+                                    onClick={() => unassignPhotoFromQuestion(question.id, photo.id)}
+                                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                    style={{ lineHeight: 1 }}
                                   >
-                                    <X className="h-2 w-2" />
+                                    ×
                                   </button>
+                                  <div>
+                                    <p className="text-xs font-medium">{photo.name}</p>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => assignPhotoToQuestion(photo.id, null)}
+                                      className="text-xs h-6 mt-1"
+                                    >
+                                      Unassign
+                                    </Button>
+                                  </div>
                                 </div>
                               ))}
                           </div>
@@ -2276,6 +2292,31 @@ export default function CompleteAssignmentPage() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Photo Modal */}
+      {modalPhoto && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+          onClick={() => setModalPhoto(null)}
+        >
+          <div className="relative max-w-4xl max-h-4xl p-4">
+            <button
+              onClick={() => setModalPhoto(null)}
+              className="absolute top-2 right-2 bg-white text-black rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold"
+            >
+              ×
+            </button>
+            <Image
+              src={modalPhoto.url}
+              alt={modalPhoto.name}
+              width={800}
+              height={600}
+              className="max-w-full max-h-full object-contain"
+            />
+            <p className="text-white text-center mt-2">{modalPhoto.name}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
