@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 /**
  * Custom hook that persists state to localStorage
@@ -22,7 +22,7 @@ export function usePersistedState<T>(key: string, defaultValue: T): [T, (value: 
     }
   });
 
-  const setValue = (value: T) => {
+  const setValue = useCallback((value: T) => {
     try {
       setState(value);
       if (typeof window !== 'undefined') {
@@ -31,7 +31,7 @@ export function usePersistedState<T>(key: string, defaultValue: T): [T, (value: 
     } catch (error) {
       console.warn(`Error setting localStorage key "${key}":`, error);
     }
-  };
+  }, [key]);
 
   return [state, setValue];
 }
