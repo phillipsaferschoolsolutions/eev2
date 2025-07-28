@@ -102,8 +102,6 @@ export async function getUsers(page: number, limit: number): Promise<{ users: Us
  * @param signature The electronic signature of the admin making the change.
  * @returns A promise that resolves when the action is complete.
  */
-export async function updateUserPermission(userId: string, newPermission: string, signature: string): Promise<any> {
-}
 export async function updateUserPermission(userId: string, newPermission: string, signature: string): Promise<unknown> {
   const url = `${ADMIN_BASE_URL}/users/${userId}/permission`;
   

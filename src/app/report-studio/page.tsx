@@ -54,14 +54,15 @@ export default function ReportStudioPage() {
   const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
   
   // Fetch saved reports when the component mounts
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!authLoading && userProfile?.account) {
       fetchSavedReports();
     }
-  }, [userProfile?.account, authLoading, fetchSavedReports]);
+  }, [userProfile?.account, authLoading]);
   
   // Function to fetch saved reports
-  const fetchSavedReports = async () => {
+  const fetchSavedReports = useCallback(async () => {
     if (!userProfile?.account) return;
     
     setIsLoadingReports(true);
@@ -76,7 +77,7 @@ export default function ReportStudioPage() {
     } finally {
       setIsLoadingReports(false);
     }
-  };
+  }, [userProfile?.account]);
 
   // Function to handle report deletion
   const handleDeleteReport = async (reportId: string) => {
