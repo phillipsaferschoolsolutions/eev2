@@ -163,7 +163,7 @@ export default function LocationManagement() {
   );
   
   // Function to fetch locations
-  const fetchLocations = async () => {
+  const fetchLocations = useCallback(async () => {
     if (!userProfile?.account) return;
     
     setIsLoadingLocations(true);
@@ -180,7 +180,7 @@ export default function LocationManagement() {
     } finally {
       setIsLoadingLocations(false);
     }
-  };
+  }, [userProfile?.account, toast]);
   
   // Fetch locations when the component mounts
   useEffect(() => {

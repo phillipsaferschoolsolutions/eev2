@@ -206,7 +206,7 @@ export default function RoleManagementPage() {
   }, [searchTerm, roles]);
   
   // Function to fetch roles
-  const fetchRoles = async () => {
+  const fetchRoles = useCallback(async () => {
     if (!userProfile?.account) return;
     
     setIsLoadingRoles(true);
@@ -223,7 +223,7 @@ export default function RoleManagementPage() {
     } finally {
       setIsLoadingRoles(false);
     }
-  };
+  }, [userProfile?.account, toast]);
   
   // Function to handle adding a new role
   const handleAddRole = async (data: RoleFormData) => {
