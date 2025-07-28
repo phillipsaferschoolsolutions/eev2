@@ -219,7 +219,7 @@ export default function ThemingPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Theming Options</h1>
           <p className="text-lg text-muted-foreground">
-            Personalize the application's appearance to suit your preferences or conform with corporate branding.
+            Personalize the application&lsquo;s appearance to suit your preferences or conform with corporate branding.
           </p>
         </div>
         <div className="flex gap-2">
