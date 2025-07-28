@@ -155,7 +155,7 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
   if (Array.isArray(options) && options.length > 0 && typeof options[0] === 'object' && options[0] !== null && 'label' in options[0]) {
     return options.map(opt => ({ label: String(opt.label), value: String(opt.value || opt.label) }));
   }
-  }, [savedFormData]);
+  
   // Case 2: It's a simple array of strings
   if (Array.isArray(options)) {
     return options.map(opt => ({ label: String(opt), value: String(opt) }));
@@ -737,11 +737,12 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
             };
             const errorHandler = (e: Event) => {
               audio.removeEventListener('canplay', canPlayHandler);
+              audio.removeEventListener('error', errorHandler);
               const mediaError = (e.target as HTMLAudioElement).error;
               reject(new Error(`Error loading audio: ${mediaError?.message || 'Unknown error'}`));
             };
             audio.addEventListener('canplay', canPlayHandler, { once: true });
-            description: (uploadError as Error).message || "Failed to upload file"
+            audio.addEventListener('error', errorHandler, { once: true });
           });
         }
         await audio.play();
