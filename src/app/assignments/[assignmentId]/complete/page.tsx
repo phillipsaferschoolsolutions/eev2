@@ -1078,14 +1078,10 @@ export default function CompleteAssignmentPage() {
             });
             questionAnswer = selectedOptions;//.join(',');
         } else if (question.component === 'checkbox' && !question.options) {
-      const contentToSubmit = { ...formResponses };
-      console.log("[DEBUG] Content being submitted:", contentToSubmit);
-      formData.append('content', JSON.stringify(contentToSubmit));
+            questionAnswer = data[question.id] === true;
         } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
             questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
-      const commentsToSubmit = { ...comments };
-      console.log("[DEBUG] Comments being submitted:", commentsToSubmit);
-      formData.append('commentsData', JSON.stringify(commentsToSubmit));
+        } else if (question.component === 'time' || question.component === 'completionTime') {
             const timeValue = data[question.id];
             if (typeof timeValue === 'object' && timeValue !== null && timeValue.hour && timeValue.minute && timeValue.period) {
                 questionAnswer = `${timeValue.hour}:${timeValue.minute} ${timeValue.period}`;
@@ -1101,52 +1097,21 @@ export default function CompleteAssignmentPage() {
                 questionAnswer = '';
             }
         } else {
-      console.log("[DEBUG] Photo links being submitted:", syncPhotoLinks);
             questionAnswer = data[question.id] ?? '';
         }
 
         answersObject[question.id] = questionAnswer as string;
 
-          console.log("[DEBUG] Adding file upload for question:", questionId, "File:", file.name);
         if (question.comment && data[`${question.id}_comment`]) {
-      // Question responses - CRITICAL: Stringify the object
-      const contentJson = JSON.stringify(formResponses);
-      console.log("6. Stringified content being sent:", contentJson);
-      formData.append('content', contentJson);
-      
-      // Log all FormData entries for debugging
-      console.log("[DEBUG] FormData entries:");
-      for (const [key, value] of formData.entries()) {
-      // Comments - CRITICAL: Stringify the object
-      const commentsJson = JSON.stringify(comments);
-      console.log("7. Stringified comments being sent:", commentsJson);
-      formData.append('commentsData', commentsJson);
-        } else {
-      // Photo bank data - CRITICAL: Stringify the object
-      const photoBankJson = JSON.stringify(photoBank);
-      console.log("8. Stringified photoBank being sent:", photoBankJson);
-      formData.append('syncPhotoLinks', photoBankJson);
-      }
+            commentsObject[question.id] = data[`${question.id}_comment`] as string;
+        }
     });
     formDataForSubmission.append('assignmentId', assignment.id);
-      console.log("[DEBUG] Submission result:", result);
-          console.log(`9. Adding file for question ${questionId}:`, file.name);
     formDataForSubmission.append('answers', JSON.stringify(answersObject));
     formDataForSubmission.append('comments', JSON.stringify(commentsObject));
     formDataForSubmission.append('photoLinks', JSON.stringify(photoLinksForSync));
     formDataForSubmission.append('audioNotes', JSON.stringify(finalAudioNotesForSubmission));
-      // Log all FormData entries for debugging
-      console.log("10. All FormData entries:");
-      for (const [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(`  ${key}: [File] ${value.name} (${value.size} bytes)`);
-        } else {
-          console.log(`  ${key}: ${value}`);
-        }
-      }
-      
     formDataForSubmission.append('userEmail', user.email);
-      console.log("11. Submission result:", result);
     formDataForSubmission.append('account', userProfile.account);
 
     try {
@@ -1159,17 +1124,15 @@ export default function CompleteAssignmentPage() {
             toast({ title: "Assignment Submitted Successfully", description: "Your assignment has been submitted." });
             router.push('/assignments');
         } else {
-      console.log("[DEBUG] Full error object:", error);
-      console.log("12. Full error object:", error);
             throw new Error(result.error || "Submission failed");
         }
     } catch (error) {
         console.error("Submission error:", error);
-        description: `Submission failed: ${error instanceof Error ? error.message : 'An unknown error occurred'}. Check console for details.`
+        const errorMessage = `Submission failed: ${error instanceof Error ? error.message : 'An unknown error occurred'}. Check console for details.`;
         toast({ variant: "destructive", title: "Submission Failed", description: errorMessage });
     } finally {
         setIsSubmitting(false);
-      console.log("=== ASSIGNMENT SUBMISSION DEBUG END ===");
+        console.log("=== ASSIGNMENT SUBMISSION DEBUG END ===");
     }
   };
 
@@ -2039,8 +2002,18 @@ export default function CompleteAssignmentPage() {
           ))
         )}
 
-        {/* Submit Button */}
-        <div className="flex justify-center pt-6">
+        {/* Save Draft and Submit Buttons */}
+        <div className="flex justify-center gap-4 pt-6">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={handleSaveDraft}
+            disabled={isSubmitting}
+            className="min-w-[150px]"
+          >
+            Save Draft
+          </Button>
           <Button
             type="submit"
             size="lg"
