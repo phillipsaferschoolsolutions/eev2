@@ -512,9 +512,9 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
           reset(defaultVals);
         }
 
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to save draft";
-        setError(errorMessage);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+        setError(`Failed to load assignment data: ${errorMessage}`);
         toast({ variant: "destructive", title: "Loading Failed", description: errorMessage });
       } finally {
         setIsLoading(false);
