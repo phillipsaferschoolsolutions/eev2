@@ -38,26 +38,26 @@ export default function ViewReportPage() {
     }
     
     if (!authLoading && userProfile?.account) {
+      const fetchReport = async () => {
+        if (!userProfile?.account) return;
+        
+        setIsLoading(true);
+        setError(null);
+        
+        try {
+          const fetchedReport = await getReportById(reportId, userProfile.account);
+          setReport(fetchedReport);
+        } catch (error) {
+          console.error("Failed to fetch report:", error);
+          setError("Failed to load report. Please try again.");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
       fetchReport();
     }
-  }, [reportId, userProfile?.account, authLoading, fetchReport]);
-  
-  const fetchReport = async () => {
-    if (!userProfile?.account) return;
-    
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const fetchedReport = await getReportById(reportId, userProfile.account);
-      setReport(fetchedReport);
-    } catch (error) {
-      console.error("Failed to fetch report:", error);
-      setError("Failed to load report. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [reportId, userProfile?.account, authLoading]);
   
   const handleExportPdf = async () => {
     if (!report?.htmlContent) {

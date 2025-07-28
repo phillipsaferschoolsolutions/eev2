@@ -1,7 +1,7 @@
 // src/components/maps/CampusMap.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GoogleMap, useLoadScript, Marker, InfoWindow, Polyline } from '@react-google-maps/api';
 import { useAuth } from '@/context/auth-context';
 import { getPOIsForAccount, savePOI, getRoutesForAccount } from '@/services/mapService';

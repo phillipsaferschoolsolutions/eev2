@@ -94,7 +94,7 @@ export default function TemplateManagementPage() {
   const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
 
   // Function to fetch templates
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     if (!userProfile?.account) return;
 
     setIsLoadingTemplates(true);
@@ -111,7 +111,7 @@ export default function TemplateManagementPage() {
     } finally {
       setIsLoadingTemplates(false);
     }
-  };
+  }, [userProfile?.account, toast]);
 
   // Fetch templates when the component mounts
   useEffect(() => {

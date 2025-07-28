@@ -194,7 +194,7 @@ export function AuthForm() {
           });
           recaptchaVerifierRef.current.render().catch((renderErr: unknown) => {
              console.error("Recaptcha render error inside useEffect:", renderErr);
-             setError("Failed to render reCAPTCHA. Please refresh or try again later.");
+} catch {
              resetRecaptcha(); 
           });
         } catch (initErr: unknown) {
@@ -264,7 +264,7 @@ export function AuthForm() {
       const firebaseError = err as { code?: string; message?: string };
       if (firebaseError.code === 'auth/account-exists-with-different-credential') {
         setError(
-          'An account already exists with the same email address but different sign-in credentials. Try signing in using a method you\'ve used before.'
+          'An account already exists with the same email address but different sign-in credentials. Try signing in using a method you&apos;ve used before.'
         );
         toast({
           variant: 'destructive',
@@ -326,7 +326,7 @@ export function AuthForm() {
       otpForm.reset();
       resetRecaptcha();
     } catch (err: unknown) {
-      const firebaseError = err as { code?: string; message?: string };
+      const firebaseError = error as { code?: string; message?: string };
       setError(firebaseError.message || 'Failed to verify OTP.');
       toast({ variant: "destructive", title: "OTP Verification Failed", description: firebaseError.message });
     } finally {

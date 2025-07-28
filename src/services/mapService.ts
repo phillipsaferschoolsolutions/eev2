@@ -2,7 +2,6 @@
 'use client';
 
 import { auth, firestore } from '@/lib/firebase';
-import type { User } from 'firebase/auth';
 import type { PointOfInterest, MapSettings, ReunificationRoute } from '@/types/Map';
 import {
   collection,

@@ -147,10 +147,12 @@ export async function getLastCompletions(
 
   console.log("Calling getCompletedAssignments API at:", url);
   try {
-    const result = await authedFetch<CompletedAssignmentSummary[] | undefined>(url, {}, accountName);
+    const result = await authedFetch<CompletedAssignmentSummary[] | undefined>(url, {
+      method: 'GET',
+    }, accountName);
     console.log("Completed Assignments API response:", result);
     return result || null;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in getLastCompletions:", error);
     return null;
   }

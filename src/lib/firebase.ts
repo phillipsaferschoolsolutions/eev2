@@ -17,13 +17,13 @@ const firebaseConfig = {
 
 let app: FirebaseApp;
 // eslint-disable-next-line prefer-const
-let auth: Auth;
+const auth: Auth;
 // eslint-disable-next-line prefer-const
-let firestore: Firestore;
+const firestore: Firestore;
 // eslint-disable-next-line prefer-const
-let functions: Functions;
+const functions: Functions;
 // eslint-disable-next-line prefer-const
-let storage: FirebaseStorage; // Added
+const storage: FirebaseStorage; // Added
 
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);
@@ -31,10 +31,10 @@ if (getApps().length === 0) {
   app = getApps()[0]!;
 }
 
-auth = getAuth(app);
-firestore = getFirestore(app);
-functions = getFunctions(app);
-storage = getStorage(app); // Initialized
+const auth = getAuth(app);
+const firestore = getFirestore(app);
+const functions = getFunctions(app);
+const storage = getStorage(app); // Initialized
 
 // Check if all required environment variables are set
 // This is more of a developer-time check; consider more robust checks for production

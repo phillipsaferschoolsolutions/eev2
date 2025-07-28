@@ -1,4 +1,3 @@
-
 // src/services/resourceService.ts
 'use client';
 
@@ -108,7 +107,9 @@ export async function uploadResourceDocument(formData: FormData, account: string
  * @param account The account ID to filter resources by.
  */
 export async function getResourceDocuments(account: string): Promise<ResourceDocument[]> {
-  const result = await authedFetch<ResourceDocument[] | undefined>(`${RESOURCES_BASE_URL}/`, {}, account);
+  const result = await authedFetch<ResourceDocument[] | undefined>(`${RESOURCES_BASE_URL}/`, {
+    method: 'GET',
+  }, account);
   return result || [];
 }
 

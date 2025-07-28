@@ -168,7 +168,6 @@ export async function exportToDocx(htmlContent: string, fileName: string = 'safe
     // 3. Return the DOCX file for download
     
     // For now, we'll just show an alert
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     alert("DOCX export functionality is under development. Please use PDF export for now.");
     
     // In the future, this might look like:
@@ -236,14 +235,14 @@ export async function saveReport(
  * @param accountName The account ID.
  * @returns A promise that resolves with an array of saved report metadata.
  */
-export async function getSavedReports(accountName: string): Promise<any[]> {
+export async function getSavedReports(accountName: string): Promise<unknown[]> {
   if (!accountName) {
     throw new Error("Account name is required to fetch saved reports.");
   }
 
   const REPORT_STUDIO_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/reportstudio';
   
-  const result = await authedFetch<any[]>(`${REPORT_STUDIO_BASE_URL}/reports`, {
+  const result = await authedFetch<unknown[]>(`${REPORT_STUDIO_BASE_URL}/reports`, {
     method: 'GET',
   }, accountName);
 
@@ -256,14 +255,14 @@ export async function getSavedReports(accountName: string): Promise<any[]> {
  * @param accountName The account ID.
  * @returns A promise that resolves with the report data.
  */
-export async function getReportById(reportId: string, accountName: string): Promise<any> {
+export async function getReportById(reportId: string, accountName: string): Promise<unknown> {
   if (!reportId || !accountName) {
     throw new Error("Report ID and account name are required to fetch a report.");
   }
 
   const REPORT_STUDIO_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/reportstudio';
   
-  const result = await authedFetch<any>(`${REPORT_STUDIO_BASE_URL}/reports/${reportId}`, {
+  const result = await authedFetch<unknown>(`${REPORT_STUDIO_BASE_URL}/reports/${reportId}`, {
     method: 'GET',
   }, accountName);
 
@@ -305,7 +304,7 @@ export async function getPromptSettings(accountName: string): Promise<PromptSett
   try {
     const result = await authedFetch<PromptSettings>(`${REPORT_STUDIO_BASE_URL}/prompt-settings`, {
       method: 'GET',
-    }, accountName);
+    });
     
     return result;
   } catch (error) {
@@ -330,7 +329,7 @@ export async function savePromptSettings(accountName: string, settings: PromptSe
   const result = await authedFetch<{ message: string }>(`${REPORT_STUDIO_BASE_URL}/prompt-settings`, {
     method: 'POST',
     body: JSON.stringify(settings),
-  }, accountName);
+  });
 
   return result;
 }

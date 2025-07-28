@@ -60,7 +60,7 @@ export default function PromptSettingsPage() {
   const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
   
   // Function to fetch prompt settings
-  const fetchPromptSettings = async () => {
+  const fetchPromptSettings = useCallback(async () => {
     if (!userProfile?.account) return;
     
     setIsLoading(true);
@@ -78,7 +78,7 @@ export default function PromptSettingsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userProfile?.account]);
   
   // Fetch prompt settings when the component mounts
   useEffect(() => {

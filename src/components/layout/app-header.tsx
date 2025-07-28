@@ -26,7 +26,7 @@ import type { District } from "@/types/Admin";
 import { 
   Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check, Menu,
   LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon, Settings, FolderKanban, FileText, Zap, // Added Zap
- Thermometer, AlertCircle, MapPin as LocationIcon, ListTodo, HardDrive
+ ListTodo, HardDrive
 } from "lucide-react";
 
 
@@ -152,7 +152,7 @@ export function AppHeader({ navItems }: AppHeaderProps) {
       await signOut(auth);
       toast({ title: "Logged Out" });
       router.push('/auth');
-    } catch (error: any) {
+      toast({ variant: "destructive", title: "Logout Failed", description: error instanceof Error ? error.message : "Logout failed" });
       toast({ variant: "destructive", title: "Logout Failed", description: error.message });
     }
   };
@@ -210,7 +210,7 @@ export function AppHeader({ navItems }: AppHeaderProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64 max-h-[70vh] overflow-y-auto">
             {user ? (
-              <>
+              <div>
                 <DropdownMenuLabel>
                   <div>{userProfile?.displayName || user.email}</div>
                   {userProfile?.account && !isSuperAdmin && <div className="text-xs text-muted-foreground font-normal">Account: {userProfile.account}</div>}
@@ -222,7 +222,7 @@ export function AppHeader({ navItems }: AppHeaderProps) {
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                   <LogOutIcon className="mr-2 h-4 w-4" /> Log out
                 </DropdownMenuItem>
-              </>
+              </div>
             ) : (
               <>
                 <DropdownMenuLabel>Guest</DropdownMenuLabel>

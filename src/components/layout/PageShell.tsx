@@ -42,11 +42,11 @@ export function PageShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
 
-  // Define the roles that can see the admin link
-  const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
-  
   // Dynamically create the nav items based on the user's role
   const mainNavItems = React.useMemo(() => {
+    // Define the roles that can see the admin link
+    const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
+    
     const navItems = [...baseNavItems];
     if (userProfile && ADMIN_ROLES.includes(userProfile.permission)) {
       // Add the Admin link if the user has an admin role
@@ -54,7 +54,7 @@ export function PageShell({ children }: { children: React.ReactNode }) {
     }
     // You can add other role-based links here as well
     return navItems;
-  }, [userProfile, ADMIN_ROLES]);
+  }, [userProfile]);
 
   // Determine if we should show animated backgrounds based on theme
   const showAnimatedBackground = React.useMemo(() => {

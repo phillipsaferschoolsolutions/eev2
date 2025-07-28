@@ -1,4 +1,3 @@
-
 // src/services/drillTrackingService.ts
 'use client';
 
@@ -154,7 +153,7 @@ export async function getUpcomingDrills(accountId: string): Promise<DrillEvent[]
     }, accountId); // Pass accountId for the 'account' header
 
     return upcomingDrills;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Error fetching upcoming drills:", error);
     throw error; // Re-throw the error after logging
   }
@@ -169,4 +168,3 @@ export async function getUpcomingDrills(accountId: string): Promise<DrillEvent[]
 
 // export async function submitDrillCompletion(payload: any, accountId: string): Promise<any> { /* ... */ }
 // export async function getDrillCompletionsForEvent(eventId: string, accountId: string): Promise<any[]> { /* ... */ }
-

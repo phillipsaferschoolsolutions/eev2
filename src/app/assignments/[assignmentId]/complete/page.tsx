@@ -935,12 +935,12 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
         title: "Draft Saved Successfully",
         description: "Your progress has been saved.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to save draft:", error);
       toast({
         variant: "destructive",
         title: "Error Saving Draft",
-        description: error.message || "An unknown error occurred.",
+        description: error instanceof Error ? error.message : "An unknown error occurred.",
       });
     } finally {
       setIsSubmitting(false); // Re-enable buttons

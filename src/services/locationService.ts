@@ -100,7 +100,9 @@ export async function getLocationById(id: string, accountName: string): Promise<
   }
   
   try {
-    const result = await authedFetch<Location>(`${LOCATIONS_BASE_URL}/${id}`, {}, accountName);
+    const result = await authedFetch<Location>(`${LOCATIONS_BASE_URL}/${id}`, {
+      method: 'GET',
+    }, accountName);
     return result;
   } catch (error) {
     console.error(`Error fetching location ${id}:`, error);

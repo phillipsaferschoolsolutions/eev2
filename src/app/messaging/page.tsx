@@ -205,7 +205,7 @@ export default function MessagingPage() {
         return;
       }
     }
-
+        reject(error);
     if (newMessage.trim() || finalImageUrl) {
       try {
         await sendMessage(

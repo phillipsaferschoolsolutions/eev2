@@ -1,8 +1,7 @@
 // src/services/templateService.ts
 'use client';
 
-import { auth, firestore } from '@/lib/firebase';
-import type { User } from 'firebase/auth';
+import { firestore } from '@/lib/firebase';
 import {
   collection,
   doc,

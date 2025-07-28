@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
 import {
  getLastCompletions,
  getWeatherAndLocation,
@@ -84,7 +83,7 @@ interface WeatherForecast {
 
 
 export default function DashboardPage() {
- const { user, userProfile, customClaims, loading: authLoading, profileLoading, claimsLoading } = useAuth();
+ const { user, userProfile, loading: authLoading, profileLoading, claimsLoading } = useAuth();
 
 
  // Weather state
@@ -312,7 +311,7 @@ export default function DashboardPage() {
 
 
  // Function to get assignment name from either completion data or assignments list
- const getAssignmentName = (completion: CompletionItem): string => {
+ const getAssignmentName = useCallback((completion: CompletionItem): string => {
    // First check if assessmentName is directly in the completion data
    if (completion.data.assessmentName) {
      return completion.data.assessmentName;
@@ -336,7 +335,7 @@ export default function DashboardPage() {
   
    // If still not found, return a default
    return 'Unknown Assignment';
- };
+ }, [assignments, selectedAssignment]);
 
 
  // Calculate pagination

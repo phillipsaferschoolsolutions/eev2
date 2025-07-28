@@ -68,7 +68,7 @@ export interface AssignmentWithPermissions extends AssignmentField {
   completionTimeId?: string; // Ensure this is part of the type
 }
 
-interface CreateAssignmentPayload {
+interface CreateAssignmentPayload extends AssignmentField {
   assessmentName: string;
   assignmentType?: string;
   description?: string;
@@ -619,7 +619,7 @@ export async function getWeatherAndLocation(lat: number, lng: number, accountNam
     // Pass accountName to authedFetch for proper authentication
     const result = await authedFetch<WeatherLocationData | undefined>(`${WIDGETS_BASE_URL}/header/${lat}/${lng}`, {
         method: 'GET',
-    }, accountName);
+    });
     return result || null;
 }
 

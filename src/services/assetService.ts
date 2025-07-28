@@ -1,6 +1,5 @@
 
  import { auth, firestore } from '@/lib/firebase';
- import type { User } from 'firebase/auth';
 import type { Asset, CreateAssetPayload, UpdateAssetPayload } from '@/types/Asset';
  import {
    collection,
@@ -15,20 +14,6 @@ import type { Asset, CreateAssetPayload, UpdateAssetPayload } from '@/types/Asse
    orderBy,
    serverTimestamp,
  } from 'firebase/firestore';
-
-// --- Helper to get ID Token ---
-async function getIdToken(): Promise<string | null> {
-  const currentUser: User | null = auth.currentUser;
-  if (currentUser) {
-    try {
-      return await currentUser.getIdToken();
-    } catch (error) {
-      console.error("Error getting ID token:", error);
-      throw new Error("Could not get Firebase ID token.");
-    }
-  }
-  throw new Error("User not authenticated.");
-}
 
 
 /**
@@ -105,7 +90,7 @@ export async function createAsset(assetData: CreateAssetPayload & { account: str
     };
     
     // Remove the account field since we're using accountId
-    const { account: _, ...assetToSave } = newAsset;
+    const { account, ...assetToSave } = newAsset;
     
     // Filter out undefined values to prevent Firestore errors
     const cleanedAsset = Object.fromEntries(

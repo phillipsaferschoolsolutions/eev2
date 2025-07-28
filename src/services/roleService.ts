@@ -19,19 +19,6 @@ import type { Role, PermissionKey } from '@/types/Role';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { DEFAULT_ROLE_PERMISSIONS, SYSTEM_ROLES } from '@/types/Role';
 
-// --- Helper to get ID Token ---
-async function getIdToken(): Promise<string | null> {
-  const currentUser: User | null = auth.currentUser;
-  if (currentUser) {
-    try {
-      return await currentUser.getIdToken();
-    } catch (error) {
-      console.error("Error getting ID token:", error);
-      return null;
-    }
-  }
-  return null;
-}
 
 
 /**

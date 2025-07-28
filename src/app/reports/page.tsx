@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -14,7 +13,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { format, subDays } from "date-fns";
@@ -67,7 +65,7 @@ const formatDisplayDateShort = (dateString?: string | Date) => {
 const functions = getFunctions(); // Assuming default Firebase app initialization
 
 export default function ReportStudioPage() {
-  const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
+  const { userProfile, loading: authLoading, profileLoading } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -1094,4 +1092,3 @@ const SafetyPlansWidget = () => {
 };
 
 // ---------------- END: SafetyPlansWidget Component Code ----------------
-
