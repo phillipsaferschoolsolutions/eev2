@@ -983,7 +983,7 @@ export default function CompleteAssignmentPage() {
     }
     // Enhanced logging for debugging submission issues
     console.log("=== ASSIGNMENT SUBMISSION DEBUG START ===");
-    console.log("1. Current formResponses:", formResponses);
+    console.log("1. Current formResponses:", data);
     console.log("2. Current photoBank:", photoBank);
     console.log("3. Current comments:", comments);
     console.log("4. Assignment ID:", assignmentId);
