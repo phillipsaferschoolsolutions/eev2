@@ -981,6 +981,14 @@ export default function CompleteAssignmentPage() {
         toast({ variant: "destructive", title: "Submission Error", description: "Cannot submit, critical assignment or user account data missing." });
         return;
     }
+    // Enhanced logging for debugging submission issues
+    console.log("=== ASSIGNMENT SUBMISSION DEBUG START ===");
+    console.log("1. Current formResponses:", formResponses);
+    console.log("2. Current photoBank:", photoBank);
+    console.log("3. Current comments:", comments);
+    console.log("4. Assignment ID:", assignmentId);
+    console.log("5. User Profile Account:", userProfile?.account);
+    
     console.log("[DEBUG] Starting assignment submission...");
     console.log("[DEBUG] Form responses:", formResponses);
     console.log("[DEBUG] Photo bank:", photoBank);
@@ -1101,26 +1109,44 @@ export default function CompleteAssignmentPage() {
 
           console.log("[DEBUG] Adding file upload for question:", questionId, "File:", file.name);
         if (question.comment && data[`${question.id}_comment`]) {
-            commentsObject[question.id] = data[`${question.id}_comment`];
-        }
+      // Question responses - CRITICAL: Stringify the object
+      const contentJson = JSON.stringify(formResponses);
+      console.log("6. Stringified content being sent:", contentJson);
+      formData.append('content', contentJson);
       
       // Log all FormData entries for debugging
       console.log("[DEBUG] FormData entries:");
       for (const [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(`  ${key}: [File] ${value.name} (${value.size} bytes)`);
+      // Comments - CRITICAL: Stringify the object
+      const commentsJson = JSON.stringify(comments);
+      console.log("7. Stringified comments being sent:", commentsJson);
+      formData.append('commentsData', commentsJson);
         } else {
-          console.log(`  ${key}:`, value);
-        }
+      // Photo bank data - CRITICAL: Stringify the object
+      const photoBankJson = JSON.stringify(photoBank);
+      console.log("8. Stringified photoBank being sent:", photoBankJson);
+      formData.append('syncPhotoLinks', photoBankJson);
       }
     });
     formDataForSubmission.append('assignmentId', assignment.id);
       console.log("[DEBUG] Submission result:", result);
+          console.log(`9. Adding file for question ${questionId}:`, file.name);
     formDataForSubmission.append('answers', JSON.stringify(answersObject));
     formDataForSubmission.append('comments', JSON.stringify(commentsObject));
     formDataForSubmission.append('photoLinks', JSON.stringify(photoLinksForSync));
     formDataForSubmission.append('audioNotes', JSON.stringify(finalAudioNotesForSubmission));
+      // Log all FormData entries for debugging
+      console.log("10. All FormData entries:");
+      for (const [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`  ${key}: [File] ${value.name} (${value.size} bytes)`);
+        } else {
+          console.log(`  ${key}: ${value}`);
+        }
+      }
+      
     formDataForSubmission.append('userEmail', user.email);
+      console.log("11. Submission result:", result);
     formDataForSubmission.append('account', userProfile.account);
 
     try {
@@ -1134,6 +1160,7 @@ export default function CompleteAssignmentPage() {
             router.push('/assignments');
         } else {
       console.log("[DEBUG] Full error object:", error);
+      console.log("12. Full error object:", error);
             throw new Error(result.error || "Submission failed");
         }
     } catch (error) {
@@ -1142,6 +1169,7 @@ export default function CompleteAssignmentPage() {
         toast({ variant: "destructive", title: "Submission Failed", description: errorMessage });
     } finally {
         setIsSubmitting(false);
+      console.log("=== ASSIGNMENT SUBMISSION DEBUG END ===");
     }
   };
 

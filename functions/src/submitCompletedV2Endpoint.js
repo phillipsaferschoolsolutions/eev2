@@ -118,11 +118,18 @@ module.exports = (assignmentsv2App) => {
         const parseJsonField = (fieldName, defaultValue = null) => {
             if (fields[fieldName] && typeof fields[fieldName] === 'string') {
                 try {
+                    functions.logger.info(`Parsing JSON field '${fieldName}' with value:`, fields[fieldName]);
                     return JSON.parse(fields[fieldName]);
                 } catch (e) {
                     functions.logger.warn(`Could not parse JSON for field ${fieldName} in /completed/:id:`, e, { value: fields[fieldName] });
                     return defaultValue; // Or throw an error if field is critical
                 }
+            } else {
+                functions.logger.warn(`Field '${fieldName}' is missing or not a string:`, { 
+                    exists: !!fields[fieldName], 
+                    type: typeof fields[fieldName],
+                    value: fields[fieldName] 
+                });
             }
             return defaultValue;
         };
@@ -146,6 +153,18 @@ module.exports = (assignmentsv2App) => {
             uploadedPhotos: {} // Initialize as empty object
         };
 
+        // CRITICAL DEBUG: Log what we received from the frontend
+        functions.logger.info("=== BACKEND SUBMISSION DEBUG START ===");
+        functions.logger.info("1. Raw fields received:", Object.keys(fields));
+        functions.logger.info("2. Raw files received:", Object.keys(files));
+        functions.logger.info("3. Content field raw value:", fields.content);
+        functions.logger.info("4. CommentsData field raw value:", fields.commentsData);
+        functions.logger.info("5. SyncPhotoLinks field raw value:", fields.syncPhotoLinks);
+        
+        // Log the parsed results
+        functions.logger.info("6. Parsed content:", finalAssignmentData.content);
+        functions.logger.info("7. Parsed commentsData:", finalAssignmentData.commentsData);
+        functions.logger.info("8. Parsed audioNotesData:", finalAssignmentData.audioNotesData);
         // Derive selectedSchool, completionDate, completionTime from content if IDs are present in schema
         const assignmentDocSnap = await db.collection("assignments").doc(assignmentId).get();
         if (assignmentDocSnap.exists) {
@@ -222,6 +241,15 @@ module.exports = (assignmentsv2App) => {
             finalAssignmentData.uploadedPhotos = combinedPhotos;
         }
 
+        // CRITICAL DEBUG: Log the final data structure before Firestore write
+        functions.logger.info("9. Final assignment data being written to Firestore:");
+        functions.logger.info("   - completedBy:", finalAssignmentData.completedBy);
+        functions.logger.info("   - locationName:", finalAssignmentData.locationName);
+        functions.logger.info("   - content keys:", Object.keys(finalAssignmentData.content || {}));
+        functions.logger.info("   - content values:", finalAssignmentData.content);
+        functions.logger.info("   - commentsData keys:", Object.keys(finalAssignmentData.commentsData || {}));
+        functions.logger.info("   - uploadedPhotos keys:", Object.keys(finalAssignmentData.uploadedPhotos || {}));
+        functions.logger.info("   - full finalAssignmentData:", JSON.stringify(finalAssignmentData, null, 2));
 
         // 6. Save to Firestore
         const subCollectionName = finalAssignmentData.status === "pending" ? "pending" : "completed";
@@ -254,6 +282,9 @@ module.exports = (assignmentsv2App) => {
             functions.logger.info(`New ${subCollectionName} assignment ${finalSavedDocumentId} created for ${assignmentId}.`);
         }
 
+        functions.logger.info("10. Successfully saved to Firestore with document ID:", finalSavedDocumentId);
+        functions.logger.info("=== BACKEND SUBMISSION DEBUG END ===");
+
         res.status(200).send({
             assignmentId: assignmentId, // The ID of the main assignment document
             documentId: finalSavedDocumentId, // The ID of the subcollection document (pending or completed)
@@ -262,7 +293,13 @@ module.exports = (assignmentsv2App) => {
 
     } catch (error) {
         // @ts-ignore
-        functions.logger.error("Error processing completed assignment /completed/:id :", error.message, { stack: error.stack });
+        functions.logger.error("=== BACKEND ERROR ===");
+        functions.logger.error("Error processing completed assignment /completed/:id:", error.message, { 
+            stack: error.stack,
+            assignmentId: assignmentId,
+            userEmail: userEmail,
+            account: account
+        });
         if (!res.headersSent) {
              // @ts-ignore
             res.status(500).send({ error: "Internal Server Error", details: error.message });
