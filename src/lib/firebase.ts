@@ -16,14 +16,6 @@ const firebaseConfig = {
 };
 
 let app: FirebaseApp;
-// eslint-disable-next-line prefer-const
-const auth: Auth;
-// eslint-disable-next-line prefer-const
-const firestore: Firestore;
-// eslint-disable-next-line prefer-const
-const functions: Functions;
-// eslint-disable-next-line prefer-const
-const storage: FirebaseStorage; // Added
 
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);

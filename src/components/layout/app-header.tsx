@@ -152,8 +152,8 @@ export function AppHeader({ navItems }: AppHeaderProps) {
       await signOut(auth);
       toast({ title: "Logged Out" });
       router.push('/auth');
+    } catch (error) {
       toast({ variant: "destructive", title: "Logout Failed", description: error instanceof Error ? error.message : "Logout failed" });
-      toast({ variant: "destructive", title: "Logout Failed", description: error.message });
     }
   };
 
