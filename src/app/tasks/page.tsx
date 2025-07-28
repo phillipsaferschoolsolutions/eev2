@@ -218,7 +218,7 @@ export default function TasksPage() {
   const openEditTaskDialog = (task: Task) => {
     setSelectedTask(task);
     setEditTaskData({
-      taskTitle: task.taskTitle || task.title || "",
+      taskTitle: (task as Record<string, unknown>).taskTitle || (task as Record<string, unknown>).title || "",
       description: task.description || "",
       priority: task.priority || "Medium",
       issueType: task.issueType || "",

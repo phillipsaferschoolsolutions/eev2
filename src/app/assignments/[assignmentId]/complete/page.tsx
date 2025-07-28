@@ -512,11 +512,11 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
             if (q.comment) defaultVals[`${q.id}_comment`] = '';
           });
           reset(defaultVals);
-        }
+        const errorMessage = error instanceof Error ? error.message : "Failed to save draft";
 
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-        setError(`Failed to load assignment data: ${errorMessage}`);
+          description: errorMessage,
         toast({ variant: "destructive", title: "Loading Failed", description: errorMessage });
       } finally {
         setIsLoading(false);
@@ -2014,6 +2014,6 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
           </ScrollArea>
         </DialogContent>
       </Dialog>
-    </div>
+    [assignment, userProfile?.account, toast]
   );
 }

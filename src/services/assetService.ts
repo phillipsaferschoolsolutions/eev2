@@ -90,7 +90,7 @@ export async function createAsset(assetData: CreateAssetPayload & { account: str
     };
     
     // Remove the account field since we're using accountId
-    const { account, ...assetToSave } = newAsset;
+    const { ...assetToSave } = newAsset;
     
     // Filter out undefined values to prevent Firestore errors
     const cleanedAsset = Object.fromEntries(

@@ -216,7 +216,11 @@ export function AppHeader({ navItems }: AppHeaderProps) {
                   {userProfile?.account && !isSuperAdmin && <div className="text-xs text-muted-foreground font-normal">Account: {userProfile.account}</div>}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {isSuperAdmin && <AccountSwitcher />}
+                {isSuperAdmin && (
+                  <DropdownMenuGroup>
+                    <AccountSwitcher />
+                  </DropdownMenuGroup>
+                )}
                 <DropdownMenuItem asChild><Link href="/settings" className="flex items-center w-full"><Settings className="mr-2 h-4 w-4" />Profile & Settings</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive focus:bg-destructive/10">

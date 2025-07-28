@@ -2,7 +2,6 @@
 'use client';
 
 import { auth, firestore } from '@/lib/firebase';
-import type { User } from 'firebase/auth';
 import { 
   collection, 
   doc, 

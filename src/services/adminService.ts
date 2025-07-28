@@ -55,7 +55,7 @@ async function authedFetch<T>(
   }
 
   if (response.status === 204) {
-    return undefined as any as T;
+    return undefined as T;
   }
   
   const textResponse = await response.text();
