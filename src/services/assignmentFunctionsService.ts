@@ -234,9 +234,8 @@ async function authedFetch<T>(
       if (accountName) {
         headers.set('account', accountName);
       }
-    } catch (error) {
+    } catch {
       // Silently handle missing account name for unauthenticated requests
-      console.error("Error fetching account name:", error);
     }
   }
 
