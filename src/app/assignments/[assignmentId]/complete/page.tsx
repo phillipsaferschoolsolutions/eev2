@@ -9,6 +9,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import Image from "next/image";
 import { format } from "date-fns";
+import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1168,22 +1169,16 @@ export default function CompleteAssignmentPage() {
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">{assignment.title}</h1>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleSaveDraft}
-              disabled={isSubmitting}
-            >
-              Save Draft
-            </Button>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{assignment.title}</h1>
+            <p className="text-muted-foreground mt-1">{assignment.description}</p>
           </div>
+          <Button variant="outline" onClick={() => router.push('/assessment-forms')} className="self-start">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Assignments
+          </Button>
         </div>
-        
-        {assignment.description && (
-          <p className="text-muted-foreground">{assignment.description}</p>
-        )}
 
         {/* Overall Progress */}
         <div className="space-y-2">
