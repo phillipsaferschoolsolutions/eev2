@@ -145,7 +145,7 @@ export default function CompleteAssignmentPage() {
   const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, getValues } = useForm<FormDataSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {},
-  });
+  }, [question.options, question.component, locations]);
 
   const allWatchedValues = watch();
 
@@ -798,7 +798,7 @@ export default function CompleteAssignmentPage() {
         } 
     }));
   };
-  
+
   const handleAudioEnded = (questionId: string) => {
      setAudioPlayerStates(prev => ({ 
         ...prev, 
@@ -941,7 +941,7 @@ export default function CompleteAssignmentPage() {
         title: "Draft Saved Successfully",
         description: "Your progress has been saved.",
       });
-    } catch (error: unknown) {
+    } catch (submitError) {
       console.error("Error saving draft:");
       toast({
         variant: "destructive",
