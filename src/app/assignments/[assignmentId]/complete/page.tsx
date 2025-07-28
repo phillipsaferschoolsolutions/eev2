@@ -9,7 +9,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import Image from "next/image";
 import { format } from "date-fns";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,6 +65,14 @@ interface AudioPlayerState {
   duration: number;
 }
 
+interface PhotoBankItem {
+  id: string;
+  url: string;
+  name: string;
+  uploadedAt: string;
+  assignedToQuestion?: string | null;
+}
+
 
 const UNASSIGNED_FILTER_VALUE = "n/a";
 const MAX_AUDIO_RECORDING_MS = 20000;
@@ -116,6 +124,11 @@ export default function CompleteAssignmentPage() {
   const [photoBankUploads, setPhotoBankUploads] = useState<{ [key: string]: { progress: number; error: string | null } }>({});
   const [isPhotoBankModalOpen, setIsPhotoBankModalOpen] = useState(false);
   const [activeQuestionIdForPhotoBank, setActiveQuestionIdForPhotoBank] = useState<string | null>(null);
+
+  const [photoBank, setPhotoBank] = useState<PhotoBankItem[]>([]);
+  const [isUploadingToBank, setIsUploadingToBank] = useState(false);
+  const [uploadingQuestionId, setUploadingQuestionId] = useState<string | null>(null);
+  const [comments, setComments] = useState<Record<string, string>>({});
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
@@ -446,6 +459,101 @@ export default function CompleteAssignmentPage() {
 
     setPhotoBankUploads(prev => ({ ...prev, ...newUploads }));
     e.target.value = ''; // Clear the input
+  };
+
+  // Function to delete a photo from the photo bank
+  const deletePhotoFromBank = (photoId: string) => {
+    setPhotoBank(prev => prev.filter(photo => photo.id !== photoId));
+    toast({
+      title: "Photo Removed",
+      description: "Photo has been removed from the photo bank."
+    });
+  };
+
+  // Function to upload photo directly to a specific question
+  const handleQuestionPhotoUpload = async (questionId: string, file: File) => {
+    if (!userProfile?.account) {
+      toast({
+        variant: "destructive",
+        title: "Upload Error",
+        description: "User account information is missing."
+      });
+      return;
+    }
+
+    setUploadingQuestionId(questionId);
+    
+    try {
+      const timestamp = Date.now();
+      const fileName = `${timestamp}_${file.name}`;
+      const filePath = `assignment_uploads/${userProfile.account}/${assignmentId}/${fileName}`;
+      
+      const storageReference = ref(storage, filePath);
+      const uploadTask = uploadBytesResumable(storageReference, file);
+      
+      await new Promise<void>((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            // Progress monitoring could be added here
+          },
+          (error) => {
+            console.error('Upload error:', error);
+            reject(error);
+          },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              
+              // Add to photo bank with question assignment
+              const newPhoto: PhotoBankItem = {
+                id: `photo-${timestamp}`,
+                url: downloadURL,
+                name: file.name,
+                uploadedAt: new Date().toISOString(),
+                assignedToQuestion: questionId
+              };
+              
+              setPhotoBank(prev => [...prev, newPhoto]);
+              
+              toast({
+                title: "Photo Uploaded",
+                description: `Photo uploaded and assigned to question.`
+              });
+              
+              resolve();
+            } catch (urlError) {
+              reject(urlError);
+            }
+          }
+        );
+      });
+    } catch (error) {
+      console.error('Error uploading photo to question:', error);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: "Failed to upload photo. Please try again."
+      });
+    } finally {
+      setUploadingQuestionId(null);
+    }
+  };
+
+  // Function to assign/unassign photos to questions
+  const assignPhotoToQuestion = (photoId: string, questionId: string | null) => {
+    setPhotoBank(prev => prev.map(photo => 
+      photo.id === photoId 
+        ? { ...photo, assignedToQuestion: questionId }
+        : photo
+    ));
+    
+    toast({
+      title: questionId ? "Photo Assigned" : "Photo Unassigned",
+      description: questionId 
+        ? "Photo has been assigned to the question."
+        : "Photo has been unassigned from questions."
+    });
   };
 
 
@@ -973,9 +1081,7 @@ export default function CompleteAssignmentPage() {
     }
   };
 
-
-
-
+  // Function to handle form submission
   const onSubmit: SubmitHandler<FormDataSchema> = async (data) => {
     if (!assignment || !userProfile?.account || !user || !user.email) {
         toast({ variant: "destructive", title: "Submission Error", description: "Cannot submit, critical assignment or user account data missing." });
@@ -990,7 +1096,7 @@ export default function CompleteAssignmentPage() {
     console.log("5. User Profile Account:", userProfile?.account);
     
     console.log("[DEBUG] Starting assignment submission...");
-    console.log("[DEBUG] Form responses:", formResponses);
+    console.log("[DEBUG] Form responses:", data);
     console.log("[DEBUG] Photo bank:", photoBank);
     console.log("[DEBUG] Comments:", comments);
     
@@ -1352,6 +1458,52 @@ export default function CompleteAssignmentPage() {
           )}
 
           {/* Uploaded Photos */}
+          {photoBank.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-medium">Photo Bank ({photoBank.length})</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {photoBank.map((photo) => (
+                  <div key={photo.id} className="relative group border rounded-lg overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => deletePhotoFromBank(photo.id)}
+                      className="absolute top-1 right-1 z-10 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Remove photo"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    <Image
+                      src={photo.url}
+                      alt={photo.name}
+                      width={150}
+                      height={150}
+                      className="w-full h-32 object-cover"
+                    />
+                    <div className="p-2">
+                      <p className="text-xs truncate mb-2">{photo.name}</p>
+                      <Select
+                        value={photo.assignedToQuestion || "unassigned"}
+                        onValueChange={(value) => assignPhotoToQuestion(photo.id, value === "unassigned" ? null : value)}
+                      >
+                        <SelectTrigger className="h-6 text-xs">
+                          <SelectValue placeholder="Assign to question" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          {assignment?.questions?.filter(q => q.photoUpload).map((question) => (
+                            <SelectItem key={question.id} value={question.id}>
+                              Q{assignment.questions.indexOf(question) + 1}: {question.label.substring(0, 30)}...
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {photoBankFiles.length > 0 && (
             <div className="space-y-2">
               <h4 className="font-medium">Available Photos ({photoBankFiles.length})</h4>
@@ -1856,6 +2008,70 @@ export default function CompleteAssignmentPage() {
                         </Button>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {question.photoUpload && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Photo Upload</Label>
+                    <div className="space-y-3">
+                      {/* Direct upload to question */}
+                      <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleQuestionPhotoUpload(question.id, file);
+                              e.target.value = ''; // Reset input
+                            }
+                          }}
+                          disabled={uploadingQuestionId === question.id}
+                          className="mb-2"
+                        />
+                        {uploadingQuestionId === question.id ? (
+                          <div className="flex items-center justify-center">
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            <span className="text-sm">Uploading...</span>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground text-center">
+                            Upload a photo directly to this question
+                          </p>
+                        )}
+                      </div>
+                      
+                      {/* Show assigned photos */}
+                      {photoBank.filter(photo => photo.assignedToQuestion === question.id).length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium mb-2">Assigned Photos:</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {photoBank
+                              .filter(photo => photo.assignedToQuestion === question.id)
+                              .map((photo) => (
+                                <div key={photo.id} className="relative group">
+                                  <Image
+                                    src={photo.url}
+                                    alt={photo.name}
+                                    width={100}
+                                    height={100}
+                                    className="w-full h-20 object-cover rounded border"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => assignPhotoToQuestion(photo.id, null)}
+                                    className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Unassign photo"
+                                  >
+                                    <X className="h-2 w-2" />
+                                  </button>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
