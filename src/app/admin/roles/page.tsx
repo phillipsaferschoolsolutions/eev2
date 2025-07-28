@@ -33,6 +33,7 @@ import {
   ArrowLeft, Shield, Plus, Edit, Trash2, 
   Search, AlertTriangle, Loader2, 
   Info, Copy, Key, LockIcon, UnlockIcon
+} from "lucide-react";
 import type { Role, PermissionKey } from "@/types/Role";
 import { SYSTEM_ROLES } from "@/types/Role";
 import Link from "next/link";
