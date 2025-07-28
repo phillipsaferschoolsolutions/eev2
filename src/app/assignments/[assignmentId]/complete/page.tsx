@@ -1011,7 +1011,7 @@ export default function CompleteAssignmentPage() {
     }
 
     const formDataForSubmission = new FormData();
-    const answersObject: Record<string, any> = {};
+    const answersObject: Record<string, string> = {};
     const photoLinksForSync: Record<string, string> = {};
     const commentsObject: Record<string, string> = {};
 
