@@ -137,6 +137,7 @@ export interface DailySnapshotResponse {
 export interface AssignmentWithCompletions extends AssignmentMetadata {
   completed: Array<Record<string, unknown>>;
 }
+
 export type AssignedToUserResponse = AssignmentWithCompletions[];
 
 export interface CompletedByMeItem {
