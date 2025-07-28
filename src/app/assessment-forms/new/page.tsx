@@ -172,6 +172,7 @@ export default function NewAssignmentPage() {
     }
 
     const payload = {
+      id: data.assessmentName,
       assessmentName: data.assessmentName,
       description: data.description || "",
       accountSubmittedFor: userProfile.account,
