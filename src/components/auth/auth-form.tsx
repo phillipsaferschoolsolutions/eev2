@@ -128,9 +128,9 @@ export function AuthForm() {
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
-  const loginPasswordTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const signupPasswordTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const signupConfirmPasswordTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const loginPasswordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const signupPasswordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const signupConfirmPasswordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loginForm = useForm<EmailPasswordFormData>({
     resolver: zodResolver(emailPasswordSchema),
@@ -367,7 +367,7 @@ export function AuthForm() {
     field: 'login' | 'signup' | 'confirm',
     currentVisibility: boolean,
     setVisibility: React.Dispatch<React.SetStateAction<boolean>>,
-    timerRef: React.MutableRefObject<NodeJS.Timeout | null>
+    timerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>
   ) => {
     if (currentVisibility) {
       setVisibility(false);
