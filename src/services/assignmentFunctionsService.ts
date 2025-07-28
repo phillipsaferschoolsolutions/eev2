@@ -171,23 +171,18 @@ const WIDGETS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/wi
 
 // --- Helper to get ID Token ---
 export async function getIdToken(): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const unsubscribe = auth.onAuthStateChanged(async (user) => {
-            unsubscribe(); // Unsubscribe to avoid memory leaks
-            if (user) {
-                try {
-                    const token = await user.getIdToken(true); // Force refresh
-                    resolve(token);
-                } catch (error) {
-                    console.error("Error getting ID token:", error);
-                    reject(new Error("Could not get Firebase ID token."));
-                }
-            } else {
-                // Reject if no authenticated user is found
-                reject(new Error("User not authenticated."));
-            }
-        });
-    });
+    try {
+        const user = auth.currentUser;
+        if (user) {
+            const token = await user.getIdToken(true); // Force refresh
+            return token;
+        } else {
+            throw new Error("User not authenticated.");
+        }
+    } catch (error) {
+        console.error("Error getting ID token:", error);
+        throw new Error("Could not get Firebase ID token.");
+    }
 }
 
 // --- Helper to get accountName from localStorage, with polling ---

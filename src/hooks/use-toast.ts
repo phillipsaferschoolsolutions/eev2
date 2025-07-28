@@ -72,7 +72,7 @@ const addToRemoveQueue = (toastId: string) => {
     })
   }, TOAST_REMOVE_DELAY)
 
-  toastTimeouts.set(toastId, timeout as unknown as number)
+  toastTimeouts.set(toastId, timeout)
 }
 
 export const reducer = (state: State, action: Action): State => {
