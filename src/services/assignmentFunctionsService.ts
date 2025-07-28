@@ -607,7 +607,7 @@ export async function getAssignmentsByLocation(payload: ByLocationPayload, accou
  * 6. GET /header/:lat/:lng (This now uses WIDGETS_BASE_URL)
  * Returns current weather + reverse-geolocation for user's location.
  */
-export async function getWeatherAndLocation(lat: number, lng: number, accountName: string): Promise<WeatherLocationData | null> {
+export async function getWeatherAndLocation(lat: number, lng: number): Promise<WeatherLocationData | null> {
     if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
         console.warn('Invalid lat/lng provided to getWeatherAndLocation. Aborting fetch.');
         return null;
@@ -620,7 +620,7 @@ export async function getWeatherAndLocation(lat: number, lng: number, accountNam
     // Pass accountName to authedFetch for proper authentication
     const result = await authedFetch<WeatherLocationData | undefined>(`${WIDGETS_BASE_URL}/header/${lat}/${lng}`, {
         method: 'GET',
-    });
+    }, accountName);
     return result || null;
 }
 
