@@ -201,6 +201,7 @@ export default function MessagingPage() {
           );
         });
       } catch (uploadProcessError) {
+        console.error("Upload process error:", uploadProcessError);
         setIsUploading(false);
         return;
       }

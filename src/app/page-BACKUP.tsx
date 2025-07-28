@@ -311,7 +311,7 @@ export default function DashboardPage() {
 
 
  // Function to get assignment name from either completion data or assignments list
- const getAssignmentName = useCallback((completion: CompletionItem): string => {
+ const _getAssignmentName = useCallback((completion: CompletionItem): string => {
    // First check if assessmentName is directly in the completion data
    if (completion.data.assessmentName) {
      return completion.data.assessmentName;

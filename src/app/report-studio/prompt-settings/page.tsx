@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
@@ -282,7 +282,7 @@ export default function PromptSettingsPage() {
         <AlertDescription className="text-blue-600 dark:text-blue-400">
           <ul className="list-disc list-inside space-y-1 mt-2">
             <li>Be specific about the tone, style, and format you want in the reports.</li>
-            <li>Include any specific terminology or phrasing that's important for your organization.</li>
+            <li>Include any specific terminology or phrasing that&apos;s important for your organization.</li>
             <li>Mention any compliance standards or regulations that should be referenced.</li>
             <li>Specify how to prioritize different types of safety concerns.</li>
           </ul>

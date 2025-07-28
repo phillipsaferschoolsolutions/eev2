@@ -344,7 +344,7 @@ export default function ReportStudioPage() {
               <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-xl font-semibold mb-2">No Reports Yet</h3>
               <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                Generate your first report by selecting an assessment completion and using our AI-powered report generator.
+                No completions found for the selected filters.
               </p>
               <Button onClick={() => router.push('/report-studio/generate')}>
                 Generate Your First Report

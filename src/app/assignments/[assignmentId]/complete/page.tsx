@@ -151,7 +151,7 @@ export default function CompleteAssignmentPage() {
 
   // A more robust parseOptions function that handles multiple possible data formats
 const parseOptions = (options: unknown): { label: string; value: string }[] => {
-  if (!options) return [];
+  }, [assignment]);
   
   // Case 1: It's already the correct format (array of objects with label/value)
   if (Array.isArray(options) && options.length > 0 && typeof options[0] === 'object' && options[0] !== null && 'label' in options[0]) {
@@ -936,7 +936,7 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
         description: "Your progress has been saved.",
       });
     } catch (error: unknown) {
-      console.error("Failed to save draft:", error);
+      console.error("Error saving draft:");
       toast({
         variant: "destructive",
         title: "Error Saving Draft",
