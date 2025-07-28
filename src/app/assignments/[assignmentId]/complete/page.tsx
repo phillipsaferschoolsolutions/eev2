@@ -154,10 +154,13 @@ export default function CompleteAssignmentPage() {
   const parseOptions = (options: OptionInput, question?: AssignmentQuestion): { label: string; value: string }[] => {
     // Special handling for schoolSelector - use locations instead of question.options
     if (question?.component === 'schoolSelector') {
-      return locations.map(location => ({
-        label: location.name,
-        value: location.id
-      }));
+      return locations.map(location => {
+        console.log('Location data:', location); // Debug log
+        return {
+          label: location.locationName || location.name || 'Unknown Location',
+          value: location.id
+        };
+      });
     }
     
     // Case 1: It's already an array of objects with label/value properties
