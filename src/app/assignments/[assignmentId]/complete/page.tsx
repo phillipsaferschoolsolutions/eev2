@@ -150,7 +150,8 @@ export default function CompleteAssignmentPage() {
   const allWatchedValues = watch();
 
   // A more robust parseOptions function that handles multiple possible data formats
-  const parseOptions = (options: string[]) => {
+  type OptionInput = string | string[] | { label: string; value?: string }[];
+  const parseOptions = (options: OptionInput): { label: string; value: string }[] => {
     // Case 1: It's already an array of objects with label/value properties
     if (Array.isArray(options) && options.length > 0 && typeof options[0] === 'object' && options[0] !== null && 'label' in options[0]) {
       return options.map(opt => ({ label: String(opt.label), value: String(opt.value || opt.label) }));
