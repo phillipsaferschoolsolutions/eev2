@@ -195,7 +195,13 @@ export default function RoleManagementPage() {
     } catch (error) {
       console.error("Failed to fetch roles:", error);
       setRolesError("Failed to load roles. Please try again.");
-      toast({ variant: "destructive", title: "Error Loading Roles", description: error instanceof Error error.message : "An unknown error occurred." });
+      toast({ 
+        variant: "destructive", 
+        title: "Error Loading Roles", 
+        description: error instanceof Error 
+                        ?  error.message 
+                        : "An unknown error occurred." 
+      });
     } finally {
       setIsLoadingRoles(false);
     }
