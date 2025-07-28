@@ -262,7 +262,7 @@ export default function ReportStudioPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Customize the AI prompts used for report generation. Tailor the AI's focus, tone, and analysis approach.
+              Customize the AI prompts used for report generation. Tailor the AI&lsquo;s focus, tone, and analysis approach.
             </p>
           </CardContent>
           <CardFooter>
