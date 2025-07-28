@@ -295,7 +295,7 @@ export function AuthForm() {
     setError(null);
     try {
       if (!recaptchaVerifierRef.current) {
-        if (recaptchaContainerRef.current && typeof window !== 'undefined' && (window as any).grecaptcha) {
+        if (recaptchaContainerRef.current && typeof window !== 'undefined' && window.grecaptcha) {
            recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
             'size': 'invisible', 'callback': () => {}, 'expired-callback': () => { resetRecaptcha(); }
           });
