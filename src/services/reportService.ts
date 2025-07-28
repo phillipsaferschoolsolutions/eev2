@@ -135,8 +135,6 @@ export async function exportToPdf(htmlContent: string, fileName: string = 'safet
   }
 
   try {
-    // Dynamic import to avoid SSR issues
-    const html2pdf = (await import('html2pdf.js')).default;
     
     const options = {
       margin: [15, 15, 15, 15],

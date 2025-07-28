@@ -263,7 +263,7 @@ export function AuthForm() {
       const firebaseError = err as { code?: string; message?: string };
       if (firebaseError.code === 'auth/account-exists-with-different-credential') {
         setError(
-          'An account already exists with the same email address but different sign-in credentials. Try signing in using a method you&apos;ve used before.'
+          'An account already exists with the same email address but different sign-in credentials. Try signing in using a method you have used before.'
         );
         toast({
           variant: 'destructive',
@@ -291,7 +291,7 @@ export function AuthForm() {
           });
           await recaptchaVerifierRef.current.render();
         } else {
-          // Remove unused response variable
+          console.log('reCAPTCHA solved');
         }
       }
       const result = await signInWithPhoneNumber(auth, data.phoneNumber, recaptchaVerifierRef.current);

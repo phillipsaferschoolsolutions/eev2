@@ -1,7 +1,7 @@
 // src/services/roleService.ts
 'use client';
 
-import { auth, firestore } from '@/lib/firebase';
+import { firestore } from '@/lib/firebase';
 import { 
   collection, 
   doc, 
@@ -15,7 +15,6 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import type { Role, PermissionKey } from '@/types/Role';
-import { DEFAULT_ROLE_PERMISSIONS, SYSTEM_ROLES } from '@/types/Role';
 
 
 

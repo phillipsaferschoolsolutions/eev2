@@ -96,7 +96,7 @@ async function authedFetch<T>(
   if (contentType && contentType.includes("application/json")) { 
     try {
       return JSON.parse(textResponse) as T; 
-    } catch (e) {
+    } catch {
       // If parsing fails but content-type was JSON, it's an issue.
       console.warn(`Failed to parse non-JSON response as JSON for ${fullUrl} despite content-type header. Content-Type: ${contentType || 'none'}. Response text: ${textResponse.substring(0, 100)}...`);
       throw new Error(`Malformed JSON response from ${fullUrl}.`);
