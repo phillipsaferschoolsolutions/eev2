@@ -1092,7 +1092,8 @@ export default function CompleteAssignmentPage() {
             commentsObject[question.id] = data[`${question.id}_comment`];
         }
     });
-
+    console.log("src/app/assignments/[assignmentId]/complete/page - line 1095 - assignmentId: ", assignmentId);
+    console.log("src/app/assignments/[assignmentId]/complete/page - line 1095 - assignment.id: ", assignment.id);
     formDataForSubmission.append('assignmentId', assignment.id);
     formDataForSubmission.append('answers', JSON.stringify(answersObject));
     formDataForSubmission.append('comments', JSON.stringify(commentsObject));
@@ -1102,7 +1103,11 @@ export default function CompleteAssignmentPage() {
     formDataForSubmission.append('account', userProfile.account);
 
     try {
-        const result = await submitCompletedAssignment(formDataForSubmission);
+        const result = await submitCompletedAssignment(
+          assignmentId, 
+          formDataForSubmission, 
+          userProfile.account
+        );
         if (result.success) {
             toast({ title: "Assignment Submitted Successfully", description: "Your assignment has been submitted." });
             router.push('/assignments');
