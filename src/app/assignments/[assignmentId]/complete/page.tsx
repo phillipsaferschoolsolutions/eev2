@@ -145,7 +145,7 @@ export default function CompleteAssignmentPage() {
   const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, getValues } = useForm<FormDataSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {},
-  }, [question.options, question.component, locations]);
+  });
 
   const allWatchedValues = watch();
 

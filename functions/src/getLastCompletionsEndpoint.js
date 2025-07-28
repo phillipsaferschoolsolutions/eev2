@@ -33,7 +33,10 @@ exports.getCompletedAssignments = functions.https.onCall(async (data, context) =
       });
     });
 
-    return completedAssignments;
+    return {
+      status: 'success',
+      data: completedAssignments
+    };
 
   } catch (error) {
     console.error('Error fetching completed assignments:', error);
