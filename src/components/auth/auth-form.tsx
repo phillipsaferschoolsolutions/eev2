@@ -194,7 +194,6 @@ export function AuthForm() {
           });
           recaptchaVerifierRef.current.render().catch((renderErr: unknown) => {
              console.error("Recaptcha render error inside useEffect:", renderErr);
-} catch {
              resetRecaptcha(); 
           });
         } catch (initErr: unknown) {
@@ -300,8 +299,7 @@ export function AuthForm() {
       setPhoneStep('otp');
       phoneForm.reset();
       toast({ title: "OTP Sent", description: "Please check your phone for the verification code." });
-    } catch (err: unknown)
-       {
+    } catch (err: unknown) {
       const firebaseError = err as { code?: string; message?: string };
       setError(firebaseError.message || 'Failed to send OTP.');
       toast({ variant: "destructive", title: "OTP Error", description: firebaseError.message });
