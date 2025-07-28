@@ -54,7 +54,6 @@ import {
 import { formatDisplayDateShort } from "@/lib/utils";
 import Link from "next/link";
 import Image from "next/image";
-import { usePersistedState } from "@/hooks/use-persisted-state";
 
 interface CompletionItem {
   id: string;
