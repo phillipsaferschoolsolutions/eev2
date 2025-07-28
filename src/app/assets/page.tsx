@@ -1094,7 +1094,7 @@ export default function AssetsPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Asset</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete "{selectedAsset.name}"? This action cannot be undone.
+                Are you sure you want to delete &quot;{selectedAsset.name}&quot;? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
