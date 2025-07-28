@@ -277,6 +277,7 @@ export default function ReportStudioPage() {
       <Card>
         <CardHeader>
           <CardTitle>Report Viewer</CardTitle>
+          <CardDescription>
               Each theme has been carefully designed with complementary color palettes and contrasting accent colors for the logo,
             View and manage your safety assessment reports
           </CardDescription>
