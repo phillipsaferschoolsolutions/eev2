@@ -66,6 +66,7 @@ async function authedFetch<T>(
     try {
       errorData = await response.json();
     } catch (e) {
+      console.log(`Raw error: ${e}`);
       errorData = { message: response.statusText || `HTTP error ${response.status}` };
     }
     console.error(`API Error ${response.status} for ${fullUrl} (resourceService):`, errorData);
