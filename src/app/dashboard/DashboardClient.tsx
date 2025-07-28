@@ -365,8 +365,12 @@ export default function DashboardPage() {
           console.error("Error fetching last completions:", err);
           setCompletionsError("Could not load recent completions");
           setLastCompletions([]);
+          setLastCompletions([]);
         })
         .finally(() => setCompletionsLoading(false));
+    } else {
+      setCompletionsLoading(false);
+      setLastCompletions([]);
     }
   }, [userProfile?.account, authLoading, profileLoading, selectedAssignment, selectedSchool, selectedPeriod, setCurrentPage]);
 

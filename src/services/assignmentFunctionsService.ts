@@ -551,17 +551,15 @@ export async function getLastCompletions(
   const url = `${WIDGETS_BASE_URL}/completed-assignments?${params.toString()}`;
 
   try {
-    const response = await authedFetch<{ status: string; data: Record<string, unknown>[] }>(url, {
-    }
-    )
     const result = await authedFetch<{ status: string; data: Record<string, unknown>[] }>(url, {
+      method: 'GET',
     }, accountId);
 
     // IMPORTANT: Access the .data property from the response object
-    if (response && response.status === 'success' && Array.isArray(response.data)) {
-      return response.data;
+    if (result && result.status === 'success' && Array.isArray(result.data)) {
+      return result.data;
     } else {
-      console.warn("getLastCompletions returned an unexpected response format or status:", response);
+      console.warn("getLastCompletions returned an unexpected response format or status:", result);
       return [];
     }
   } catch (error) {
