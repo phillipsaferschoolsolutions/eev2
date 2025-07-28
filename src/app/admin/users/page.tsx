@@ -58,7 +58,7 @@ export default function UserManagementPage() {
     if (hasAccess) {
       setIsLoadingUsers(true);
       setError(null);
-      getUsers(currentPage, itemsPerPage)
+      getUsers(currentPage, itemsPerPage ?? 10)
         .then(data => {
           setUsers(data.users || []);
           setTotalPages(data.totalPages || 0);
