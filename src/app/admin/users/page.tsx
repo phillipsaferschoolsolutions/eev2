@@ -47,6 +47,7 @@ export default function UserManagementPage() {
   
   // --- Permission Change State ---
   const [permissionChange, setPermissionChange] = useState<{ userId: string; newPermission: string; userEmail: string; } | null>(null);
+  const [signature, setSignature] = useState("");
 
   // Check if user has permission to manage users
   const hasAccess = !authLoading && (
