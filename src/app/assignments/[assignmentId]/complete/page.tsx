@@ -1749,7 +1749,7 @@ export default function CompleteAssignmentPage() {
                           ) : (
                             locations.map((location) => (
                               <SelectItem key={location.id} value={location.id}>
-                                {location.name}
+                                {location.locationName}
                               </SelectItem>
                             ))
                           )}
