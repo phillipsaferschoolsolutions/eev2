@@ -500,8 +500,8 @@ export default function CompleteAssignmentPage() {
           reset(draftData.formValues || {});
 
           // Restore uploaded file details and audio notes from the draft
-          setUploadedFileDetails(draftData.uploadedFileDetails || {});
-          setAudioNotes(draftData.audioNotes || {});
+          setUploadedFileDetails(draftData.uploadedFileDetails || {} as { [questionId: string]: UploadedFileDetail | null });
+          setAudioNotes(draftData.audioNotes || {} as { [questionId: string]: AudioNoteDetail | null });
 
         } else {
           // If no draft exists, set up the form with default values
