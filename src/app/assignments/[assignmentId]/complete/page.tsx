@@ -150,25 +150,25 @@ export default function CompleteAssignmentPage() {
   const allWatchedValues = watch();
 
   // A more robust parseOptions function that handles multiple possible data formats
-const parseOptions = (options: unknown): { label: string; value: string }[] => {
-  // Case 1: It's already the correct format (array of objects with label/value)
-  if (Array.isArray(options) && options.length > 0 && typeof options[0] === 'object' && options[0] !== null && 'label' in options[0]) {
-    return options.map(opt => ({ label: String(opt.label), value: String(opt.value || opt.label) }));
-  }
-  
-  // Case 2: It's a simple array of strings
-  if (Array.isArray(options)) {
-    return options.map(opt => ({ label: String(opt), value: String(opt) }));
-  }
-  
-  // Case 3: It's a semicolon-separated string
-  if (typeof options === 'string') {
-    return options.split(';').map(opt => opt.trim()).filter(Boolean).map(opt => ({ label: opt, value: opt }));
-  }
+  const parseOptions = (options: any) => {
+    // Case 1: It's already an array of objects with label/value properties
+    if (Array.isArray(options) && options.length > 0 && typeof options[0] === 'object' && options[0] !== null && 'label' in options[0]) {
+      return options.map(opt => ({ label: String(opt.label), value: String(opt.value || opt.label) }));
+    }
+    
+    // Case 2: It's a simple array of strings
+    if (Array.isArray(options)) {
+      return options.map(opt => ({ label: String(opt), value: String(opt) }));
+    }
+    
+    // Case 3: It's a semicolon-separated string
+    if (typeof options === 'string') {
+      return options.split(';').map(opt => opt.trim()).filter(Boolean).map(opt => ({ label: opt, value: opt }));
+    }
 
-  // Fallback if the format is unknown
-  return [];
-};
+    // Fallback if the format is unknown
+    return [];
+  };
 
 
   const shouldBeVisible = (conditionalConfig: AssignmentQuestion['conditional'] | undefined, currentQuestionId: string): boolean => {
