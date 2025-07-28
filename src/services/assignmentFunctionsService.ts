@@ -212,7 +212,8 @@ async function getAccountName(): Promise<string> {
 // --- Generic Fetch Wrapper ---
 async function authedFetch<T>(
   fullUrl: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  accountNameParam?: string
 ): Promise<T> {
   const token = await getIdToken();
   const headers = new Headers(options.headers || {});
@@ -221,14 +222,18 @@ async function authedFetch<T>(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  // Await accountName from localStorage with polling to prevent race conditions
-  try {
-    const accountName = await getAccountName();
-    if (accountName) {
-      headers.set('account', accountName);
+  // Prioritize passed accountName parameter, then fall back to localStorage
+  if (accountNameParam) {
+    headers.set('account', accountNameParam);
+  } else {
+    try {
+      const accountName = await getAccountName();
+      if (accountName) {
+        headers.set('account', accountName);
+      }
+    } catch (error) {
+      // Silently handle missing account name for unauthenticated requests
     }
-  } catch (error) {
-    // Silently handle missing account name for unauthenticated requests
   }
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
@@ -602,13 +607,13 @@ export async function getAssignmentsByLocation(payload: ByLocationPayload, accou
  * 6. GET /header/:lat/:lng (This now uses WIDGETS_BASE_URL)
  * Returns current weather + reverse-geolocation for user's location.
  */
-export async function getWeatherAndLocation(lat: number, lng: number): Promise<WeatherLocationData | null> {
+export async function getWeatherAndLocation(lat: number, lng: number, accountName?: string): Promise<WeatherLocationData | null> {
     if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
         console.warn('Invalid lat/lng provided to getWeatherAndLocation. Aborting fetch.');
         return null;
     }
-    // This function will get accountName from localStorage via authedFetch
-    const result = await authedFetch<WeatherLocationData | undefined>(`${WIDGETS_BASE_URL}/header/${lat}/${lng}`);
+    // Pass accountName to authedFetch for proper authentication
+    const result = await authedFetch<WeatherLocationData | undefined>(`${WIDGETS_BASE_URL}/header/${lat}/${lng}`, {}, accountName);
     return result || null;
 }
 
