@@ -1092,7 +1092,6 @@ export default function CompleteAssignmentPage() {
             commentsObject[question.id] = data[`${question.id}_comment`];
         }
     });
-    
     formDataForSubmission.append('assignmentId', assignment.assessmentName);
     formDataForSubmission.append('answers', JSON.stringify(answersObject));
     formDataForSubmission.append('comments', JSON.stringify(commentsObject));
