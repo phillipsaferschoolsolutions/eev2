@@ -58,7 +58,7 @@ export interface FullAssignment extends AssignmentField {
   questions: AssignmentQuestion[]; // Standardized to 'questions'
 }
 
-export interface AssignmentMetadata extends AssignmentField {}
+//  export interface AssignmentMetadata extends AssignmentField {}
 
 // Updated to reflect that 'questions' is an array of detailed AssignmentQuestion objects
 export interface AssignmentWithPermissions extends AssignmentField {
