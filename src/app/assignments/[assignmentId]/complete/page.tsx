@@ -1101,8 +1101,7 @@ export default function CompleteAssignmentPage() {
     formDataForSubmission.append('account', userProfile.account);
 
     try {
-      console.log("src/app/assignments/[assignmentId]/complete/page - line 1095 - assignmentId: ", assignmentId);
-    console.log("src/app/assignments/[assignmentId]/complete/page - line 1095 - assignment.id: ", assignment.id);
+      console.log("src/app/assignments/[assignmentId]/complete/page - line 1104 - assignmentId: ", assignmentId);
         const result = await submitCompletedAssignment(
           assignment.id, 
           formDataForSubmission, 
