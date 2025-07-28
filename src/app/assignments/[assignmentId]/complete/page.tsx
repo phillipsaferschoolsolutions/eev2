@@ -151,7 +151,15 @@ export default function CompleteAssignmentPage() {
 
   // A more robust parseOptions function that handles multiple possible data formats
   type OptionInput = string | string[] | { label: string; value?: string }[];
-  const parseOptions = (options: OptionInput): { label: string; value: string }[] => {
+  const parseOptions = (options: OptionInput, question?: AssignmentQuestion): { label: string; value: string }[] => {
+    // Special handling for schoolSelector - use locations instead of question.options
+    if (question?.component === 'schoolSelector') {
+      return locations.map(location => ({
+        label: location.name,
+        value: location.id
+      }));
+    }
+    
     // Case 1: It's already an array of objects with label/value properties
     if (
       Array.isArray(options) && 
@@ -202,7 +210,7 @@ export default function CompleteAssignmentPage() {
 
     if (triggerQuestion.component === 'checkbox') {
       if (triggerQuestion.options) {
-        const options = parseOptions(triggerQuestion.options);
+        const options = parseOptions(triggerQuestion.options, triggerQuestion);
         return options.some(opt =>
           conditionValues.includes(opt.value) && allWatchedValues[`${triggerFieldId}.${opt.value}`] === true
         );
@@ -261,7 +269,7 @@ export default function CompleteAssignmentPage() {
         return false;
       case 'checkbox':
         if (question.options) {
-          const options = parseOptions(question.options);
+          const options = parseOptions(question.options, question);
           return options.some(opt => formData[`${question.id}.${opt.value}`] === true);
         } else {
           return value === true;
@@ -269,7 +277,7 @@ export default function CompleteAssignmentPage() {
       case 'multiButtonSelect':
       case 'multiSelect':
         if (question.options) {
-          const options = parseOptions(question.options);
+          const options = parseOptions(question.options, question);
           return options.some(opt => formData[`${question.id}.${opt.value}`] === true);
         }
         return false;
@@ -278,7 +286,7 @@ export default function CompleteAssignmentPage() {
       default:
         return false;
     }
-  }, [uploadedFileDetails]);
+  }, [uploadedFileDetails, locations]);
 
   const overallProgress = useMemo(() => {
     const totalQuestions = conditionallyVisibleQuestions.length;
@@ -509,7 +517,7 @@ export default function CompleteAssignmentPage() {
                     period: currentPeriod
                 };
             } else if (q.component === 'checkbox' && q.options) {
-              parseOptions(q.options).forEach(opt => {
+              parseOptions(q.options, q).forEach(opt => {
                 defaultVals[`${q.id}.${opt.value}`] = false;
               });
             } else {
@@ -1031,15 +1039,15 @@ export default function CompleteAssignmentPage() {
         // Check if the component is a multi-option checkbox
         // Clean, single‐pass checkbox handler:
         if (question.component === 'checkbox' && question.options) {
-          const selectedOptions = parseOptions(question.options)
+          const selectedOptions = parseOptions(question.options, question)
             .filter(opt => data[`${question.id}.${opt.value}`] === true)
             .map(opt => opt.value);
 
           // Always send an array (even if empty)
           questionAnswer = selectedOptions;
-        } else if ((question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && Array.isArray(parseOptions(question.options))) {
+        } else if ((question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && Array.isArray(parseOptions(question.options, question))) {
              const selectedOptions: string[] = [];
-             parseOptions(question.options).forEach(opt => {
+             parseOptions(question.options, question).forEach(opt => {
                if (data[`${question.id}.${opt.value}`]) {
                    selectedOptions.push(opt.value);
                 }
@@ -1469,7 +1477,7 @@ export default function CompleteAssignmentPage() {
                           <SelectValue placeholder="Select an option" />
                         </SelectTrigger>
                         <SelectContent>
-                          {parseOptions(question.options).map((option) => (
+                          {parseOptions(question.options, question).map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>
@@ -1490,7 +1498,7 @@ export default function CompleteAssignmentPage() {
                         value={field.value}
                         className="space-y-2"
                       >
-                        {parseOptions(question.options).map((option) => (
+                        {parseOptions(question.options, question).map((option) => (
                           <div key={option.value} className="flex items-center space-x-2">
                             <RadioGroupItem value={option.value} id={`${question.id}-${option.value}`} />
                             <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
@@ -1507,7 +1515,7 @@ export default function CompleteAssignmentPage() {
                     control={control}
                     render={({ field }) => (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {parseOptions(question.options).map((option) => (
+                        {parseOptions(question.options, question).map((option) => (
                           <Button
                             key={option.value}
                             type="button"
@@ -1525,7 +1533,7 @@ export default function CompleteAssignmentPage() {
 
                 {question.component === 'multiButtonSelect' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {parseOptions(question.options).map((option) => (
+                    {parseOptions(question.options, question).map((option) => (
                       <Controller
                         key={option.value}
                         name={`${question.id}.${option.value}`}
@@ -1547,7 +1555,7 @@ export default function CompleteAssignmentPage() {
 
                 {question.component === 'multiSelect' && (
                   <div className="space-y-2">
-                    {parseOptions(question.options).map((option) => (
+                    {parseOptions(question.options, question).map((option) => (
                       <Controller
                         key={option.value}
                         name={`${question.id}.${option.value}`}
@@ -1569,7 +1577,7 @@ export default function CompleteAssignmentPage() {
 
                 {question.component === 'checkbox' && question.options && (
                   <div className="space-y-2">
-                    {parseOptions(question.options).map((option) => (
+                    {parseOptions(question.options, question).map((option) => (
                       <Controller
                         key={option.value}
                         name={`${question.id}.${option.value}`}
