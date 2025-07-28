@@ -1092,7 +1092,7 @@ export default function CompleteAssignmentPage() {
             commentsObject[question.id] = data[`${question.id}_comment`];
         }
     });
-    formDataForSubmission.append('assignmentId', assignment.assessmentName);
+    formDataForSubmission.append('assignmentId', assignment.id);
     formDataForSubmission.append('answers', JSON.stringify(answersObject));
     formDataForSubmission.append('comments', JSON.stringify(commentsObject));
     formDataForSubmission.append('photoLinks', JSON.stringify(photoLinksForSync));
@@ -1104,7 +1104,7 @@ export default function CompleteAssignmentPage() {
       console.log("src/app/assignments/[assignmentId]/complete/page - line 1095 - assignmentId: ", assignmentId);
     console.log("src/app/assignments/[assignmentId]/complete/page - line 1095 - assignment.id: ", assignment.id);
         const result = await submitCompletedAssignment(
-          assignment.assessmentName, 
+          assignment.id, 
           formDataForSubmission, 
           userProfile.account
         );
