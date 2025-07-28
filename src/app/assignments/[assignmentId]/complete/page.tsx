@@ -737,6 +737,7 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
             };
             const errorHandler = (e: Event) => {
               audio.removeEventListener('canplay', canPlayHandler);
+              audio.removeEventListener('error', errorHandler);
               const mediaError = (e.target as HTMLAudioElement).error;
               reject(new Error(`Error loading audio: ${mediaError?.message || 'Unknown error'}`));
             };
