@@ -67,7 +67,7 @@ async function authedFetch<T>(
       errorData = await response.json();
     } catch (e) {
       errorData = { message: response.statusText || `HTTP error ${response.status}` };
-      console.warn(`Failed to parse non-JSON response as JSON for ${fullUrl}. Content-Type: ${contentType || 'none'}. Response text: ${textResponse.substring(0,100)}...`);
+    }
     console.error(`API Error ${response.status} for ${fullUrl} (resourceService):`, errorData);
     throw new Error(`API Error: ${response.status} ${errorData?.message || response.statusText}`);
   }
@@ -80,14 +80,15 @@ async function authedFetch<T>(
   // If response is OK but not explicitly application/json, try parsing as JSON anyway.
   // This handles cases where the backend might return JSON without the correct header.
   if (response.ok && textResponse) {
- try {
- return JSON.parse(textResponse) as T;
- } catch {
+    try {
+      return JSON.parse(textResponse) as T;
+    } catch {
       console.warn(`Failed to parse non-JSON response as JSON for ${fullUrl}. Content-Type: ${contentType || 'none'}. Response text: ${textResponse.substring(0, 100)}...`);
     }
   }
- return [] as T; // Default to empty array or appropriate default if response wasn't JSON and couldn't be parsed.
+  return [] as T; // Default to empty array or appropriate default if response wasn't JSON and couldn't be parsed.
 }
+
 /**
  * Uploads a new resource document.
  * The backend should handle file storage and Firestore metadata creation.
