@@ -61,7 +61,7 @@ export default function TasksPage() {
   
   // State for edit task dialog
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<any | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   
   // State for delete task dialog
