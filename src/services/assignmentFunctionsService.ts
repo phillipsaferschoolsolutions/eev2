@@ -612,6 +612,7 @@ export async function getWeatherAndLocation(lat: number, lng: number, accountNam
         console.warn('Invalid lat/lng provided to getWeatherAndLocation. Aborting fetch.');
         return null;
     }
+    const accountName = await getAccountName().catch(() => "");
     if (!accountName || accountName.trim() === "") {
         console.warn('Account name is required for getWeatherAndLocation. Aborting fetch.');
         return null;

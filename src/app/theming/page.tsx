@@ -324,7 +324,7 @@ export default function ThemingPage() {
           <CardHeader>
               <CardTitle>Enhanced Theme Features</CardTitle>
               <CardDescription>
-                Choose your color scheme on the <Link href="/theming" className="text-primary underline hover:text-primary/80">Theming page</Link>.
+                Choose your color scheme on the theming page.
                 Cards and UI elements have a semi-transparent backdrop with blur effects that create depth and visual interest.
                 Each theme has been carefully designed with complementary color palettes and contrasting accent colors for the logo,
                 ensuring both aesthetic appeal and readability across light and dark modes.

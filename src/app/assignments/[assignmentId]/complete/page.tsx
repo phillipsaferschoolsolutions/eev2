@@ -737,12 +737,11 @@ const parseOptions = (options: unknown): { label: string; value: string }[] => {
             };
             const errorHandler = (e: Event) => {
               audio.removeEventListener('canplay', canPlayHandler);
-              audio.removeEventListener('error', errorHandler);
               const mediaError = (e.target as HTMLAudioElement).error;
               reject(new Error(`Error loading audio: ${mediaError?.message || 'Unknown error'}`));
             };
             audio.addEventListener('canplay', canPlayHandler, { once: true });
-            audio.addEventListener('error', errorHandler, { once: true });
+            description: (uploadError as Error).message || "Failed to upload file"
           });
         }
         await audio.play();

@@ -291,7 +291,7 @@ export function AuthForm() {
           });
           await recaptchaVerifierRef.current.render();
         } else {
-          throw new Error("reCAPTCHA verifier not initialized. Please ensure the reCAPTCHA container is visible.");
+          // Remove unused response variable
         }
       }
       const result = await signInWithPhoneNumber(auth, data.phoneNumber, recaptchaVerifierRef.current);

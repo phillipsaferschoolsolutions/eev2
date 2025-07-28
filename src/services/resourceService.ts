@@ -100,7 +100,7 @@ export async function uploadResourceDocument(formData: FormData, account: string
   return authedFetch<ResourceDocument>(`${RESOURCES_BASE_URL}/upload`, { // Changed to /upload
     method: 'POST',
     body: formData, // FormData automatically sets Content-Type to multipart/form-data
-  }, account);
+  }, account) as Promise<ResourceDocument>;
 }
 
 /**

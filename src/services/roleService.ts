@@ -15,7 +15,6 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import type { Role, PermissionKey } from '@/types/Role';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { DEFAULT_ROLE_PERMISSIONS, SYSTEM_ROLES } from '@/types/Role';
 
 
