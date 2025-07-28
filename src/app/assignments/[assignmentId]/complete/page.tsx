@@ -1086,7 +1086,7 @@ export default function CompleteAssignmentPage() {
             questionAnswer = data[question.id] ?? '';
         }
 
-        answersObject[question.id] = questionAnswer;
+        answersObject[question.id] = questionAnswer as string;
 
         if (question.comment && data[`${question.id}_comment`]) {
             commentsObject[question.id] = data[`${question.id}_comment`];
