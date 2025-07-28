@@ -233,19 +233,19 @@ export default function DashboardPage() {
 
   // Fetch weather data based on user's location
   useEffect(() => {
-    if (navigator.geolocation) {
+    if (!authLoading && !profileLoading && user && userProfile?.account && navigator.geolocation) {
       setWeatherLoading(true);
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           try {
             const { latitude, longitude } = position.coords;
-            const weatherData = await getWeatherAndLocation(latitude, longitude);
+            const weatherData = await getWeatherAndLocation(latitude, longitude, userProfile.account);
             setWeather(weatherData);
           } catch (error) {
             console.error("Error fetching weather:", error);
             setWeatherError("Could not load weather data");
           } finally {
-          const weatherData = await getWeatherAndLocation(latitude, longitude, userProfile.account);
+            setWeatherLoading(false);
           }
         },
         (error) => {
@@ -255,10 +255,16 @@ export default function DashboardPage() {
         }
       );
     } else {
-      setWeatherError("Geolocation not supported");
+      if (!authLoading && !profileLoading && !user) {
+        setWeatherError("Please log in to view weather data");
+      } else if (!authLoading && !profileLoading && user && !userProfile?.account) {
+        setWeatherError("Account information not available");
+      } else if (!navigator.geolocation) {
+        setWeatherError("Geolocation not supported");
+      }
       setWeatherLoading(false);
     }
-  }, []);
+  }, [authLoading, profileLoading, user, userProfile?.account]);
 
   // Fetch widget data
   useEffect(() => {
