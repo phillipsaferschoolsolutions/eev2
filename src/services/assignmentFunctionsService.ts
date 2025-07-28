@@ -236,6 +236,7 @@ async function authedFetch<T>(
       }
     } catch (error) {
       // Silently handle missing account name for unauthenticated requests
+      console.error("Error fetching account name:", error);
     }
   }
 
