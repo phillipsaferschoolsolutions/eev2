@@ -107,18 +107,3 @@ export async function switchUserAccount(newAccountName: string, currentAccountNa
     body: JSON.stringify(payload),
   }, currentAccountNameForHeader);
 }
-
-export async function switchUserAccount(newAccountName: string, currentAccountNameForHeader: string): Promise<SwitchAccountResponse> {
-  if (!newAccountName || newAccountName.trim() === "") {
-    throw new Error('New account NAME is required to switch accounts.');
-  }
-  if (!currentAccountNameForHeader || currentAccountNameForHeader.trim() === "") {
-    throw new Error('Current account name for request header is required for the switchUserAccount request.');
-  }
-  const payload: SwitchAccountPayload = { account: newAccountName };
-
-  return authedFetch<SwitchAccountResponse>(`${ADMIN_ACTIONS_BASE_URL}/districts`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  }, currentAccountNameForHeader);
-}
