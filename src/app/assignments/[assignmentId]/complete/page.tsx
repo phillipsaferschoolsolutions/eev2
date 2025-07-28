@@ -127,6 +127,7 @@ export default function CompleteAssignmentPage() {
 
   const [photoBank, setPhotoBank] = useState<PhotoBankItem[]>([]);
   const [isUploadingToBank, setIsUploadingToBank] = useState(false);
+  const [selectedPhotoModal, setSelectedPhotoModal] = useState<PhotoBankItem | null>(null);
   const [uploadingQuestionId, setUploadingQuestionId] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
 
@@ -2050,7 +2051,7 @@ export default function CompleteAssignmentPage() {
                             {photoBank
                               .filter(photo => photo.assignedToQuestion === question.id)
                               .map((photo) => (
-                                <div key={photo.id} className="relative group">
+                                <div className="aspect-square relative cursor-pointer" onClick={() => setSelectedPhotoModal(photo)}>
                                   <Image
                                     src={photo.url}
                                     alt={photo.name}
@@ -2058,15 +2059,19 @@ export default function CompleteAssignmentPage() {
                                     height={100}
                                     className="w-full h-20 object-cover rounded border"
                                   />
-                                  <button
-                                    type="button"
-                                    onClick={() => assignPhotoToQuestion(photo.id, null)}
-                                    className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title="Unassign photo"
-                                  >
-                                    <X className="h-2 w-2" />
-                                  </button>
                                 </div>
+                                {/* Always visible delete button */}
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  className="absolute top-1 right-1 h-6 w-6 shadow-md"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removePhotoFromBank(index);
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
                               ))}
                           </div>
                         </div>
@@ -2276,6 +2281,44 @@ export default function CompleteAssignmentPage() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Photo Modal */}
+      {selectedPhotoModal && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedPhotoModal(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center">
+            <Button
+              variant="outline"
+              size="icon"
+              className="absolute top-4 right-4 z-10 bg-background/80 hover:bg-background"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedPhotoModal(null);
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <Image
+              src={selectedPhotoModal.url}
+              alt={selectedPhotoModal.name}
+              width={800}
+              height={600}
+              className="max-w-full max-h-full object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div className="absolute bottom-4 left-4 bg-background/90 rounded-lg p-3">
+              <p className="font-medium">{selectedPhotoModal.name}</p>
+              {selectedPhotoModal.assignedToQuestion && (
+                <p className="text-sm text-muted-foreground">
+                  Assigned to: {assignment?.questions?.find(q => q.id === selectedPhotoModal.assignedToQuestion)?.label || 'Unknown Question'}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
