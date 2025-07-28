@@ -170,18 +170,18 @@ const ASSIGNMENTS_V2_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions
 const WIDGETS_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/widgets'; // Use this for weather
 
 // --- Helper to get ID Token ---
-export async function getIdToken(): Promise<string> {
+export async function getIdToken(): Promise<string | null> {
     try {
         const user = auth.currentUser;
         if (user) {
             const token = await user.getIdToken(); // Let Firebase manage token caching
             return token;
         } else {
-            throw new Error("User not authenticated.");
+            return null;
         }
     } catch (error) {
         console.error("Error getting ID token:", error);
-        throw new Error("Could not get Firebase ID token.");
+        return null;
     }
 }
 
@@ -214,16 +214,11 @@ async function authedFetch<T>(
   fullUrl: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = await getIdToken(); // Assumes getIdToken() is also present in the file
+  const token = await getIdToken();
   const headers = new Headers(options.headers || {});
 
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
-  } else {
-    // Only warn if it's not a call to the auth endpoint itself
-    if (!fullUrl.includes('/auth')) {
-        console.warn(`[CRITICAL] authedFetch: No Authorization token available for endpoint: ${fullUrl}.`);
-    }
   }
 
   // Await accountName from localStorage with polling to prevent race conditions
@@ -231,17 +226,9 @@ async function authedFetch<T>(
     const accountName = await getAccountName();
     if (accountName) {
       headers.set('account', accountName);
-    } else {
-      // Only warn if it's not a call to the auth endpoint itself
-      if (!fullUrl.includes('/auth')) {
-          console.warn(`[CRITICAL] authedFetch: 'account' header not found in localStorage for URL: ${fullUrl}.`);
-      }
     }
   } catch (error) {
-    // Only warn if it's not a call to the auth endpoint itself
-    if (!fullUrl.includes('/auth')) {
-        console.warn(`[CRITICAL] authedFetch: Failed to get account name for URL: ${fullUrl}. Error:`, error);
-    }
+    // Silently handle missing account name for unauthenticated requests
   }
 
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
