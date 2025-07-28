@@ -1007,12 +1007,9 @@ export default function CompleteAssignmentPage() {
                   try {
                       const url = await getDownloadURL(audioUploadTask.snapshot.ref);
                       setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, downloadURL: url, name: audioFileName, isUploading: false, uploadProgress: 100 }}));
-                      // Ensure this is populated correctly for submission
-                    const displayName = String(loc.locationName || '').trim();
-                    console.log(`[DEBUG] Rendering SelectItem for location: ${loc.id} DisplayName: "${displayName}"`);
                       finalAudioNotesForSubmission[questionId] = { name: audioFileName, url: url };
                       resolve();
-                        {displayName}
+                  } catch (getUrlError) {
                       console.error(`Failed to get audio download URL for ${questionId}:`, getUrlError);
                       setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, uploadError: (getUrlError as Error).message, isUploading: false }}));
                       reject(getUrlError);
