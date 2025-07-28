@@ -13,6 +13,41 @@ import { usePathname } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePersistedState } from "@/hooks/use-persisted-state";
+import {
+  Activity,
+  MapPin,
+  Thermometer,
+  Wind,
+  Droplets,
+  Eye,
+  Calendar,
+  Users,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle2, CheckSquare,
+  Clock,
+  Target,
+  Zap,
+  Sun,
+  CloudRain,
+  Cloud,
+  Snowflake,
+  Award,
+  ListChecks,
+  Bell,
+  ShieldAlert,
+  ChevronLeft,
+  ChevronRight,
+  Umbrella,
+  Sunrise,
+  Sunset,
+  Briefcase,
+  ServerIcon,
+  FolderKanban,
+  ListOrdered,
+  FilePlus2,
+  Edit
+} from "lucide-react";
 
 const sampleTemplates = [
   { id: "env1", name: "Environmental Safety Checklist", description: "General campus environment assessment.", icon: CheckSquare },
