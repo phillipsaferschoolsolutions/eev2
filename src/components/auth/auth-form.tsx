@@ -173,7 +173,7 @@ export function AuthForm() {
   const resetRecaptcha = () => {
     if (recaptchaVerifierRef.current) {
         const widgetId = (recaptchaVerifierRef.current as unknown as { widgetId: number }).widgetId;
-        if (typeof widgetId === 'number' && (window as any).grecaptcha && typeof (window as any).grecaptcha.reset === 'function') {
+        if (typeof widgetId === 'number' && window.grecaptcha && typeof window.grecaptcha.reset === 'function') {
             try {
                 window.grecaptcha.reset(widgetId);
             } catch (e) {
