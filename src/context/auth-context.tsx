@@ -143,6 +143,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setClaimsLoading(false);
         localStorage.removeItem('accountName');
         localStorage.removeItem('user'); // Also clear user if stored
+        
+        // Clear persisted dashboard settings on logout
+        localStorage.removeItem('dashboard_filter_assignment');
+        localStorage.removeItem('dashboard_filter_school');
+        localStorage.removeItem('dashboard_filter_period');
+        localStorage.removeItem('dashboard_completions_page');
+        localStorage.removeItem('dashboard_completions_items_per_page');
       }
     });
 

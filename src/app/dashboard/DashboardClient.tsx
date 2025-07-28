@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 import {
   getLastCompletions,
   getWeatherAndLocation,
@@ -120,13 +121,13 @@ export default function DashboardPage() {
   const [completionsError, setCompletionsError] = useState<string | null>(null);
 
   // Filter states for last completions
-  const [selectedAssignment, setSelectedAssignment] = useState<string>("all");
-  const [selectedSchool, setSelectedSchool] = useState<string>("all");
-  const [selectedPeriod, setSelectedPeriod] = useState<string>("last30days");
+  const [selectedAssignment, setSelectedAssignment] = usePersistedState('dashboard_filter_assignment', "all");
+  const [selectedSchool, setSelectedSchool] = usePersistedState('dashboard_filter_school', "all");
+  const [selectedPeriod, setSelectedPeriod] = usePersistedState('dashboard_filter_period', "last30days");
   
   // Pagination states
-  const [currentPage, setCurrentPage] = usePersistedState('dashboard-completions-current-page', 1);
-  const [itemsPerPage, setItemsPerPage] = usePersistedState('dashboard-completions-items-per-page', 5);
+  const [currentPage, setCurrentPage] = usePersistedState('dashboard_completions_page', 1);
+  const [itemsPerPage, setItemsPerPage] = usePersistedState('dashboard_completions_items_per_page', 5);
   
   // Assignments and locations for dropdowns
   const [assignments, setAssignments] = useState<AssignmentMetadata[]>([]);
