@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -132,7 +131,7 @@ export default function LocationManagement() {
   
   // State for pagination
   const [currentPage, setCurrentPage] = usePersistedState('admin-locations-current-page', 1);
-  const [itemsPerPage, setItemsPerPage] = usePersistedState('admin-locations-items-per-page', 10);
+  const [itemsPerPage] = usePersistedState('admin-locations-items-per-page', 10);
   
   // State for search
   const [searchTerm, setSearchTerm] = useState("");
@@ -188,7 +187,7 @@ export default function LocationManagement() {
     if (!authLoading && userProfile?.account) {
       fetchLocations();
     }
-  }, [userProfile?.account, authLoading]);
+  }, [userProfile?.account, authLoading, fetchLocations]);
   
   // Filter locations when search term changes
   useEffect(() => {

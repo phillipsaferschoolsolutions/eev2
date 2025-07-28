@@ -68,7 +68,7 @@ export default function UserManagementPage() {
         })
         .finally(() => setIsLoadingUsers(false));
     }
-  }, [userProfile, currentPage, itemsPerPage, hasAccess]);
+  }, [userProfile, currentPage, hasAccess]);
 
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(Number(value));

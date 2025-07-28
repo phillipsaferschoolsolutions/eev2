@@ -190,7 +190,7 @@ export default function RoleManagementPage() {
     if (!authLoading && userProfile?.account) {
       fetchRoles();
     }
-  }, [userProfile?.account, authLoading]);
+  }, [userProfile?.account, authLoading, fetchRoles]);
   
   // Filter roles when search term changes
   useEffect(() => {

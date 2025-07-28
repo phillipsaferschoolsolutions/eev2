@@ -14,33 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePersistedState } from "@/hooks/use-persisted-state";
 import {
-  Activity,
-  MapPin,
-  Thermometer,
-  Wind,
-  Droplets,
-  Eye,
-  Calendar,
-  Users,
-  TrendingUp,
   AlertTriangle,
-  CheckCircle2, CheckSquare,
-  Clock,
-  Target,
-  Zap,
-  Sun,
-  CloudRain,
-  Cloud,
-  Snowflake,
-  Award,
-  ListChecks,
-  Bell,
-  ShieldAlert,
-  ChevronLeft,
-  ChevronRight,
-  Umbrella,
-  Sunrise,
-  Sunset,
+  CheckSquare,
   Briefcase,
   ServerIcon,
   FolderKanban,
@@ -426,7 +401,7 @@ export default function AssessmentFormsPage() {
                 <FolderKanban className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-xl font-semibold mb-2">No Assignments Found For Account</h3>
                 <p className="text-muted-foreground mb-4">
-                  There are no assignments registered for account '{userProfile?.account || "current account"}'.
+                  There are no assignments registered for account &apos;{userProfile?.account || "current account"}&apos;.
                 </p>
               </div>
             )}
