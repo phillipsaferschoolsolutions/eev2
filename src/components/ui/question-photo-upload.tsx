@@ -1,4 +1,6 @@
-```tsx
+```
+tsx
+```
 "use client";
 
 import React, { useRef, useState, useCallback } from 'react';
@@ -298,4 +300,3 @@ export function QuestionPhotoUpload({
     </div>
   );
 }
-```
