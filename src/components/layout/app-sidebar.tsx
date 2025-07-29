@@ -178,4 +178,3 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
     </Sidebar>
   );
 }
-```
