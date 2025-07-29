@@ -555,6 +555,28 @@ export default function CompleteAssignmentPage() {
     });
   };
 
+  // Function to remove photo from photo bank
+  const removeFromPhotoBank = (photoId: string) => {
+    setPhotoBankFiles(prev => prev.filter(photo => photo.id !== photoId));
+    toast({
+      title: "Photo Removed",
+      description: "Photo has been removed from the photo bank."
+    });
+  };
+
+  // Function to unassign photo from question
+  const unassignPhotoFromQuestion = (questionId: string, photoId: string) => {
+    setPhotoBankFiles(prev => prev.map(photo => 
+      photo.id === photoId 
+        ? { ...photo, assignedToQuestion: null }
+        : photo
+    ));
+    
+    toast({
+      title: "Photo Unassigned",
+      description: "Photo has been unassigned from the question."
+    });
+  };
 
   useEffect(() => {
     if (!assignmentId) {
@@ -1398,30 +1420,6 @@ export default function CompleteAssignmentPage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          {/* Section Progress */}
-          {Object.keys(sectionProgress).length > 0 && (
-            <div className="space-y-3">
-              <h4 className="font-medium">Section Progress</h4>
-              {Object.entries(sectionProgress).map(([sectionName, subSections]) => (
-                <div key={sectionName} className="space-y-2">
-                  <h5 className="text-sm font-medium">
-                    {sectionName === 'Uncategorized' ? 'Unassigned' : sectionName}
-                  </h5>
-                  {Object.entries(subSections).map(([subSectionName, progress]) => (
-                    <div key={`${sectionName}-${subSectionName}`} className="ml-4 space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span>{subSectionName === 'General' ? 'Unassigned' : subSectionName}</span>
-                        <span>{progress.answered}/{progress.total} ({Math.round(progress.progress)}%)</span>
-                      </div>
-                      <ShadProgress value={progress.progress} className="h-2" />
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -1470,15 +1468,17 @@ export default function CompleteAssignmentPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {photoBankFiles.map((photo) => (
                   <div key={photo.id} className="relative group border rounded-lg overflow-hidden">
+                    {/* Delete button on hover */}
                     {/* Delete button - appears on hover */}
                     <button
                       type="button"
                       onClick={() => removeFromPhotoBank(photo.id)}
-                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10"
                       style={{ lineHeight: 1 }}
                     >
                       ×
                     </button>
+                    {/* Photo with click to enlarge */}
                     {/* Photo with click to enlarge */}
                     <Image
                       src={photo.url}
@@ -1487,9 +1487,9 @@ export default function CompleteAssignmentPage() {
                       height={120}
                       className="w-full h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity"
                       onClick={() => setModalPhoto({ url: photo.url, name: photo.name })}
-                    />
                     <div className="p-2">
                       <p className="text-xs truncate mb-2">{photo.name}</p>
+                      {/* Assignment dropdown */}
                       {/* Assignment dropdown */}
                       <Select
                         value={photo.assignedToQuestion || "unassigned"}
@@ -2043,21 +2043,9 @@ export default function CompleteAssignmentPage() {
                                     alt={photo.name}
                                     width={80}
                                     height={80}
-                                    className="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-90 transition-opacity"
+                                    className="w-16 h-16 object-cover rounded border cursor-pointer"
                                     onClick={() => setModalPhoto({ url: photo.url, name: photo.name })}
                                   />
-                                  {/* Delete button for assigned photos */}
-                                  <button
-                                    type="button"
-                                    onClick={() => unassignPhotoFromQuestion(question.id, photo.id)}
-                                    className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                    style={{ lineHeight: 1 }}
-                                  >
-                                    ×
-                                  </button>
-                                  <div className="mt-1">
-                                    <p className="text-xs font-medium">{photo.name}</p>
-                                  </div>
                                 </div>
                               ))}
                           </div>
@@ -2289,29 +2277,22 @@ export default function CompleteAssignmentPage() {
         </Dialog>
       )}
     </div>
-  );
-}
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
-          onClick={() => setModalPhoto(null)}
-        >
-          <div className="relative max-w-4xl max-h-4xl p-4">
-            <button
-              onClick={() => setModalPhoto(null)}
-              className="absolute top-2 right-2 bg-white text-black rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold"
-            >
-              ×
-            </button>
+      <Dialog open={!!modalPhoto} onOpenChange={() => setModalPhoto(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle>{modalPhoto?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="p-6 pt-0">
             <Image
-              src={modalPhoto.url}
-              alt={modalPhoto.name}
+              src={modalPhoto?.url || ''}
+              alt={modalPhoto?.name || ''}
               width={800}
               height={600}
-              className="max-w-full max-h-full object-contain"
+              className="w-full h-auto max-h-[70vh] object-contain rounded"
             />
-            <p className="text-white text-center mt-2">{modalPhoto.name}</p>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
