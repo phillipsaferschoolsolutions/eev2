@@ -59,7 +59,7 @@ export function QuestionPhotoUpload({
         return;
       }
 
-      const photoId = \`${questionId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const photoId = `${questionId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const photoUrl = URL.createObjectURL(file);
 
       const newPhoto: PhotoItem = {
