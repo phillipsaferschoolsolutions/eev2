@@ -1,5 +1,7 @@
 "use client";
 
+import { usePhotoBank } from '@/hooks/use-photo-bank';
+import { QuestionPhotoUpload } from '@/components/ui/question-photo-upload';
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
@@ -88,6 +90,9 @@ export default function CompleteAssignmentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [uploadProgress, setUploadProgress] = useState<{ [questionId: string]: number }>({});
+  // Photo bank state management
+  const photoBank = usePhotoBank();
+
   const [uploadedFileDetails, setUploadedFileDetails] = useState<{ [questionId: string]: UploadedFileDetail | null }>({});
   const [uploadErrors, setUploadErrors] = useState<{ [questionId: string]: string | null }>({});
   const [imagePreviewUrls, setImagePreviewUrls] = useState<{ [questionId: string]: string | null }>({});
@@ -1685,6 +1690,30 @@ export default function CompleteAssignmentPage() {
                       {...register(`${question.id}_comment`)}
                       placeholder="Add any additional comments or notes..."
                       rows={3}
+                    />
+                  </div>
+                )}
+
+                {/* Photo Upload Component */}
+                {question.photoUpload && (
+                  <div className="mt-4">
+                    <Label className="text-sm font-medium mb-2 block">
+                      Upload Photos
+                    </Label>
+                    <QuestionPhotoUpload
+                      questionId={question.id}
+                      assignmentId={assignmentId}
+                      onPhotosChange={(photos) => {
+                        // Update form data with photo information
+                        const photoUrls = photos
+                          .filter(p => p.status === 'uploaded')
+                          .map(p => p.url);
+                        
+                        setFormData(prev => ({
+                          ...prev,
+                          [`${question.id}_photos`]: photoUrls,
+                        }));
+                      }}
                     />
                   </div>
                 )}

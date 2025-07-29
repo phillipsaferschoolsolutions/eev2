@@ -21,6 +21,7 @@ export const baseNavItems = [
   { href: "/tasks", label: "Tasks", icon: "ListTodo" },
   { href: "/assets", label: "Assets", icon: "HardDrive" },
   { href: "/resources", label: "Resources", icon: "FolderKanban" },
+  { href: "/photo-bank", label: "Photo Bank", icon: "Image" },
   { href: "/photo-analysis", label: "Photo Analysis", icon: "Camera" },
   { href: "/policy-analysis", label: "Policy Analysis", icon: "FileCheck2" },
   { href: "/report-studio", label: "Report Studio", icon: "FilePieChart" },

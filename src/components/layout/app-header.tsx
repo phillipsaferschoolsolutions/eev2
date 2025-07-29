@@ -26,14 +26,14 @@ import type { District } from "@/types/Admin";
 import { 
   Sun, Moon, Bell, LogIn, LogOut as LogOutIcon, Building, Check, Menu,
   LayoutDashboard, Map as MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare as MessageSquareIcon, Settings, FolderKanban, FileText, Zap, // Added Zap
- ListTodo, HardDrive
+ ListTodo, HardDrive, Image as ImageIconHeader
 } from "lucide-react";
 
 
 // Icon mapping (consistent with PageShell for navItems)
 const iconMap: { [key: string]: React.ElementType } = {
   LayoutDashboard, Map: MapIcon, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, MessageSquare: MessageSquareIcon, Settings, FolderKanban, FileText, Zap, ListTodo, HardDrive,
-  Default: LayoutDashboard,
+  Image: ImageIconHeader, Default: LayoutDashboard,
 };
 
 interface NavItem {

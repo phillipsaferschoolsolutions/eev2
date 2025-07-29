@@ -17,6 +17,7 @@ import { Logo } from "@/components/icons/logo";
 import {
   LayoutDashboard, Map, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, Settings, MessageSquare,
   LogOut as LogOutIcon, PanelLeftClose, PanelLeftOpen, Home, Users, BarChart2, Briefcase, Shield, BookOpen, FolderKanban, FileText, Zap, ListTodo, HardDrive // Added Zap, ListTodo, HardDrive
+  , Image as ImageIconSidebar
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/context/auth-context";
@@ -29,7 +30,7 @@ import { cn } from "@/lib/utils";
 // Icon mapping
 const iconMap: { [key: string]: React.ElementType } = {
   LayoutDashboard, Map, ClipboardList, Camera, FileCheck2, FilePieChart, Palette, Settings, MessageSquare, FolderKanban, FileText, Zap, ListTodo, HardDrive, // Added Zap, ListTodo, HardDrive
-  Home, Users, BarChart2, Briefcase, Shield, BookOpen,
+  Home, Users, BarChart2, Briefcase, Shield, BookOpen, Image: ImageIconSidebar,
   Default: LayoutDashboard, // Fallback icon
 };
 

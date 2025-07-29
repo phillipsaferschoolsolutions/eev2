@@ -1,0 +1,177 @@
+import { useReducer, useCallback } from 'react';
+
+export interface PhotoItem {
+  id: string;
+  file?: File;
+  url: string;
+  name: string;
+  uploadedAt: Date;
+  questionId?: string; // Links photo to specific question
+  assignmentId?: string; // Links photo to specific assignment
+  status: 'uploading' | 'uploaded' | 'error';
+  progress?: number;
+  error?: string;
+}
+
+interface PhotoBankState {
+  photos: Record<string, PhotoItem>;
+  selectedPhotos: string[];
+  isUploading: boolean;
+  uploadProgress: number;
+}
+
+type PhotoBankAction =
+  | { type: 'ADD_PHOTO'; payload: PhotoItem }
+  | { type: 'UPDATE_PHOTO'; payload: { id: string; updates: Partial<PhotoItem> } }
+  | { type: 'REMOVE_PHOTO'; payload: string }
+  | { type: 'SELECT_PHOTO'; payload: string }
+  | { type: 'DESELECT_PHOTO'; payload: string }
+  | { type: 'CLEAR_SELECTION' }
+  | { type: 'SET_UPLOADING'; payload: boolean }
+  | { type: 'SET_UPLOAD_PROGRESS'; payload: number }
+  | { type: 'CLEAR_PHOTOS' };
+
+const initialState: PhotoBankState = {
+  photos: {},
+  selectedPhotos: [],
+  isUploading: false,
+  uploadProgress: 0,
+};
+
+function photoBankReducer(state: PhotoBankState, action: PhotoBankAction): PhotoBankState {
+  switch (action.type) {
+    case 'ADD_PHOTO':
+      return {
+        ...state,
+        photos: {
+          ...state.photos,
+          [action.payload.id]: action.payload,
+        },
+      };
+
+    case 'UPDATE_PHOTO':
+      const existingPhoto = state.photos[action.payload.id];
+      if (!existingPhoto) return state;
+      
+      return {
+        ...state,
+        photos: {
+          ...state.photos,
+          [action.payload.id]: {
+            ...existingPhoto,
+            ...action.payload.updates,
+          },
+        },
+      };
+
+    case 'REMOVE_PHOTO':
+      const { [action.payload]: removed, ...remainingPhotos } = state.photos;
+      return {
+        ...state,
+        photos: remainingPhotos,
+        selectedPhotos: state.selectedPhotos.filter(id => id !== action.payload),
+      };
+
+    case 'SELECT_PHOTO':
+      if (state.selectedPhotos.includes(action.payload)) return state;
+      return {
+        ...state,
+        selectedPhotos: [...state.selectedPhotos, action.payload],
+      };
+
+    case 'DESELECT_PHOTO':
+      return {
+        ...state,
+        selectedPhotos: state.selectedPhotos.filter(id => id !== action.payload),
+      };
+
+    case 'CLEAR_SELECTION':
+      return {
+        ...state,
+        selectedPhotos: [],
+      };
+
+    case 'SET_UPLOADING':
+      return {
+        ...state,
+        isUploading: action.payload,
+      };
+
+    case 'SET_UPLOAD_PROGRESS':
+      return {
+        ...state,
+        uploadProgress: action.payload,
+      };
+
+    case 'CLEAR_PHOTOS':
+      return initialState;
+
+    default:
+      return state;
+  }
+}
+
+export function usePhotoBank() {
+  const [state, dispatch] = useReducer(photoBankReducer, initialState);
+
+  const addPhoto = useCallback((photo: PhotoItem) => {
+    dispatch({ type: 'ADD_PHOTO', payload: photo });
+  }, []);
+
+  const updatePhoto = useCallback((id: string, updates: Partial<PhotoItem>) => {
+    dispatch({ type: 'UPDATE_PHOTO', payload: { id, updates } });
+  }, []);
+
+  const removePhoto = useCallback((id: string) => {
+    dispatch({ type: 'REMOVE_PHOTO', payload: id });
+  }, []);
+
+  const selectPhoto = useCallback((id: string) => {
+    dispatch({ type: 'SELECT_PHOTO', payload: id });
+  }, []);
+
+  const deselectPhoto = useCallback((id: string) => {
+    dispatch({ type: 'DESELECT_PHOTO', payload: id });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    dispatch({ type: 'CLEAR_SELECTION' });
+  }, []);
+
+  const setUploading = useCallback((uploading: boolean) => {
+    dispatch({ type: 'SET_UPLOADING', payload: uploading });
+  }, []);
+
+  const setUploadProgress = useCallback((progress: number) => {
+    dispatch({ type: 'SET_UPLOAD_PROGRESS', payload: progress });
+  }, []);
+
+  const clearPhotos = useCallback(() => {
+    dispatch({ type: 'CLEAR_PHOTOS' });
+  }, []);
+
+  // Helper to get photos for a specific question
+  const getPhotosForQuestion = useCallback((questionId: string) => {
+    return Object.values(state.photos).filter(photo => photo.questionId === questionId);
+  }, [state.photos]);
+
+  // Helper to get photos for a specific assignment
+  const getPhotosForAssignment = useCallback((assignmentId: string) => {
+    return Object.values(state.photos).filter(photo => photo.assignmentId === assignmentId);
+  }, [state.photos]);
+
+  return {
+    ...state,
+    addPhoto,
+    updatePhoto,
+    removePhoto,
+    selectPhoto,
+    deselectPhoto,
+    clearSelection,
+    setUploading,
+    setUploadProgress,
+    clearPhotos,
+    getPhotosForQuestion,
+    getPhotosForAssignment,
+  };
+}
