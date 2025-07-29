@@ -9,7 +9,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import Image from "next/image";
 import { format } from "date-fns";
-import { ArrowLeft, X, Loader2 } from "lucide-react";
+import { ArrowLeft, X, Loader2, Eye, Trash2, ImageIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +25,9 @@ import { Progress as ShadProgress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, getAssignmentDraft, submitCompletedAssignment, saveAssignmentDraft, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
@@ -38,6 +41,9 @@ type FormDataSchema = z.infer<typeof formSchema>;
 interface UploadedFileDetail {
   name: string;
   url: string;
+  uploadDate?: string;
+  fileSize?: number;
+  questionId?: string;
 }
 
 const UNASSIGNED_FILTER_VALUE = "n/a";
@@ -89,6 +95,13 @@ export default function CompleteAssignmentPage() {
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
+  const [formData, setFormData] = useState<{ [key: string]: any }>({});
+  const [uploadedPhotos, setUploadedPhotos] = useState<{ [questionId: string]: UploadedFileDetail }>({});
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [selectedQuestionForPhoto, setSelectedQuestionForPhoto] = useState<string | null>(null);
+  const [photoBankFiles, setPhotoBankFiles] = useState<UploadedFileDetail[]>([]);
+  const [isLoadingPhotoBank, setIsLoadingPhotoBank] = useState(false);
+
   const hours12 = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
   const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
   const amPm = ["AM", "PM"];
@@ -103,6 +116,14 @@ export default function CompleteAssignmentPage() {
   });
 
   const allWatchedValues = watch();
+
+  // Handle input change
+  const handleInputChange = (questionId: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
+  };
 
   // Parse options function
   type OptionInput = string | string[] | { label: string; value?: string }[];
@@ -362,6 +383,151 @@ export default function CompleteAssignmentPage() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Function to fetch photo bank files
+  const fetchPhotoBankFiles = useCallback(async () => {
+    if (!userProfile?.account) return;
+    
+    setIsLoadingPhotoBank(true);
+    try {
+      // This would typically fetch from your photo bank API
+      // For now, we'll use the photos from the current form state
+      const allPhotos: UploadedFileDetail[] = [];
+      Object.values(uploadedPhotos).forEach(photoData => {
+        if (photoData?.url) {
+          allPhotos.push({
+            name: photoData.name || 'Uploaded Photo',
+            url: photoData.url,
+            uploadDate: photoData.uploadDate || new Date().toISOString(),
+            fileSize: photoData.fileSize || 0,
+            questionId: photoData.questionId
+          });
+        }
+      });
+      setPhotoBankFiles(allPhotos);
+    } catch (error) {
+      console.error("Error fetching photo bank:", error);
+    } finally {
+      setIsLoadingPhotoBank(false);
+    }
+  }, [userProfile?.account, uploadedPhotos]);
+
+  // Fetch photo bank when modal opens
+  useEffect(() => {
+    if (isPhotoModalOpen) {
+      fetchPhotoBankFiles();
+    }
+  }, [isPhotoModalOpen, fetchPhotoBankFiles]);
+
+  // Function to handle photo upload for questions
+  const handleQuestionPhotoUpload = async (questionId: string, file: File) => {
+    if (!userProfile?.account) return;
+    
+    setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
+    
+    try {
+      const storageRef = ref(storage, `assignment_uploads/${userProfile.account}/${assignmentId}/${questionId}/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(prev => ({ ...prev, [questionId]: progress }));
+        },
+        (error) => {
+          console.error('Upload failed:', error);
+          toast({ variant: "destructive", title: "Upload Failed", description: error.message });
+          setUploadProgress(prev => ({ ...prev, [questionId]: undefined }));
+        },
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            const photoData = {
+              name: file.name,
+              url: downloadURL,
+              uploadDate: new Date().toISOString(),
+              fileSize: file.size,
+              questionId: questionId
+            };
+            
+            setUploadedPhotos(prev => ({
+              ...prev,
+              [questionId]: photoData
+            }));
+            
+            setUploadProgress(prev => ({ ...prev, [questionId]: undefined }));
+            toast({ title: "Photo Uploaded", description: `Photo uploaded successfully for ${questionId}` });
+          } catch (error) {
+            console.error('Error getting download URL:', error);
+            toast({ variant: "destructive", title: "Upload Failed", description: "Failed to get download URL" });
+            setUploadProgress(prev => ({ ...prev, [questionId]: undefined }));
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Error starting upload:', error);
+      toast({ variant: "destructive", title: "Upload Failed", description: "Failed to start upload" });
+      setUploadProgress(prev => ({ ...prev, [questionId]: undefined }));
+    }
+  };
+
+  // Function to remove photo from question
+  const handleRemovePhoto = (questionId: string) => {
+    setUploadedPhotos(prev => {
+      const newPhotos = { ...prev };
+      delete newPhotos[questionId];
+      return newPhotos;
+    });
+  };
+
+  // Function to open photo bank for a specific question
+  const handleOpenPhotoBank = (questionId: string) => {
+    setSelectedQuestionForPhoto(questionId);
+    setIsPhotoModalOpen(true);
+  };
+
+  // Function to select photo from bank
+  const handleSelectPhotoFromBank = (photo: UploadedFileDetail) => {
+    if (selectedQuestionForPhoto) {
+      setUploadedPhotos(prev => ({
+        ...prev,
+        [selectedQuestionForPhoto]: {
+          name: photo.name,
+          url: photo.url,
+          uploadDate: photo.uploadDate,
+          fileSize: photo.fileSize,
+          questionId: selectedQuestionForPhoto
+        }
+      }));
+      setIsPhotoModalOpen(false);
+      setSelectedQuestionForPhoto(null);
+      toast({ title: "Photo Selected", description: "Photo assigned to question successfully" });
+    }
+  };
+
+  // Function to delete photo from bank
+  const handleDeletePhotoFromBank = async (photo: UploadedFileDetail) => {
+    try {
+      // Remove from photo bank
+      setPhotoBankFiles(prev => prev.filter(p => p.url !== photo.url));
+      
+      // Remove from any questions that might be using this photo
+      setUploadedPhotos(prev => {
+        const newPhotos = { ...prev };
+        Object.keys(newPhotos).forEach(questionId => {
+          if (newPhotos[questionId]?.url === photo.url) {
+            delete newPhotos[questionId];
+          }
+        });
+        return newPhotos;
+      });
+      
+      toast({ title: "Photo Deleted", description: "Photo removed from bank and all questions" });
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      toast({ variant: "destructive", title: "Delete Failed", description: "Failed to delete photo" });
     }
   };
 
@@ -847,46 +1013,71 @@ export default function CompleteAssignmentPage() {
                   />
                 )}
 
-                {question.component === 'select' && (
-                  <Controller
-                    name={question.id}
-                    control={control}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger className={formErrors[question.id] ? "border-destructive" : ""}>
-                          <SelectValue placeholder="Select an option" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {parseOptions(question.options, question).map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
+                {/* Select/Options Questions */}
+                {(question.component === 'select' || question.component === 'options') && (
+                  <div className="space-y-2">
+                    <Label htmlFor={question.id}>{question.label}</Label>
+                    <Select
+                      value={formData[question.id] || ''}
+                      onValueChange={(value) => handleInputChange(question.id, value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an option..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {parseOptions(question.options).map((option, optIndex) => (
+                          <SelectItem key={`${option.value}-${optIndex}`} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
 
-                {question.component === 'options' && (
-                  <Controller
-                    name={question.id}
-                    control={control}
-                    render={({ field }) => (
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="space-y-2"
-                      >
-                        {parseOptions(question.options, question).map((option) => (
-                          <div key={option.value} className="flex items-center space-x-2">
-                            <RadioGroupItem value={option.value} id={`${question.id}-${option.value}`} />
+                {/* Radio Button Questions */}
+                {question.component === 'radio' && (
+                  <div className="space-y-2">
+                    <Label>{question.label}</Label>
+                    <RadioGroup
+                      value={formData[question.id] || ''}
+                      onValueChange={(value) => handleInputChange(question.id, value)}
+                    >
+                      {parseOptions(question.options).map((option, optIndex) => (
+                        <div key={`${option.value}-${optIndex}`} className="flex items-center space-x-2">
+                          <RadioGroupItem value={option.value} id={`${question.id}-${option.value}`} />
+                          <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                )}
+
+                {/* Checkbox Questions */}
+                {question.component === 'checkbox' && (
+                  <div className="space-y-2">
+                    <Label>{question.label}</Label>
+                    <div className="space-y-2">
+                      {parseOptions(question.options).map((option, optIndex) => {
+                        const currentValues = Array.isArray(formData[question.id]) ? formData[question.id] : [];
+                        return (
+                          <div key={`${option.value}-${optIndex}`} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`${question.id}-${option.value}`}
+                              checked={currentValues.includes(option.value)}
+                              onCheckedChange={(checked) => {
+                                const newValues = checked
+                                  ? [...currentValues, option.value]
+                                  : currentValues.filter((v: string) => v !== option.value);
+                                handleInputChange(question.id, newValues);
+                              }}
+                            />
                             <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
                           </div>
-                        ))}
-                      </RadioGroup>
-                    )}
-                  />
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
 
                 {question.component === 'buttonSelect' && (
@@ -931,45 +1122,6 @@ export default function CompleteAssignmentPage() {
                       />
                     ))}
                   </div>
-                )}
-
-                {question.component === 'checkbox' && question.options && (
-                  <div className="space-y-2">
-                    {parseOptions(question.options, question).map((option) => (
-                      <Controller
-                        key={option.value}
-                        name={`${question.id}.${option.value}`}
-                        control={control}
-                        render={({ field }) => (
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`${question.id}-${option.value}`}
-                              checked={field.value || false}
-                              onCheckedChange={field.onChange}
-                            />
-                            <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
-                          </div>
-                        )}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {question.component === 'checkbox' && !question.options && (
-                  <Controller
-                    name={question.id}
-                    control={control}
-                    render={({ field }) => (
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id={question.id}
-                          checked={field.value || false}
-                          onCheckedChange={field.onChange}
-                        />
-                        <Label htmlFor={question.id}>{question.label}</Label>
-                      </div>
-                    )}
-                  />
                 )}
 
                 {question.component === 'range' && (
@@ -1113,6 +1265,81 @@ export default function CompleteAssignmentPage() {
                   />
                 )}
 
+                {/* Photo Upload Questions */}
+                {question.photoUpload && (
+                  <div className="space-y-2">
+                    <Label>Photo Upload</Label>
+                    <div className="space-y-2">
+                      {uploadedPhotos[question.id] ? (
+                        <div className="flex items-center space-x-2 p-2 border rounded-md">
+                          <Image
+                            src={uploadedPhotos[question.id]!.url}
+                            alt={uploadedPhotos[question.id]!.name}
+                            width={60}
+                            height={60}
+                            className="rounded object-cover"
+                          />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{uploadedPhotos[question.id]!.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(uploadedPhotos[question.id]!.uploadDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(uploadedPhotos[question.id]!.url, '_blank')}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemovePhoto(question.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  handleQuestionPhotoUpload(question.id, file);
+                                }
+                              }}
+                              disabled={uploadProgress[question.id] !== undefined}
+                            />
+                            {uploadProgress[question.id] !== undefined && (
+                              <div className="mt-2">
+                                <Progress value={uploadProgress[question.id]} className="w-full" />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Uploading... {Math.round(uploadProgress[question.id] || 0)}%
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleOpenPhotoBank(question.id)}
+                            disabled={uploadProgress[question.id] !== undefined}
+                          >
+                            <ImageIcon className="h-4 w-4 mr-2" />
+                            Photo Bank
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {question.component === 'photoUpload' && (
                   <div className="space-y-4">
                     <Input
@@ -1234,6 +1461,92 @@ export default function CompleteAssignmentPage() {
           </Button>
         </div>
       </form>
+
+      {/* Photo Bank Modal */}
+      <Dialog open={isPhotoModalOpen} onOpenChange={setIsPhotoModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Photo Bank</DialogTitle>
+            <DialogDescription>
+              Select a photo to assign to the question "{selectedQuestionForPhoto && assignment?.questions?.find(q => q.id === selectedQuestionForPhoto)?.label}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto">
+            {isLoadingPhotoBank ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : photoBankFiles.length === 0 ? (
+              <div className="text-center py-8">
+                <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-lg font-semibold">No Photos in Bank</p>
+                <p className="text-muted-foreground">Upload photos to questions to populate the photo bank.</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Preview</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Upload Date</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {photoBankFiles.map((photo, index) => (
+                    <TableRow key={`${photo.url}-${index}`}>
+                      <TableCell>
+                        <Image
+                          src={photo.url}
+                          alt={photo.name}
+                          width={50}
+                          height={50}
+                          className="rounded object-cover"
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{photo.name}</TableCell>
+                      <TableCell>{new Date(photo.uploadDate).toLocaleDateString()}</TableCell>
+                      <TableCell>{(photo.fileSize / 1024).toFixed(1)} KB</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(photo.url, '_blank')}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSelectPhotoFromBank(photo)}
+                          >
+                            Select
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeletePhotoFromBank(photo)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPhotoModalOpen(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
