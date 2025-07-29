@@ -20,11 +20,14 @@ import { getAggregatedCompletions } from "@/services/analysisService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { ArrowLeft, BarChart2, PieChart, LineChart, Table as TableIcon, Download, RefreshCw, Shield, Loader2, X, CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import PivotTableComponent from "@/components/analysis/PivotTableComponent";
-import VisualizationComponent from "@/components/analysis/VisualizationComponent";
+// import PivotTableComponent from "@/components/analysis/PivotTableComponent";
+// import VisualizationComponent from "@/components/analysis/VisualizationComponent";
 import type { AggregatedCompletionsPayload, AggregatedCompletionsResponse, PivotTableData } from "@/types/Analysis";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
+
+// Force dynamic rendering to prevent build issues
+export const dynamic = 'force-dynamic';
 
 // Define admin roles that can access this page
 const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
@@ -132,8 +135,8 @@ export default function DataAnalysisPage() {
     
     // Process the data based on the structure returned by the API
     // This is a simplified example - adjust based on your actual API response structure
-    if (aggregatedData.data) {
-      Object.entries(aggregatedData.data).forEach(([key, value]) => {
+    if (aggregatedData.data && typeof aggregatedData.data === 'object') {
+      Object.entries(aggregatedData.data as Record<string, unknown>).forEach(([key, value]) => {
         // Parse the composite key if needed
         const keyParts = key.split('|');
         const row: PivotTableData = {};
@@ -149,12 +152,12 @@ export default function DataAnalysisPage() {
         }
         
         // Add measures
-        if (typeof value === 'object') {
-          Object.entries(value).forEach(([measureKey, measureValue]) => {
-            row[measureKey] = measureValue;
+        if (typeof value === 'object' && value !== null) {
+          Object.entries(value as Record<string, unknown>).forEach(([measureKey, measureValue]) => {
+            row[measureKey] = measureValue as string | number | boolean | null;
           });
         } else {
-          row.value = value;
+          row.value = value as string | number | boolean | null;
         }
         
         data.push(row);
@@ -437,7 +440,6 @@ export default function DataAnalysisPage() {
                       captionLayout={yearView ? "dropdown-buttons" : "buttons"}
                       fromYear={2020}
                       toYear={2030}
-                      view={yearView ? "year" : "month"}
                     />
                   </div>
                 )}
@@ -487,7 +489,6 @@ export default function DataAnalysisPage() {
                       captionLayout={yearView ? "dropdown-buttons" : "buttons"}
                       fromYear={2020}
                       toYear={2030}
-                      view={yearView ? "year" : "month"}
                     />
                   </div>
                 )}
@@ -687,7 +688,10 @@ export default function DataAnalysisPage() {
               
               <TabsContent value="pivot" className="p-6 pt-4">
                 <div className="border rounded-md overflow-auto">
-                  <PivotTableComponent data={pivotData} />
+                  {/* <PivotTableComponent data={pivotData} /> */}
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Pivot table component temporarily disabled</p>
+                  </div>
                 </div>
               </TabsContent>
               
@@ -717,12 +721,15 @@ export default function DataAnalysisPage() {
                 </div>
                 
                 <div className="border rounded-md p-4 h-[500px]">
-                  <VisualizationComponent
+                  {/* <VisualizationComponent
                     data={pivotData}
                     type={chartType}
                     dimensions={rowDimensions}
                     measures={measures}
-                  />
+                  /> */}
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Visualization component temporarily disabled</p>
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>

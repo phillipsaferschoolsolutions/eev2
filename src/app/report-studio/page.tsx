@@ -1,16 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from "@/context/auth-context";
 import {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Tabs,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   TabsContent,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   TabsList,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -19,7 +15,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; 
 import { getSavedReports, deleteReport } from "@/services/reportService";
-import { FileText, FilePlus, FileEdit, Lightbulb, AlertTriangle, Eye, Download, Loader2, Trash2, BarChart2 } from "lucide-react";
+import { FileText, FilePlus, FileEdit, Lightbulb, AlertTriangle, Eye, Download, Loader2, Trash2, BarChart2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -33,14 +29,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// Force dynamic rendering to prevent build issues
+export const dynamic = 'force-dynamic';
+
 // Define admin roles that can access this page
 const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
 
 export default function ReportStudioPage() {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [activeTab, setActiveTab] = useState("reportViewer");
   const router = useRouter();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user, userProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
   
@@ -54,7 +51,6 @@ export default function ReportStudioPage() {
   const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
   
   // Fetch saved reports when the component mounts
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchSavedReports = useCallback(async () => {
     if (!authLoading && userProfile?.account) {
       setIsLoadingReports(true);
@@ -104,72 +100,57 @@ export default function ReportStudioPage() {
       console.error("Failed to delete report:", error);
       toast({ 
         variant: "destructive", 
-        title: "Delete Failed", 
-        description: error instanceof Error ? error.message : "An unknown error occurred." 
+        title: "Error", 
+        description: "Failed to delete the report. Please try again." 
       });
     } finally {
       setIsDeleting(false);
-      setReportToDelete(null); // Close the confirmation dialog
+      setReportToDelete(null);
     }
   };
-  
-  // Format date for display
+
+  // Function to format date
   const formatDate = (timestamp: unknown) => {
-    console.log("formatDate received:", timestamp, "Type:", typeof timestamp);
-    if (!timestamp) return "N/A";
-    
-    let dateValue;
-    if (timestamp && typeof timestamp === 'object') {
-      // Prioritize 'seconds' property if it exists (for direct Firestore Timestamp objects)
-      if ('seconds' in timestamp && typeof timestamp.seconds === 'number') {
-        dateValue = timestamp.seconds * 1000;
-      } 
-      // Fallback to '_seconds' property (for deserialized Timestamp objects)
-      else if ('_seconds' in timestamp && typeof timestamp._seconds === 'number') {
-        dateValue = timestamp._seconds * 1000;
-      }
-    }
-
-    if (dateValue !== undefined) {
-      const date = new Date(dateValue);
-      if (isNaN(date.getTime())) { // Check if the date is valid
-        console.error("Invalid date created from timestamp value:", dateValue);
-        return "Invalid Date";
-      }
-      return date.toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    }
-
-    // Fallback for ISO strings or other date formats that Date constructor can directly parse
+    if (!timestamp) return "Unknown";
     try {
-      const date = new Date(timestamp);
-      if (isNaN(date.getTime())) {
-        console.error("Invalid date created from direct timestamp string/object:", timestamp);
-        return "Invalid Date";
-      }
-      return date.toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch (e) {
-      console.error("Error formatting date:", e, timestamp);
+      const date = new Date(timestamp as string);
+      return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+    } catch {
       return "Invalid Date";
     }
   };
 
-  // If the user is not an admin, show access denied
-  if (!authLoading && !isAdmin) {
+  // Show loading state
+  if (authLoading) {
     return (
-      <div className="container mx-auto py-8 px-4">
+      <div className="container mx-auto p-6 space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-full" />
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-10 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied for non-admin users
+  if (!isAdmin) {
+    return (
+      <div className="container mx-auto p-6">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Access Denied</AlertTitle>
           <AlertDescription>
-            You do not have the necessary permissions to access the Report Studio.
+            You don't have permission to access the Report Studio. Please contact your administrator.
           </AlertDescription>
         </Alert>
       </div>
@@ -177,197 +158,187 @@ export default function ReportStudioPage() {
   }
 
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-3xl font-bold mb-6">Report Studio</h1>
-      <p className="text-lg text-muted-foreground mb-8">
-        Generate, view, and edit comprehensive safety assessment reports.
-      </p>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FilePlus className="h-5 w-5 text-primary" /> 
-              Generate New Report
-            </CardTitle>
-            <CardDescription>
-              Create a new report from assessment data
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Use AI to automatically generate a comprehensive safety assessment report based on completed inspections.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <Button onClick={() => router.push('/report-studio/generate')} className="w-full">
-              Create New Report
-            </Button>
-          </CardFooter>
-        </Card>
-        
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart2 className="h-5 w-5 text-primary" />
-              Interactive Analysis
-            </CardTitle>
-            <CardDescription>
-              Analyze data with pivot tables and charts
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Explore your assessment data with interactive pivot tables and visualizations. Drill down into specific metrics and create custom views.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <Button onClick={() => router.push('/report-studio/analysis')} className="w-full">
-              Open Data Analysis
-            </Button>
-          </CardFooter>
-        </Card>
-        
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileEdit className="h-5 w-5 text-primary" />
-              Manage Templates
-            </CardTitle>
-            <CardDescription>
-              Create and manage reusable report templates
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Design custom report layouts with placeholders for dynamic content. Ensure consistency across all reports.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <Button onClick={() => router.push('/report-studio/templates')} className="w-full">
-              Manage Templates
-            </Button>
-          </CardFooter>
-        </Card>
-        
-        <Card className="hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5 text-primary" />
-              AI Prompt Customization
-            </CardTitle>
-            <CardDescription>
-              Customize AI report generation
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Customize the AI prompts used for report generation. Tailor the AI&lsquo;s focus, tone, and analysis approach.
-            </p>
-          </CardContent>
-          <CardFooter>
-            <Button onClick={() => router.push('/report-studio/prompt-settings')} className="w-full">
-              Customize AI Prompts
-            </Button>
-          </CardFooter>
-        </Card>
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Report Studio</h1>
+          <p className="text-muted-foreground mt-1">
+            Generate, manage, and analyze reports for your organization
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => router.push('/assessment-forms')} variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Assignments
+          </Button>
+        </div>
       </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Report Viewer</CardTitle>
-          <CardDescription>
-            View and manage your safety assessment reports
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoadingReports ? (
-            <div className="space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : reportsError ? (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Error Loading Reports</AlertTitle>
-              <AlertDescription>{reportsError}</AlertDescription>
-            </Alert>
-          ) : savedReports.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Report Name</TableHead>
-                  <TableHead>Created Date</TableHead>
-                  <TableHead>Assignment</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {savedReports.map((report) => (
-                  <TableRow key={report.id}>
-                    <TableCell className="font-medium">{report.reportName}</TableCell>
-                    <TableCell>{formatDate(report.createdAt)}</TableCell>
-                    <TableCell>{report.assignmentId || "Unknown Assignment"}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/report-studio/view/${report.id}`}>
-                            <Eye className="mr-1 h-4 w-4" /> View
-                          </Link>
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Download className="mr-1 h-4 w-4" /> Download
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-destructive hover:bg-destructive/10"
-                          onClick={() => setReportToDelete(report.id)}
-                          disabled={isDeleting}
-                        >
-                          {isDeleting && reportToDelete === report.id ? (
-                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="mr-1 h-4 w-4" />
-                          )}
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-12">
-              <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Reports Yet</h3>
-              <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                No completions found for the selected filters.
-              </p>
-              <Button onClick={() => router.push('/report-studio/generate')}>
-                Generate Your First Report
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Confirmation Dialog for Report Deletion */}
-      <AlertDialog open={!!reportToDelete} onOpenChange={(open) => !open && setReportToDelete(null)}>
+      {/* Main Content */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="reportViewer">Report Viewer</TabsTrigger>
+          <TabsTrigger value="reportGenerator">Report Generator</TabsTrigger>
+          <TabsTrigger value="templates">Templates</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="reportViewer" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Saved Reports
+              </CardTitle>
+              <CardDescription>
+                View and manage your previously generated reports
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingReports ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-center space-x-4">
+                      <Skeleton className="h-12 w-12 rounded" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-[200px]" />
+                        <Skeleton className="h-4 w-[160px]" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : reportsError ? (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{reportsError}</AlertDescription>
+                </Alert>
+              ) : savedReports.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No reports found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Generate your first report to get started
+                  </p>
+                  <Button onClick={() => setActiveTab("reportGenerator")}>
+                    <FilePlus className="mr-2 h-4 w-4" />
+                    Generate Report
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Report Name</TableHead>
+                      <TableHead>Generated</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {savedReports.map((report: any) => (
+                      <TableRow key={report.id}>
+                        <TableCell className="font-medium">{report.name || "Untitled Report"}</TableCell>
+                        <TableCell>{formatDate(report.createdAt)}</TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                            Complete
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="outline" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setReportToDelete(report.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="reportGenerator" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FilePlus className="h-5 w-5" />
+                Generate New Report
+              </CardTitle>
+              <CardDescription>
+                Create a new report based on your assignment data
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <Lightbulb className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">Report Generator</h3>
+                <p className="text-muted-foreground mb-4">
+                  This feature is coming soon. You'll be able to generate comprehensive reports from your assignment data.
+                </p>
+                <Button disabled>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Coming Soon
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="templates" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileEdit className="h-5 w-5" />
+                Report Templates
+              </CardTitle>
+              <CardDescription>
+                Manage report templates for consistent formatting
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <FileEdit className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">Template Management</h3>
+                <p className="text-muted-foreground mb-4">
+                  This feature is coming soon. You'll be able to create and manage report templates.
+                </p>
+                <Button disabled>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Coming Soon
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!reportToDelete} onOpenChange={() => setReportToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete this report?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Report</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The report will be permanently deleted from the system.
+              Are you sure you want to delete this report? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => reportToDelete && handleDeleteReport(reportToDelete)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isDeleting}
             >
               {isDeleting ? (
@@ -376,10 +347,7 @@ export default function ReportStudioPage() {
                   Deleting...
                 </>
               ) : (
-                <>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Report
-                </>
+                "Delete"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -387,4 +355,4 @@ export default function ReportStudioPage() {
       </AlertDialog>
     </div>
   );
-}
+} 

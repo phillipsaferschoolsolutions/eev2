@@ -97,6 +97,7 @@ export default function CompleteAssignmentPage() {
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationsError, setLocationsError] = useState<string | null>(null);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
 
   const [formData, setFormData] = useState<{ [key: string]: any }>({});
   const [uploadedPhotos, setUploadedPhotos] = useState<{ [questionId: string]: UploadedFileDetail }>({});
@@ -138,7 +139,7 @@ export default function CompleteAssignmentPage() {
   const parseOptions = (options: OptionInput, question?: AssignmentQuestion): { label: string; value: string }[] => {
     if (question?.component === 'schoolSelector') {
       return locations.map(location => ({
-        label: location.locationName || location.name || 'Unknown Location',
+        label: String(location.locationName || location.name || 'Unknown Location'),
         value: location.id
       }));
     }
@@ -394,41 +395,6 @@ export default function CompleteAssignmentPage() {
     }
   };
 
-  // Function to fetch photo bank files
-  const fetchPhotoBankFiles = useCallback(async () => {
-    if (!userProfile?.account) return;
-    
-    setIsLoadingPhotoBank(true);
-    try {
-      // This would typically fetch from your photo bank API
-      // For now, we'll use the photos from the current form state
-      const allPhotos: UploadedFileDetail[] = [];
-      Object.values(uploadedPhotos).forEach(photoData => {
-        if (photoData?.url) {
-          allPhotos.push({
-            name: photoData.name || 'Uploaded Photo',
-            url: photoData.url,
-            uploadDate: photoData.uploadDate || new Date().toISOString(),
-            fileSize: photoData.fileSize || 0,
-            questionId: photoData.questionId
-          });
-        }
-      });
-      setPhotoBankFiles(allPhotos);
-    } catch (error) {
-      console.error("Error fetching photo bank:", error);
-    } finally {
-      setIsLoadingPhotoBank(false);
-    }
-  }, [userProfile?.account, uploadedPhotos]);
-
-  // Fetch photo bank when modal opens
-  useEffect(() => {
-    if (isPhotoModalOpen) {
-      fetchPhotoBankFiles();
-    }
-  }, [isPhotoModalOpen, fetchPhotoBankFiles]);
-
   // Function to handle photo upload for questions
   const handleQuestionPhotoUpload = async (questionId: string, file: File) => {
     if (!userProfile?.account) return;
@@ -519,7 +485,7 @@ export default function CompleteAssignmentPage() {
   const handleDeletePhotoFromBank = async (photo: UploadedFileDetail) => {
     try {
       // Remove from photo bank
-      setPhotoBankFiles(prev => prev.filter(p => p.url !== photo.url));
+      photoBank.removePhoto(photo.id);
       
       // Remove from any questions that might be using this photo
       setUploadedPhotos(prev => {
@@ -943,11 +909,11 @@ export default function CompleteAssignmentPage() {
           <div className="flex justify-end mt-4">
             <Button
               variant="outline"
-              onClick={() => setIsPhotoModalOpen(true)}
+              onClick={() => setIsPhotoBankModalOpen(true)}
               className="flex items-center gap-2"
             >
               <ImageIcon className="h-4 w-4" />
-              Photo Bank ({photoBankFiles.length})
+              Photo Bank ({photoBank.getAllPhotos().filter(p => p.assignmentId === assignmentId).length})
             </Button>
           </div>
         </CardHeader>
