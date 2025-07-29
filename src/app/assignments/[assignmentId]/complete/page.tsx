@@ -75,6 +75,15 @@ interface PhotoBankItem {
   uploadedAt: string;
   assignedToQuestion?: string | null;
 }
+
+interface PhotoBankFile {
+  id: string;
+  url: string;
+  name: string;
+  uploadedAt: string;
+  assignedToQuestion?: string | null;
+}
+
 const UNASSIGNED_FILTER_VALUE = "n/a";
 const MAX_AUDIO_RECORDING_MS = 20000;
 
@@ -436,13 +445,6 @@ export default function CompleteAssignmentPage() {
               assignedToQuestion: null
             };
             setPhotoBankFiles(prev => [...prev, newPhoto]);
-              id: `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              name: file.name,
-              url: downloadURL,
-              uploadedAt: new Date().toISOString(),
-              assignedToQuestion: null
-            };
-            setPhotoBankFiles(prev => [...prev, newPhoto]);
             // Update the progress state to show completion and remove from "in-progress" view
             setPhotoBankUploads(prev => {
                 const newProgress = { ...prev };
@@ -483,8 +485,8 @@ export default function CompleteAssignmentPage() {
   };
 
   // Function to upload photo directly to a specific question
- const handleQuestionPhotoUpload = (questionId: string, file: File) => {
-  if (!userProfile?.account || !user?.uid || !assignment) {
+ const handleQuestionPhotoUpload = async (questionId: string, file: File) => {
+  if (!userProfile?.account || !user || !assignment) {
     toast({
       variant: "destructive",
       title: "Upload Error",
@@ -519,16 +521,16 @@ export default function CompleteAssignmentPage() {
       try {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
         const newPhoto: UploadedFileDetail = {
+          id: `photo-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
           url: downloadURL,
           name: file.name,
-          id: `photo-${timestamp}-${Math.random().toString(36).substring(2, 11)}`,
           uploadedAt: new Date().toISOString(),
           assignedToQuestion: questionId
         };
         setPhotoBankFiles(prev => [...prev, newPhoto]);
         toast({
           title: "Photo Uploaded",
-          description: "Photo uploaded and assigned to question."
+          description: `Photo uploaded and assigned to question.`
         });
       } catch (urlError) {
         toast({
@@ -541,7 +543,7 @@ export default function CompleteAssignmentPage() {
       }
     }
   );
-  };
+};
 
   // Function to assign/unassign photos to questions
   const assignPhotoToQuestion = (photoId: string, questionId: string | null) => {
@@ -1569,7 +1571,7 @@ export default function CompleteAssignmentPage() {
                     {/* Delete button - appears on hover */}
                     <button
                       type="button"
-                      onClick={() => removeFromPhotoBank(photo.id)}
+                      onClick={() => removeFromPhotoBank(photo.id!)}
                       className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10"
                       style={{ lineHeight: 1 }}
                     >
