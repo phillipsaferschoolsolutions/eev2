@@ -43,6 +43,5 @@ const getCompletedAssignments = functions.https.onCall(async (data, context) => 
     // Re-throw the error to be handled by the client
     throw new functions.https.HttpsError('internal', 'Unable to fetch completed assignments.', error);
   }
-});
-
-module.exports = { getCompletedAssignments };
+}
+)
