@@ -111,6 +111,7 @@ export default function CompleteAssignmentPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [locationsError, setLocationsError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [formData, setFormData] = useState<{ [key: string]: any }>({});
   const [uploadedPhotos, setUploadedPhotos] = useState<{ [questionId: string]: UploadedFileDetail }>({});
