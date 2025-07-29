@@ -108,6 +108,7 @@ export default function CompleteAssignmentPage() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedPhotoForModal, setSelectedPhotoForModal] = useState<string | null>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const hours12 = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
@@ -564,39 +565,57 @@ export default function CompleteAssignmentPage() {
 
   // Handle photo bank file upload
   const handlePhotoBankUpload = async (files: File[]) => {
-    setIsLoadingPhotos(true);
+    setIsUploading(true);
+    const newPhotos: Array<{ id: string; url: string; name: string; uploadedAt: string; size: number }> = [];
+    const progressMap: Record<string, number> = {};
     
-    try {
-      for (const file of files) {
-        const photoId = `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const photoUrl = URL.createObjectURL(file);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith('image/')) {
+        const photoId = `photo-${Date.now()}-${i}`;
+        progressMap[photoId] = 0;
+        setUploadProgress(prev => ({ ...prev, [photoId]: 0 }));
         
-        const newPhoto = {
+        const url = URL.createObjectURL(file);
+        
+        // Simulate upload progress
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            const currentProgress = prev[photoId] || 0;
+            const newProgress = Math.min(currentProgress + Math.random() * 30, 95);
+            return { ...prev, [photoId]: newProgress };
+          });
+        }, 200);
+        
+        newPhotos.push({
           id: photoId,
-          url: photoUrl,
-          file: file,
+          url,
           name: file.name,
           uploadedAt: new Date().toISOString(),
-          assignedToQuestion: null,
-        };
+          size: file.size,
+        });
         
-        setPhotoBankPhotos(prev => [...prev, newPhoto]);
+        // Complete the progress after a delay
+        setTimeout(() => {
+          clearInterval(progressInterval);
+          setUploadProgress(prev => ({ ...prev, [photoId]: 100 }));
+          setTimeout(() => {
+            setUploadProgress(prev => {
+              const newPrev = { ...prev };
+              delete newPrev[photoId];
+              return newPrev;
+            });
+          }, 1000);
+        }, 1500 + Math.random() * 1000);
       }
-      
-      toast({
-        title: "Photos Added",
-        description: `${files.length} photo(s) added to Photo Bank`,
-      });
-    } catch (error) {
-      console.error("Error uploading photos:", error);
-      toast({
-        variant: "destructive",
-        title: "Upload Failed",
-        description: "Failed to add photos to Photo Bank",
-      });
-    } finally {
-      setIsLoadingPhotos(false);
     }
+    
+    setPhotoBankPhotos(prev => [...prev, ...newPhotos]);
+    
+    // Reset uploading state after all files are processed
+    setTimeout(() => {
+      setIsUploading(false);
+    }, 3000);
   };
 
   // Handle manual file selection
@@ -629,7 +648,7 @@ export default function CompleteAssignmentPage() {
     if (photo) {
       setFormData(prev => ({
         ...prev,
-        [`${questionId}_photo`]: photo.file
+        [`${questionId}_photo`]: photo.url
       }));
       
       setSelectedQuestionForPhotoBank(null);
@@ -1097,8 +1116,23 @@ export default function CompleteAssignmentPage() {
             ) : (
               <div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
-                  {photoBankPhotos.slice(0, 6).map((photo) => (
+                  {photoBankPhotos.map((photo) => (
                     <div key={photo.id} className="relative group">
+                      {/* Upload Progress Overlay */}
+                      {uploadProgress[photo.id] !== undefined && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-lg">
+                          <div className="text-center text-white">
+                            <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mb-2"></div>
+                            <div className="text-sm font-medium">{Math.round(uploadProgress[photo.id])}%</div>
+                            <div className="w-20 h-1 bg-white/30 rounded-full mt-1">
+                              <div 
+                                className="h-full bg-white rounded-full transition-all duration-300"
+                                style={{ width: `${uploadProgress[photo.id]}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div 
                         className="aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => openPhotoModal(photo.url)}
@@ -1119,6 +1153,16 @@ export default function CompleteAssignmentPage() {
                       </Button>
                     </div>
                   ))}
+                  
+                  {/* Show uploading placeholders */}
+                  {isUploading && Object.keys(uploadProgress).length === 0 && (
+                    <div className="aspect-square bg-muted/50 rounded-lg flex items-center justify-center border-2 border-dashed border-muted-foreground/30">
+                      <div className="text-center text-muted-foreground">
+                        <div className="w-8 h-8 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin mx-auto mb-2"></div>
+                        <div className="text-xs">Uploading...</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 {photoBankPhotos.length > 6 && (
