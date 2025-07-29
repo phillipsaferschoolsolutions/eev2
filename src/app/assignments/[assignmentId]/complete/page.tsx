@@ -820,6 +820,19 @@ export default function CompleteAssignmentPage() {
       <Card>
         <CardHeader>
           <CardTitle>Navigation & Filters</CardTitle>
+          <CardDescription>
+            Use the filters below to navigate through different sections of the assignment.
+          </CardDescription>
+          <div className="flex justify-end mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsPhotoBankOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <ImageIcon className="h-4 w-4" />
+              Photo Bank ({photoBankFiles.length})
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Page Navigation */}
@@ -1011,6 +1024,87 @@ export default function CompleteAssignmentPage() {
                     placeholder={question.placeholder}
                     className={formErrors[question.id] ? "border-destructive" : ""}
                   />
+                )}
+
+                {/* Select Question Type */}
+                {question.component === 'select' && (
+                  <div className="space-y-2">
+                    <Label htmlFor={`question-${question.id}`}>
+                      {question.label}
+                      {question.required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                    <Select
+                      value={formData[question.id] || ""}
+                      onValueChange={(value) => handleInputChange(question.id, value)}
+                    >
+                      <SelectTrigger id={`question-${question.id}`}>
+                        <SelectValue placeholder="Select an option..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {parseOptions(question.options).map((option, optIndex) => (
+                          <SelectItem key={`${option.value}-${optIndex}`} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Radio Options Question Type */}
+                {question.component === 'options' && (
+                  <div className="space-y-2">
+                    <Label>
+                      {question.label}
+                      {question.required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                    <RadioGroup
+                      value={formData[question.id] || ""}
+                      onValueChange={(value) => handleInputChange(question.id, value)}
+                    >
+                      {parseOptions(question.options).map((option, optIndex) => (
+                        <div key={`${option.value}-${optIndex}`} className="flex items-center space-x-2">
+                          <RadioGroupItem value={option.value} id={`${question.id}-${option.value}`} />
+                          <Label htmlFor={`${question.id}-${option.value}`} className="font-normal">
+                            {option.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                )}
+
+                {/* Checkbox Question Type */}
+                {question.component === 'checkbox' && (
+                  <div className="space-y-2">
+                    <Label>
+                      {question.label}
+                      {question.required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                    <div className="space-y-2">
+                      {parseOptions(question.options).map((option, optIndex) => (
+                        <div key={`${option.value}-${optIndex}`} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`${question.id}-${option.value}`}
+                            checked={Array.isArray(formData[question.id]) ? 
+                              (formData[question.id] as string[]).includes(option.value) : false}
+                            onCheckedChange={(checked) => {
+                              const currentValues = Array.isArray(formData[question.id]) ? 
+                                formData[question.id] as string[] : [];
+                              if (checked) {
+                                handleInputChange(question.id, [...currentValues, option.value]);
+                              } else {
+                                handleInputChange(question.id, currentValues.filter(v => v !== option.value));
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`${question.id}-${option.value}`} className="font-normal">
+                            {option.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {/* Select/Options Questions */}
@@ -1265,7 +1359,7 @@ export default function CompleteAssignmentPage() {
                   />
                 )}
 
-                {/* Photo Upload Questions */}
+                {/* Photo Upload */}
                 {question.photoUpload && (
                   <div className="space-y-2">
                     <Label>Photo Upload</Label>
@@ -1325,14 +1419,12 @@ export default function CompleteAssignmentPage() {
                               </div>
                             )}
                           </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => handleOpenPhotoBank(question.id)}
-                            disabled={uploadProgress[question.id] !== undefined}
-                          >
+                          <Button type="button" variant="outline" size="sm" onClick={() => {
+                            setSelectedQuestionForPhotoBank(question.id);
+                            setIsPhotoBankOpen(true);
+                          }}>
                             <ImageIcon className="h-4 w-4 mr-2" />
-                            Photo Bank
+                            From Bank
                           </Button>
                         </div>
                       )}
@@ -1464,11 +1556,16 @@ export default function CompleteAssignmentPage() {
 
       {/* Photo Bank Modal */}
       <Dialog open={isPhotoModalOpen} onOpenChange={setIsPhotoModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+        <DialogContent className="max-w-4xl max-h-[80vh]">
           <DialogHeader>
-            <DialogTitle>Photo Bank</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5" />
+              Photo Bank ({photoBankFiles.length} {photoBankFiles.length === 1 ? 'photo' : 'photos'})
+            </DialogTitle>
             <DialogDescription>
-              Select a photo to assign to the question "{selectedQuestionForPhoto && assignment?.questions?.find(q => q.id === selectedQuestionForPhoto)?.label}"
+              {selectedQuestionForPhotoBank 
+                ? "Select a photo to assign to the current question, or manage your photo library."
+                : "Manage your uploaded photos and view your photo library."}
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-auto">
@@ -1494,41 +1591,42 @@ export default function CompleteAssignmentPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {photoBankFiles.map((photo, index) => (
-                    <TableRow key={`${photo.url}-${index}`}>
+                  {photoBankFiles.map((file, index) => (
+                    <TableRow key={`${file.url}-${index}`}>
                       <TableCell>
                         <Image
-                          src={photo.url}
-                          alt={photo.name}
+                          src={file.url}
+                          alt={file.name}
                           width={50}
                           height={50}
                           className="rounded object-cover"
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{photo.name}</TableCell>
-                      <TableCell>{new Date(photo.uploadDate).toLocaleDateString()}</TableCell>
-                      <TableCell>{(photo.fileSize / 1024).toFixed(1)} KB</TableCell>
+                      <TableCell className="font-medium">{file.name}</TableCell>
+                      <TableCell>{new Date(file.uploadDate).toLocaleDateString()}</TableCell>
+                      <TableCell>{(file.fileSize / 1024).toFixed(1)} KB</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex gap-2 justify-end">
+                          {selectedQuestionForPhotoBank && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => handleSelectPhotoFromBank(file, selectedQuestionForPhotoBank)}
+                            >
+                              Select
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(photo.url, '_blank')}
+                            onClick={() => window.open(file.url, '_blank')}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="destructive"
                             size="sm"
-                            onClick={() => handleSelectPhotoFromBank(photo)}
-                          >
-                            Select
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeletePhotoFromBank(photo)}
-                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteFromPhotoBank(file.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1541,8 +1639,11 @@ export default function CompleteAssignmentPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsPhotoModalOpen(false)}>
-              Cancel
+            <Button variant="outline" onClick={() => {
+              setIsPhotoBankOpen(false);
+              setSelectedQuestionForPhotoBank(null);
+            }}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
