@@ -47,6 +47,9 @@ type FormDataSchema = z.infer<typeof formSchema>;
 interface UploadedFileDetail {
   name: string;
   url: string;
+  id?: string;
+  uploadedAt?: string;
+  assignedToQuestion?: string | null;
 }
 
 interface AudioNoteDetail {
@@ -72,15 +75,6 @@ interface PhotoBankItem {
   uploadedAt: string;
   assignedToQuestion?: string | null;
 }
-
-// Extend UploadedFileDetail to include PhotoBankItem properties
-interface PhotoBankFile extends UploadedFileDetail {
-  id: string;
-  uploadedAt: string;
-  assignedToQuestion?: string | null;
-}
-
-
 const UNASSIGNED_FILTER_VALUE = "n/a";
 const MAX_AUDIO_RECORDING_MS = 20000;
 
@@ -127,7 +121,7 @@ export default function CompleteAssignmentPage() {
   const [uploadedFileDetails, setUploadedFileDetails] = useState<{ [questionId: string]: UploadedFileDetail | null }>({});
   const [uploadErrors, setUploadErrors] = useState<{ [questionId: string]: string | null }>({});
   const [imagePreviewUrls, setImagePreviewUrls] = useState<{ [questionId: string]: string | null }>({});
-  const [photoBankFiles, setPhotoBankFiles] = useState<PhotoBankFile[]>([]);
+  const [photoBankFiles, setPhotoBankFiles] = useState<UploadedFileDetail[]>([]);
   const [photoBankUploads, setPhotoBankUploads] = useState<{ [key: string]: { progress: number; error: string | null } }>({});
   const [isPhotoBankModalOpen, setIsPhotoBankModalOpen] = useState(false);
   const [activeQuestionIdForPhotoBank, setActiveQuestionIdForPhotoBank] = useState<string | null>(null);
@@ -434,8 +428,14 @@ export default function CompleteAssignmentPage() {
         async () => {
           try {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            // Add the successfully uploaded file to the photoBankFiles state with proper structure
-            const newPhoto: PhotoBankFile = {
+            const newPhoto: UploadedFileDetail = {
+              id: `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              name: file.name,
+              url: downloadURL,
+              uploadedAt: new Date().toISOString(),
+              assignedToQuestion: null
+            };
+            setPhotoBankFiles(prev => [...prev, newPhoto]);
               id: `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               name: file.name,
               url: downloadURL,
@@ -518,7 +518,7 @@ export default function CompleteAssignmentPage() {
     async () => {
       try {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        const newPhoto: PhotoBankFile = {
+        const newPhoto: UploadedFileDetail = {
           id: `photo-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
           url: downloadURL,
           name: file.name,
@@ -981,10 +981,13 @@ export default function CompleteAssignmentPage() {
   const handleSelectPhotoFromBank = (photo: PhotoBankFile) => {
     if (!activeQuestionIdForPhotoBank) return;
 
-    // Associate the selected photo with the active question
+    // Create a simple UploadedFileDetail for the question
     setUploadedFileDetails(prev => ({
       ...prev,
-      [activeQuestionIdForPhotoBank]: { name: photo.name, url: photo.url }
+      [activeQuestionIdForPhotoBank]: {
+        name: photo.name,
+        url: photo.url
+      }
     }));
 
     // Reset and close the modal
@@ -1035,8 +1038,7 @@ export default function CompleteAssignmentPage() {
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          // Add the successfully uploaded file to the photoBankFiles state with proper structure
-          const newPhoto: PhotoBankFile = { 
+          const newPhoto: UploadedFileDetail = { 
             id: `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             name: file.name, 
             url: downloadURL,
@@ -1589,7 +1591,7 @@ export default function CompleteAssignmentPage() {
                       {/* Assignment dropdown */}
                       <Select
                         value={photo.assignedToQuestion || "unassigned"}
-                        onValueChange={(value) => assignPhotoToQuestion(photo.id, value === "unassigned" ? null : value)}
+                        onValueChange={(value) => assignPhotoToQuestion(photo.id!, value === "unassigned" ? null : value)}
                         key={`select-${photo.id || index}`}
                       >
                         <SelectTrigger className="h-6 text-xs">
@@ -1599,7 +1601,7 @@ export default function CompleteAssignmentPage() {
                           <SelectItem value="unassigned">Unassigned</SelectItem>
                           {assignment?.questions?.filter(q => q.photoUpload).map((question) => (
                             <SelectItem key={`option-${question.id}`} value={question.id}>
-                              Q{assignment.questions.indexOf(question) + 1}: {question.label.substring(0, 30)}{question.label.length > 30 ? '...' : ''}
+                              Q{assignment.questions.indexOf(question) + 1}: {question.label.length > 30 ? question.label.substring(0, 30) + '...' : question.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -2133,8 +2135,8 @@ export default function CompleteAssignmentPage() {
                           <div className="grid grid-cols-2 gap-2">
                             {photoBankFiles
                               .filter(photo => photo.assignedToQuestion === question.id)
-                              .map((photo) => (
-                                <div key={photo.id} className="relative group">
+                              .map((photo, idx) => (
+                                <div key={photo.id || `assigned-${idx}`} className="relative group">
                                   <Image
                                     src={photo.url}
                                     alt={photo.name}
@@ -2330,25 +2332,22 @@ export default function CompleteAssignmentPage() {
           <ScrollArea className="h-[60vh]">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
               {photoBankFiles.map((photo, index) => (
-                <div key={`available-${photo.id || index}`} className="relative group">
-                  <div
-                    key={`modal-${photo.id || index}`}
-                    className="relative cursor-pointer group"
-                    onClick={() => handleSelectPhotoFromBank(photo)}
-                  >
-                    <Image
-                      src={photo.url}
-                      alt={photo.name}
-                      key={`modal-img-${photo.id || index}`}
-                      width={200}
-                      height={200}
-                      className="w-full h-32 object-cover rounded border hover:border-primary transition-colors"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                      <span className="text-white text-sm text-center p-2">
-                        {photo.name}
-                      </span>
-                    </div>
+                <div
+                  key={photo.id || `modal-${index}`}
+                  className="relative cursor-pointer group"
+                  onClick={() => handleSelectPhotoFromBank(photo)}
+                >
+                  <Image
+                    src={photo.url}
+                    alt={photo.name}
+                    width={200}
+                    height={200}
+                    className="w-full h-32 object-cover rounded border hover:border-primary transition-colors"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                    <span className="text-white text-sm text-center p-2">
+                      {photo.name}
+                    </span>
                   </div>
                 </div>
               ))}
