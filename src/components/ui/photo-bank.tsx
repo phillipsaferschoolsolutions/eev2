@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { usePhotoBank, type PhotoItem } from '@/hooks/use-photo-bank';
 import { 
   Image as ImageIcon, 
@@ -16,7 +18,8 @@ import {
   Grid3X3,
   List,
   Calendar,
-  Tag
+  Tag,
+  Link as LinkIcon
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -26,12 +29,14 @@ interface PhotoBankProps {
   className?: string;
   showFilters?: boolean;
   viewMode?: 'grid' | 'list';
+  availableQuestions?: Array<{ id: string; label: string; photoUpload: boolean }>;
 }
 
 export function PhotoBank({ 
   className, 
   showFilters = true, 
-  viewMode: initialViewMode = 'grid' 
+  viewMode: initialViewMode = 'grid',
+  availableQuestions = []
 }: PhotoBankProps) {
   const {
     photos,
@@ -40,11 +45,14 @@ export function PhotoBank({
     deselectPhoto,
     clearSelection,
     removePhoto,
+    updatePhoto,
   } = usePhotoBank();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(initialViewMode);
   const [filterBy, setFilterBy] = useState<'all' | 'questions' | 'assignments'>('all');
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string>('');
 
   const photoArray = Object.values(photos);
 
@@ -60,6 +68,10 @@ export function PhotoBank({
     return matchesSearch && matchesFilter;
   });
 
+  // Get questions that support photo upload and don't have photos assigned
+  const availableQuestionsForAssignment = availableQuestions.filter(q => 
+    q.photoUpload && !photoArray.some(photo => photo.questionId === q.id)
+  );
   const handlePhotoClick = (photoId: string) => {
     if (selectedPhotos.includes(photoId)) {
       deselectPhoto(photoId);
@@ -93,6 +105,17 @@ export function PhotoBank({
     });
   };
 
+  const handleAssignToQuestion = () => {
+    if (selectedPhotos.length === 0 || !selectedQuestionId) return;
+    
+    // Assign the first selected photo to the question
+    const photoId = selectedPhotos[0];
+    updatePhoto(photoId, { questionId: selectedQuestionId });
+    
+    setIsAssignDialogOpen(false);
+    setSelectedQuestionId('');
+    clearSelection();
+  };
   return (
     <div className={cn("space-y-6", className)}>
       <Card>
@@ -181,6 +204,12 @@ export function PhotoBank({
                 {selectedPhotos.length} photo{selectedPhotos.length !== 1 ? 's' : ''} selected
               </span>
               <div className="flex gap-2">
+                {availableQuestionsForAssignment.length > 0 && selectedPhotos.length === 1 && (
+                  <Button variant="outline" size="sm" onClick={() => setIsAssignDialogOpen(true)}>
+                    <LinkIcon className="h-4 w-4 mr-1" />
+                    Assign to Question
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={handleDownloadSelected}>
                   <Download className="h-4 w-4 mr-1" />
                   Download
@@ -315,5 +344,40 @@ export function PhotoBank({
         </CardContent>
       </Card>
     </div>
+      {/* Assign to Question Dialog */}
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Photo to Question</DialogTitle>
+            <DialogDescription>
+              Select a question to assign the selected photo to. Only questions that support photo upload are shown.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <Select value={selectedQuestionId} onValueChange={setSelectedQuestionId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a question" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableQuestionsForAssignment.map((question) => (
+                  <SelectItem key={question.id} value={question.id}>
+                    {question.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAssignToQuestion} disabled={!selectedQuestionId}>
+              Assign Photo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
   );
 }

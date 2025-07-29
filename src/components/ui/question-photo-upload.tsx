@@ -112,21 +112,27 @@ export function QuestionPhotoUpload({
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOver(false);
     handleFileSelect(e.dataTransfer.files);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOver(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOver(false);
   };
 
-  const handleRemovePhoto = (photoId: string) => {
+  const handleRemovePhoto = (e: React.MouseEvent, photoId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     const photo = questionPhotos.find(p => p.id === photoId);
     if (photo?.url.startsWith('blob:')) {
       URL.revokeObjectURL(photo.url);
@@ -139,11 +145,17 @@ export function QuestionPhotoUpload({
     }
   };
 
+  const handleChooseFiles = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fileInputRef.current?.click();
+  };
+
   const canAddMore = questionPhotos.length < maxPhotos;
 
   return (
-    <div className={cn("space-y-4", className)}>
-      {/* Upload Area */}
+    <div className={cn("space-y-3", className)}>
+      {/* Compact Upload Area */}
       {canAddMore && (
         <Card
           className={cn(
@@ -154,23 +166,27 @@ export function QuestionPhotoUpload({
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={handleChooseFiles}
         >
-          <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-muted mb-4">
-              <Camera className="w-6 h-6 text-muted-foreground" />
+          <CardContent className="flex flex-col items-center justify-center py-4 text-center">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted mb-2">
+              <Camera className="w-4 h-4 text-muted-foreground" />
             </div>
-            <h3 className="font-medium mb-2">Upload Photos</h3>
-            <p className="text-sm text-muted-foreground mb-4">
+            <h4 className="text-sm font-medium mb-1">Upload Photos</h4>
+            <p className="text-xs text-muted-foreground mb-2">
               Drag and drop images here, or click to browse
             </p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={isUploading}>
-                <Upload className="w-4 h-4 mr-2" />
-                Choose Files
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
+            <Button 
+              type="button"
+              variant="outline" 
+              size="sm" 
+              disabled={isUploading}
+              onClick={handleChooseFiles}
+            >
+              <Upload className="w-3 h-3 mr-1" />
+              Choose Files
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1">
               {questionPhotos.length}/{maxPhotos} photos • Max 10MB per file
             </p>
           </CardContent>
@@ -190,18 +206,18 @@ export function QuestionPhotoUpload({
 
       {/* Upload Progress */}
       {isUploading && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
             <span>Uploading...</span>
             <span>{uploadProgress}%</span>
           </div>
-          <Progress value={uploadProgress} className="h-2" />
+          <Progress value={uploadProgress} className="h-1" />
         </div>
       )}
 
-      {/* Photo Grid */}
+      {/* Compact Photo Grid */}
       {questionPhotos.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
           {questionPhotos.map((photo) => (
             <Card key={photo.id} className="relative overflow-hidden">
               <div className="aspect-square relative">
@@ -216,7 +232,7 @@ export function QuestionPhotoUpload({
                 {photo.status === 'uploading' && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <div className="text-white text-center">
-                      <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                      <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin mx-auto mb-1" />
                       <p className="text-xs">{photo.progress}%</p>
                     </div>
                   </div>
@@ -225,7 +241,7 @@ export function QuestionPhotoUpload({
                 {photo.status === 'error' && (
                   <div className="absolute inset-0 bg-red-500/50 flex items-center justify-center">
                     <div className="text-white text-center">
-                      <X className="w-6 h-6 mx-auto mb-1" />
+                      <X className="w-4 h-4 mx-auto mb-1" />
                       <p className="text-xs">Failed</p>
                     </div>
                   </div>
@@ -233,24 +249,22 @@ export function QuestionPhotoUpload({
 
                 {/* Remove Button */}
                 <Button
+                  type="button"
                   variant="destructive"
                   size="icon"
-                  className="absolute top-2 right-2 w-6 h-6"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemovePhoto(photo.id);
-                  }}
+                  className="absolute top-1 right-1 w-4 h-4"
+                  onClick={(e) => handleRemovePhoto(e, photo.id)}
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-2 h-2" />
                 </Button>
               </div>
               
-              <CardContent className="p-2">
+              <CardContent className="p-1">
                 <p className="text-xs truncate" title={photo.name}>
                   {photo.name}
                 </p>
-                <div className="flex items-center gap-1 mt-1">
-                  <ImageIcon className="w-3 h-3 text-muted-foreground" />
+                <div className="flex items-center gap-1">
+                  <ImageIcon className="w-2 h-2 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">
                     {photo.status === 'uploaded' ? 'Uploaded' : 
                      photo.status === 'uploading' ? 'Uploading...' : 
@@ -260,14 +274,6 @@ export function QuestionPhotoUpload({
               </CardContent>
             </Card>
           ))}
-        </div>
-      )}
-
-      {/* No Photos State */}
-      {questionPhotos.length === 0 && !canAddMore && (
-        <div className="text-center py-8 text-muted-foreground">
-          <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>No photos uploaded yet</p>
         </div>
       )}
     </div>
