@@ -56,6 +56,335 @@ import { cn } from "@/lib/utils";
 const formSchema = z.record(z.any());
 type FormDataSchema = z.infer<typeof formSchema>;
 
+
+export function QuestionRenderer({
+  question, control, register, errors, formData, setFormData,
+  locations, isLoadingLocations, parseOptions, hours12, minutes, amPm,
+}: any) {
+  switch (question.component) {
+    case 'text':
+      return (
+        <Input
+          {...register(question.id)}
+          placeholder={question.placeholder}
+          className={errors[question.id] ? "border-destructive" : ""}
+        />
+      );
+
+    case 'textarea':
+      return (
+        <Textarea
+          {...register(question.id)}
+          placeholder={question.placeholder}
+          rows={4}
+          className={errors[question.id] ? "border-destructive" : ""}
+        />
+      );
+
+    case 'email':
+      return (
+        <Input
+          type="email"
+          {...register(question.id)}
+          placeholder={question.placeholder}
+          className={errors[question.id] ? "border-destructive" : ""}
+        />
+      );
+
+    case 'url':
+      return (
+        <Input
+          type="url"
+          {...register(question.id)}
+          placeholder={question.placeholder}
+          className={errors[question.id] ? "border-destructive" : ""}
+        />
+      );
+
+    case 'telephone':
+      return (
+        <Input
+          type="tel"
+          {...register(question.id)}
+          placeholder={question.placeholder}
+          className={errors[question.id] ? "border-destructive" : ""}
+        />
+      );
+
+    case 'number':
+      return (
+        <Input
+          type="number"
+          {...register(question.id)}
+          placeholder={question.placeholder}
+          className={errors[question.id] ? "border-destructive" : ""}
+        />
+      );
+
+    case 'select':
+      const selectOptions = parseOptions(question.options, question);
+      return (
+        <Select
+          value={formData[question.id] || ''}
+          onValueChange={(value: string) => setFormData((prev: any) => ({ ...prev, [question.id]: value }))}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select an option" />
+          </SelectTrigger>
+          <SelectContent>
+            {selectOptions.map((option: any) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+
+    case 'options':
+      const radioOptions = parseOptions(question.options, question);
+      return (
+        <RadioGroup
+          value={formData[question.id] || ''}
+          onValueChange={(value: string) => setFormData((prev: any) => ({ ...prev, [question.id]: value }))}
+        >
+          {radioOptions.map((option: any) => (
+            <div key={option.value} className="flex items-center space-x-2">
+              <RadioGroupItem value={option.value} id={`${question.id}-${option.value}`} />
+              <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
+            </div>
+          ))}
+        </RadioGroup>
+      );
+
+    case 'checkbox':
+      const checkboxOptions = parseOptions(question.options, question);
+      const selectedValues = Array.isArray(formData[question.id]) ? formData[question.id] as string[] : [];
+      return (
+        <div className="space-y-2">
+          {checkboxOptions.map((option: any) => (
+            <div key={option.value} className="flex items-center space-x-2">
+              <Checkbox
+                id={`${question.id}-${option.value}`}
+                checked={selectedValues.includes(option.value)}
+                onCheckedChange={(checked: boolean) => {
+                  if (checked) {
+                    setFormData((prev: any) => ({
+                      ...prev,
+                      [question.id]: [...selectedValues, option.value],
+                    }));
+                  } else {
+                    setFormData((prev: any) => ({
+                      ...prev,
+                      [question.id]: selectedValues.filter((v: string) => v !== option.value),
+                    }));
+                  }
+                }}
+              />
+              <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
+            </div>
+          ))}
+        </div>
+      );
+
+    case 'buttonSelect':
+      return (
+        <Controller
+          name={question.id}
+          control={control}
+          render={({ field }) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              {parseOptions(question.options, question).map((option: any) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`btn ${field.value === option.value ? "btn-primary" : "btn-outline"}`}
+                  onClick={() => field.onChange(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
+        />
+      );
+
+    case 'multiButtonSelect':
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          {parseOptions(question.options, question).map((option: any) => (
+            <Controller
+              key={option.value}
+              name={`${question.id}.${option.value}`}
+              control={control}
+              render={({ field }) => (
+                <button
+                  type="button"
+                  className={`btn ${field.value ? "btn-primary" : "btn-outline"}`}
+                  onClick={() => field.onChange(!field.value)}
+                >
+                  {option.label}
+                </button>
+              )}
+            />
+          ))}
+        </div>
+      );
+
+    case 'range':
+      return (
+        <Controller
+          name={question.id}
+          control={control}
+          render={({ field }) => (
+            <div className="space-y-2">
+              <Slider
+                value={[field.value || 0]}
+                onValueChange={(value: number[]) => field.onChange(value[0])}
+                max={question.max || 100}
+                min={question.min || 0}
+                step={question.step || 1}
+                className="w-full"
+              />
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>{question.min || 0}</span>
+                <span>Current: {field.value || 0}</span>
+                <span>{question.max || 100}</span>
+              </div>
+            </div>
+          )}
+        />
+      );
+
+    case 'date':
+    case 'completionDate':
+      return (
+        <Controller
+          name={question.id}
+          control={control}
+          render={({ field }) => (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={`btn w-full text-left font-normal ${!field.value ? "text-muted-foreground" : ""} ${errors[question.id] ? "border-destructive" : ""}`}
+                >
+                  {field.value ? format(field.value, "PPP") : "Pick a date"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={field.value}
+                  onSelect={field.onChange}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          )}
+        />
+      );
+
+    case 'time':
+    case 'completionTime':
+      return (
+        <div className="grid grid-cols-3 gap-2">
+          <Controller
+            name={`${question.id}.hour`}
+            control={control}
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Hour" />
+                </SelectTrigger>
+                <SelectContent>
+                  {hours12.map((hour: string) => (
+                    <SelectItem key={hour} value={hour}>
+                      {hour}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          <Controller
+            name={`${question.id}.minute`}
+            control={control}
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Min" />
+                </SelectTrigger>
+                <SelectContent>
+                  {minutes.map((minute: string) => (
+                    <SelectItem key={minute} value={minute}>
+                      {minute}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          <Controller
+            name={`${question.id}.period`}
+            control={control}
+            render={({ field }) => (
+              <Select onValueChange={field.onChange} value={field.value}>
+                <SelectTrigger>
+                  <SelectValue placeholder="AM/PM" />
+                </SelectTrigger>
+                <SelectContent>
+                  {amPm.map((period: string) => (
+                    <SelectItem key={period} value={period}>
+                      {period}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </div>
+      );
+
+    case 'schoolSelector':
+      return (
+        <Controller
+          name={question.id}
+          control={control}
+          render={({ field }) => (
+            <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingLocations}>
+              <SelectTrigger className={errors[question.id] ? "border-destructive" : ""}>
+                <SelectValue placeholder={isLoadingLocations ? "Loading locations..." : "Select a school"} />
+              </SelectTrigger>
+              <SelectContent>
+                {locationsError ? (
+                  <SelectItem value="" disabled>
+                    Error loading locations
+                  </SelectItem>
+                ) : (
+                  locations.map((location: any) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.locationName}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          )}
+        />
+      );
+
+    default:
+      return (
+        <Input
+          {...register(question.id)}
+          placeholder={question.placeholder}
+          className={errors[question.id] ? "border-destructive" : ""}
+        />
+      );
+  }
+}
+
 interface UploadedFileDetail {
   name: string;
   url: string;
