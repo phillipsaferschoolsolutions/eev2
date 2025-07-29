@@ -674,6 +674,111 @@ export default function CompleteAssignmentPage() {
     setSelectedSubSection("all");
   }, [selectedSection]);
 
+  const onSubmit: SubmitHandler<FormDataSchema> = async (data) => {
+  if (!assignment || !userProfile?.account || !user || !user.email) {
+    toast({ variant: "destructive", title: "Submission Error", description: "Cannot submit, critical assignment or user account data missing." });
+    return;
+  }
+  
+  const currentFormData = getValues();
+  const formDataToProcess = Object.keys(currentFormData).length > 0 ? currentFormData : data;
+  
+  setIsSubmitting(true);
+
+  const formDataForSubmission = new FormData();
+  const answersObject: Record<string, unknown> = {};
+  const commentsObject: Record<string, unknown> = {};
+
+  conditionallyVisibleQuestions.forEach((question) => {
+    const rawAnswer = formDataToProcess[question.id];
+    let questionAnswer: unknown;
+
+    if (question.component === 'checkbox' && question.options) {
+      const selectedOptions = parseOptions(question.options, question)
+        .filter(opt => formDataToProcess[`${question.id}.${opt.value}`] === true)
+        .map(opt => opt.value);
+      questionAnswer = selectedOptions;
+    } else if ((question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options) {
+      const selectedOptions: string[] = [];
+      parseOptions(question.options, question).forEach(opt => {
+        if (formDataToProcess[`${question.id}.${opt.value}`]) {
+          selectedOptions.push(opt.value);
+        }
+      });
+      questionAnswer = selectedOptions;
+    } else if (question.component === 'checkbox' && !question.options) {
+      questionAnswer = formDataToProcess[question.id] === true;
+    } else if ((question.component === 'date' || question.component === 'completionDate') && formDataToProcess[question.id] instanceof Date) {
+      questionAnswer = format(formDataToProcess[question.id] as Date, "yyyy-MM-dd");
+    } else if (question.component === 'time' || question.component === 'completionTime') {
+      const timeValue = formDataToProcess[question.id];
+      if (typeof timeValue === 'object' && timeValue !== null && timeValue.hour && timeValue.minute && timeValue.period) {
+        questionAnswer = `${timeValue.hour}:${timeValue.minute} ${timeValue.period}`;
+      } else {
+        questionAnswer = '';
+      }
+    } else if (question.component === 'photoUpload') {
+      const fileDetail = uploadedFileDetails[question.id];
+      if (fileDetail) {
+        questionAnswer = fileDetail.name;
+      } else {
+        questionAnswer = '';
+      }
+    } else {
+      questionAnswer = formDataToProcess[question.id] ?? '';
+    }
+
+    answersObject[question.id] = questionAnswer;
+
+    const commentKey = `${question.id}_comment`;
+    if (question.comment && formDataToProcess[commentKey]) {
+      commentsObject[question.id] = formDataToProcess[commentKey];
+    }
+  });
+  
+  try {
+    formDataForSubmission.append('content', JSON.stringify(answersObject));
+    formDataForSubmission.append('commentsData', JSON.stringify(commentsObject));
+    formDataForSubmission.append('completedBy', user.email);
+    formDataForSubmission.append('account', userProfile.account);
+    formDataForSubmission.append('status', 'completed');
+    formDataForSubmission.append('date', new Date().toLocaleDateString('en-US', { 
+      month: '2-digit', 
+      day: '2-digit', 
+      year: 'numeric', 
+      timeZone: 'America/New_York' 
+    }));
+    
+    const schoolSelectorQuestion = assignment.questions.find(q => q.component === 'schoolSelector');
+    if (schoolSelectorQuestion && formDataToProcess[schoolSelectorQuestion.id]) {
+      const selectedLocationId = formDataToProcess[schoolSelectorQuestion.id];
+      const selectedLocation = locations.find(loc => loc.id === selectedLocationId);
+      if (selectedLocation) {
+        formDataForSubmission.append('locationName', selectedLocation.locationName);
+      }
+    }
+
+    const result = await submitCompletedAssignment(
+      assignment.id, 
+      formDataForSubmission, 
+      userProfile.account
+    );
+    
+    if (result && (result.success !== false)) {
+      toast({ title: "Assignment Submitted Successfully", description: "Your assignment has been submitted." });
+      router.push('/assessment-forms');
+    } else {
+      throw new Error(result?.error || "Submission failed - no success confirmation received");
+    }
+  } catch (error) {
+    console.error("Submission error:", error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    toast({ variant: "destructive", title: "Submission Failed", description: errorMessage });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
   // CONTINUED REWRITE OF CompleteAssignmentPage (Part 5 of X)
 
   if (authLoading || profileLoading || isLoading) {
