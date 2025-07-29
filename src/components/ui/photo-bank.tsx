@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { usePhotoBank, type PhotoItem } from '@/hooks/use-photo-bank';
+import { usePhotoBank } from '@/context/photo-bank-context';
+import type { PhotoItem } from '@/context/photo-bank-context';
 import { 
   Image as ImageIcon, 
   Search, 
@@ -39,8 +40,7 @@ export function PhotoBank({
   availableQuestions = []
 }: PhotoBankProps) {
   const {
-    photos,
-    selectedPhotos,
+    state: { photos, selectedPhotos },
     selectPhoto,
     deselectPhoto,
     clearSelection,
@@ -55,7 +55,7 @@ export function PhotoBank({
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string>('');
 
-  const photoArray = getAllPhotos();
+  const photoArray = Object.values(photos);
 
   // Filter photos based on search and filter criteria
   const filteredPhotos = photoArray.filter(photo => {
@@ -71,7 +71,7 @@ export function PhotoBank({
 
   // Get questions that support photo upload and don't have photos assigned
   const availableQuestionsForAssignment = availableQuestions.filter(q => 
-    q.photoUpload && !photoArray.some(photo => photo.questionId === q.id)
+    q.photoUpload
   );
   const handlePhotoClick = (photoId: string) => {
     if (selectedPhotos.includes(photoId)) {
@@ -83,7 +83,7 @@ export function PhotoBank({
 
   const handleDeleteSelected = () => {
     selectedPhotos.forEach(photoId => {
-      const photo = photos[photoId];
+      const photo = photoArray.find(p => p.id === photoId);
       if (photo?.url.startsWith('blob:')) {
         URL.revokeObjectURL(photo.url);
       }
@@ -94,7 +94,7 @@ export function PhotoBank({
 
   const handleDownloadSelected = () => {
     selectedPhotos.forEach(photoId => {
-      const photo = photos[photoId];
+      const photo = photoArray.find(p => p.id === photoId);
       if (photo) {
         const link = document.createElement('a');
         link.href = photo.url;
@@ -109,9 +109,10 @@ export function PhotoBank({
   const handleAssignToQuestion = () => {
     if (selectedPhotos.length === 0 || !selectedQuestionId) return;
     
-    // Assign the first selected photo to the question
-    const photoId = selectedPhotos[0];
-    updatePhoto(photoId, { questionId: selectedQuestionId });
+    // Assign all selected photos to the question
+    selectedPhotos.forEach(photoId => {
+      updatePhoto(photoId, { questionId: selectedQuestionId });
+    });
     
     setIsAssignDialogOpen(false);
     setSelectedQuestionId('');
@@ -209,6 +210,17 @@ export function PhotoBank({
                   <Button variant="outline" size="sm" onClick={() => setIsAssignDialogOpen(true)}>
                     <LinkIcon className="h-4 w-4 mr-1" />
                     Assign to Question
+                  </Button>
+                )}
+                {selectedPhotos.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => {
+                    selectedPhotos.forEach(photoId => {
+                      updatePhoto(photoId, { questionId: undefined });
+                    });
+                    clearSelection();
+                  }}>
+                    <X className="h-4 w-4 mr-1" />
+                    Unassign
                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={handleDownloadSelected}>
@@ -351,7 +363,7 @@ export function PhotoBank({
           <DialogHeader>
             <DialogTitle>Assign Photo to Question</DialogTitle>
             <DialogDescription>
-              Select a question to assign the selected photo to. Only questions that support photo upload are shown.
+              Select a question to assign the selected photo(s) to. Only questions that support photo upload are shown.
             </DialogDescription>
           </DialogHeader>
           
@@ -375,7 +387,7 @@ export function PhotoBank({
               Cancel
             </Button>
             <Button onClick={handleAssignToQuestion} disabled={!selectedQuestionId}>
-              Assign Photo
+              Assign Photo{selectedPhotos.length > 1 ? 's' : ''}
             </Button>
           </DialogFooter>
         </DialogContent>

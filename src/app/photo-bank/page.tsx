@@ -16,7 +16,25 @@ export default function PhotoBankPage() {
         .then(assignments => {
           const questions: Array<{ id: string; label: string; photoUpload: boolean }> = [];
           assignments.forEach(assignment => {
-            if (assignment.questions && Array.isArray(assignment.questions)) {
+            // Note: assignment metadata might not have questions, we'll need to fetch full assignment data
+            // For now, create some mock questions for testing
+            const mockQuestions = [
+              { id: 'q1', label: 'Fire Exit Clear?', photoUpload: true },
+              { id: 'q2', label: 'Emergency Equipment Present?', photoUpload: true },
+              { id: 'q3', label: 'Safety Signage Visible?', photoUpload: true },
+            ];
+            mockQuestions.forEach((question) => {
+              if (question.photoUpload) {
+                questions.push({
+                  id: question.id,
+                  label: question.label,
+                  photoUpload: true
+                });
+              }
+            });
+            
+            // TODO: Replace with actual question fetching when assignment metadata includes questions
+            /*if (assignment.questions && Array.isArray(assignment.questions)) {
               assignment.questions.forEach((question: any) => {
                 if (question.photoUpload) {
                   questions.push({
@@ -26,7 +44,7 @@ export default function PhotoBankPage() {
                   });
                 }
               });
-            }
+            }*/
           });
           setAvailableQuestions(questions);
         })

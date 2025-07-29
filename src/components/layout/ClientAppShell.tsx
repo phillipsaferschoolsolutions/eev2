@@ -8,6 +8,7 @@ import { AuthProvider } from "@/context/auth-context";
 import { LayoutProvider } from "@/context/layout-context";
 import { PageShell } from "@/components/layout/PageShell";
 import { ThemeBackgroundSetter } from "@/components/layout/ThemeBackgroundSetter";
+import { PhotoBankProvider } from "@/context/photo-bank-context";
 
 // Define theme IDs here to avoid circular dependency
 const THEME_IDS = [
@@ -35,22 +36,24 @@ const THEME_IDS = [
 export function ClientAppShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem={false}
-        themes={THEME_IDS}
-        forcedTheme={undefined}
-        disableTransitionOnChange={false}
-      >
-        <LayoutProvider>
-          <SidebarProvider>
-            <ThemeBackgroundSetter />
-            <PageShell>{children}</PageShell>
-            <Toaster />
-          </SidebarProvider>
-        </LayoutProvider>
-      </ThemeProvider>
+      <PhotoBankProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem={false}
+          themes={THEME_IDS}
+          forcedTheme={undefined}
+          disableTransitionOnChange={false}
+        >
+          <LayoutProvider>
+            <SidebarProvider>
+              <ThemeBackgroundSetter />
+              <PageShell>{children}</PageShell>
+              <Toaster />
+            </SidebarProvider>
+          </LayoutProvider>
+        </ThemeProvider>
+      </PhotoBankProvider>
     </AuthProvider>
   );
 }

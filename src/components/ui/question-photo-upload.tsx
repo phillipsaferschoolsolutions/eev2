@@ -3,8 +3,10 @@
 import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { usePhotoBank, type PhotoItem } from '@/hooks/use-photo-bank';
-import { Camera, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { usePhotoBank } from '@/context/photo-bank-context';
+import type { PhotoItem } from '@/context/photo-bank-context';
+import { Camera, Upload, X, Eye } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
@@ -25,14 +27,14 @@ export function QuestionPhotoUpload({
 }: QuestionPhotoUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [selectedPhotoForModal, setSelectedPhotoForModal] = useState<PhotoItem | null>(null);
   
   const {
     addPhoto,
     updatePhoto,
     removePhoto,
     getPhotosForQuestion,
-    isUploading,
-    uploadProgress,
+    state: { isUploading, uploadProgress },
     setUploading,
     setUploadProgress,
   } = usePhotoBank();
@@ -150,15 +152,21 @@ export function QuestionPhotoUpload({
     fileInputRef.current?.click();
   };
 
+  const handlePhotoClick = (e: React.MouseEvent, photo: PhotoItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedPhotoForModal(photo);
+  };
+
   const canAddMore = questionPhotos.length < maxPhotos;
 
   return (
-    <div className={cn("space-y-2", className)}>
-      {/* Very Compact Upload Area */}
+    <div className={cn("space-y-1", className)}>
+      {/* Compact Upload Area */}
       {canAddMore && (
         <div
           className={cn(
-            "border border-dashed rounded-md p-3 transition-colors cursor-pointer text-center",
+            "border border-dashed rounded p-2 transition-colors cursor-pointer text-center text-xs",
             dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-muted-foreground/50",
             isUploading && "pointer-events-none opacity-50"
           )}
@@ -168,10 +176,10 @@ export function QuestionPhotoUpload({
           onClick={handleChooseFiles}
         >
           <div className="flex flex-col items-center space-y-1">
-            <Camera className="w-4 h-4 text-muted-foreground" />
+            <Camera className="w-3 h-3 text-muted-foreground" />
             <p className="text-xs font-medium">Upload Photos</p>
             <p className="text-xs text-muted-foreground">
-              Drag and drop images here, or click to browse
+              Drag & drop or click
             </p>
             <Button 
               type="button"
@@ -179,13 +187,13 @@ export function QuestionPhotoUpload({
               size="sm" 
               disabled={isUploading}
               onClick={handleChooseFiles}
-              className="h-6 text-xs px-2"
+              className="h-5 text-xs px-2 py-0"
             >
-              <Upload className="w-3 h-3 mr-1" />
-              Choose Files
+              <Upload className="w-2 h-2 mr-1" />
+              Browse
             </Button>
             <p className="text-xs text-muted-foreground">
-              {questionPhotos.length}/{maxPhotos} photos
+              {questionPhotos.length}/{maxPhotos}
             </p>
           </div>
         </div>
@@ -213,12 +221,15 @@ export function QuestionPhotoUpload({
         </div>
       )}
 
-      {/* Very Compact Photo Grid */}
+      {/* Compact Photo Grid */}
       {questionPhotos.length > 0 && (
-        <div className="grid grid-cols-4 gap-1">
+        <div className="grid grid-cols-5 gap-1">
           {questionPhotos.map((photo) => (
             <div key={photo.id} className="relative group">
-              <div className="aspect-square relative border rounded overflow-hidden">
+              <div 
+                className="aspect-square relative border rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={(e) => handlePhotoClick(e, photo)}
+              >
                 <Image
                   src={photo.url}
                   alt={photo.name}
@@ -230,7 +241,7 @@ export function QuestionPhotoUpload({
                 {photo.status === 'uploading' && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <div className="text-white text-center">
-                      <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin mx-auto mb-1" />
+                      <div className="w-2 h-2 border border-white border-t-transparent rounded-full animate-spin mx-auto mb-1" />
                       <p className="text-xs">{photo.progress}%</p>
                     </div>
                   </div>
@@ -238,29 +249,49 @@ export function QuestionPhotoUpload({
                 
                 {photo.status === 'error' && (
                   <div className="absolute inset-0 bg-red-500/50 flex items-center justify-center">
-                    <X className="w-3 h-3 text-white" />
+                    <X className="w-2 h-2 text-white" />
                   </div>
                 )}
+
+                {/* View Icon */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                  <Eye className="w-3 h-3 text-white" />
+                </div>
 
                 {/* Remove Button */}
                 <Button
                   type="button"
                   variant="destructive"
                   size="icon"
-                  className="absolute top-0.5 right-0.5 w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-0 right-0 w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
                   onClick={(e) => handleRemovePhoto(e, photo.id)}
                 >
                   <X className="w-2 h-2" />
                 </Button>
               </div>
-              
-              <p className="text-xs truncate mt-1" title={photo.name}>
-                {photo.name}
-              </p>
             </div>
           ))}
         </div>
       )}
+
+      {/* Photo Modal */}
+      <Dialog open={!!selectedPhotoForModal} onOpenChange={() => setSelectedPhotoForModal(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{selectedPhotoForModal?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedPhotoForModal && (
+            <div className="relative w-full h-96">
+              <Image
+                src={selectedPhotoForModal.url}
+                alt={selectedPhotoForModal.name}
+                fill
+                className="object-contain"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
