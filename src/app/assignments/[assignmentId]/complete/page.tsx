@@ -442,6 +442,7 @@ export default function CompleteAssignmentPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   const [formData, setFormData] = useState<{ [key: string]: any }>({});
+  const [selectedQuestionForPhotoBank, setSelectedQuestionForPhotoBank] = useState<string | null>(null);
   const [uploadedPhotos, setUploadedPhotos] = useState<{ [questionId: string]: UploadedFileDetail }>({});
   const [selectedQuestionForPhoto, setSelectedQuestionForPhoto] = useState<string | null>(null);
   const [photoBankPhotos, setPhotoBankPhotos] = useState<Array<{ id: string; url: string; name: string; uploadedAt: string; size: number; file?: File; assignedToQuestion?: string | null }>>([]);
