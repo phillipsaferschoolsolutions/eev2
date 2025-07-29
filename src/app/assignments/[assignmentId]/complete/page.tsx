@@ -24,17 +24,25 @@ import {
   ImageIcon, Camera, Upload
 } from "lucide-react";
 
-import {
-  Button, Card, CardContent, CardDescription, CardHeader, CardTitle,
-  Input, Label, RadioGroup, RadioGroupItem,
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-  Checkbox, Textarea, Alert, AlertDescription, AlertTitle,
-  Skeleton, Progress as ShadProgress, Slider,
-  Popover, PopoverTrigger, PopoverContent, Calendar,
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-  Progress, Badge, Separator
-} from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Progress as ShadProgress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
