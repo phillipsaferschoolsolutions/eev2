@@ -484,7 +484,7 @@ export default function CompleteAssignmentPage() {
 
   // Function to upload photo directly to a specific question
  const handleQuestionPhotoUpload = (questionId: string, file: File) => {
-  if (!userProfile?.account || !user || !assignment) {
+  if (!userProfile?.account || !user?.uid || !assignment) {
     toast({
       variant: "destructive",
       title: "Upload Error",
@@ -521,14 +521,14 @@ export default function CompleteAssignmentPage() {
         const newPhoto: UploadedFileDetail = {
           url: downloadURL,
           name: file.name,
-          id: `photo-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
+          id: `photo-${timestamp}-${Math.random().toString(36).substring(2, 11)}`,
           uploadedAt: new Date().toISOString(),
           assignedToQuestion: questionId
         };
         setPhotoBankFiles(prev => [...prev, newPhoto]);
         toast({
           title: "Photo Uploaded",
-          description: `Photo uploaded and assigned to question.`
+          description: "Photo uploaded and assigned to question."
         });
       } catch (urlError) {
         toast({
@@ -541,7 +541,7 @@ export default function CompleteAssignmentPage() {
       }
     }
   );
- };
+  };
 
   // Function to assign/unassign photos to questions
   const assignPhotoToQuestion = (photoId: string, questionId: string | null) => {
