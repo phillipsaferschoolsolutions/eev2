@@ -124,9 +124,6 @@ export default function CompleteAssignmentPage() {
   const [photoBankUploads, setPhotoBankUploads] = useState<{ [key: string]: { progress: number; error: string | null } }>({});
   const [isPhotoBankModalOpen, setIsPhotoBankModalOpen] = useState(false);
   const [activeQuestionIdForPhotoBank, setActiveQuestionIdForPhotoBank] = useState<string | null>(null);
-
-  const [photoBank, setPhotoBank] = useState<PhotoBankItem[]>([]);
-  const [isUploadingToBank, setIsUploadingToBank] = useState(false);
   const [uploadingQuestionId, setUploadingQuestionId] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [modalPhoto, setModalPhoto] = useState<{ url: string; name: string } | null>(null);
@@ -463,8 +460,8 @@ export default function CompleteAssignmentPage() {
   };
 
   // Function to delete a photo from the photo bank
-  const deletePhotoFromBank = (photoId: string) => {
-    setPhotoBank(prev => prev.filter(photo => photo.id !== photoId));
+  const removeFromPhotoBank = (photoId: string) => {
+    setPhotoBankFiles(prev => prev.filter(photo => photo.id !== photoId));
     toast({
       title: "Photo Removed",
       description: "Photo has been removed from the photo bank."
@@ -496,7 +493,8 @@ export default function CompleteAssignmentPage() {
         uploadTask.on(
           'state_changed',
           (snapshot) => {
-            // Progress monitoring could be added here
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(prev => ({ ...prev, [questionId]: progress }));
           },
           (error) => {
             console.error('Upload error:', error);
@@ -507,15 +505,15 @@ export default function CompleteAssignmentPage() {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
               
               // Add to photo bank with question assignment
-              const newPhoto: PhotoBankItem = {
-                id: `photo-${timestamp}`,
+              const newPhoto = {
+                id: `photo-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
                 url: downloadURL,
                 name: file.name,
                 uploadedAt: new Date().toISOString(),
                 assignedToQuestion: questionId
               };
               
-              setPhotoBank(prev => [...prev, newPhoto]);
+              setPhotoBankFiles(prev => [...prev, newPhoto]);
               
               toast({
                 title: "Photo Uploaded",
@@ -543,7 +541,7 @@ export default function CompleteAssignmentPage() {
 
   // Function to assign/unassign photos to questions
   const assignPhotoToQuestion = (photoId: string, questionId: string | null) => {
-    setPhotoBank(prev => prev.map(photo => 
+    setPhotoBankFiles(prev => prev.map(photo => 
       photo.id === photoId 
         ? { ...photo, assignedToQuestion: questionId }
         : photo
@@ -1020,8 +1018,15 @@ export default function CompleteAssignmentPage() {
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          setUploadedFileDetails(prev => ({ ...prev, [questionId]: { name: file.name, url: downloadURL } }));
-          toast({ title: "Upload Successful", description: `${file.name} uploaded.` });
+          // Add the successfully uploaded file to the photoBankFiles state with unique ID
+          const newPhoto = { 
+            id: `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: file.name, 
+            url: downloadURL,
+            uploadedAt: new Date().toISOString(),
+            assignedToQuestion: null
+          };
+          setPhotoBankFiles(prev => [...prev, newPhoto]);
           setUploadProgress(prev => ({ ...prev, [questionId]: 100 }));
         } catch (err) {
             console.error("Failed to get download URL for " + questionId + ":", err);
@@ -1459,31 +1464,33 @@ export default function CompleteAssignmentPage() {
           )}
 
           {/* Uploaded Photos */}
-          {photoBank.length > 0 && (
+          {photoBankFiles.length > 0 && (
             <div className="space-y-2">
-              <h4 className="font-medium">Photo Bank ({photoBank.length})</h4>
+              <h4 className="font-medium">Available Photos ({photoBankFiles.length})</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {photoBank.map((photo) => (
+                {photoBankFiles.map((photo) => (
                   <div key={photo.id} className="relative group border rounded-lg overflow-hidden">
+                    {/* Delete button - appears on hover */}
                     <button
                       type="button"
                       onClick={() => removeFromPhotoBank(photo.id)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity z-10"
                       style={{ lineHeight: 1 }}
                     >
                       ×
                     </button>
+                    {/* Photo with click to enlarge */}
                     <Image
                       src={photo.url}
                       alt={photo.name}
                       width={120}
                       height={120}
-                      className="w-full h-24 object-cover rounded border cursor-pointer"
+                      className="w-full h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity"
                       onClick={() => setModalPhoto({ url: photo.url, name: photo.name })}
-                      style={{ cursor: 'pointer' }}
                     />
                     <div className="p-2">
                       <p className="text-xs truncate mb-2">{photo.name}</p>
+                      {/* Assignment dropdown */}
                       <Select
                         value={photo.assignedToQuestion || "unassigned"}
                         onValueChange={(value) => assignPhotoToQuestion(photo.id, value === "unassigned" ? null : value)}
@@ -1495,7 +1502,7 @@ export default function CompleteAssignmentPage() {
                           <SelectItem value="unassigned">Unassigned</SelectItem>
                           {assignment?.questions?.filter(q => q.photoUpload).map((question) => (
                             <SelectItem key={question.id} value={question.id}>
-                              Q{assignment.questions.indexOf(question) + 1}: {question.label.substring(0, 30)}...
+                              Q{assignment.questions.indexOf(question) + 1}: {question.label.substring(0, 30)}{question.label.length > 30 ? '...' : ''}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1507,29 +1514,6 @@ export default function CompleteAssignmentPage() {
             </div>
           )}
 
-          {photoBankFiles.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium">Available Photos ({photoBankFiles.length})</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {photoBankFiles.map((photo, index) => (
-                  <div key={index} className="relative group">
-                    <Image
-                      src={photo.url}
-                      alt={photo.name}
-                      width={100}
-                      height={100}
-                      className="w-full h-24 object-cover rounded border"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                      <span className="text-white text-xs text-center p-1">
-                        {photo.name}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -2046,11 +2030,11 @@ export default function CompleteAssignmentPage() {
                       </div>
                       
                       {/* Show assigned photos */}
-                      {photoBank.filter(photo => photo.assignedToQuestion === question.id).length > 0 && (
+                      {photoBankFiles.filter(photo => photo.assignedToQuestion === question.id).length > 0 && (
                         <div>
                           <p className="text-xs font-medium mb-2">Assigned Photos:</p>
                           <div className="grid grid-cols-2 gap-2">
-                            {photoBank
+                            {photoBankFiles
                               .filter(photo => photo.assignedToQuestion === question.id)
                               .map((photo) => (
                                 <div key={photo.id} className="relative group">
@@ -2059,28 +2043,20 @@ export default function CompleteAssignmentPage() {
                                     alt={photo.name}
                                     width={80}
                                     height={80}
-                                    className="w-16 h-16 object-cover rounded border mr-2 cursor-pointer relative group"
+                                    className="w-16 h-16 object-cover rounded border cursor-pointer hover:opacity-90 transition-opacity"
                                     onClick={() => setModalPhoto({ url: photo.url, name: photo.name })}
                                   />
+                                  {/* Delete button for assigned photos */}
                                   <button
                                     type="button"
                                     onClick={() => unassignPhotoFromQuestion(question.id, photo.id)}
-                                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity z-10"
                                     style={{ lineHeight: 1 }}
                                   >
                                     ×
                                   </button>
-                                  <div>
+                                  <div className="mt-1">
                                     <p className="text-xs font-medium">{photo.name}</p>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => assignPhotoToQuestion(photo.id, null)}
-                                      className="text-xs h-6 mt-1"
-                                    >
-                                      Unassign
-                                    </Button>
                                   </div>
                                 </div>
                               ))}
@@ -2295,7 +2271,26 @@ export default function CompleteAssignmentPage() {
 
       {/* Photo Modal */}
       {modalPhoto && (
-        <div 
+        <Dialog open={!!modalPhoto} onOpenChange={() => setModalPhoto(null)}>
+          <DialogContent className="max-w-6xl max-h-[90vh] p-2">
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-center">{modalPhoto.name}</DialogTitle>
+            </DialogHeader>
+            <div className="flex items-center justify-center">
+              <Image
+                src={modalPhoto.url}
+                alt={modalPhoto.name}
+                width={1200}
+                height={800}
+                className="max-w-full max-h-[70vh] object-contain rounded"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
           onClick={() => setModalPhoto(null)}
         >
