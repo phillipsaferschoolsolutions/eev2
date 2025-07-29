@@ -1,3 +1,4 @@
+```tsx
 "use client";
 
 import React, { useState } from 'react';
@@ -46,7 +47,7 @@ export function PhotoBank({
     clearSelection,
     removePhoto,
     updatePhoto,
-    getAllPhotos,
+    getAllPhotos, // Use getAllPhotos from context
   } = usePhotoBank();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,7 +56,7 @@ export function PhotoBank({
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string>('');
 
-  const photoArray = Object.values(photos);
+  const photoArray = getAllPhotos(); // Get all photos from the global state
 
   // Filter photos based on search and filter criteria
   const filteredPhotos = photoArray.filter(photo => {
@@ -87,7 +88,7 @@ export function PhotoBank({
       if (photo?.url.startsWith('blob:')) {
         URL.revokeObjectURL(photo.url);
       }
-      removePhoto(photoId);
+      removePhoto(photoId); // Dispatch to global state
     });
     clearSelection();
   };
@@ -111,13 +112,21 @@ export function PhotoBank({
     
     // Assign all selected photos to the question
     selectedPhotos.forEach(photoId => {
-      updatePhoto(photoId, { questionId: selectedQuestionId });
+      updatePhoto(photoId, { questionId: selectedQuestionId }); // Dispatch to global state
     });
     
     setIsAssignDialogOpen(false);
     setSelectedQuestionId('');
     clearSelection();
   };
+
+  const handleUnassignSelected = () => {
+    selectedPhotos.forEach(photoId => {
+      updatePhoto(photoId, { questionId: undefined }); // Dispatch to global state
+    });
+    clearSelection();
+  };
+
   return (
     <div className={cn("space-y-6", className)}>
       <Card>
@@ -137,6 +146,7 @@ export function PhotoBank({
               {/* View Mode Toggle */}
               <div className="flex border rounded-md">
                 <Button
+                  type="button"
                   variant={viewMode === 'grid' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('grid')}
@@ -145,6 +155,7 @@ export function PhotoBank({
                   <Grid3X3 className="h-4 w-4" />
                 </Button>
                 <Button
+                  type="button"
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('list')}
@@ -173,6 +184,7 @@ export function PhotoBank({
               
               <div className="flex gap-2">
                 <Button
+                  type="button"
                   variant={filterBy === 'all' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFilterBy('all')}
@@ -180,6 +192,7 @@ export function PhotoBank({
                   All Photos
                 </Button>
                 <Button
+                  type="button"
                   variant={filterBy === 'questions' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFilterBy('questions')}
@@ -188,6 +201,7 @@ export function PhotoBank({
                   Questions
                 </Button>
                 <Button
+                  type="button"
                   variant={filterBy === 'assignments' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFilterBy('assignments')}
@@ -206,32 +220,27 @@ export function PhotoBank({
                 {selectedPhotos.length} photo{selectedPhotos.length !== 1 ? 's' : ''} selected
               </span>
               <div className="flex gap-2">
-                {availableQuestionsForAssignment.length > 0 && selectedPhotos.length === 1 && (
-                  <Button variant="outline" size="sm" onClick={() => setIsAssignDialogOpen(true)}>
+                {availableQuestionsForAssignment.length > 0 && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => setIsAssignDialogOpen(true)}>
                     <LinkIcon className="h-4 w-4 mr-1" />
                     Assign to Question
                   </Button>
                 )}
-                {selectedPhotos.length > 0 && (
-                  <Button variant="outline" size="sm" onClick={() => {
-                    selectedPhotos.forEach(photoId => {
-                      updatePhoto(photoId, { questionId: undefined });
-                    });
-                    clearSelection();
-                  }}>
+                {selectedPhotos.some(photoId => photoArray.find(p => p.id === photoId)?.questionId) && (
+                  <Button type="button" variant="outline" size="sm" onClick={handleUnassignSelected}>
                     <X className="h-4 w-4 mr-1" />
                     Unassign
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={handleDownloadSelected}>
+                <Button type="button" variant="outline" size="sm" onClick={handleDownloadSelected}>
                   <Download className="h-4 w-4 mr-1" />
                   Download
                 </Button>
-                <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>
+                <Button type="button" variant="destructive" size="sm" onClick={handleDeleteSelected}>
                   <Trash2 className="h-4 w-4 mr-1" />
                   Delete
                 </Button>
-                <Button variant="ghost" size="sm" onClick={clearSelection}>
+                <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
                   Clear
                 </Button>
               </div>
@@ -383,10 +392,10 @@ export function PhotoBank({
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAssignToQuestion} disabled={!selectedQuestionId}>
+            <Button type="button" onClick={handleAssignToQuestion} disabled={!selectedQuestionId}>
               Assign Photo{selectedPhotos.length > 1 ? 's' : ''}
             </Button>
           </DialogFooter>
@@ -394,3 +403,4 @@ export function PhotoBank({
       </Dialog>
   );
 }
+```

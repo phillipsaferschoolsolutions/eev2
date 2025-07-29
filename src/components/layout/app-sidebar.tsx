@@ -1,3 +1,4 @@
+```tsx
 "use client";
 
 import Link from "next/link";
@@ -26,6 +27,7 @@ import { signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLayout } from "@/context/layout-context";
 import { cn } from "@/lib/utils";
+import { usePhotoBank } from '@/context/photo-bank-context'; // Import usePhotoBank
 
 // Icon mapping
 const iconMap: { [key: string]: React.ElementType } = {
@@ -52,6 +54,7 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { layoutMode, isMobileViewForLayout } = useLayout();
+  const { getAllPhotos } = usePhotoBank(); // Get photo bank state
 
   const handleLogout = async () => {
     try {
@@ -80,6 +83,7 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
   const effectiveCollapsible = isMinimalIconModeDesktop ? "icon" : "icon"; 
   const initialSidebarState = sidebarContext.state;
 
+  const photoCount = getAllPhotos().length; // Get the count of all photos
 
   return (
     <Sidebar 
@@ -110,6 +114,11 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
                     <a>
                       <IconComponent className="h-5 w-5" />
                       <span>{item.label}</span>
+                      {item.href === "/photo-bank" && photoCount > 0 && (
+                        <span className="ml-auto px-2 py-0.5 text-xs font-semibold bg-primary text-primary-foreground rounded-full">
+                          {photoCount}
+                        </span>
+                      )}
                     </a>
                   </SidebarMenuButton>
                 </Link>
@@ -170,3 +179,4 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
     </Sidebar>
   );
 }
+```

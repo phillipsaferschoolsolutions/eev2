@@ -1,3 +1,4 @@
+```tsx
 "use client";
 
 import React, { useRef, useState } from 'react';
@@ -73,7 +74,7 @@ export function QuestionPhotoUpload({
         progress: 0,
       };
 
-      addPhoto(newPhoto);
+      addPhoto(newPhoto); // Dispatch to global state
       simulateUpload(photoId, file);
     });
   };
@@ -95,7 +96,7 @@ export function QuestionPhotoUpload({
         progress: 100,
       });
 
-      // Notify parent component
+      // Notify parent component (if needed, though global state is primary)
       if (onPhotosChange) {
         const updatedPhotos = getPhotosForQuestion(questionId);
         onPhotosChange(updatedPhotos);
@@ -138,7 +139,7 @@ export function QuestionPhotoUpload({
     if (photo?.url.startsWith('blob:')) {
       URL.revokeObjectURL(photo.url);
     }
-    removePhoto(photoId);
+    removePhoto(photoId); // Dispatch to global state
     
     if (onPhotosChange) {
       const updatedPhotos = getPhotosForQuestion(questionId);
@@ -190,10 +191,10 @@ export function QuestionPhotoUpload({
               className="h-5 text-xs px-2 py-0"
             >
               <Upload className="w-2 h-2 mr-1" />
-              Browse
+              Choose Files
             </Button>
             <p className="text-xs text-muted-foreground">
-              {questionPhotos.length}/{maxPhotos}
+              {questionPhotos.length}/{maxPhotos} photos
             </p>
           </div>
         </div>
@@ -255,7 +256,7 @@ export function QuestionPhotoUpload({
 
                 {/* View Icon */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                  <Eye className="w-3 h-3 text-white" />
+                  <Eye className="w-3 h-3" />
                 </div>
 
                 {/* Remove Button */}
@@ -295,3 +296,4 @@ export function QuestionPhotoUpload({
     </div>
   );
 }
+```

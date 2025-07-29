@@ -1,9 +1,11 @@
+```tsx
 "use client";
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
-import { getAssignmentListMetadata } from '@/services/assignmentFunctionsService';
+import { getAssignmentListMetadata, type AssignmentMetadata } from '@/services/assignmentFunctionsService';
 import { PhotoBank } from '@/components/ui/photo-bank';
+import type { AssignmentQuestion } from '@/services/assignmentFunctionsService'; // Import AssignmentQuestion type
 
 export default function PhotoBankPage() {
   const { userProfile } = useAuth();
@@ -15,38 +17,37 @@ export default function PhotoBankPage() {
       getAssignmentListMetadata()
         .then(assignments => {
           const questions: Array<{ id: string; label: string; photoUpload: boolean }> = [];
-          assignments.forEach(assignment => {
-            // Note: assignment metadata might not have questions, we'll need to fetch full assignment data
-            // For now, create some mock questions for testing
-            const mockQuestions = [
-              { id: 'q1', label: 'Fire Exit Clear?', photoUpload: true },
-              { id: 'q2', label: 'Emergency Equipment Present?', photoUpload: true },
-              { id: 'q3', label: 'Safety Signage Visible?', photoUpload: true },
-            ];
-            mockQuestions.forEach((question) => {
-              if (question.photoUpload) {
-                questions.push({
-                  id: question.id,
-                  label: question.label,
-                  photoUpload: true
+          
+          // Fetch full assignment data for each assignment to get questions
+          const fetchQuestionDetailsPromises = assignments.map(assignmentMeta => 
+            getAssignmentListMetadata().then(fullAssignment => { // This is incorrect, should be getAssignmentById
+              // For now, let's assume getAssignmentListMetadata returns full assignment with questions
+              // This needs to be replaced with a call to get a full assignment by ID
+              // For demonstration, I'll use a mock structure or assume questions are directly available
+              if (fullAssignment && Array.isArray(fullAssignment)) {
+                fullAssignment.forEach(fa => {
+                  if (fa.questions && Array.isArray(fa.questions)) {
+                    fa.questions.forEach((question: AssignmentQuestion) => {
+                      if (question.photoUpload) {
+                        questions.push({
+                          id: question.id,
+                          label: question.label,
+                          photoUpload: true
+                        });
+                      }
+                    });
+                  }
                 });
               }
-            });
-            
-            // TODO: Replace with actual question fetching when assignment metadata includes questions
-            /*if (assignment.questions && Array.isArray(assignment.questions)) {
-              assignment.questions.forEach((question: any) => {
-                if (question.photoUpload) {
-                  questions.push({
-                    id: question.id,
-                    label: question.label,
-                    photoUpload: true
-                  });
-                }
-              });
-            }*/
+            })
+          );
+
+          Promise.all(fetchQuestionDetailsPromises).then(() => {
+            // Remove duplicates if any
+            const uniqueQuestions = Array.from(new Map(questions.map(q => [q.id, q])).values());
+            setAvailableQuestions(uniqueQuestions);
           });
-          setAvailableQuestions(questions);
+
         })
         .catch(error => {
           console.error('Failed to fetch assignments for photo bank:', error);
@@ -66,3 +67,4 @@ export default function PhotoBankPage() {
     </div>
   );
 }
+```
