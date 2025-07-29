@@ -99,6 +99,7 @@ export default function CompleteAssignmentPage() {
   const [uploadedPhotos, setUploadedPhotos] = useState<{ [questionId: string]: UploadedFileDetail }>({});
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [selectedQuestionForPhoto, setSelectedQuestionForPhoto] = useState<string | null>(null);
+  const [photoBankPhotos, setPhotoBankPhotos] = useState<Array<{ id: string; url: string; name: string; uploadedAt: string; size: number }>>([]);
   const [photoBankFiles, setPhotoBankFiles] = useState<UploadedFileDetail[]>([]);
   const [isLoadingPhotoBank, setIsLoadingPhotoBank] = useState(false);
 
