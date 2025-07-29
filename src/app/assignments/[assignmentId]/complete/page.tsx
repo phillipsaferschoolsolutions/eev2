@@ -1078,9 +1078,9 @@ export default function CompleteAssignmentPage() {
                   </p>
                   <Button 
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={isLoadingPhotos}
+                    disabled={isUploading}
                   >
-                    {isLoadingPhotos ? (
+                    {isUploading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Uploading...
@@ -1167,7 +1167,7 @@ export default function CompleteAssignmentPage() {
                   <Button 
                     onClick={() => fileInputRef.current?.click()}
                     variant="outline"
-                    disabled={isLoadingPhotos}
+                    disabled={isUploading}
                   >
                     <Upload className="mr-2 h-4 w-4" />
                     Add More Photos
@@ -1763,7 +1763,7 @@ export default function CompleteAssignmentPage() {
           </DialogHeader>
           
           <div className="flex-1 overflow-auto">
-            {isLoadingPhotos ? (
+            {isUploading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
