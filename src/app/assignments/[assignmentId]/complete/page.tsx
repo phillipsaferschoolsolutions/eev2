@@ -1354,6 +1354,7 @@ export default function CompleteAssignmentPage() {
                         setFormData={setFormData}
                         locations={locations}
                         isLoadingLocations={isLoadingLocations}
+                        locationsError={locationsError}
                         parseOptions={parseOptions}
                         hours12={hours12}
                         minutes={minutes}
