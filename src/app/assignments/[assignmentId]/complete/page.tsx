@@ -481,15 +481,6 @@ export default function CompleteAssignmentPage() {
 
     setUploadingQuestionId(questionId);
     
-    try {
-      const timestamp = Date.now();
-      const fileName = `${timestamp}_${file.name}`;
-      const filePath = `assignment_uploads/${userProfile.account}/${assignmentId}/${fileName}`;
-      
-      const storageReference = ref(storage, filePath);
-      const uploadTask = uploadBytesResumable(storageReference, file);
-      
-      await new Promise<void>((resolve, reject) => {
         uploadTask.on(
           'state_changed',
           (snapshot) => {
@@ -525,16 +516,16 @@ export default function CompleteAssignmentPage() {
               reject(urlError);
             }
           }
-        );
-      });
-    } catch (error) {
-      console.error('Error uploading photo to question:', error);
-      toast({
-        variant: "destructive",
-        title: "Upload Failed",
-        description: "Failed to upload photo. Please try again."
-      });
-    } finally {
+              // Add to photo bank files with question assignment
+              const newPhoto = {
+                id: `photo-${timestamp}`,
+                url: downloadURL,
+                name: file.name,
+                uploadedAt: new Date().toISOString(),
+                assignedToQuestion: questionId
+              };
+              
+              setPhotoBankFiles(prev => [...prev, newPhoto]);
       setUploadingQuestionId(null);
     }
   };
@@ -1602,30 +1593,6 @@ export default function CompleteAssignmentPage() {
                       </Select>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-        </CardContent>
-      </Card>
-
-      {/* Questions Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {questionsToRender.length === 0 ? (
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-center text-muted-foreground">
-                No questions match the current filters.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          questionsToRender.map((question) => (
-            <Card key={question.id} className="relative">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2 flex-1">
                     <CardTitle className="text-lg">
                       {question.label}
                       {question.required && <span className="text-destructive ml-1">*</span>}
@@ -2360,16 +2327,15 @@ export default function CompleteAssignmentPage() {
             <DialogTitle>{modalPhoto?.name}</DialogTitle>
           </DialogHeader>
           <div className="p-6 pt-0">
-            <Image
-              src={modalPhoto?.url || ''}
-              alt={modalPhoto?.name || ''}
-              width={800}
-              height={600}
-              className="w-full h-auto max-h-[70vh] object-contain rounded"
-            />
+            {modalPhoto && (
+              <Image
+                src={modalPhoto.url}
+                alt={modalPhoto.name}
+                width={800}
+                height={600}
+                className="w-full h-auto max-h-[70vh] object-contain rounded"
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}

@@ -302,7 +302,7 @@ export async function getPromptSettings(accountName: string): Promise<PromptSett
   try {
     const result = await authedFetch<PromptSettings>(`${REPORT_STUDIO_BASE_URL}/prompt-settings`, {
       method: 'GET',
-    });
+    }, accountName);
     
     return result;
   } catch (error) {
