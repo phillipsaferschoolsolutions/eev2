@@ -78,8 +78,8 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
   const isMinimalIconModeDesktop = layoutMode === "minimalIcon" && !isMobileViewForLayout;
   // In minimalIcon mode on desktop, it should always be icon-only.
   // In standard mode, it can be expanded/collapsed.
-  // The `collapsible="icon"` prop allows it to go to icon mode.
-  // The `initialSidebarState` helps determine what the toggle button shows.
+  // The \`collapsible="icon"` prop allows it to go to icon mode.
+  // The \`initialSidebarState` helps determine what the toggle button shows.
   const effectiveCollapsible = isMinimalIconModeDesktop ? "icon" : "icon"; 
   const initialSidebarState = sidebarContext.state;
 
