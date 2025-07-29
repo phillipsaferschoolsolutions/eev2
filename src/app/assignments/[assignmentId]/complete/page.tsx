@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +9,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import Image from "next/image";
 import { format } from "date-fns";
-import { ArrowLeft, X, Loader2, Eye, Trash2, ImageIcon, Camera } from "lucide-react";
+import { ArrowLeft, X, Loader2, Eye, Trash2, ImageIcon, Camera, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +28,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { getAssignmentById, getAssignmentDraft, submitCompletedAssignment, saveAssignmentDraft, type AssignmentWithPermissions, type AssignmentQuestion } from "@/services/assignmentFunctionsService";
@@ -105,6 +106,10 @@ export default function CompleteAssignmentPage() {
   const [selectedQuestionForPhotoBank, setSelectedQuestionForPhotoBank] = useState<string | null>(null);
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
   const [isPhotoBankModalOpen, setIsPhotoBankModalOpen] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [selectedPhotoForModal, setSelectedPhotoForModal] = useState<string | null>(null);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const hours12 = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
   const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
@@ -535,6 +540,115 @@ export default function CompleteAssignmentPage() {
     }
   };
 
+  // Handle drag and drop for photo bank
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length > 0) {
+      handlePhotoBankUpload(imageFiles);
+    }
+  };
+
+  // Handle photo bank file upload
+  const handlePhotoBankUpload = async (files: File[]) => {
+    setIsLoadingPhotos(true);
+    
+    try {
+      for (const file of files) {
+        const photoId = `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const photoUrl = URL.createObjectURL(file);
+        
+        const newPhoto = {
+          id: photoId,
+          url: photoUrl,
+          file: file,
+          name: file.name,
+          uploadedAt: new Date().toISOString(),
+          assignedToQuestion: null,
+        };
+        
+        setPhotoBankPhotos(prev => [...prev, newPhoto]);
+      }
+      
+      toast({
+        title: "Photos Added",
+        description: `${files.length} photo(s) added to Photo Bank`,
+      });
+    } catch (error) {
+      console.error("Error uploading photos:", error);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: "Failed to add photos to Photo Bank",
+      });
+    } finally {
+      setIsLoadingPhotos(false);
+    }
+  };
+
+  // Handle manual file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      handlePhotoBankUpload(files);
+    }
+  };
+
+  // Delete photo from bank
+  const deletePhotoFromBank = (photoId: string) => {
+    setPhotoBankPhotos(prev => {
+      const photoToDelete = prev.find(p => p.id === photoId);
+      if (photoToDelete?.url.startsWith('blob:')) {
+        URL.revokeObjectURL(photoToDelete.url);
+      }
+      return prev.filter(p => p.id !== photoId);
+    });
+    
+    toast({
+      title: "Photo Deleted",
+      description: "Photo removed from Photo Bank",
+    });
+  };
+
+  // Assign photo to question
+  const assignPhotoToQuestion = (photoId: string, questionId: string) => {
+    const photo = photoBankPhotos.find(p => p.id === photoId);
+    if (photo) {
+      setFormData(prev => ({
+        ...prev,
+        [`${questionId}_photo`]: photo.file
+      }));
+      
+      setSelectedQuestionForPhotoBank(null);
+      setIsPhotoBankModalOpen(false);
+      
+      toast({
+        title: "Photo Assigned",
+        description: `Photo assigned to question`,
+      });
+    }
+  };
+
+  // Open photo in modal
+  const openPhotoModal = (photoUrl: string) => {
+    setSelectedPhotoForModal(photoUrl);
+    setIsPhotoModalOpen(true);
+  };
+
   // Form submission
   const onSubmit: SubmitHandler<FormDataSchema> = async (data) => {
     if (!assignment || !userProfile?.account || !user || !user.email) {
@@ -919,55 +1033,131 @@ export default function CompleteAssignmentPage() {
         </CardContent>
       </Card>
 
-      {/* Global Photo Bank Section */}
-      <Card className="mb-6">
+      {/* Photo Bank */}
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                    <Camera className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg text-blue-900 dark:text-blue-100">Photo Library</h3>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      {photoBankPhotos.length} photos available for assignment questions
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => {
-                    setSelectedQuestionForPhotoBank(null);
-                    setIsPhotoBankModalOpen(true);
-                  }}
-                  size="lg"
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-                >
-                  <Camera className="h-5 w-5 mr-2" />
-                  Open Photo Bank
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  Upload new photos to library
-                </div>
-                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  Assign photos to questions
-                </div>
-                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  Manage photo metadata
-                </div>
-              </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Camera className="h-5 w-5 text-primary" />
+                Photo Bank
+              </CardTitle>
+              <CardDescription>
+                {photoBankPhotos.length} photo(s) available for assignment questions
+              </CardDescription>
             </div>
-          </CardTitle>
-          <CardDescription>
-            Access your photo library and manage uploaded images for this assignment.
-          </CardDescription>
+            <Button 
+              onClick={() => setIsPhotoBankModalOpen(true)}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <ImageIcon className="h-4 w-4" />
+              Manage Photos
+            </Button>
+          </div>
         </CardHeader>
+        <CardContent>
+          <div 
+            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+              isDragOver 
+                ? 'border-primary bg-primary/5' 
+                : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            {photoBankPhotos.length === 0 ? (
+              <div className="flex flex-col items-center gap-4">
+                <div className="p-4 bg-muted rounded-full">
+                  <Camera className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="font-medium mb-1">No photos in Photo Bank</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Drag and drop photos here or click to upload
+                  </p>
+                  <Button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isLoadingPhotos}
+                  >
+                    {isLoadingPhotos ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload Photos
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
+                  {photoBankPhotos.slice(0, 6).map((photo) => (
+                    <div key={photo.id} className="relative group">
+                      <div 
+                        className="aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => openPhotoModal(photo.url)}
+                      >
+                        <img 
+                          src={photo.url} 
+                          alt={photo.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => deletePhotoFromBank(photo.id)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                
+                {photoBankPhotos.length > 6 && (
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Showing 6 of {photoBankPhotos.length} photos
+                  </p>
+                )}
+                
+                <div className="flex gap-2 justify-center">
+                  <Button 
+                    onClick={() => fileInputRef.current?.click()}
+                    variant="outline"
+                    disabled={isLoadingPhotos}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Add More Photos
+                  </Button>
+                  <Button 
+                    onClick={() => setIsPhotoBankModalOpen(true)}
+                    variant="outline"
+                  >
+                    <ImageIcon className="mr-2 h-4 w-4" />
+                    View All Photos
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+          </div>
+        </CardContent>
       </Card>
 
       {/* Questions Form */}
@@ -1028,541 +1218,418 @@ export default function CompleteAssignmentPage() {
 
               <CardContent className="space-y-4">
                 {/* Question Input Based on Component Type */}
-                {question.component === 'text' && (
-                  <Input
-                    {...register(question.id)}
-                    placeholder={question.placeholder}
-                    className={formErrors[question.id] ? "border-destructive" : ""}
-                  />
-                )}
-
-                {question.component === 'textarea' && (
-                  <Textarea
-                    {...register(question.id)}
-                    placeholder={question.placeholder}
-                    rows={4}
-                    className={formErrors[question.id] ? "border-destructive" : ""}
-                  />
-                )}
-
-                {question.component === 'email' && (
-                  <Input
-                    type="email"
-                    {...register(question.id)}
-                    placeholder={question.placeholder}
-                    className={formErrors[question.id] ? "border-destructive" : ""}
-                  />
-                )}
-
-                {question.component === 'url' && (
-                  <Input
-                    type="url"
-                    {...register(question.id)}
-                    placeholder={question.placeholder}
-                    className={formErrors[question.id] ? "border-destructive" : ""}
-                  />
-                )}
-
-                {question.component === 'telephone' && (
-                  <Input
-                    type="tel"
-                    {...register(question.id)}
-                    placeholder={question.placeholder}
-                    className={formErrors[question.id] ? "border-destructive" : ""}
-                  />
-                )}
-
-                {question.component === 'number' && (
-                  <Input
-                    type="number"
-                    {...register(question.id)}
-                    placeholder={question.placeholder}
-                    className={formErrors[question.id] ? "border-destructive" : ""}
-                  />
-                )}
-
-                {/* Select Question Type */}
-                {question.component === 'select' && (
-                  <div className="space-y-2">
-                    <Label htmlFor={`question-${question.id}`}>
-                      {question.label}
-                      {question.required && <span className="text-destructive ml-1">*</span>}
-                    </Label>
-                    <Select
-                      value={formData[question.id] || ""}
-                      onValueChange={(value) => handleInputChange(question.id, value)}
-                    >
-                      <SelectTrigger id={`question-${question.id}`}>
-                        <SelectValue placeholder="Select an option..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {parseOptions(question.options).map((option, optIndex) => (
-                          <SelectItem key={`${option.value}-${optIndex}`} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* Radio Options Question Type */}
-                {question.component === 'options' && (
-                  <div className="space-y-2">
-                    <Label>
-                      {question.label}
-                      {question.required && <span className="text-destructive ml-1">*</span>}
-                    </Label>
-                    <RadioGroup
-                      value={formData[question.id] || ""}
-                      onValueChange={(value) => handleInputChange(question.id, value)}
-                    >
-                      {parseOptions(question.options).map((option, optIndex) => (
-                        <div key={`${option.value}-${optIndex}`} className="flex items-center space-x-2">
-                          <RadioGroupItem value={option.value} id={`${question.id}-${option.value}`} />
-                          <Label htmlFor={`${question.id}-${option.value}`} className="font-normal">
-                            {option.label}
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </div>
-                )}
-
-                {/* Checkbox Question Type */}
-                {question.component === 'checkbox' && (
-                  <div className="space-y-2">
-                    <Label>
-                      {question.label}
-                      {question.required && <span className="text-destructive ml-1">*</span>}
-                    </Label>
-                    <div className="space-y-2">
-                      {parseOptions(question.options).map((option, optIndex) => (
-                        <div key={`${option.value}-${optIndex}`} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`${question.id}-${option.value}`}
-                            checked={Array.isArray(formData[question.id]) ? 
-                              (formData[question.id] as string[]).includes(option.value) : false}
-                            onCheckedChange={(checked) => {
-                              const currentValues = Array.isArray(formData[question.id]) ? 
-                                formData[question.id] as string[] : [];
-                              if (checked) {
-                                handleInputChange(question.id, [...currentValues, option.value]);
-                              } else {
-                                handleInputChange(question.id, currentValues.filter(v => v !== option.value));
-                              }
-                            }}
-                          />
-                          <Label htmlFor={`${question.id}-${option.value}`} className="font-normal">
-                            {option.label}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Select/Options Questions */}
-                {(question.component === 'select' || question.component === 'options') && (
-                  <div className="space-y-2">
-                    <Label htmlFor={question.id}>{question.label}</Label>
-                    <Select
-                      value={formData[question.id] || ''}
-                      onValueChange={(value) => handleInputChange(question.id, value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an option..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {parseOptions(question.options).map((option, optIndex) => (
-                          <SelectItem key={`${option.value}-${optIndex}`} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* Radio Button Questions */}
-                {question.component === 'radio' && (
-                  <div className="space-y-2">
-                    <Label>{question.label}</Label>
-                    <RadioGroup
-                      value={formData[question.id] || ''}
-                      onValueChange={(value) => handleInputChange(question.id, value)}
-                    >
-                      {parseOptions(question.options).map((option, optIndex) => (
-                        <div key={`${option.value}-${optIndex}`} className="flex items-center space-x-2">
-                          <RadioGroupItem value={option.value} id={`${question.id}-${option.value}`} />
-                          <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </div>
-                )}
-
-                {/* Checkbox Questions */}
-                {question.component === 'checkbox' && (
-                  <div className="space-y-2">
-                    <Label>{question.label}</Label>
-                    <div className="space-y-2">
-                      {parseOptions(question.options).map((option, optIndex) => {
-                        const currentValues = Array.isArray(formData[question.id]) ? formData[question.id] : [];
-                        return (
-                          <div key={`${option.value}-${optIndex}`} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`${question.id}-${option.value}`}
-                              checked={currentValues.includes(option.value)}
-                              onCheckedChange={(checked) => {
-                                const newValues = checked
-                                  ? [...currentValues, option.value]
-                                  : currentValues.filter((v: string) => v !== option.value);
-                                handleInputChange(question.id, newValues);
-                              }}
-                            />
-                            <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {question.component === 'buttonSelect' && (
-                  <Controller
-                    name={question.id}
-                    control={control}
-                    render={({ field }) => (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {parseOptions(question.options, question).map((option) => (
-                          <Button
-                            key={option.value}
-                            type="button"
-                            variant={field.value === option.value ? "default" : "outline"}
-                            onClick={() => field.onChange(option.value)}
-                            className="justify-start"
-                          >
-                            {option.label}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
-                  />
-                )}
-
-                {question.component === 'multiButtonSelect' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {parseOptions(question.options, question).map((option) => (
-                      <Controller
-                        key={option.value}
-                        name={`${question.id}.${option.value}`}
-                        control={control}
-                        render={({ field }) => (
-                          <Button
-                            type="button"
-                            variant={field.value ? "default" : "outline"}
-                            onClick={() => field.onChange(!field.value)}
-                            className="justify-start"
-                          >
-                            {option.label}
-                          </Button>
-                        )}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {question.component === 'range' && (
-                  <Controller
-                    name={question.id}
-                    control={control}
-                    render={({ field }) => (
-                      <div className="space-y-2">
-                        <Slider
-                          value={[field.value || 0]}
-                          onValueChange={(value) => field.onChange(value[0])}
-                          max={question.max || 100}
-                          min={question.min || 0}
-                          step={question.step || 1}
-                          className="w-full"
+                {(() => {
+                  switch (question.component) {
+                    case 'text':
+                      return (
+                        <Input
+                          {...register(question.id)}
+                          placeholder={question.placeholder}
+                          className={formErrors[question.id] ? "border-destructive" : ""}
                         />
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                          <span>{question.min || 0}</span>
-                          <span>Current: {field.value || 0}</span>
-                          <span>{question.max || 100}</span>
+                      );
+
+                    case 'textarea':
+                      return (
+                        <Textarea
+                          {...register(question.id)}
+                          placeholder={question.placeholder}
+                          rows={4}
+                          className={formErrors[question.id] ? "border-destructive" : ""}
+                        />
+                      );
+
+                    case 'email':
+                      return (
+                        <Input
+                          type="email"
+                          {...register(question.id)}
+                          placeholder={question.placeholder}
+                          className={formErrors[question.id] ? "border-destructive" : ""}
+                        />
+                      );
+
+                    case 'url':
+                      return (
+                        <Input
+                          type="url"
+                          {...register(question.id)}
+                          placeholder={question.placeholder}
+                          className={formErrors[question.id] ? "border-destructive" : ""}
+                        />
+                      );
+
+                    case 'telephone':
+                      return (
+                        <Input
+                          type="tel"
+                          {...register(question.id)}
+                          placeholder={question.placeholder}
+                          className={formErrors[question.id] ? "border-destructive" : ""}
+                        />
+                      );
+
+                    case 'number':
+                      return (
+                        <Input
+                          type="number"
+                          {...register(question.id)}
+                          placeholder={question.placeholder}
+                          className={formErrors[question.id] ? "border-destructive" : ""}
+                        />
+                      );
+
+                    case 'select':
+                      const selectOptions = parseOptions(question.options);
+                      return (
+                        <Select
+                          value={formData[question.id] || ''}
+                          onValueChange={(value) => handleInputChange(question.id, value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select an option" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {selectOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      );
+
+                    case 'options':
+                      const radioOptions = parseOptions(question.options);
+                      return (
+                        <RadioGroup
+                          value={formData[question.id] || ''}
+                          onValueChange={(value) => handleInputChange(question.id, value)}
+                        >
+                          {radioOptions.map((option) => (
+                            <div key={option.value} className="flex items-center space-x-2">
+                              <RadioGroupItem value={option.value} id={`${question.id}-${option.value}`} />
+                              <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      );
+
+                    case 'checkbox':
+                      const checkboxOptions = parseOptions(question.options);
+                      const selectedValues = Array.isArray(formData[question.id]) ? formData[question.id] as string[] : [];
+                      
+                      return (
+                        <div className="space-y-2">
+                          {checkboxOptions.map((option) => (
+                            <div key={option.value} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`${question.id}-${option.value}`}
+                                checked={selectedValues.includes(option.value)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    handleInputChange(question.id, [...selectedValues, option.value]);
+                                  } else {
+                                    handleInputChange(question.id, selectedValues.filter(v => v !== option.value));
+                                  }
+                                }}
+                              />
+                              <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
+                            </div>
+                          ))}
                         </div>
-                      </div>
-                    )}
-                  />
-                )}
+                      );
 
-                {(question.component === 'date' || question.component === 'completionDate') && (
-                  <Controller
-                    name={question.id}
-                    control={control}
-                    render={({ field }) => (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !field.value && "text-muted-foreground",
-                              formErrors[question.id] && "border-destructive"
-                            )}
-                          >
-                            {field.value ? format(field.value, "PPP") : "Pick a date"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                  />
-                )}
-
-                {(question.component === 'time' || question.component === 'completionTime') && (
-                  <div className="grid grid-cols-3 gap-2">
-                    <Controller
-                      name={`${question.id}.hour`}
-                      control={control}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Hour" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {hours12.map((hour) => (
-                              <SelectItem key={hour} value={hour}>
-                                {hour}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    <Controller
-                      name={`${question.id}.minute`}
-                      control={control}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Min" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {minutes.map((minute) => (
-                              <SelectItem key={minute} value={minute}>
-                                {minute}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    <Controller
-                      name={`${question.id}.period`}
-                      control={control}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="AM/PM" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {amPm.map((period) => (
-                              <SelectItem key={period} value={period}>
-                                {period}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                )}
-
-                {question.component === 'schoolSelector' && (
-                  <Controller
-                    name={question.id}
-                    control={control}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingLocations}>
-                        <SelectTrigger className={formErrors[question.id] ? "border-destructive" : ""}>
-                          <SelectValue placeholder={isLoadingLocations ? "Loading locations..." : "Select a school"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {locationsError ? (
-                            <SelectItem value="" disabled>
-                              Error loading locations
-                            </SelectItem>
-                          ) : (
-                            locations.map((location) => (
-                              <SelectItem key={location.id} value={location.id}>
-                                {location.locationName}
-                              </SelectItem>
-                            ))
+                    case 'buttonSelect':
+                      return (
+                        <Controller
+                          name={question.id}
+                          control={control}
+                          render={({ field }) => (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                              {parseOptions(question.options, question).map((option) => (
+                                <Button
+                                  key={option.value}
+                                  type="button"
+                                  variant={field.value === option.value ? "default" : "outline"}
+                                  onClick={() => field.onChange(option.value)}
+                                  className="justify-start"
+                                >
+                                  {option.label}
+                                </Button>
+                              ))}
+                            </div>
                           )}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                )}
+                        />
+                      );
 
-                {/* Photo Upload */}
-                {question.photoUpload && (
-                  <div className="space-y-2">
-                    <Label>Photo Upload</Label>
-                    <div className="space-y-2">
-                      {uploadedPhotos[question.id] ? (
-                        <div className="flex items-center space-x-2 p-2 border rounded-md">
-                          <Image
-                            src={uploadedPhotos[question.id]!.url}
-                            alt={uploadedPhotos[question.id]!.name}
-                            width={60}
-                            height={60}
-                            className="rounded object-cover"
-                          />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{uploadedPhotos[question.id]!.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(uploadedPhotos[question.id]!.uploadDate || '').toLocaleDateString()}
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open(uploadedPhotos[question.id]!.url, '_blank')}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRemovePhoto(question.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                    case 'multiButtonSelect':
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {parseOptions(question.options, question).map((option) => (
+                            <Controller
+                              key={option.value}
+                              name={`${question.id}.${option.value}`}
+                              control={control}
+                              render={({ field }) => (
+                                <Button
+                                  type="button"
+                                  variant={field.value ? "default" : "outline"}
+                                  onClick={() => field.onChange(!field.value)}
+                                  className="justify-start"
+                                >
+                                  {option.label}
+                                </Button>
+                              )}
+                            />
+                          ))}
                         </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <div className="flex-1">
+                      );
+
+                    case 'range':
+                      return (
+                        <Controller
+                          name={question.id}
+                          control={control}
+                          render={({ field }) => (
+                            <div className="space-y-2">
+                              <Slider
+                                value={[field.value || 0]}
+                                onValueChange={(value) => field.onChange(value[0])}
+                                max={question.max || 100}
+                                min={question.min || 0}
+                                step={question.step || 1}
+                                className="w-full"
+                              />
+                              <div className="flex justify-between text-sm text-muted-foreground">
+                                <span>{question.min || 0}</span>
+                                <span>Current: {field.value || 0}</span>
+                                <span>{question.max || 100}</span>
+                              </div>
+                            </div>
+                          )}
+                        />
+                      );
+
+                    case 'date':
+                    case 'completionDate':
+                      return (
+                        <Controller
+                          name={question.id}
+                          control={control}
+                          render={({ field }) => (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !field.value && "text-muted-foreground",
+                                    formErrors[question.id] && "border-destructive"
+                                  )}
+                                >
+                                  {field.value ? format(field.value, "PPP") : "Pick a date"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          )}
+                        />
+                      );
+
+                    case 'time':
+                    case 'completionTime':
+                      return (
+                        <div className="grid grid-cols-3 gap-2">
+                          <Controller
+                            name={`${question.id}.hour`}
+                            control={control}
+                            render={({ field }) => (
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Hour" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {hours12.map((hour) => (
+                                    <SelectItem key={hour} value={hour}>
+                                      {hour}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                          <Controller
+                            name={`${question.id}.minute`}
+                            control={control}
+                            render={({ field }) => (
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Min" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {minutes.map((minute) => (
+                                    <SelectItem key={minute} value={minute}>
+                                      {minute}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                          <Controller
+                            name={`${question.id}.period`}
+                            control={control}
+                            render={({ field }) => (
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="AM/PM" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {amPm.map((period) => (
+                                    <SelectItem key={period} value={period}>
+                                      {period}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                        </div>
+                      );
+
+                    case 'schoolSelector':
+                      return (
+                        <Controller
+                          name={question.id}
+                          control={control}
+                          render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingLocations}>
+                              <SelectTrigger className={formErrors[question.id] ? "border-destructive" : ""}>
+                                <SelectValue placeholder={isLoadingLocations ? "Loading locations..." : "Select a school"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {locationsError ? (
+                                  <SelectItem value="" disabled>
+                                    Error loading locations
+                                  </SelectItem>
+                                ) : (
+                                  locations.map((location) => (
+                                    <SelectItem key={location.id} value={location.id}>
+                                      {location.locationName}
+                                    </SelectItem>
+                                  ))
+                                )}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      );
+
+                    case 'photoUpload':
+                      return (
+                        <div className="space-y-4">
+                          <div className="flex gap-2">
                             <Input
+                              id={`${question.id}_file`}
                               type="file"
                               accept="image/*"
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  handleQuestionPhotoUpload(question.id, file);
+                                  handleFileUpload(question.id, file);
                                 }
                               }}
-                              disabled={uploadProgress[question.id] !== undefined}
+                              className="flex-1"
                             />
-                            {uploadProgress[question.id] !== undefined && (
-                              <div className="mt-2">
-                                <Progress value={uploadProgress[question.id]} className="w-full" />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Uploading... {Math.round(uploadProgress[question.id] || 0)}%
-                                </p>
-                              </div>
-                            )}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedQuestionForPhotoBank(question.id);
+                                setIsPhotoBankModalOpen(true);
+                              }}
+                            >
+                              <ImageIcon className="mr-2 h-4 w-4" />
+                              From Bank
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedQuestionForPhotoBank(question.id);
-                              setIsPhotoBankModalOpen(true);
-                            }}
-                            className="flex items-center gap-1"
-                          >
-                            <ImageIcon className="h-3 w-3" />
-                            From Bank
-                          </Button>
+
+                          {/* Upload Progress */}
+                          {uploadProgress[question.id] > 0 && uploadProgress[question.id] < 100 && (
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span>Uploading...</span>
+                                <span>{Math.round(uploadProgress[question.id])}%</span>
+                              </div>
+                              <ShadProgress value={uploadProgress[question.id]} />
+                            </div>
+                          )}
+
+                          {/* Upload Error */}
+                          {uploadErrors[question.id] && (
+                            <Alert variant="destructive">
+                              <AlertDescription>{uploadErrors[question.id]}</AlertDescription>
+                            </Alert>
+                          )}
+
+                          {/* Image Preview */}
+                          {imagePreviewUrls[question.id] && (
+                            <div className="relative">
+                              <Image
+                                src={imagePreviewUrls[question.id]!}
+                                alt="Preview"
+                                width={200}
+                                height={200}
+                                className="rounded border object-cover"
+                              />
+                            </div>
+                          )}
+
+                          {/* Uploaded File */}
+                          {uploadedFileDetails[question.id] && (
+                            <div className="flex items-center justify-between p-3 border rounded">
+                              <div className="flex items-center gap-3">
+                                <Image
+                                  src={uploadedFileDetails[question.id]!.url}
+                                  alt={uploadedFileDetails[question.id]!.name}
+                                  width={50}
+                                  height={50}
+                                  className="rounded object-cover"
+                                />
+                                <span className="text-sm">{uploadedFileDetails[question.id]!.name}</span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeUploadedFile(question.id)}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                      );
 
-                {question.component === 'photoUpload' && (
-                  <div className="space-y-4">
-                    <Input
-                      id={`${question.id}_file`}
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleFileUpload(question.id, file);
-                        }
-                      }}
-                    />
-
-                    {/* Upload Progress */}
-                    {uploadProgress[question.id] > 0 && uploadProgress[question.id] < 100 && (
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Uploading...</span>
-                          <span>{Math.round(uploadProgress[question.id])}%</span>
-                        </div>
-                        <ShadProgress value={uploadProgress[question.id]} />
-                      </div>
-                    )}
-
-                    {/* Upload Error */}
-                    {uploadErrors[question.id] && (
-                      <Alert variant="destructive">
-                        <AlertDescription>{uploadErrors[question.id]}</AlertDescription>
-                      </Alert>
-                    )}
-
-                    {/* Image Preview */}
-                    {imagePreviewUrls[question.id] && (
-                      <div className="relative">
-                        <Image
-                          src={imagePreviewUrls[question.id]!}
-                          alt="Preview"
-                          width={200}
-                          height={200}
-                          className="rounded border object-cover"
+                    default:
+                      return (
+                        <Input
+                          {...register(question.id)}
+                          placeholder={question.placeholder}
+                          className={formErrors[question.id] ? "border-destructive" : ""}
                         />
-                      </div>
-                    )}
-
-                    {/* Uploaded File */}
-                    {uploadedFileDetails[question.id] && (
-                      <div className="flex items-center justify-between p-3 border rounded">
-                        <div className="flex items-center gap-3">
-                          <Image
-                            src={uploadedFileDetails[question.id]!.url}
-                            alt={uploadedFileDetails[question.id]!.name}
-                            width={50}
-                            height={50}
-                            className="rounded object-cover"
-                          />
-                          <span className="text-sm">{uploadedFileDetails[question.id]!.name}</span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeUploadedFile(question.id)}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      );
+                  }
+                })()}
 
                 {/* Comment Section */}
                 {question.comment && (
@@ -1616,22 +1683,23 @@ export default function CompleteAssignmentPage() {
       </form>
 
       {/* Photo Bank Modal */}
-      <Dialog open={isPhotoModalOpen} onOpenChange={(open) => {
-        setIsPhotoModalOpen(open);
-        if (!open) {
-          setSelectedQuestionForPhoto(null);
-        }
-      }}>
+      <Dialog open={isPhotoBankModalOpen} onOpenChange={setIsPhotoBankModalOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ImageIcon className="h-5 w-5" />
+              <Camera className="h-5 w-5" />
               Photo Bank
+              {selectedQuestionForPhotoBank && (
+                <Badge variant="secondary">
+                  Selecting for Question
+                </Badge>
+              )}
             </DialogTitle>
             <DialogDescription>
               {selectedQuestionForPhotoBank 
-                ? "Select a photo to assign to the current question, or manage your photo library."
-                : "Manage your uploaded photos and view your photo library."}
+                ? "Select a photo to assign to the current question"
+                : "Manage all photos for this assignment"
+              }
             </DialogDescription>
           </DialogHeader>
           
@@ -1639,76 +1707,83 @@ export default function CompleteAssignmentPage() {
             {isLoadingPhotos ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin" />
-                <span className="ml-2">Loading photos...</span>
               </div>
             ) : photoBankPhotos.length === 0 ? (
-              <div className="text-center py-8">
-                <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-lg font-semibold">No Photos Yet</p>
-                <p className="text-muted-foreground">Upload photos to questions to build your photo library.</p>
+              <div 
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  isDragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="font-medium mb-2">No photos in Photo Bank</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Drag and drop photos here or click to upload
+                </p>
+                <Button onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload Photos
+                </Button>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Preview</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Upload Date</TableHead>
-                    <TableHead>Size</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    {photoBankPhotos.length} photo(s) in bank
+                  </p>
+                  <Button 
+                    onClick={() => fileInputRef.current?.click()}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Add Photos
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {photoBankPhotos.map((photo) => (
-                    <TableRow key={photo.id}>
-                      <TableCell>
-                        <div className="w-16 h-16 relative rounded-md overflow-hidden bg-muted">
-                          <Image
-                            src={photo.url}
-                            alt={photo.name}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium">{photo.name}</TableCell>
-                      <TableCell>{new Date(photo.uploadedAt).toLocaleDateString()}</TableCell>
-                      <TableCell>{(photo.size / 1024).toFixed(1)} KB</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          {selectedQuestionForPhotoBank && (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => {
-                                handleQuestionPhotoUpload(selectedQuestionForPhotoBank, photo.url);
-                                setIsPhotoBankModalOpen(false);
-                                setSelectedQuestionForPhotoBank(null);
-                              }}
-                            >
-                              Select
-                            </Button>
-                          )}
+                    <div key={photo.id} className="relative group">
+                      <div 
+                        className="aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => openPhotoModal(photo.url)}
+                      >
+                        <img 
+                          src={photo.url} 
+                          alt={photo.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                        {selectedQuestionForPhotoBank && (
                           <Button
-                            variant="outline"
                             size="sm"
-                            onClick={() => window.open(photo.url, '_blank')}
+                            onClick={() => assignPhotoToQuestion(photo.id, selectedQuestionForPhotoBank)}
                           >
-                            View
+                            Select
                           </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeletePhotoFromBank(photo)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                        )}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => deletePhotoFromBank(photo.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      <div className="absolute bottom-2 left-2 right-2">
+                        <p className="text-xs text-white bg-black/50 rounded px-2 py-1 truncate">
+                          {photo.name}
+                        </p>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </div>
             )}
           </div>
           
@@ -1717,9 +1792,29 @@ export default function CompleteAssignmentPage() {
               setIsPhotoBankModalOpen(false);
               setSelectedQuestionForPhotoBank(null);
             }}>
-              Close
+              {selectedQuestionForPhotoBank ? 'Cancel Selection' : 'Close'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Photo Modal for full-size viewing */}
+      <Dialog open={isPhotoModalOpen} onOpenChange={setIsPhotoModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle>Photo Viewer</DialogTitle>
+          </DialogHeader>
+          <div className="p-6 pt-0">
+            {selectedPhotoForModal && (
+              <div className="relative">
+                <img 
+                  src={selectedPhotoForModal} 
+                  alt="Full size photo"
+                  className="w-full h-auto max-h-[70vh] object-contain rounded-lg"
+                />
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
