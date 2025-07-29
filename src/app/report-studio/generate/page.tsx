@@ -1,498 +1,572 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { getAssignmentListMetadata, getLastCompletions, type AssignmentMetadata } from "@/services/assignmentFunctionsService";
+import { generateReportForCompletion, reportToHtml, exportToPdf, exportToDocx, saveReport, getPromptSettings } from "@/services/reportService";
+import { getTemplates, replacePlaceholders } from "@/services/templateService";
+import type { ReportTemplate } from "@/types/Report";
+import { ArrowLeft, Loader2, FilePlus, AlertTriangle, FileDown, FileType2, Shield, Save, Lightbulb } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, FileText, Download, Save, Loader2, AlertTriangle, Settings2 } from "lucide-react";
-import { getAssignmentListMetadata, type AssignmentMetadata } from "@/services/assignmentFunctionsService";
-import { generateReportForCompletion, saveReport, exportToPdf, exportToDocx } from "@/services/reportService";
-import { getTemplates, type ReportTemplate } from "@/services/templateService";
+import { Switch } from "@/components/ui/switch";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 // Force dynamic rendering to prevent build issues
 export const dynamic = 'force-dynamic';
 
+// Define the type for completion items
+interface CompletionItem {
+  id: string;
+  parentAssignmentId?: string;
+  data: {
+    assessmentName?: string;
+    locationName?: string;
+    completedBy?: string;
+    completionDate?: string;
+    [key: string]: unknown;
+  };
+}
+
 // Define admin roles that can access this page
 const ADMIN_ROLES = ["superAdmin", "scopedAdmin", "siteAdmin", "powerUser"];
 
-// Schema for report generation form
-const reportGenerationSchema = z.object({
-  assignmentId: z.string().min(1, "Please select an assignment."),
-  completionId: z.string().min(1, "Please select a completion."),
-  reportName: z.string().min(3, "Report name must be at least 3 characters."),
-  customPrompt: z.string().optional(),
-  templateId: z.string().optional(),
-});
-
-type ReportGenerationData = z.infer<typeof reportGenerationSchema>;
-
-export default function ReportGenerationPage() {
+export default function GenerateReportPage() {
   const router = useRouter();
-  const { userProfile, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading } = useAuth();
   const { toast } = useToast();
-
+  
   // State for assignments and completions
   const [assignments, setAssignments] = useState<AssignmentMetadata[]>([]);
-  const [completions, setCompletions] = useState<any[]>([]);
+  const [completions, setCompletions] = useState<CompletionItem[]>([]);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>("");
+  const [selectedCompletionId, setSelectedCompletionId] = useState<string>("");
+  
+  // State for templates
   const [templates, setTemplates] = useState<ReportTemplate[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [reportGenerationMode, setReportGenerationMode] = useState<"ai" | "template">("ai");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  
+  // State for loading indicators
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(true);
-  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
-
-  // State for report generation
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedReport, setGeneratedReport] = useState<string | null>(null);
+  const [isLoadingCompletions, setIsLoadingCompletions] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [isSavingReport, setIsSavingReport] = useState(false);
+  
+  // State for errors
+  const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
+  const [completionsError, setCompletionsError] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
-
-  // Form setup
-  const { control, register, handleSubmit, formState: { errors }, watch, setValue } = useForm<ReportGenerationData>({
-    resolver: zodResolver(reportGenerationSchema),
-    defaultValues: {
-      assignmentId: "",
-      completionId: "",
-      reportName: "",
-      customPrompt: "",
-      templateId: "",
-    },
-  });
-
-  const watchedAssignmentId = watch("assignmentId");
-
+  
+  // State for the report
+  const [reportHtml, setReportHtml] = useState<string>("");
+  const [reportName, setReportName] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string>("select");
+  const [savedReportId, setSavedReportId] = useState<string | null>(null);
+  
+  // State for AI prompt customization
+  const [useCustomPrompt, setUseCustomPrompt] = useState<boolean>(false);
+  const [promptSettings, setPromptSettings] = useState<{customPrompt: string, promptMode: string} | null>(null);
+  const [isLoadingPromptSettings, setIsLoadingPromptSettings] = useState(false);
+  
   // Check if user has admin permissions
   const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
-
-  // Fetch assignments
+  
+  // Fetch assignments when the component mounts
   const fetchAssignments = useCallback(async () => {
-    if (!userProfile?.account) return;
-
-    setIsLoadingAssignments(true);
-    try {
-      const fetchedAssignments = await getAssignmentListMetadata();
-      setAssignments(fetchedAssignments);
-    } catch (error) {
-      console.error("Failed to fetch assignments:", error);
-      toast({
-        variant: "destructive",
-        title: "Error Loading Assignments",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
-      });
-    } finally {
-      setIsLoadingAssignments(false);
+    if (!authLoading && userProfile?.account) {
+      setIsLoadingAssignments(true);
+      setAssignmentsError(null);
+      
+      try {
+        const fetchedAssignments = await getAssignmentListMetadata();
+        setAssignments(fetchedAssignments);
+      } catch (error) {
+        console.error("Failed to fetch assignments:", error);
+        setAssignmentsError("Failed to load assignments. Please try again.");
+      } finally {
+        setIsLoadingAssignments(false);
+      }
     }
-  }, [userProfile?.account, toast]);
+  }, [userProfile?.account, authLoading]);
 
-  // Fetch templates
+  const fetchPromptSettings = useCallback(async () => {
+    if (!userProfile?.account) return;
+    
+    setIsLoadingPromptSettings(true);
+    
+    try {
+      const settings = await getPromptSettings(userProfile.account);
+      setPromptSettings(settings || { customPrompt: '', promptMode: 'extend' });
+    } catch (error) {
+      console.error("Failed to fetch prompt settings:", error);
+      // Set default empty settings if fetch fails
+      setPromptSettings({ customPrompt: '', promptMode: 'extend' });
+    } finally {
+      setIsLoadingPromptSettings(false);
+    }
+  }, [userProfile?.account]);
+
   const fetchTemplates = useCallback(async () => {
     if (!userProfile?.account) return;
-
+    
     setIsLoadingTemplates(true);
+    
     try {
       const fetchedTemplates = await getTemplates(userProfile.account);
       setTemplates(fetchedTemplates);
     } catch (error) {
       console.error("Failed to fetch templates:", error);
-      // Don't show error toast for templates as they're optional
+      // Don't set an error state here, as templates are optional
     } finally {
       setIsLoadingTemplates(false);
     }
   }, [userProfile?.account]);
 
-  // Fetch data on mount
+  const fetchCompletions = useCallback(async (assignmentId: string) => {
+    if (!userProfile?.account) return;
+    
+    setIsLoadingCompletions(true);
+    setCompletionsError(null);
+    
+    try {
+      const fetchedCompletions = await getLastCompletions(
+        userProfile.account,
+        assignmentId,
+        undefined, // No school filter
+        "alltime" // Get all completions
+      );
+      setCompletions(fetchedCompletions as CompletionItem[]);
+    } catch (error) {
+      console.error("Failed to fetch completions:", error);
+      setCompletionsError("Failed to load completions. Please try again.");
+    } finally {
+      setIsLoadingCompletions(false);
+    }
+  }, [userProfile?.account]);
+
   useEffect(() => {
     if (!authLoading && userProfile?.account) {
       fetchAssignments();
+      fetchPromptSettings();
       fetchTemplates();
     }
-  }, [authLoading, userProfile?.account, fetchAssignments, fetchTemplates]);
-
-  // Handle assignment selection
+  }, [userProfile?.account, authLoading, fetchAssignments, fetchPromptSettings, fetchTemplates]);
+  
+  // Fetch completions when an assignment is selected
   useEffect(() => {
-    if (watchedAssignmentId) {
-      // In a real implementation, you would fetch completions for the selected assignment
-      // For now, we'll use mock data
-      setCompletions([
-        { id: "completion1", name: "Completion 1", date: "2024-01-15" },
-        { id: "completion2", name: "Completion 2", date: "2024-01-20" },
-      ]);
+    if (selectedAssignmentId && userProfile?.account) {
+      fetchCompletions(selectedAssignmentId);
     } else {
       setCompletions([]);
+      setSelectedCompletionId("");
     }
-  }, [watchedAssignmentId]);
+  }, [selectedAssignmentId, userProfile?.account, fetchCompletions]);
+  
+  // Function to generate a report
+  const handleGenerateReport = async () => {
+    if (!selectedAssignmentId || !selectedCompletionId || !userProfile?.account) {
+      setReportError("Please select both an assignment and a completion.");
+      return;
+    }
+    
+    if (reportGenerationMode === "template" && !selectedTemplateId) {
+      setReportError("Please select a template for template-based report generation.");
+      return;
+    }
+    
+    setIsGeneratingReport(true);
+    setReportError(null);
+    setSavedReportId(null); // Reset saved status on new generation
+    
+    try {
+      // Fetch completion and assignment data at the beginning
+      const { getCompletionDetails, getAssignmentById } = await import("@/services/assignmentFunctionsService");
+      const fetchedCompletionData = await getCompletionDetails(selectedAssignmentId, selectedCompletionId, userProfile.account);
+      const fetchedAssignmentData = await getAssignmentById(selectedAssignmentId, userProfile.account);
+      
+      if (reportGenerationMode === "ai") {
+        // AI-generated report
+        const useCustomSettings = useCustomPrompt && promptSettings && promptSettings.customPrompt.trim() !== "";
+        
+        const report = await generateReportForCompletion(
+          selectedAssignmentId,
+          selectedCompletionId,
+          userProfile.account,
+          useCustomSettings ? {
+            customPrompt: promptSettings.customPrompt,
+            promptMode: promptSettings.promptMode
+          } : undefined
+        );
+        
+        // Convert the structured report data to HTML
+        const html = reportToHtml(
+          report, 
+          userProfile.account, 
+          userProfile.email || user?.email || "Unknown User",
+          fetchedCompletionData,
+          fetchedAssignmentData as Record<string, unknown> || {}
+        );
+        setReportHtml(html);
+        setReportName(report.reportName || report.title || "Untitled Report");
+      } else {
+        // Template-based report
+        const selectedTemplate = templates.find((t: ReportTemplate) => t.id === selectedTemplateId);
+        if (!selectedTemplate) {
+          throw new Error("Selected template not found.");
+        }
+        
+        // Replace placeholders in the template
+        const html = replacePlaceholders(
+          selectedTemplate.htmlContent,
+          fetchedCompletionData,
+          fetchedAssignmentData as Record<string, unknown> || {},
+          userProfile.account,
+          userProfile.email || "Unknown User"
+        );
+        
+        setReportHtml(html);
+        setReportName(`${selectedTemplate.name} - ${fetchedAssignmentData?.assessmentName || "Report"}`);
+      }
+      
+      // Switch to the editor tab
+      setActiveTab("editor");
+    } catch (error) {
+      console.error("Failed to generate report:", error);
+      setReportError("Failed to generate report. Please try again.");
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
 
-  // Handle report generation
-  const handleGenerateReport = async (data: ReportGenerationData) => {
-    if (!userProfile?.account) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "User account information is missing.",
-      });
+  // Function to save the report
+  const handleSaveReport = async () => {
+    if (!reportName || !reportHtml || !selectedAssignmentId || !selectedCompletionId || !userProfile?.account) {
+      toast({ variant: "destructive", title: "Save Failed", description: "Missing report data to save." });
       return;
     }
 
-    setIsGenerating(true);
-    setReportError(null);
-    setGeneratedReport(null);
-
+    setIsSavingReport(true);
     try {
-      const report = await generateReportForCompletion(
-        data.assignmentId,
-        data.completionId,
-        userProfile.account,
-        {
-          customPrompt: data.customPrompt,
-        }
-      );
-
-      setGeneratedReport(report.htmlContent);
-      toast({
-        title: "Report Generated",
-        description: "Your report has been successfully generated.",
-      });
-    } catch (error) {
-      console.error("Failed to generate report:", error);
-      setReportError(error instanceof Error ? error.message : "Failed to generate report");
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to generate report. Please try again.",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  // Handle saving report
-  const handleSaveReport = async () => {
-    if (!generatedReport || !userProfile?.account) return;
-
-    const formData = watch();
-    try {
-      await saveReport(
-        formData.reportName,
-        generatedReport,
-        formData.assignmentId,
-        formData.completionId,
+      const result = await saveReport(
+        reportName,
+        reportHtml,
+        selectedAssignmentId,
+        selectedCompletionId,
         userProfile.account
       );
-
-      toast({
-        title: "Report Saved",
-        description: "Your report has been successfully saved.",
-      });
+      setSavedReportId(result.id);
+      toast({ title: "Report Saved", description: `Report "${reportName}" saved successfully!` });
     } catch (error) {
-      console.error("Failed to save report:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to save report. Please try again.",
-      });
+      console.error("Error saving report:", error);
+      toast({ variant: "destructive", title: "Save Failed", description: (error as Error).message || "An unknown error occurred while saving the report." });
+    } finally {
+      setIsSavingReport(false);
     }
   };
-
-  // Handle export to PDF
+  
+  // Function to handle PDF export
   const handleExportPdf = async () => {
-    if (!generatedReport) return;
-
-    const formData = watch();
     try {
-      await exportToPdf(generatedReport, `${formData.reportName}.pdf`);
-      toast({
-        title: "PDF Exported",
-        description: "Your report has been exported as PDF.",
-      });
+      await exportToPdf(reportHtml, `${reportName.replace(/\s/g, '_')}.pdf`);
     } catch (error) {
-      console.error("Failed to export PDF:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to export PDF. Please try again.",
-      });
+      console.error("Failed to export to PDF:", error);
+      setReportError("Failed to export to PDF. Please try again.");
     }
   };
-
-  // Handle export to DOCX
+  
+  // Function to handle DOCX export
   const handleExportDocx = async () => {
-    if (!generatedReport) return;
-
-    const formData = watch();
     try {
-      await exportToDocx(generatedReport, `${formData.reportName}.docx`);
-      toast({
-        title: "DOCX Exported",
-        description: "Your report has been exported as DOCX.",
-      });
+      await exportToDocx(reportHtml, `${reportName.replace(/\s/g, '_')}.docx`);
     } catch (error) {
-      console.error("Failed to export DOCX:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to export DOCX. Please try again.",
-      });
+      console.error("Failed to export to DOCX:", error);
+      setReportError("Failed to export to DOCX. Please try again.");
     }
   };
-
-  // Show loading state
-  if (authLoading) {
+  
+  // If the user is not an admin, show access denied
+  if (!authLoading && !isAdmin) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-4 w-full" />
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-48" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-10 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Show access denied for non-admin users
-  if (!isAdmin) {
-    return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto py-8 px-4">
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
+          <Shield className="h-4 w-4" />
           <AlertTitle>Access Denied</AlertTitle>
           <AlertDescription>
-            You don't have permission to access the Report Generator. Please contact your administrator.
+            You do not have the necessary permissions to access the Report Studio.
           </AlertDescription>
         </Alert>
       </div>
     );
   }
-
+  
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Report Generator</h1>
-          <p className="text-muted-foreground mt-1">
-            Generate comprehensive reports from your assignment data
-          </p>
-        </div>
-        <Button onClick={() => router.push('/report-studio')} variant="outline">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Report Studio
-        </Button>
+    <div className="container mx-auto py-8 px-4 space-y-6">
+      <Button variant="outline" onClick={() => router.push('/report-studio')} className="mb-4">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Report Studio
+      </Button>
+      
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Generate Safety Assessment Report</h1>
+        <p className="text-lg text-muted-foreground">
+          Create comprehensive reports from completed assessments using AI.
+        </p>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Report Generation Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Generate Report
-            </CardTitle>
-            <CardDescription>
-              Select assignment data and generate a comprehensive report
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(handleGenerateReport)} className="space-y-4">
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="select">1. Select Data</TabsTrigger>
+          <TabsTrigger value="editor" disabled={!reportHtml}>2. Edit & Export</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="select" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Select Assessment and Completion</CardTitle>
+              <CardDescription>
+                Choose the assessment and specific completion to generate a report from.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Assignment Selection */}
               <div>
-                <Label htmlFor="assignmentId">Assignment</Label>
-                <Controller
-                  name="assignmentId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an assignment" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {isLoadingAssignments ? (
-                          <SelectItem value="" disabled>
-                            Loading assignments...
+                <label className="block text-sm font-medium mb-2">Select Assessment</label>
+                {isLoadingAssignments ? (
+                  <Skeleton className="h-10 w-full" />
+                ) : assignmentsError ? (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>{assignmentsError}</AlertDescription>
+                  </Alert>
+                ) : (
+                  <Select
+                    value={selectedAssignmentId}
+                    onValueChange={setSelectedAssignmentId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an assessment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assignments.length > 0 ? (
+                        assignments.map((assignment: AssignmentMetadata) => (
+                          <SelectItem key={assignment.id} value={assignment.id}>
+                            {assignment.assessmentName || "Unnamed Assignment"}
                           </SelectItem>
-                        ) : assignments.length === 0 ? (
-                          <SelectItem value="" disabled>
-                            No assignments found
-                          </SelectItem>
-                        ) : (
-                          assignments.map((assignment) => (
-                            <SelectItem key={assignment.id} value={assignment.id}>
-                              {assignment.name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.assignmentId && (
-                  <p className="text-sm text-destructive mt-1">{errors.assignmentId.message}</p>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>
+                          No assessments found
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
-
+              
+              {/* Completion Selection */}
               <div>
-                <Label htmlFor="completionId">Completion</Label>
-                <Controller
-                  name="completionId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!watchedAssignmentId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a completion" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {completions.length === 0 ? (
-                          <SelectItem value="" disabled>
-                            {watchedAssignmentId ? "No completions found" : "Select an assignment first"}
+                <label className="block text-sm font-medium mb-2">Select Completion</label>
+                {isLoadingCompletions ? (
+                  <Skeleton className="h-10 w-full" />
+                ) : completionsError ? (
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>{completionsError}</AlertDescription>
+                  </Alert>
+                ) : !selectedAssignmentId ? (
+                  <Select value="" onValueChange={() => {}}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an assessment first" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" disabled>
+                        Select an assessment first
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Select
+                    value={selectedCompletionId}
+                    onValueChange={setSelectedCompletionId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={completions.length > 0 ? "Select a completion" : "No completions found"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {completions.length > 0 ? (
+                        completions.map((completion: CompletionItem) => (
+                          <SelectItem key={completion.id} value={completion.id}>
+                            {completion.data.locationName || "Unknown Location"} - {completion.data.completedBy || "Unknown User"} - {new Date(completion.data.completionDate || completion.data.submittedTimeServer).toLocaleDateString()}
                           </SelectItem>
-                        ) : (
-                          completions.map((completion) => (
-                            <SelectItem key={completion.id} value={completion.id}>
-                              {completion.name} - {completion.date}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.completionId && (
-                  <p className="text-sm text-destructive mt-1">{errors.completionId.message}</p>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>
+                          No completions found
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
-
-              <div>
-                <Label htmlFor="reportName">Report Name</Label>
-                <Input
-                  id="reportName"
-                  {...register("reportName")}
-                  placeholder="Enter report name"
-                />
-                {errors.reportName && (
-                  <p className="text-sm text-destructive mt-1">{errors.reportName.message}</p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="customPrompt">Custom Prompt (Optional)</Label>
-                <Textarea
-                  id="customPrompt"
-                  {...register("customPrompt")}
-                  placeholder="Enter custom instructions for report generation..."
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="templateId">Template (Optional)</Label>
-                <Controller
-                  name="templateId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a template (optional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">No template</SelectItem>
-                        {isLoadingTemplates ? (
-                          <SelectItem value="" disabled>
-                            Loading templates...
-                          </SelectItem>
-                        ) : (
-                          templates.map((template) => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+              
+              {/* AI Prompt Customization Toggle */}
+              {isAdmin && promptSettings && (
+                <div className="mt-6 p-4 border rounded-lg bg-muted/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Lightbulb className="h-5 w-5 text-amber-500" />
+                      <h3 className="font-medium">AI Prompt Customization</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch 
+                        id="useCustomPrompt" 
+                        checked={useCustomPrompt} 
+                        onCheckedChange={setUseCustomPrompt}
+                        disabled={!promptSettings || !promptSettings.customPrompt}
+                      />
+                      <Label htmlFor="useCustomPrompt">
+                        {useCustomPrompt ? "Using Custom Prompt" : "Using Default Prompt"}
+                      </Label>
+                    </div>
+                  </div>
+                  
+                  {isLoadingPromptSettings ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : promptSettings && promptSettings.customPrompt ? (
+                    <div className="text-sm text-muted-foreground">
+                      <p>
+                        {useCustomPrompt 
+                          ? `Using your custom AI instructions (${promptSettings.promptMode === "extend" ? "extending" : "replacing"} the default prompt).` 
+                          : "Custom prompt is available but not enabled. Toggle the switch to use it."}
+                      </p>
+                      <Button 
+                        variant="link" 
+                        size="sm" 
+                        className="p-0 h-auto text-xs"
+                        onClick={() => router.push('/report-studio/prompt-settings')}
+                      >
+                        View or edit your custom prompt
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      <p>No custom prompt has been set up yet.</p>
+                      <Button 
+                        variant="link" 
+                        size="sm" 
+                        className="p-0 h-auto text-xs"
+                        onClick={() => router.push('/report-studio/prompt-settings')}
+                      >
+                        Create a custom prompt
+                      </Button>
+                    </div>
                   )}
-                />
-              </div>
-
-              <Button type="submit" disabled={isGenerating} className="w-full">
-                {isGenerating ? (
+                </div>
+              )}
+            </CardContent>
+            <CardFooter>
+              <Button 
+                onClick={handleGenerateReport} 
+                disabled={
+                  !selectedAssignmentId || 
+                  !selectedCompletionId || 
+                  isGeneratingReport ||
+                  (reportGenerationMode === "template" && !selectedTemplateId)
+                }
+                className="ml-auto"
+              >
+                {isGeneratingReport ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating Report...
+                    {reportGenerationMode === "ai" ? "Generating AI Report..." : "Generating Template Report..."}
                   </>
                 ) : (
                   <>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Generate Report
+                    <FilePlus className="mr-2 h-4 w-4" />
+                    {reportGenerationMode === "ai" ? "Generate AI Report" : "Generate from Template"}
                   </>
                 )}
               </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Generated Report Preview */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Generated Report
-            </CardTitle>
-            <CardDescription>
-              Preview and manage your generated report
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {reportError ? (
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Generation Error</AlertTitle>
-                <AlertDescription>{reportError}</AlertDescription>
-              </Alert>
-            ) : generatedReport ? (
-              <div className="space-y-4">
-                <div className="border rounded-lg p-4 max-h-96 overflow-y-auto">
-                  <div dangerouslySetInnerHTML={{ __html: generatedReport }} />
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleSaveReport} variant="outline">
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Report
-                  </Button>
-                  <Button onClick={handleExportPdf} variant="outline">
-                    <Download className="mr-2 h-4 w-4" />
-                    Export PDF
-                  </Button>
-                  <Button onClick={handleExportDocx} variant="outline">
-                    <Download className="mr-2 h-4 w-4" />
-                    Export DOCX
-                  </Button>
-                </div>
+            </CardFooter>
+          </Card>
+          
+          {reportError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{reportError}</AlertDescription>
+            </Alert>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="editor" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Edit Report: {reportName}</CardTitle>
+              <CardDescription>
+                Review and customize the AI-generated report before exporting.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RichTextEditor 
+                value={reportHtml} 
+                onChange={setReportHtml} 
+                className="min-h-[600px]"
+              />
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" onClick={() => setActiveTab("select")}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Selection
+              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleSaveReport} 
+                  disabled={isSavingReport || savedReportId !== null}
+                >
+                  {isSavingReport ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : savedReportId ? (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Saved!
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Report
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={handleExportDocx}>
+                  <FileType2 className="mr-2 h-4 w-4" />
+                  Export to DOCX
+                </Button>
+                <Button onClick={handleExportPdf}>
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Export to PDF
+                </Button>
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">No Report Generated</h3>
-                <p className="text-muted-foreground">
-                  Fill out the form and click "Generate Report" to create your first report.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 } 
