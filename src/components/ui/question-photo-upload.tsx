@@ -1,6 +1,3 @@
-```
-tsx
-```
 "use client";
 
 import React, { useRef, useState, useCallback } from 'react';
@@ -265,9 +262,9 @@ export function QuestionPhotoUpload({
                 <Button
                   type="button"
                   variant="destructive"
-                  size="xs"
+                  size="sm"
                   className="absolute top-0 right-0 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity text-xs p-0"
-                  onClick={(e) => handlePhotoClick(e, photo)}
+                  onClick={(e) => handleRemovePhoto(e, photo.id)}
                 >
                   <X className="w-2 h-2" />
                 </Button>
