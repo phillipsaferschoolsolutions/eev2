@@ -30,6 +30,8 @@ interface PhotoBankProps {
   availableQuestions?: Array<{ id: string; label: string; photoUpload: boolean }>;
 }
 
+const UNASSIGNED_VALUE = 'unassigned';
+
 export function PhotoBank({ 
   className, 
   showFilters = true, 
@@ -123,6 +125,11 @@ export function PhotoBank({
       updatePhoto(photoId, { questionId: undefined });
     });
     clearSelection();
+  };
+
+  const handlePhotoAssignmentChange = (photoId: string, questionId: string) => {
+    const newQuestionId = questionId === UNASSIGNED_VALUE ? undefined : questionId;
+    updatePhoto(photoId, { questionId: newQuestionId });
   };
 
   return (
@@ -310,20 +317,43 @@ export function PhotoBank({
                     </div>
                   )}
                   
-                  {/* Photo Info */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                    <p className="text-xs text-white truncate">{photo.name}</p>
-                    <p className="text-xs text-white/70">
-                      {format(photo.uploadedAt, 'MMM d, yyyy')}
-                    </p>
-                    {photo.assignmentId && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <LinkIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                        <span className="text-xs text-muted-foreground truncate">
-                          A: {photo.assignmentId.substring(0, 8)}...
-                        </span>
+                  {/* Question Assignment Dropdown - Positioned at lower 20% */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-2">
+                    <div className="space-y-1">
+                      <p className="text-xs text-white truncate">{photo.name}</p>
+                      <p className="text-xs text-white/70">
+                        {format(photo.uploadedAt, 'MMM d, yyyy')}
+                      </p>
+                      
+                      {/* Assignment Dropdown */}
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Select 
+                          value={photo.questionId || UNASSIGNED_VALUE}
+                          onValueChange={(value) => handlePhotoAssignmentChange(photo.id, value)}
+                        >
+                          <SelectTrigger className="h-6 text-xs bg-white/10 border-white/20 text-white hover:bg-white/20">
+                            <SelectValue placeholder="Assign to..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={UNASSIGNED_VALUE}>Unassigned</SelectItem>
+                            {availableQuestionsForAssignment.map(question => (
+                              <SelectItem key={question.id} value={question.id}>
+                                {question.label || `Question ${question.id.substring(0, 8)}...`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    )}
+                      
+                      {photo.assignmentId && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <LinkIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-xs text-muted-foreground truncate">
+                            A: {photo.assignmentId.substring(0, 8)}...
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -363,12 +393,34 @@ export function PhotoBank({
                           )}
                         </div>
                         
-                        <Badge
-                          variant={photo.status === 'uploaded' ? 'default' : 
-                                   photo.status === 'uploading' ? 'secondary' : 'destructive'}
-                        >
-                          {photo.status}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={photo.status === 'uploaded' ? 'default' : 
+                                     photo.status === 'uploading' ? 'secondary' : 'destructive'}
+                          >
+                            {photo.status}
+                          </Badge>
+                          
+                          {/* Assignment Dropdown for List View */}
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Select 
+                              value={photo.questionId || UNASSIGNED_VALUE}
+                              onValueChange={(value) => handlePhotoAssignmentChange(photo.id, value)}
+                            >
+                              <SelectTrigger className="w-32 h-8 text-xs">
+                                <SelectValue placeholder="Assign..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={UNASSIGNED_VALUE}>Unassigned</SelectItem>
+                                {availableQuestionsForAssignment.map(question => (
+                                  <SelectItem key={question.id} value={question.id}>
+                                    {question.label || `Q: ${question.id.substring(0, 8)}...`}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

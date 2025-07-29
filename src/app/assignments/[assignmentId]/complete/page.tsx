@@ -2,6 +2,7 @@
 
 import { usePhotoBank } from '@/hooks/use-photo-bank';
 import { QuestionPhotoUpload } from '@/components/ui/question-photo-upload';
+import { PhotoBank } from '@/components/ui/photo-bank';
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
@@ -1709,7 +1710,7 @@ export default function CompleteAssignmentPage() {
 
       {/* Photo Bank Modal */}
       <Dialog open={isPhotoBankModalOpen} onOpenChange={setIsPhotoBankModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Camera className="h-5 w-5" />
@@ -1728,158 +1729,12 @@ export default function CompleteAssignmentPage() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex-1 overflow-auto">
-            {isUploading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : photoBank.getAllPhotos().filter(p => p.assignmentId === assignmentId).length === 0 ? (
-              <div 
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                  isDragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
-                }`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="font-medium mb-2">No photos in Photo Bank</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Drag and drop photos here or click to upload
-                </p>
-                <Button onClick={() => fileInputRef.current?.click()}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Photos
-                </Button>
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm text-muted-foreground">
-                    {photoBank.getAllPhotos().filter(p => p.assignmentId === assignmentId).length} photo(s) in bank
-                  </p>
-                  <Button 
-                    onClick={() => fileInputRef.current?.click()}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Add Photos
-                  </Button>
-                </div>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {photoBank.getAllPhotos()
-                    .filter(p => p.assignmentId === assignmentId)
-                    .map((photo) => (
-                    <div key={photo.id} className="relative group">
-                      <div 
-                        className="aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => openPhotoModal(photo.url)}
-                      >
-                        <img 
-                          src={photo.url} 
-                          alt={photo.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      
-                      {/* Assignment Status Badge */}
-                      {photo.questionId && (
-                        <div className="absolute top-2 left-2">
-                          <Badge variant="secondary" className="text-xs">
-                            Assigned
-                          </Badge>
-                        </div>
-                      )}
-                      
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                        {selectedQuestionForPhotoBank ? (
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              photoBank.updatePhoto(photo.id, { questionId: selectedQuestionForPhotoBank });
-                              setIsPhotoBankModalOpen(false);
-                              setSelectedQuestionForPhotoBank(null);
-                              toast({
-                                title: "Photo Assigned",
-                                description: "Photo has been assigned to the question",
-                              });
-                            }}
-                          >
-                            Select
-                          </Button>
-                        ) : (
-                          <div className="flex flex-col gap-2">
-                            {photo.questionId ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  photoBank.updatePhoto(photo.id, { questionId: undefined });
-                                  toast({
-                                    title: "Photo Unassigned",
-                                    description: "Photo has been unassigned from the question",
-                                  });
-                                }}
-                              >
-                                <X className="h-4 w-4 mr-1" />
-                                Unassign
-                              </Button>
-                            ) : (
-                              <Select onValueChange={(questionId) => {
-                                if (questionId === UNASSIGNED_FILTER_VALUE) {
-                                  photoBank.updatePhoto(photo.id, { questionId: undefined });
-                                } else {
-                                  photoBank.updatePhoto(photo.id, { questionId });
-                                }
-                                toast({
-                                  title: "Photo Assigned",
-                                  description: "Photo has been assigned to the question",
-                                });
-                              }}>
-                                <SelectTrigger className="w-32">
-                                  <SelectValue placeholder="Assign to..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value={UNASSIGNED_FILTER_VALUE}>Unassigned</SelectItem>
-                                  {assignment?.questions
-                                    ?.filter(q => q.photoUpload)
-                                    .map(q => (
-                                    <SelectItem key={q.id} value={q.id}>
-                                      {q.label || `Question ${q.id.substring(0, 8)}...`}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </div>
-                        )}
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            photoBank.removePhoto(photo.id);
-                            toast({
-                              title: "Photo Deleted",
-                              description: "Photo has been removed from the bank",
-                            });
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      
-                      <div className="absolute bottom-2 left-2 right-2">
-                        <p className="text-xs text-white bg-black/50 rounded px-2 py-1 truncate">
-                          {photo.name}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="flex-1 overflow-auto p-6">
+            <PhotoBank 
+              availableQuestions={assignment?.questions?.filter(q => q.photoUpload) || []}
+              showFilters={true}
+              viewMode="grid"
+            />
           </div>
           
           <DialogFooter>
