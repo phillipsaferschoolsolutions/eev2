@@ -9,30 +9,14 @@ const formidable = require("formidable-serverless"); // Use formidable-serverles
 // This function should take a file object (from formidable), an account ID, and an assignment ID,
 // upload the file to Firebase Storage, and return a Promise that resolves with the public download URL.
 async function uploadImageAsPromise(file, accountId, assignmentId) {
-    // IMPORTANT: Implement your Firebase Storage upload logic here
-    // Example structure:
-    // const bucket = admin.storage().bucket(); // Ensure your default bucket is configured or specify one
-    // const filePath = `assignment_uploads/${accountId}/${assignmentId}/${Date.now()}_${file.name}`;
-    // try {
-    //   await bucket.upload(file.path, { // formidable provides file.path for the temp uploaded file
-    //     destination: filePath,
-    //     public: true, // Or manage access via signed URLs
-    //     metadata: {
-    //       contentType: file.type,
-    //     },
-    //   });
-    //   // Construct the public URL. This might vary based on your bucket settings (e.g., uniform vs. fine-grained access)
-    //   // For public files:
-    //   // return `https://storage.googleapis.com/${bucket.name}/${filePath}`;
-    //   // For non-public, you might return the path and generate a signed URL later if needed.
-    //   functions.logger.info(`File uploaded to Storage: ${filePath}`);
-    //   return `https://storage.googleapis.com/${bucket.name}/${filePath}`; // Example public URL
-    // } catch (error) {
-    //   functions.logger.error("Error in uploadImageAsPromise:", error);
-    //   throw error; // Re-throw to be caught by the caller
-    // }
-    functions.logger.warn(`uploadImageAsPromise is a placeholder. ${file.name} not actually uploaded.`);
-    return `https://placehold.co/100x100.png?text=Uploaded+${file.name}`; // Return a placeholder
+    try {
+        // For now, return a placeholder URL to prevent errors
+        functions.logger.warn(`uploadImageAsPromise is a placeholder. ${file.name} not actually uploaded.`);
+        return Promise.resolve(`https://placehold.co/100x100.png?text=Uploaded+${encodeURIComponent(file.name)}`);
+    } catch (error) {
+        functions.logger.error("Error in uploadImageAsPromise placeholder:", error);
+        return Promise.resolve(`https://placehold.co/100x100.png?text=Error`);
+    }
 }
 
 

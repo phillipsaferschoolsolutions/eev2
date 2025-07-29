@@ -6,7 +6,7 @@ if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-exports.getCompletedAssignments = functions.https.onCall(async (data, context) => {
+const getCompletedAssignments = functions.https.onCall(async (data, context) => {
   try {
     // Optional filtering by accountId
     const accountId = data?.accountId;
@@ -44,3 +44,5 @@ exports.getCompletedAssignments = functions.https.onCall(async (data, context) =
     throw new functions.https.HttpsError('internal', 'Unable to fetch completed assignments.', error);
   }
 });
+
+module.exports = { getCompletedAssignments };
