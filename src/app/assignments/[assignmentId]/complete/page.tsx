@@ -104,6 +104,7 @@ export default function CompleteAssignmentPage() {
   const [isLoadingPhotoBank, setIsLoadingPhotoBank] = useState(false);
   const [selectedQuestionForPhotoBank, setSelectedQuestionForPhotoBank] = useState<string | null>(null);
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
+  const [isPhotoBankModalOpen, setIsPhotoBankModalOpen] = useState(false);
 
   const hours12 = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
   const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
@@ -922,18 +923,45 @@ export default function CompleteAssignmentPage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Photo Management</span>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSelectedQuestionForPhotoBank(null);
-                setIsPhotoBankModalOpen(true);
-              }}
-              className="flex items-center gap-2"
-            >
-              <ImageIcon className="h-4 w-4" />
-              Photo Bank ({photoBankPhotos.length})
-            </Button>
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                  <Camera className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg text-blue-900 dark:text-blue-100">Photo Library</h3>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    {photoBankPhotos.length} photos available for assignment questions
+                  </p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => {
+                  setSelectedQuestionForPhotoBank(null);
+                  setIsPhotoBankModalOpen(true);
+                }}
+                size="lg"
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+              >
+                <Camera className="h-5 w-5 mr-2" />
+                Open Photo Bank
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                Upload new photos to library
+              </div>
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                Assign photos to questions
+              </div>
+              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                Manage photo metadata
+              </div>
+            </div>
           </CardTitle>
           <CardDescription>
             Access your photo library and manage uploaded images for this assignment.
