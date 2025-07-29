@@ -3,57 +3,50 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
-import { getAssignmentListMetadata, type AssignmentMetadata } from '@/services/assignmentFunctionsService';
+import { getAssignmentListMetadata, getAssignmentById, type AssignmentQuestion } from '@/services/assignmentFunctionsService';
 import { PhotoBank } from '@/components/ui/photo-bank';
-import type { AssignmentQuestion } from '@/services/assignmentFunctionsService'; // Import AssignmentQuestion type
 
 export default function PhotoBankPage() {
-  const { userProfile } = useAuth();
+  const { userProfile, loading: authLoading } = useAuth();
   const [availableQuestions, setAvailableQuestions] = useState<Array<{ id: string; label: string; photoUpload: boolean }>>([]);
 
   useEffect(() => {
-    if (userProfile?.account) {
-      // Fetch assignments to get questions that support photo upload
-      getAssignmentListMetadata()
-        .then(assignments => {
-          const questions: Array<{ id: string; label: string; photoUpload: boolean }> = [];
-          
-          // Fetch full assignment data for each assignment to get questions
-          const fetchQuestionDetailsPromises = assignments.map(assignmentMeta => 
-            getAssignmentListMetadata().then(fullAssignment => { // This is incorrect, should be getAssignmentById
-              // For now, let's assume getAssignmentListMetadata returns full assignment with questions
-              // This needs to be replaced with a call to get a full assignment by ID
-              // For demonstration, I'll use a mock structure or assume questions are directly available
-              if (fullAssignment && Array.isArray(fullAssignment)) {
-                fullAssignment.forEach(fa => {
-                  if (fa.questions && Array.isArray(fa.questions)) {
-                    fa.questions.forEach((question: AssignmentQuestion) => {
-                      if (question.photoUpload) {
-                        questions.push({
-                          id: question.id,
-                          label: question.label,
-                          photoUpload: true
-                        });
-                      }
-                    });
-                  }
+    const fetchQuestions = async () => {
+      if (!userProfile?.account) return;
+
+      try {
+        const assignmentsMetadata = await getAssignmentListMetadata();
+        const questions: Array<{ id: string; label: string; photoUpload: boolean }> = [];
+
+        for (const assignmentMeta of assignmentsMetadata) {
+          // Fetch full assignment details to get questions
+          const fullAssignment = await getAssignmentById(assignmentMeta.id, userProfile.account);
+          if (fullAssignment && fullAssignment.questions && Array.isArray(fullAssignment.questions)) {
+            fullAssignment.questions.forEach((question: AssignmentQuestion) => {
+              if (question.photoUpload) {
+                questions.push({
+                  id: question.id,
+                  label: question.label,
+                  photoUpload: true
                 });
               }
-            })
-          );
+            });
+          }
+        }
+        // Remove duplicates if any
+        const uniqueQuestions = Array.from(new Map(questions.map(q => [q.id, q])).values());
+        setAvailableQuestions(uniqueQuestions);
 
-          Promise.all(fetchQuestionDetailsPromises).then(() => {
-            // Remove duplicates if any
-            const uniqueQuestions = Array.from(new Map(questions.map(q => [q.id, q])).values());
-            setAvailableQuestions(uniqueQuestions);
-          });
+      } catch (error) {
+        console.error('Failed to fetch assignments or questions for photo bank:', error);
+      }
+    };
 
-        })
-        .catch(error => {
-          console.error('Failed to fetch assignments for photo bank:', error);
-        });
+    if (!authLoading && userProfile?.account) {
+      fetchQuestions();
     }
-  }, [userProfile?.account]);
+  }, [userProfile?.account, authLoading]);
+
   return (
     <div className="space-y-6">
       <div>

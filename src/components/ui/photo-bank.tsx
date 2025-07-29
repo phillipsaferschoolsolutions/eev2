@@ -1,7 +1,7 @@
 ```tsx
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,8 @@ import {
   Image as ImageIcon, 
   Search, 
   Filter, 
-  Download, 
+  Download,
+  X, // Added X for unassign button
   Trash2, 
   Eye,
   Grid3X3,
@@ -55,17 +56,23 @@ export function PhotoBank({
   const [filterBy, setFilterBy] = useState<'all' | 'questions' | 'assignments'>('all');
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string>('');
+  const [filterQuestionId, setFilterQuestionId] = useState<string>('all'); // For filtering by question
+  const [filterAssignmentId, setFilterAssignmentId] = useState<string>('all'); // For filtering by assignment
 
-  const photoArray = getAllPhotos(); // Get all photos from the global state
+  // Get all photos from the global state
+  const photoArray = getAllPhotos();
+
+  // Extract unique assignment and question IDs from all photos for filter dropdowns
+  const uniqueAssignmentIds = useMemo(() => Array.from(new Set(photoArray.map(p => p.assignmentId).filter(Boolean))) as string[], [photoArray]);
+  const uniqueQuestionIds = useMemo(() => Array.from(new Set(photoArray.map(p => p.questionId).filter(Boolean))) as string[], [photoArray]);
 
   // Filter photos based on search and filter criteria
   const filteredPhotos = photoArray.filter(photo => {
     const matchesSearch = photo.name.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesFilter = 
-      filterBy === 'all' ||
-      (filterBy === 'questions' && photo.questionId) ||
-      (filterBy === 'assignments' && photo.assignmentId);
+    const matchesFilter = (filterQuestionId === 'all' || photo.questionId === filterQuestionId) &&
+                          (filterAssignmentId === 'all' || photo.assignmentId === filterAssignmentId);
+
 
     return matchesSearch && matchesFilter;
   });
@@ -211,25 +218,57 @@ export function PhotoBank({
                 </Button>
               </div>
             </div>
+          </div>
+          {/* Filters for Question and Assignment */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search photos by name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={filterQuestionId} onValueChange={setFilterQuestionId}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter by Question" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Questions</SelectItem>
+                {uniqueQuestionIds.map(qId => (
+                  <SelectItem key={qId} value={qId}>
+                    Question: {qId.substring(0, 8)}...
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterAssignmentId} onValueChange={setFilterAssignmentId}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter by Assignment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Assignments</SelectItem>
+                {uniqueAssignmentIds.map(aId => (
+                  <SelectItem key={aId} value={aId}>
+                    Assignment: {aId.substring(0, 8)}...
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
 
           {/* Selection Actions */}
           {selectedPhotos.length > 0 && (
             <div className="flex items-center justify-between p-3 bg-muted rounded-md">
               <span className="text-sm font-medium">
-                {selectedPhotos.length} photo{selectedPhotos.length !== 1 ? 's' : ''} selected
+                {selectedPhotos.length} photo{selectedPhotos.length !== 1 ? 's' : ''} selected.
               </span>
               <div className="flex gap-2">
                 {availableQuestionsForAssignment.length > 0 && (
                   <Button type="button" variant="outline" size="sm" onClick={() => setIsAssignDialogOpen(true)}>
                     <LinkIcon className="h-4 w-4 mr-1" />
                     Assign to Question
-                  </Button>
-                )}
-                {selectedPhotos.some(photoId => photoArray.find(p => p.id === photoId)?.questionId) && (
-                  <Button type="button" variant="outline" size="sm" onClick={handleUnassignSelected}>
-                    <X className="h-4 w-4 mr-1" />
-                    Unassign
                   </Button>
                 )}
                 <Button type="button" variant="outline" size="sm" onClick={handleDownloadSelected}>
@@ -240,7 +279,13 @@ export function PhotoBank({
                   <Trash2 className="h-4 w-4 mr-1" />
                   Delete
                 </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
+                {selectedPhotos.some(photoId => photoArray.find(p => p.id === photoId)?.questionId) && (
+                  <Button type="button" variant="outline" size="sm" onClick={handleUnassignSelected}>
+                    <X className="h-4 w-4 mr-1" />
+                    Unassign
+                  </Button>
+                )}
+                <Button type="button" variant="ghost" size="sm" onClick={clearSelection} className="ml-auto">
                   Clear
                 </Button>
               </div>
@@ -306,10 +351,16 @@ export function PhotoBank({
                     </div>
                     {photo.questionId && (
                       <div className="flex items-center gap-1 mt-1">
-                        <Tag className="w-3 h-3 text-muted-foreground" />
+                        <Tag className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                         <span className="text-xs text-muted-foreground truncate">
-                          Q: {photo.questionId.slice(-8)}
+                          Q: {photo.questionId.substring(0, 8)}...
                         </span>
+                      </div>
+                    )}
+                    {photo.assignmentId && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <LinkIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        <span className="text-xs text-muted-foreground truncate">A: {photo.assignmentId.substring(0, 8)}...</span>
                       </div>
                     )}
                   </CardContent>
@@ -343,10 +394,10 @@ export function PhotoBank({
                         <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                           <span>{format(photo.uploadedAt, 'MMM d, yyyy')}</span>
                           {photo.questionId && (
-                            <span>Question: {photo.questionId.slice(-8)}</span>
+                            <span>Question: {photo.questionId.substring(0, 8)}...</span>
                           )}
                           {photo.assignmentId && (
-                            <span>Assignment: {photo.assignmentId.slice(-8)}</span>
+                            <span>Assignment: {photo.assignmentId.substring(0, 8)}...</span>
                           )}
                         </div>
                       </div>
@@ -364,6 +415,7 @@ export function PhotoBank({
             </div>
           )}
         </CardContent>
+        {/* Assign to Question Dialog */}
       </Card>
     </div>
       {/* Assign to Question Dialog */}

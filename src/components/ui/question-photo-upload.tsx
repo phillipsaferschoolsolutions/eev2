@@ -86,7 +86,7 @@ export function QuestionPhotoUpload({
       // Simulate upload progress
       for (let progress = 0; progress <= 100; progress += 10) {
         await new Promise(resolve => setTimeout(resolve, 100));
-        updatePhoto(photoId, { progress });
+        updatePhoto(photoId, { progress: progress });
         setUploadProgress(progress);
       }
 
@@ -173,13 +173,13 @@ export function QuestionPhotoUpload({
           )}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
+          onDragLeave={handleDragLeave} // Corrected to handleDragLeave
           onClick={handleChooseFiles}
         >
           <div className="flex flex-col items-center space-y-1">
-            <Camera className="w-3 h-3 text-muted-foreground" />
-            <p className="text-xs font-medium">Upload Photos</p>
-            <p className="text-xs text-muted-foreground">
+            <Camera className="w-4 h-4 text-muted-foreground" />
+            <p className="text-sm font-medium">Upload Photos</p>
+            <p className="text-xs text-muted-foreground text-center">
               Drag & drop or click
             </p>
             <Button 
@@ -187,7 +187,7 @@ export function QuestionPhotoUpload({
               variant="outline" 
               size="sm" 
               disabled={isUploading}
-              onClick={handleChooseFiles}
+              onClick={handleChooseFiles} // Corrected to handleChooseFiles
               className="h-5 text-xs px-2 py-0"
             >
               <Upload className="w-2 h-2 mr-1" />
@@ -241,7 +241,7 @@ export function QuestionPhotoUpload({
                 {/* Status Overlay */}
                 {photo.status === 'uploading' && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <div className="text-white text-center">
+                    <div className="text-white text-center text-xs">
                       <div className="w-2 h-2 border border-white border-t-transparent rounded-full animate-spin mx-auto mb-1" />
                       <p className="text-xs">{photo.progress}%</p>
                     </div>
@@ -256,15 +256,15 @@ export function QuestionPhotoUpload({
 
                 {/* View Icon */}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                  <Eye className="w-3 h-3" />
+                  <Eye className="w-4 h-4 text-white" />
                 </div>
 
                 {/* Remove Button */}
                 <Button
                   type="button"
                   variant="destructive"
-                  size="icon"
-                  className="absolute top-0 right-0 w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                  size="xs"
+                  className="absolute top-0 right-0 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity text-xs p-0"
                   onClick={(e) => handleRemovePhoto(e, photo.id)}
                 >
                   <X className="w-2 h-2" />
