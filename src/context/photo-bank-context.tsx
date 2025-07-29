@@ -69,7 +69,7 @@ function photoBankReducer(state: PhotoBankState, action: PhotoBankAction): Photo
       };
 
     case 'REMOVE_PHOTO':
-      const { [action.payload]: removed, ...remainingPhotos } = state.photos;
+      const { [action.payload]: removedPhoto, ...remainingPhotos } = state.photos;
       console.log('Removing photo from global state:', action.payload);
       return {
         ...state,

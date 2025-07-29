@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -74,11 +74,11 @@ export function QuestionPhotoUpload({
       };
 
       addPhoto(newPhoto); // Dispatch to global state
-      simulateUpload(photoId, file);
+      simulateUpload(photoId);
     });
   };
   
-  const simulateUpload = async (photoId: string, file: File) => {
+  const simulateUpload = async (photoId: string) => {
     setUploading(true);
     
     try {

@@ -1,7 +1,6 @@
-```tsx
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,18 +8,14 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { usePhotoBank } from '@/context/photo-bank-context';
-import type { PhotoItem } from '@/context/photo-bank-context';
 import { 
   Image as ImageIcon, 
   Search, 
-  Filter, 
   Download,
-  X, // Added X for unassign button
+  X,
   Trash2, 
-  Eye,
   Grid3X3,
   List,
-  Calendar,
   Tag,
   Link as LinkIcon
 } from 'lucide-react';
@@ -42,22 +37,21 @@ export function PhotoBank({
   availableQuestions = []
 }: PhotoBankProps) {
   const {
-    state: { photos, selectedPhotos },
+    state: { selectedPhotos },
     selectPhoto,
     deselectPhoto,
     clearSelection,
     removePhoto,
     updatePhoto,
-    getAllPhotos, // Use getAllPhotos from context
+    getAllPhotos,
   } = usePhotoBank();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(initialViewMode);
-  const [filterBy, setFilterBy] = useState<'all' | 'questions' | 'assignments'>('all');
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string>('');
-  const [filterQuestionId, setFilterQuestionId] = useState<string>('all'); // For filtering by question
-  const [filterAssignmentId, setFilterAssignmentId] = useState<string>('all'); // For filtering by assignment
+  const [filterQuestionId, setFilterQuestionId] = useState<string>('all');
+  const [filterAssignmentId, setFilterAssignmentId] = useState<string>('all');
 
   // Get all photos from the global state
   const photoArray = getAllPhotos();
@@ -73,14 +67,12 @@ export function PhotoBank({
     const matchesFilter = (filterQuestionId === 'all' || photo.questionId === filterQuestionId) &&
                           (filterAssignmentId === 'all' || photo.assignmentId === filterAssignmentId);
 
-
     return matchesSearch && matchesFilter;
   });
 
-  // Get questions that support photo upload and don't have photos assigned
-  const availableQuestionsForAssignment = availableQuestions.filter(q => 
-    q.photoUpload
-  );
+  // Get questions that support photo upload
+  const availableQuestionsForAssignment = availableQuestions.filter(q => q.photoUpload);
+
   const handlePhotoClick = (photoId: string) => {
     if (selectedPhotos.includes(photoId)) {
       deselectPhoto(photoId);
@@ -95,7 +87,7 @@ export function PhotoBank({
       if (photo?.url.startsWith('blob:')) {
         URL.revokeObjectURL(photo.url);
       }
-      removePhoto(photoId); // Dispatch to global state
+      removePhoto(photoId);
     });
     clearSelection();
   };
@@ -117,9 +109,8 @@ export function PhotoBank({
   const handleAssignToQuestion = () => {
     if (selectedPhotos.length === 0 || !selectedQuestionId) return;
     
-    // Assign all selected photos to the question
     selectedPhotos.forEach(photoId => {
-      updatePhoto(photoId, { questionId: selectedQuestionId }); // Dispatch to global state
+      updatePhoto(photoId, { questionId: selectedQuestionId });
     });
     
     setIsAssignDialogOpen(false);
@@ -129,7 +120,7 @@ export function PhotoBank({
 
   const handleUnassignSelected = () => {
     selectedPhotos.forEach(photoId => {
-      updatePhoto(photoId, { questionId: undefined }); // Dispatch to global state
+      updatePhoto(photoId, { questionId: undefined });
     });
     clearSelection();
   };
@@ -145,7 +136,7 @@ export function PhotoBank({
                 Photo Bank
               </CardTitle>
               <CardDescription>
-                Manage all photos from assignments and questions
+                Manage all photos from assignments and questions ({filteredPhotos.length} total)
               </CardDescription>
             </div>
             
@@ -182,129 +173,98 @@ export function PhotoBank({
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search photos..."
+                  placeholder="Search photos by name..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>
               
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={filterBy === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilterBy('all')}
-                >
-                  All Photos
-                </Button>
-                <Button
-                  type="button"
-                  variant={filterBy === 'questions' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilterBy('questions')}
-                >
-                  <Filter className="h-4 w-4 mr-1" />
-                  Questions
-                </Button>
-                <Button
-                  type="button"
-                  variant={filterBy === 'assignments' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilterBy('assignments')}
-                >
-                  <Filter className="h-4 w-4 mr-1" />
-                  Assignments
-                </Button>
-              </div>
+              <Select value={filterQuestionId} onValueChange={setFilterQuestionId}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Filter by Question" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Questions</SelectItem>
+                  {uniqueQuestionIds.map(qId => (
+                    <SelectItem key={qId} value={qId}>
+                      Question: {qId.substring(0, 8)}...
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select value={filterAssignmentId} onValueChange={setFilterAssignmentId}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Filter by Assignment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Assignments</SelectItem>
+                  {uniqueAssignmentIds.map(aId => (
+                    <SelectItem key={aId} value={aId}>
+                      Assignment: {aId.substring(0, 8)}...
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-          {/* Filters for Question and Assignment */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search photos by name..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={filterQuestionId} onValueChange={setFilterQuestionId}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by Question" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Questions</SelectItem>
-                {uniqueQuestionIds.map(qId => (
-                  <SelectItem key={qId} value={qId}>
-                    Question: {qId.substring(0, 8)}...
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterAssignmentId} onValueChange={setFilterAssignmentId}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by Assignment" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Assignments</SelectItem>
-                {uniqueAssignmentIds.map(aId => (
-                  <SelectItem key={aId} value={aId}>
-                    Assignment: {aId.substring(0, 8)}...
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           )}
 
           {/* Selection Actions */}
           {selectedPhotos.length > 0 && (
             <div className="flex items-center justify-between p-3 bg-muted rounded-md">
               <span className="text-sm font-medium">
-                {selectedPhotos.length} photo{selectedPhotos.length !== 1 ? 's' : ''} selected.
+                {selectedPhotos.length} photo(s) selected
               </span>
-              <div className="flex gap-2">
-                {availableQuestionsForAssignment.length > 0 && (
-                  <Button type="button" variant="outline" size="sm" onClick={() => setIsAssignDialogOpen(true)}>
-                    <LinkIcon className="h-4 w-4 mr-1" />
-                    Assign to Question
-                  </Button>
-                )}
-                <Button type="button" variant="outline" size="sm" onClick={handleDownloadSelected}>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAssignDialogOpen(true)}
+                >
+                  <Tag className="h-4 w-4 mr-1" />
+                  Assign to Question
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUnassignSelected}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Unassign
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadSelected}
+                >
                   <Download className="h-4 w-4 mr-1" />
                   Download
                 </Button>
-                <Button type="button" variant="destructive" size="sm" onClick={handleDeleteSelected}>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDeleteSelected}
+                >
                   <Trash2 className="h-4 w-4 mr-1" />
                   Delete
                 </Button>
-                {selectedPhotos.some(photoId => photoArray.find(p => p.id === photoId)?.questionId) && (
-                  <Button type="button" variant="outline" size="sm" onClick={handleUnassignSelected}>
-                    <X className="h-4 w-4 mr-1" />
-                    Unassign
-                  </Button>
-                )}
-                <Button type="button" variant="ghost" size="sm" onClick={clearSelection} className="ml-auto">
+                <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
                   Clear
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Photo Display */}
-          {filteredPhotos.length === 0 ? (
-            <div className="text-center py-12">
-              <ImageIcon className="h-16 w-16 mx-auto text-muted-foreground opacity-50 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Photos Found</h3>
-              <p className="text-muted-foreground">
-                {searchTerm ? 'No photos match your search criteria.' : 'No photos have been uploaded yet.'}
-              </p>
-            </div>
-          ) : viewMode === 'grid' ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+          {/* Photo Grid/List */}
+          {viewMode === 'grid' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {filteredPhotos.map((photo) => (
-                <Card
+                <div
                   key={photo.id}
                   className={cn(
                     "relative overflow-hidden cursor-pointer transition-all hover:shadow-md",
@@ -312,65 +272,66 @@ export function PhotoBank({
                   )}
                   onClick={() => handlePhotoClick(photo.id)}
                 >
-                  <div className="aspect-square relative">
+                  <div className="aspect-square bg-muted rounded-lg overflow-hidden">
                     <Image
                       src={photo.url}
                       alt={photo.name}
                       fill
                       className="object-cover"
                     />
-                    
-                    {/* Status Badge */}
+                  </div>
+                  
+                  {/* Status Badge */}
+                  <div className="absolute top-2 left-2">
                     <Badge
                       variant={photo.status === 'uploaded' ? 'default' : 
                                photo.status === 'uploading' ? 'secondary' : 'destructive'}
-                      className="absolute top-2 left-2 text-xs"
                     >
                       {photo.status}
                     </Badge>
-
-                    {/* Selection Indicator */}
-                    {selectedPhotos.includes(photo.id) && (
-                      <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                          <Eye className="w-4 h-4 text-primary-foreground" />
-                        </div>
-                      </div>
-                    )}
                   </div>
-                  
-                  <CardContent className="p-2">
-                    <p className="text-xs truncate font-medium" title={photo.name}>
-                      {photo.name}
-                    </p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Calendar className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">
-                        {format(photo.uploadedAt, 'MMM d')}
-                      </span>
+
+                  {/* Assignment Status */}
+                  {photo.questionId && (
+                    <div className="absolute top-2 right-2">
+                      <Badge variant="secondary" className="text-xs">
+                        <LinkIcon className="w-2 h-2 mr-1" />
+                        Assigned
+                      </Badge>
                     </div>
-                    {photo.questionId && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <Tag className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                        <span className="text-xs text-muted-foreground truncate">
-                          Q: {photo.questionId.substring(0, 8)}...
-                        </span>
+                  )}
+
+                  {/* Selection Indicator */}
+                  {selectedPhotos.includes(photo.id) && (
+                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                      <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                        <div className="w-3 h-3 bg-white rounded-full" />
                       </div>
-                    )}
+                    </div>
+                  )}
+                  
+                  {/* Photo Info */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                    <p className="text-xs text-white truncate">{photo.name}</p>
+                    <p className="text-xs text-white/70">
+                      {format(photo.uploadedAt, 'MMM d, yyyy')}
+                    </p>
                     {photo.assignmentId && (
                       <div className="flex items-center gap-1 mt-1">
                         <LinkIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                        <span className="text-xs text-muted-foreground truncate">A: {photo.assignmentId.substring(0, 8)}...</span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          A: {photo.assignmentId.substring(0, 8)}...
+                        </span>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
             <div className="space-y-2">
               {filteredPhotos.map((photo) => (
-                <Card
+                <div
                   key={photo.id}
                   className={cn(
                     "cursor-pointer transition-all hover:shadow-sm",
@@ -378,65 +339,65 @@ export function PhotoBank({
                   )}
                   onClick={() => handlePhotoClick(photo.id)}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 relative rounded-md overflow-hidden flex-shrink-0">
-                        <Image
-                          src={photo.url}
-                          alt={photo.name}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium truncate">{photo.name}</h4>
-                        <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                          <span>{format(photo.uploadedAt, 'MMM d, yyyy')}</span>
-                          {photo.questionId && (
-                            <span>Question: {photo.questionId.substring(0, 8)}...</span>
-                          )}
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-4">
+                        <div className="relative w-16 h-16 flex-shrink-0">
+                          <Image
+                            src={photo.url}
+                            alt={photo.name}
+                            fill
+                            className="object-cover rounded"
+                          />
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{photo.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {format(photo.uploadedAt, 'PPP')}
+                          </p>
                           {photo.assignmentId && (
-                            <span>Assignment: {photo.assignmentId.substring(0, 8)}...</span>
+                            <p className="text-xs text-muted-foreground">
+                              Assignment: {photo.assignmentId.substring(0, 8)}...
+                            </p>
                           )}
                         </div>
+                        
+                        <Badge
+                          variant={photo.status === 'uploaded' ? 'default' : 
+                                   photo.status === 'uploading' ? 'secondary' : 'destructive'}
+                        >
+                          {photo.status}
+                        </Badge>
                       </div>
-                      
-                      <Badge
-                        variant={photo.status === 'uploaded' ? 'default' : 
-                                 photo.status === 'uploading' ? 'secondary' : 'destructive'}
-                      >
-                        {photo.status}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </div>
               ))}
             </div>
           )}
         </CardContent>
-        {/* Assign to Question Dialog */}
       </Card>
-    </div>
+
       {/* Assign to Question Dialog */}
       <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Assign Photo to Question</DialogTitle>
+            <DialogTitle>Assign Photos to Question</DialogTitle>
             <DialogDescription>
-              Select a question to assign the selected photo(s) to. Only questions that support photo upload are shown.
+              Select a question to assign the selected photos to.
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
             <Select value={selectedQuestionId} onValueChange={setSelectedQuestionId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a question" />
+                <SelectValue placeholder="Select a question..." />
               </SelectTrigger>
               <SelectContent>
-                {availableQuestionsForAssignment.map((question) => (
+                {availableQuestionsForAssignment.map(question => (
                   <SelectItem key={question.id} value={question.id}>
-                    {question.label}
+                    {question.label || `Question ${question.id.substring(0, 8)}...`}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -444,15 +405,15 @@ export function PhotoBank({
           </div>
           
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" onClick={handleAssignToQuestion} disabled={!selectedQuestionId}>
-              Assign Photo{selectedPhotos.length > 1 ? 's' : ''}
+            <Button onClick={handleAssignToQuestion} disabled={!selectedQuestionId}>
+              Assign Photos
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
   );
 }
-```

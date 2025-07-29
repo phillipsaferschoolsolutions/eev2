@@ -11,7 +11,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import Image from "next/image";
 import { format } from "date-fns";
-import { ArrowLeft, X, Loader2, Eye, Trash2, ImageIcon, Camera, Upload } from "lucide-react";
+import { ArrowLeft, X, Loader2, Trash2, ImageIcon, Camera, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,8 +28,6 @@ import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
@@ -98,17 +96,13 @@ export default function CompleteAssignmentPage() {
   const [imagePreviewUrls, setImagePreviewUrls] = useState<{ [questionId: string]: string | null }>({});
 
   const [locations, setLocations] = useState<Location[]>([]);
-  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<{ [key: string]: any }>({});
   const [uploadedPhotos, setUploadedPhotos] = useState<{ [questionId: string]: UploadedFileDetail }>({});
   const [selectedQuestionForPhoto, setSelectedQuestionForPhoto] = useState<string | null>(null);
-  const [photoBankPhotos, setPhotoBankPhotos] = useState<Array<{ id: string; url: string; name: string; uploadedAt: string; size: number }>>([]);
   const [photoBankFiles, setPhotoBankFiles] = useState<UploadedFileDetail[]>([]);
-  const [isLoadingPhotoBank, setIsLoadingPhotoBank] = useState(false);
   const [selectedQuestionForPhotoBank, setSelectedQuestionForPhotoBank] = useState<string | null>(null);
-  const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
   const [isPhotoBankModalOpen, setIsPhotoBankModalOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedPhotoForModal, setSelectedPhotoForModal] = useState<string | null>(null);
@@ -548,79 +542,87 @@ export default function CompleteAssignmentPage() {
   // Handle drag and drop for photo bank
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(false);
-    
     const files = Array.from(e.dataTransfer.files);
-    const imageFiles = files.filter(file => file.type.startsWith('image/'));
-    
-    if (imageFiles.length > 0) {
-      handlePhotoBankUpload(imageFiles);
+    if (files.length > 0) {
+      handlePhotoBankUpload(files);
     }
   };
 
   // Handle photo bank file upload
   const handlePhotoBankUpload = async (files: File[]) => {
     setIsUploading(true);
-    const newPhotos: Array<{ id: string; url: string; name: string; uploadedAt: string; size: number }> = [];
-    const progressMap: Record<string, number> = {};
     
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.type.startsWith('image/')) {
-        const photoId = `photo-${Date.now()}-${i}`;
-        progressMap[photoId] = 0;
-        setUploadProgress(prev => ({ ...prev, [photoId]: 0 }));
-        
-        const url = URL.createObjectURL(file);
-        
-        // Simulate upload progress
-        const progressInterval = setInterval(() => {
-          setUploadProgress(prev => {
-            const currentProgress = prev[photoId] || 0;
-            const newProgress = Math.min(currentProgress + Math.random() * 30, 95);
-            return { ...prev, [photoId]: newProgress };
-          });
-        }, 200);
-        
-        newPhotos.push({
-          id: photoId,
-          url,
-          name: file.name,
-          uploadedAt: new Date().toISOString(),
-          size: file.size,
-        });
-        
-        // Complete the progress after a delay
-        setTimeout(() => {
-          clearInterval(progressInterval);
-          setUploadProgress(prev => ({ ...prev, [photoId]: 100 }));
-          setTimeout(() => {
-            setUploadProgress(prev => {
-              const newPrev = { ...prev };
-              delete newPrev[photoId];
-              return newPrev;
-            });
-          }, 1000);
-        }, 1500 + Math.random() * 1000);
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        toast({ variant: "destructive", title: "Invalid file type", description: "Only image files are allowed." });
+        continue;
       }
+
+      if (file.size > 10 * 1024 * 1024) {
+        toast({ variant: "destructive", title: "File too large", description: "File size must be less than 10MB." });
+        continue;
+      }
+
+      const photoId = `photo-bank-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const photoUrl = URL.createObjectURL(file);
+
+      const newPhoto = {
+        id: photoId,
+        file,
+        url: photoUrl,
+        name: file.name,
+        uploadedAt: new Date(),
+        assignmentId,
+        status: 'uploading' as const,
+        progress: 0,
+      };
+
+      photoBank.addPhoto(newPhoto);
+      await simulateUpload(photoId, file);
     }
     
-    setPhotoBankPhotos(prev => [...prev, ...newPhotos]);
+    setIsUploading(false);
+  };
+
+  const simulateUpload = async (photoId: string, file: File) => {
+    photoBank.setUploading(true);
     
-    // Reset uploading state after all files are processed
-    setTimeout(() => {
-      setIsUploading(false);
-    }, 3000);
+    try {
+      // Simulate upload progress
+      for (let progress = 0; progress <= 100; progress += 10) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        photoBank.updatePhoto(photoId, { progress }); 
+        photoBank.setUploadProgress(progress);
+      }
+
+      // Mark as uploaded
+      photoBank.updatePhoto(photoId, { 
+        status: 'uploaded',
+        progress: 100,
+      }); 
+    } catch (error) {
+      photoBank.updatePhoto(photoId, { 
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Upload failed', 
+      });
+    } finally {
+      photoBank.setUploading(false);
+      photoBank.setUploadProgress(0);
+    }
   };
 
   // Handle manual file selection
@@ -633,37 +635,11 @@ export default function CompleteAssignmentPage() {
 
   // Delete photo from bank
   const deletePhotoFromBank = (photoId: string) => {
-    setPhotoBankPhotos(prev => {
-      const photoToDelete = prev.find(p => p.id === photoId);
-      if (photoToDelete?.url.startsWith('blob:')) {
-        URL.revokeObjectURL(photoToDelete.url);
-      }
-      return prev.filter(p => p.id !== photoId);
-    });
-    
+    photoBank.removePhoto(photoId);
     toast({
       title: "Photo Deleted",
       description: "Photo removed from Photo Bank",
     });
-  };
-
-  // Assign photo to question
-  const assignPhotoToQuestion = (photoId: string, questionId: string) => {
-    const photo = photoBankPhotos.find(p => p.id === photoId);
-    if (photo) {
-      setFormData(prev => ({
-        ...prev,
-        [`${questionId}_photo`]: photo.url
-      }));
-      
-      setSelectedQuestionForPhotoBank(null);
-      setIsPhotoBankModalOpen(false);
-      
-      toast({
-        title: "Photo Assigned",
-        description: `Photo assigned to question`,
-      });
-    }
   };
 
   // Open photo in modal
@@ -1066,7 +1042,7 @@ export default function CompleteAssignmentPage() {
                 Photo Bank
               </CardTitle>
               <CardDescription>
-                {photoBankPhotos.length} photo(s) available for assignment questions
+                {photoBank.getAllPhotos().filter(p => p.assignmentId === assignmentId).length} photo(s) available for assignment questions
               </CardDescription>
             </div>
             <Button 
@@ -1090,7 +1066,7 @@ export default function CompleteAssignmentPage() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            {photoBankPhotos.length === 0 ? (
+            {photoBank.getAllPhotos().filter(p => p.assignmentId === assignmentId).length === 0 ? (
               <div className="flex flex-col items-center gap-4">
                 <div className="p-4 bg-muted rounded-full">
                   <Camera className="h-8 w-8 text-muted-foreground" />
@@ -1121,20 +1097,31 @@ export default function CompleteAssignmentPage() {
             ) : (
               <div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
-                  {photoBankPhotos.map((photo) => (
+                  {photoBank.getAllPhotos()
+                    .filter(p => p.assignmentId === assignmentId)
+                    .map((photo) => (
                     <div key={photo.id} className="relative group">
                       {/* Upload Progress Overlay */}
-                      {uploadProgress[photo.id] !== undefined && (
+                      {photo.status === 'uploading' && (
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-lg">
                           <div className="text-center text-white">
                             <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mb-2"></div>
-                            <div className="text-sm font-medium">{Math.round(uploadProgress[photo.id])}%</div>
+                            <div className="text-sm font-medium">{Math.round(photo.progress || 0)}%</div>
                             <div className="w-20 h-1 bg-white/30 rounded-full mt-1">
                               <div 
                                 className="h-full bg-white rounded-full transition-all duration-300"
-                                style={{ width: `${uploadProgress[photo.id]}%` }}
+                                style={{ width: `${photo.progress || 0}%` }}
                               ></div>
                             </div>
+                          </div>
+                        </div>
+                      )}
+                      {photo.status === 'error' && (
+                        <div className="absolute inset-0 bg-red-500/50 flex items-center justify-center z-10 rounded-lg">
+                          <div className="text-center text-white">
+                            <X className="h-10 w-10 mb-2" />
+                            <p className="text-sm font-medium">Upload Failed</p>
+                            <p className="text-xs">{photo.error}</p>
                           </div>
                         </div>
                       )}
@@ -1170,9 +1157,9 @@ export default function CompleteAssignmentPage() {
                   )}
                 </div>
                 
-                {photoBankPhotos.length > 6 && (
+                {photoBank.getAllPhotos().filter(p => p.assignmentId === assignmentId).length > 6 && (
                   <p className="text-sm text-muted-foreground mb-4">
-                    Showing 6 of {photoBankPhotos.length} photos
+                    Showing 6 of {photoBank.getAllPhotos().filter(p => p.assignmentId === assignmentId).length} photos
                   </p>
                 )}
                 
@@ -1780,7 +1767,7 @@ export default function CompleteAssignmentPage() {
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
-            ) : photoBankPhotos.length === 0 ? (
+            ) : photoBank.getAllPhotos().filter(p => p.assignmentId === assignmentId).length === 0 ? (
               <div 
                 className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                   isDragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
@@ -1803,7 +1790,7 @@ export default function CompleteAssignmentPage() {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-sm text-muted-foreground">
-                    {photoBankPhotos.length} photo(s) in bank
+                    {photoBank.getAllPhotos().filter(p => p.assignmentId === assignmentId).length} photo(s) in bank
                   </p>
                   <Button 
                     onClick={() => fileInputRef.current?.click()}
@@ -1816,7 +1803,9 @@ export default function CompleteAssignmentPage() {
                 </div>
                 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {photoBankPhotos.map((photo) => (
+                  {photoBank.getAllPhotos()
+                    .filter(p => p.assignmentId === assignmentId)
+                    .map((photo) => (
                     <div key={photo.id} className="relative group">
                       <div 
                         className="aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
@@ -1829,19 +1818,87 @@ export default function CompleteAssignmentPage() {
                         />
                       </div>
                       
+                      {/* Assignment Status Badge */}
+                      {photo.questionId && (
+                        <div className="absolute top-2 left-2">
+                          <Badge variant="secondary" className="text-xs">
+                            Assigned
+                          </Badge>
+                        </div>
+                      )}
+                      
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                        {selectedQuestionForPhotoBank && (
+                        {selectedQuestionForPhotoBank ? (
                           <Button
                             size="sm"
-                            onClick={() => assignPhotoToQuestion(photo.id, selectedQuestionForPhotoBank)}
+                            onClick={() => {
+                              photoBank.updatePhoto(photo.id, { questionId: selectedQuestionForPhotoBank });
+                              setIsPhotoBankModalOpen(false);
+                              setSelectedQuestionForPhotoBank(null);
+                              toast({
+                                title: "Photo Assigned",
+                                description: "Photo has been assigned to the question",
+                              });
+                            }}
                           >
                             Select
                           </Button>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            {photo.questionId ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  photoBank.updatePhoto(photo.id, { questionId: undefined });
+                                  toast({
+                                    title: "Photo Unassigned",
+                                    description: "Photo has been unassigned from the question",
+                                  });
+                                }}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Unassign
+                              </Button>
+                            ) : (
+                              <Select onValueChange={(questionId) => {
+                                if (questionId === UNASSIGNED_FILTER_VALUE) {
+                                  photoBank.updatePhoto(photo.id, { questionId: undefined });
+                                } else {
+                                  photoBank.updatePhoto(photo.id, { questionId });
+                                }
+                                toast({
+                                  title: "Photo Assigned",
+                                  description: "Photo has been assigned to the question",
+                                });
+                              }}>
+                                <SelectTrigger className="w-32">
+                                  <SelectValue placeholder="Assign to..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value={UNASSIGNED_FILTER_VALUE}>Unassigned</SelectItem>
+                                  {assignment?.questions
+                                    ?.filter(q => q.photoUpload)
+                                    .map(q => (
+                                    <SelectItem key={q.id} value={q.id}>
+                                      {q.label || `Question ${q.id.substring(0, 8)}...`}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
                         )}
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => deletePhotoFromBank(photo.id)}
+                          onClick={() => {
+                            photoBank.removePhoto(photo.id);
+                            toast({
+                              title: "Photo Deleted",
+                              description: "Photo has been removed from the bank",
+                            });
+                          }}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
