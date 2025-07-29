@@ -267,10 +267,8 @@ export function QuestionPhotoUpload({
                   variant="destructive"
                   size="xs"
                   className="absolute top-0 right-0 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity text-xs p-0"
-                  onClick={(e) => handleRemovePhoto(e, photo.id)}
+                  onClick={(e) => handlePhotoClick(e, photo)}
                 >
-                  <X className="w-2 h-2" />
-                </Button>
                   <X className="w-2 h-2" />
                 </Button>
               </div>
@@ -300,3 +298,4 @@ export function QuestionPhotoUpload({
     </div>
   );
 }
+```
