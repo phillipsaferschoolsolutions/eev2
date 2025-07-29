@@ -73,6 +73,13 @@ interface PhotoBankItem {
   assignedToQuestion?: string | null;
 }
 
+// Extend UploadedFileDetail to include PhotoBankItem properties
+interface PhotoBankFile extends UploadedFileDetail {
+  id: string;
+  uploadedAt: string;
+  assignedToQuestion?: string | null;
+}
+
 
 const UNASSIGNED_FILTER_VALUE = "n/a";
 const MAX_AUDIO_RECORDING_MS = 20000;
@@ -120,7 +127,7 @@ export default function CompleteAssignmentPage() {
   const [uploadedFileDetails, setUploadedFileDetails] = useState<{ [questionId: string]: UploadedFileDetail | null }>({});
   const [uploadErrors, setUploadErrors] = useState<{ [questionId: string]: string | null }>({});
   const [imagePreviewUrls, setImagePreviewUrls] = useState<{ [questionId: string]: string | null }>({});
-  const [photoBankFiles, setPhotoBankFiles] = useState<UploadedFileDetail[]>([]);
+  const [photoBankFiles, setPhotoBankFiles] = useState<PhotoBankFile[]>([]);
   const [photoBankUploads, setPhotoBankUploads] = useState<{ [key: string]: { progress: number; error: string | null } }>({});
   const [isPhotoBankModalOpen, setIsPhotoBankModalOpen] = useState(false);
   const [activeQuestionIdForPhotoBank, setActiveQuestionIdForPhotoBank] = useState<string | null>(null);
@@ -427,8 +434,15 @@ export default function CompleteAssignmentPage() {
         async () => {
           try {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            // Add the successfully uploaded file to the photoBankFiles state
-            setPhotoBankFiles(prev => [...prev, { name: file.name, url: downloadURL }]);
+            // Add the successfully uploaded file to the photoBankFiles state with proper structure
+            const newPhoto: PhotoBankFile = {
+              id: `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              name: file.name,
+              url: downloadURL,
+              uploadedAt: new Date().toISOString(),
+              assignedToQuestion: null
+            };
+            setPhotoBankFiles(prev => [...prev, newPhoto]);
             // Update the progress state to show completion and remove from "in-progress" view
             setPhotoBankUploads(prev => {
                 const newProgress = { ...prev };
@@ -504,7 +518,7 @@ export default function CompleteAssignmentPage() {
     async () => {
       try {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        const newPhoto = {
+        const newPhoto: PhotoBankFile = {
           id: `photo-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
           url: downloadURL,
           name: file.name,
@@ -964,13 +978,13 @@ export default function CompleteAssignmentPage() {
     setIsPhotoBankModalOpen(true);
   };
 
-  const handleSelectPhotoFromBank = (photo: UploadedFileDetail) => {
+  const handleSelectPhotoFromBank = (photo: PhotoBankFile) => {
     if (!activeQuestionIdForPhotoBank) return;
 
     // Associate the selected photo with the active question
     setUploadedFileDetails(prev => ({
       ...prev,
-      [activeQuestionIdForPhotoBank]: photo
+      [activeQuestionIdForPhotoBank]: { name: photo.name, url: photo.url }
     }));
 
     // Reset and close the modal
@@ -1021,8 +1035,8 @@ export default function CompleteAssignmentPage() {
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          // Add the successfully uploaded file to the photoBankFiles state with unique ID
-          const newPhoto = { 
+          // Add the successfully uploaded file to the photoBankFiles state with proper structure
+          const newPhoto: PhotoBankFile = { 
             id: `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             name: file.name, 
             url: downloadURL,
