@@ -58,7 +58,7 @@ type FormDataSchema = z.infer<typeof formSchema>;
 
 export function QuestionRenderer({
   question, control, register, errors, formData, setFormData,
-  locations, isLoadingLocations, parseOptions, hours12, minutes, amPm,
+  locations, isLoadingLocations, locationsError, parseOptions, hours12, minutes, amPm,
 }: any) {
   switch (question.component) {
     case 'text':
