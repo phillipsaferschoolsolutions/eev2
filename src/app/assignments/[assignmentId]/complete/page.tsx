@@ -1487,6 +1487,7 @@ export default function CompleteAssignmentPage() {
                       height={120}
                       className="w-full h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity"
                       onClick={() => setModalPhoto({ url: photo.url, name: photo.name })}
+                      />
                     <div className="p-2">
                       <p className="text-xs truncate mb-2">{photo.name}</p>
                       {/* Assignment dropdown */}
