@@ -915,6 +915,29 @@ export default function CompleteAssignmentPage() {
         </CardContent>
       </Card>
 
+      {/* Global Photo Bank Section */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Photo Management</span>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedQuestionForPhotoBank(null);
+                setIsPhotoBankModalOpen(true);
+              }}
+              className="flex items-center gap-2"
+            >
+              <ImageIcon className="h-4 w-4" />
+              Photo Bank ({photoBankPhotos.length})
+            </Button>
+          </CardTitle>
+          <CardDescription>
+            Access your photo library and manage uploaded images for this assignment.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
       {/* Questions Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {questionsToRender.length === 0 ? (
@@ -1419,11 +1442,17 @@ export default function CompleteAssignmentPage() {
                               </div>
                             )}
                           </div>
-                          <Button type="button" variant="outline" size="sm" onClick={() => {
-                            setSelectedQuestionForPhoto(question.id);
-                            setIsPhotoModalOpen(true);
-                          }}>
-                            <ImageIcon className="h-4 w-4 mr-2" />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedQuestionForPhotoBank(question.id);
+                              setIsPhotoBankModalOpen(true);
+                            }}
+                            className="flex items-center gap-1"
+                          >
+                            <ImageIcon className="h-3 w-3" />
                             From Bank
                           </Button>
                         </div>
@@ -1561,28 +1590,30 @@ export default function CompleteAssignmentPage() {
           setSelectedQuestionForPhoto(null);
         }
       }}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ImageIcon className="h-5 w-5" />
-              Photo Bank ({photoBankFiles.length} {photoBankFiles.length === 1 ? 'photo' : 'photos'})
+              Photo Bank
             </DialogTitle>
             <DialogDescription>
-              {selectedQuestionForPhoto 
+              {selectedQuestionForPhotoBank 
                 ? "Select a photo to assign to the current question, or manage your photo library."
                 : "Manage your uploaded photos and view your photo library."}
             </DialogDescription>
           </DialogHeader>
+          
           <div className="flex-1 overflow-auto">
-            {isLoadingPhotoBank ? (
+            {isLoadingPhotos ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">Loading photos...</span>
               </div>
-            ) : photoBankFiles.length === 0 ? (
+            ) : photoBankPhotos.length === 0 ? (
               <div className="text-center py-8">
                 <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-lg font-semibold">No Photos in Bank</p>
-                <p className="text-muted-foreground">Upload photos to questions to populate the photo bank.</p>
+                <p className="text-lg font-semibold">No Photos Yet</p>
+                <p className="text-muted-foreground">Upload photos to questions to build your photo library.</p>
               </div>
             ) : (
               <Table>
@@ -1596,27 +1627,32 @@ export default function CompleteAssignmentPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {photoBankFiles.map((file, index) => (
-                    <TableRow key={`${file.url}-${index}`}>
+                  {photoBankPhotos.map((photo) => (
+                    <TableRow key={photo.id}>
                       <TableCell>
-                        <Image
-                          src={file.url}
-                          alt={file.name}
-                          width={50}
-                          height={50}
-                          className="rounded object-cover"
-                        />
+                        <div className="w-16 h-16 relative rounded-md overflow-hidden bg-muted">
+                          <Image
+                            src={photo.url}
+                            alt={photo.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
                       </TableCell>
-                      <TableCell className="font-medium">{file.name}</TableCell>
-                      <TableCell>{new Date(file.uploadDate).toLocaleDateString()}</TableCell>
-                      <TableCell>{(file.fileSize / 1024).toFixed(1)} KB</TableCell>
+                      <TableCell className="font-medium">{photo.name}</TableCell>
+                      <TableCell>{new Date(photo.uploadedAt).toLocaleDateString()}</TableCell>
+                      <TableCell>{(photo.size / 1024).toFixed(1)} KB</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
-                          {selectedQuestionForPhoto && (
+                        <div className="flex justify-end gap-2">
+                          {selectedQuestionForPhotoBank && (
                             <Button
                               variant="default"
                               size="sm"
-                              onClick={() => handleSelectPhotoFromBank(file)}
+                              onClick={() => {
+                                handleQuestionPhotoUpload(selectedQuestionForPhotoBank, photo.url);
+                                setIsPhotoBankModalOpen(false);
+                                setSelectedQuestionForPhotoBank(null);
+                              }}
                             >
                               Select
                             </Button>
@@ -1624,16 +1660,16 @@ export default function CompleteAssignmentPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(file.url, '_blank')}
+                            onClick={() => window.open(photo.url, '_blank')}
                           >
-                            <Eye className="h-4 w-4" />
+                            View
                           </Button>
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleDeletePhotoFromBank(file)}
+                            onClick={() => handleDeletePhotoFromBank(photo.id)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            Delete
                           </Button>
                         </div>
                       </TableCell>
@@ -1643,10 +1679,11 @@ export default function CompleteAssignmentPage() {
               </Table>
             )}
           </div>
+          
           <DialogFooter>
             <Button variant="outline" onClick={() => {
-              setIsPhotoModalOpen(false);
-              setSelectedQuestionForPhoto(null);
+              setIsPhotoBankModalOpen(false);
+              setSelectedQuestionForPhotoBank(null);
             }}>
               Close
             </Button>
