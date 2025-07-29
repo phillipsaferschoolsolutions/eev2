@@ -469,66 +469,65 @@ export default function CompleteAssignmentPage() {
   };
 
   // Function to upload photo directly to a specific question
-  const handleQuestionPhotoUpload = async (questionId: string, file: File) => {
-    if (!userProfile?.account) {
+ const handleQuestionPhotoUpload = async (questionId: string, file: File) => {
+  if (!userProfile?.account || !user || !assignment) {
+    toast({
+      variant: "destructive",
+      title: "Upload Error",
+      description: "Missing user, account, or assignment context."
+    });
+    return;
+  }
+
+  const timestamp = Date.now();
+  const storagePath = `photo_bank/${assignment.id}/${user.uid}/${timestamp}_${file.name}`;
+  const storageRefInstance = ref(storage, storagePath);
+  const uploadTask = uploadBytesResumable(storageRefInstance, file);
+
+  setUploadingQuestionId(questionId);
+
+  uploadTask.on(
+    'state_changed',
+    (snapshot) => {
+      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+      setUploadProgress(prev => ({ ...prev, [questionId]: progress }));
+    },
+    (error) => {
+      console.error('Upload error:', error);
       toast({
         variant: "destructive",
-        title: "Upload Error",
-        description: "User account information is missing."
+        title: "Upload Failed",
+        description: error.message
       });
-      return;
-    }
-
-    setUploadingQuestionId(questionId);
-    
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(prev => ({ ...prev, [questionId]: progress }));
-          },
-          (error) => {
-            console.error('Upload error:', error);
-            reject(error);
-          },
-          async () => {
-            try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              
-              // Add to photo bank with question assignment
-              const newPhoto = {
-                id: `photo-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
-                url: downloadURL,
-                name: file.name,
-                uploadedAt: new Date().toISOString(),
-                assignedToQuestion: questionId
-              };
-              
-              setPhotoBankFiles(prev => [...prev, newPhoto]);
-              
-              toast({
-                title: "Photo Uploaded",
-                description: `Photo uploaded and assigned to question.`
-              });
-              
-              resolve();
-            } catch (urlError) {
-              reject(urlError);
-            }
-          }
-              // Add to photo bank files with question assignment
-              const newPhoto = {
-                id: `photo-${timestamp}`,
-                url: downloadURL,
-                name: file.name,
-                uploadedAt: new Date().toISOString(),
-                assignedToQuestion: questionId
-              };
-              
-              setPhotoBankFiles(prev => [...prev, newPhoto]);
       setUploadingQuestionId(null);
+    },
+    async () => {
+      try {
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        const newPhoto = {
+          id: `photo-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
+          url: downloadURL,
+          name: file.name,
+          uploadedAt: new Date().toISOString(),
+          assignedToQuestion: questionId
+        };
+        setPhotoBankFiles(prev => [...prev, newPhoto]);
+        toast({
+          title: "Photo Uploaded",
+          description: `Photo uploaded and assigned to question.`
+        });
+      } catch (urlError) {
+        toast({
+          variant: "destructive",
+          title: "URL Retrieval Error",
+          description: "Could not retrieve download URL."
+        });
+      } finally {
+        setUploadingQuestionId(null);
+      }
     }
-  };
+  );
+};
 
   // Function to assign/unassign photos to questions
   const assignPhotoToQuestion = (photoId: string, questionId: string | null) => {
@@ -1312,25 +1311,25 @@ export default function CompleteAssignmentPage() {
             console.log(`FormData[${key}]:`, value);
         }
 
-    try {
-        const result = await submitCompletedAssignment(
-          assignment.id, 
-          formDataForSubmission, 
-          userProfile.account
-        );
-        
-        console.log("12. Submission result:", result);
-        
-        if (result && (result.success !== false)) {
-            toast({ title: "Assignment Submitted Successfully", description: "Your assignment has been submitted." });
-            router.push('/assignments');
-        } else {
-            throw new Error(result?.error || "Submission failed - no success confirmation received");
+        try {
+            const result = await submitCompletedAssignment(
+              assignment.id, 
+              formDataForSubmission, 
+              userProfile.account
+            );
+            
+            console.log("12. Submission result:", result);
+            
+            if (result && (result.success !== false)) {
+                toast({ title: "Assignment Submitted Successfully", description: "Your assignment has been submitted." });
+                router.push('/assignments');
+            } else {
+                throw new Error(result?.error || "Submission failed - no success confirmation received");
+            }
+        } catch (submissionError) {
+            console.error("13. Submission error details:", submissionError);
+            throw submissionError;
         }
-    } catch (submissionError) {
-        console.error("13. Submission error details:", submissionError);
-        throw submissionError;
-    }
     } catch (dataError) {
         console.error("Error preparing submission data:", dataError);
         toast({ 
@@ -1548,8 +1547,8 @@ export default function CompleteAssignmentPage() {
             <div className="space-y-2">
               <h4 className="font-medium">Available Photos ({photoBankFiles.length})</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {photoBankFiles.map((photo) => (
-                  <div key={photo.id} className="relative group border rounded-lg overflow-hidden">
+                {photoBankFiles.map((photo, index) => (
+                  <div key={photo.id || index} className="relative group border rounded-lg overflow-hidden">
                     {/* Delete button on hover */}
                     {/* Delete button - appears on hover */}
                     <button
@@ -1593,6 +1592,30 @@ export default function CompleteAssignmentPage() {
                       </Select>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </CardContent>
+      </Card>
+
+      {/* Questions Form */}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {questionsToRender.length === 0 ? (
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-center text-muted-foreground">
+                No questions match the current filters.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          questionsToRender.map((question) => (
+            <Card key={question.id} className="relative">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2 flex-1">
                     <CardTitle className="text-lg">
                       {question.label}
                       {question.required && <span className="text-destructive ml-1">*</span>}
@@ -2294,24 +2317,24 @@ export default function CompleteAssignmentPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
               {photoBankFiles.map((photo, index) => (
                 <div key={`available-${photo.id || index}`} className="relative group">
-                  key={`modal-${photo.id || index}`}
-                  className="relative cursor-pointer group"
-                  onClick={() => handleSelectPhotoFromBank(photo)}
-                >
-                  <Image
-                    src={photo.url}
-                    alt={photo.name}
-                    key={`modal-img-${photo.id || index}`}
-                    key={`available-img-${photo.id || index}`}
-                    key={`img-${photo.id || index}`}
-                    width={200}
-                    height={200}
-                    className="w-full h-32 object-cover rounded border hover:border-primary transition-colors"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                    <span className="text-white text-sm text-center p-2">
-                      {photo.name}
-                    </span>
+                  <div
+                    key={`modal-${photo.id || index}`}
+                    className="relative cursor-pointer group"
+                    onClick={() => handleSelectPhotoFromBank(photo)}
+                  >
+                    <Image
+                      src={photo.url}
+                      alt={photo.name}
+                      key={`modal-img-${photo.id || index}`}
+                      width={200}
+                      height={200}
+                      className="w-full h-32 object-cover rounded border hover:border-primary transition-colors"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+                      <span className="text-white text-sm text-center p-2">
+                        {photo.name}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -2327,15 +2350,16 @@ export default function CompleteAssignmentPage() {
             <DialogTitle>{modalPhoto?.name}</DialogTitle>
           </DialogHeader>
           <div className="p-6 pt-0">
-            {modalPhoto && (
-              <Image
-                src={modalPhoto.url}
-                alt={modalPhoto.name}
-                width={800}
-                height={600}
-                className="w-full h-auto max-h-[70vh] object-contain rounded"
-              />
-            )}
+            <Image
+              src={modalPhoto?.url || ''}
+              alt={modalPhoto?.name || ''}
+              width={800}
+              height={600}
+              className="w-full h-auto max-h-[70vh] object-contain rounded"
+            />
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
