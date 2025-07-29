@@ -41,6 +41,7 @@ const initialState: PhotoBankState = {
 function photoBankReducer(state: PhotoBankState, action: PhotoBankAction): PhotoBankState {
   switch (action.type) {
     case 'ADD_PHOTO':
+      console.log('Adding photo to state:', action.payload);
       return {
         ...state,
         photos: {
@@ -53,6 +54,7 @@ function photoBankReducer(state: PhotoBankState, action: PhotoBankAction): Photo
       const existingPhoto = state.photos[action.payload.id];
       if (!existingPhoto) return state;
       
+      console.log('Updating photo in state:', action.payload.id, action.payload.updates);
       return {
         ...state,
         photos: {
@@ -66,6 +68,7 @@ function photoBankReducer(state: PhotoBankState, action: PhotoBankAction): Photo
 
     case 'REMOVE_PHOTO':
       const { [action.payload]: removed, ...remainingPhotos } = state.photos;
+      console.log('Removing photo from state:', action.payload);
       return {
         ...state,
         photos: remainingPhotos,
@@ -152,14 +155,24 @@ export function usePhotoBank() {
 
   // Helper to get photos for a specific question
   const getPhotosForQuestion = useCallback((questionId: string) => {
-    return Object.values(state.photos).filter(photo => photo.questionId === questionId);
+    const photos = Object.values(state.photos).filter(photo => photo.questionId === questionId);
+    console.log(`Getting photos for question ${questionId}:`, photos);
+    return photos;
   }, [state.photos]);
 
   // Helper to get photos for a specific assignment
   const getPhotosForAssignment = useCallback((assignmentId: string) => {
-    return Object.values(state.photos).filter(photo => photo.assignmentId === assignmentId);
+    const photos = Object.values(state.photos).filter(photo => photo.assignmentId === assignmentId);
+    console.log(`Getting photos for assignment ${assignmentId}:`, photos);
+    return photos;
   }, [state.photos]);
 
+  // Helper to get all photos
+  const getAllPhotos = useCallback(() => {
+    const photos = Object.values(state.photos);
+    console.log('Getting all photos:', photos);
+    return photos;
+  }, [state.photos]);
   return {
     ...state,
     addPhoto,
@@ -173,5 +186,6 @@ export function usePhotoBank() {
     clearPhotos,
     getPhotosForQuestion,
     getPhotosForAssignment,
+    getAllPhotos,
   };
 }

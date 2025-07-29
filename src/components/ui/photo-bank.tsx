@@ -46,6 +46,7 @@ export function PhotoBank({
     clearSelection,
     removePhoto,
     updatePhoto,
+    getAllPhotos,
   } = usePhotoBank();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,7 +55,7 @@ export function PhotoBank({
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string>('');
 
-  const photoArray = Object.values(photos);
+  const photoArray = getAllPhotos();
 
   // Filter photos based on search and filter criteria
   const filteredPhotos = photoArray.filter(photo => {
