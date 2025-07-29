@@ -555,15 +555,6 @@ export default function CompleteAssignmentPage() {
     });
   };
 
-  // Function to remove photo from photo bank
-  const removeFromPhotoBank = (photoId: string) => {
-    setPhotoBankFiles(prev => prev.filter(photo => photo.id !== photoId));
-    toast({
-      title: "Photo Removed",
-      description: "Photo has been removed from the photo bank."
-    });
-  };
-
   // Function to unassign photo from question
   const unassignPhotoFromQuestion = (questionId: string, photoId: string) => {
     setPhotoBankFiles(prev => prev.map(photo => 
@@ -1118,14 +1109,14 @@ export default function CompleteAssignmentPage() {
     // Enhanced logging for debugging submission issues
     console.log("=== ASSIGNMENT SUBMISSION DEBUG START ===");
     console.log("1. Current formResponses:", data);
-    console.log("2. Current photoBank:", photoBank);
+    console.log("2. Current photoBank:", photoBankFiles);
     console.log("3. Current comments:", comments);
     console.log("4. Assignment ID:", assignmentId);
     console.log("5. User Profile Account:", userProfile?.account);
     
     console.log("[DEBUG] Starting assignment submission...");
     console.log("[DEBUG] Form responses:", data);
-    console.log("[DEBUG] Photo bank:", photoBank);
+    console.log("[DEBUG] Photo bank:", photoBankFiles);
     console.log("[DEBUG] Comments:", comments);
     
     setIsSubmitting(true);
@@ -1420,6 +1411,7 @@ export default function CompleteAssignmentPage() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -2259,25 +2251,6 @@ export default function CompleteAssignmentPage() {
       </Dialog>
 
       {/* Photo Modal */}
-      {modalPhoto && (
-        <Dialog open={!!modalPhoto} onOpenChange={() => setModalPhoto(null)}>
-          <DialogContent className="max-w-6xl max-h-[90vh] p-2">
-            <DialogHeader className="pb-2">
-              <DialogTitle className="text-center">{modalPhoto.name}</DialogTitle>
-            </DialogHeader>
-            <div className="flex items-center justify-center">
-              <Image
-                src={modalPhoto.url}
-                alt={modalPhoto.name}
-                width={1200}
-                height={800}
-                className="max-w-full max-h-[70vh] object-contain rounded"
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-    </div>
       <Dialog open={!!modalPhoto} onOpenChange={() => setModalPhoto(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] p-0">
           <DialogHeader className="p-6 pb-0">
