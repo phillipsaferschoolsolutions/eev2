@@ -1106,18 +1106,23 @@ export default function CompleteAssignmentPage() {
         toast({ variant: "destructive", title: "Submission Error", description: "Cannot submit, critical assignment or user account data missing." });
         return;
     }
+    
+    // Get the current form values to ensure we have the latest data
+    const currentFormData = getValues();
+    
     // Enhanced logging for debugging submission issues
     console.log("=== ASSIGNMENT SUBMISSION DEBUG START ===");
-    console.log("1. Current formResponses:", data);
-    console.log("2. Current photoBank:", photoBankFiles);
-    console.log("3. Current comments:", comments);
+    console.log("1. Form data from onSubmit:", data);
+    console.log("2. Current form values from getValues():", currentFormData);
+    console.log("3. Current photoBankFiles:", photoBankFiles);
+    console.log("4. Current uploadedFileDetails:", uploadedFileDetails);
+    console.log("5. Current comments state:", comments);
     console.log("4. Assignment ID:", assignmentId);
     console.log("5. User Profile Account:", userProfile?.account);
     
-    console.log("[DEBUG] Starting assignment submission...");
-    console.log("[DEBUG] Form responses:", data);
-    console.log("[DEBUG] Photo bank:", photoBankFiles);
-    console.log("[DEBUG] Comments:", comments);
+    // Use currentFormData instead of data parameter to ensure we have latest values
+    const formDataToProcess = Object.keys(currentFormData).length > 0 ? currentFormData : data;
+    console.log("6. Final form data to process:", formDataToProcess);
     
     setIsSubmitting(true);
 
@@ -1176,68 +1181,145 @@ export default function CompleteAssignmentPage() {
     }
 
     const formDataForSubmission = new FormData();
-    const answersObject: Record<string, string> = {};
+    const answersObject: Record<string, unknown> = {};
     const photoLinksForSync: Record<string, string> = {};
-    const commentsObject: Record<string, string> = {};
+    const commentsObject: Record<string, unknown> = {};
 
     console.log("--- Processing questions for submission ---");
     conditionallyVisibleQuestions.forEach((question, idx) => {
         console.log(`Processing question ${idx + 1} (ID: ${question.id}, Label: ${question.label})`);
+        
+        // Get the answer from the processed form data
+        const rawAnswer = formDataToProcess[question.id];
+        console.log(`  Raw answer for ${question.id}:`, rawAnswer);
+        
         let questionAnswer: unknown;
 
         // Check if the component is a multi-option checkbox
         // Clean, single‐pass checkbox handler:
         if (question.component === 'checkbox' && question.options) {
           const selectedOptions = parseOptions(question.options, question)
-            .filter(opt => data[`${question.id}.${opt.value}`] === true)
+            .filter(opt => formDataToProcess[`${question.id}.${opt.value}`] === true)
             .map(opt => opt.value);
 
           // Always send an array (even if empty)
           questionAnswer = selectedOptions;
+          console.log(`  Checkbox options for ${question.id}:`, selectedOptions);
         } else if ((question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && Array.isArray(parseOptions(question.options, question))) {
              const selectedOptions: string[] = [];
              parseOptions(question.options, question).forEach(opt => {
-               if (data[`${question.id}.${opt.value}`]) {
+               if (formDataToProcess[`${question.id}.${opt.value}`]) {
                    selectedOptions.push(opt.value);
                 }
             });
-            questionAnswer = selectedOptions;//.join(',');
+            questionAnswer = selectedOptions;
+            console.log(`  Multi-select options for ${question.id}:`, selectedOptions);
         } else if (question.component === 'checkbox' && !question.options) {
-            questionAnswer = data[question.id] === true;
-        } else if ((question.component === 'date' || question.component === 'completionDate') && data[question.id] instanceof Date) {
-            questionAnswer = format(data[question.id] as Date, "yyyy-MM-dd");
+            questionAnswer = formDataToProcess[question.id] === true;
+            console.log(`  Single checkbox for ${question.id}:`, questionAnswer);
+        } else if ((question.component === 'date' || question.component === 'completionDate') && formDataToProcess[question.id] instanceof Date) {
+            questionAnswer = format(formDataToProcess[question.id] as Date, "yyyy-MM-dd");
+            console.log(`  Date for ${question.id}:`, questionAnswer);
         } else if (question.component === 'time' || question.component === 'completionTime') {
-            const timeValue = data[question.id];
+            const timeValue = formDataToProcess[question.id];
             if (typeof timeValue === 'object' && timeValue !== null && timeValue.hour && timeValue.minute && timeValue.period) {
                 questionAnswer = `${timeValue.hour}:${timeValue.minute} ${timeValue.period}`;
             } else {
                 questionAnswer = '';
             }
+            console.log(`  Time for ${question.id}:`, questionAnswer);
         } else if (question.component === 'photoUpload') {
             const fileDetail = uploadedFileDetails[question.id];
             if (fileDetail) {
                 photoLinksForSync[question.id] = fileDetail.url;
                 questionAnswer = fileDetail.name;
             } else {
+                // Check if photo is assigned from photo bank
+                const assignedPhoto = photoBankFiles.find(photo => 
+                  photo.assignedToQuestion === question.id
+                );
+                if (assignedPhoto) {
+                    photoLinksForSync[question.id] = assignedPhoto.url;
+                    questionAnswer = assignedPhoto.name;
+                } else {
                 questionAnswer = '';
+                }
             }
+            console.log(`  Photo upload for ${question.id}:`, questionAnswer, 'URL:', photoLinksForSync[question.id]);
         } else {
-            questionAnswer = data[question.id] ?? '';
+            questionAnswer = formDataToProcess[question.id] ?? '';
+            console.log(`  Standard answer for ${question.id}:`, questionAnswer);
         }
 
-        answersObject[question.id] = questionAnswer as string;
+        answersObject[question.id] = questionAnswer;
 
-        if (question.comment && data[`${question.id}_comment`]) {
-            commentsObject[question.id] = data[`${question.id}_comment`] as string;
+        // Handle comments
+        const commentKey = `${question.id}_comment`;
+        if (question.comment && formDataToProcess[commentKey]) {
+            commentsObject[question.id] = formDataToProcess[commentKey];
+            console.log(`  Comment for ${question.id}:`, formDataToProcess[commentKey]);
         }
     });
-    formDataForSubmission.append('assignmentId', assignment.id);
-    formDataForSubmission.append('answers', JSON.stringify(answersObject));
-    formDataForSubmission.append('comments', JSON.stringify(commentsObject));
-    formDataForSubmission.append('photoLinks', JSON.stringify(photoLinksForSync));
-    formDataForSubmission.append('audioNotes', JSON.stringify(finalAudioNotesForSubmission));
-    formDataForSubmission.append('userEmail', user.email);
-    formDataForSubmission.append('account', userProfile.account);
+    
+    console.log("7. Final answers object:", answersObject);
+    console.log("8. Final comments object:", commentsObject);
+    console.log("9. Final photo links:", photoLinksForSync);
+    console.log("10. Final audio notes:", finalAudioNotesForSubmission);
+    
+    // Validate that we have some data to submit
+    const hasAnswers = Object.keys(answersObject).length > 0;
+    const hasValidAnswers = Object.values(answersObject).some(answer => 
+      answer !== null && answer !== undefined && answer !== ''
+    );
+    
+    if (!hasAnswers) {
+        console.error("No answers found in form data!");
+        toast({ 
+            variant: "destructive", 
+            title: "Submission Error", 
+            description: "No answers found. Please fill out at least one question before submitting." 
+        });
+        setIsSubmitting(false);
+        return;
+    }
+    
+    if (!hasValidAnswers) {
+        console.warn("All answers are empty, but proceeding with submission...");
+    }
+    
+    // Build FormData for submission
+    try {
+        // Use the expected field names from the backend
+        formDataForSubmission.append('content', JSON.stringify(answersObject));
+        formDataForSubmission.append('commentsData', JSON.stringify(commentsObject));
+        formDataForSubmission.append('syncPhotoLinks', JSON.stringify(photoLinksForSync));
+        formDataForSubmission.append('audioNotesData', JSON.stringify(finalAudioNotesForSubmission));
+        formDataForSubmission.append('completedBy', user.email);
+        formDataForSubmission.append('account', userProfile.account);
+        formDataForSubmission.append('status', 'completed');
+        formDataForSubmission.append('date', new Date().toLocaleDateString('en-US', { 
+            month: '2-digit', 
+            day: '2-digit', 
+            year: 'numeric', 
+            timeZone: 'America/New_York' 
+        }));
+        
+        // Add location name if available from schoolSelector
+        const schoolSelectorQuestion = assignment.questions.find(q => q.component === 'schoolSelector');
+        if (schoolSelectorQuestion && formDataToProcess[schoolSelectorQuestion.id]) {
+            const selectedLocationId = formDataToProcess[schoolSelectorQuestion.id];
+            const selectedLocation = locations.find(loc => loc.id === selectedLocationId);
+            if (selectedLocation) {
+                formDataForSubmission.append('locationName', selectedLocation.locationName);
+            }
+        }
+        
+        console.log("11. FormData prepared for submission");
+        
+        // Log FormData contents for debugging
+        for (const [key, value] of formDataForSubmission.entries()) {
+            console.log(`FormData[${key}]:`, value);
+        }
 
     try {
         const result = await submitCompletedAssignment(
@@ -1245,15 +1327,32 @@ export default function CompleteAssignmentPage() {
           formDataForSubmission, 
           userProfile.account
         );
-        if (result.success) {
+        
+        console.log("12. Submission result:", result);
+        
+        if (result && (result.success !== false)) {
             toast({ title: "Assignment Submitted Successfully", description: "Your assignment has been submitted." });
             router.push('/assignments');
         } else {
-            throw new Error(result.error || "Submission failed");
+            throw new Error(result?.error || "Submission failed - no success confirmation received");
         }
+    } catch (submissionError) {
+        console.error("13. Submission error details:", submissionError);
+        throw submissionError;
+    }
+    } catch (dataError) {
+        console.error("Error preparing submission data:", dataError);
+        toast({ 
+            variant: "destructive", 
+            title: "Data Preparation Failed", 
+            description: "Failed to prepare submission data. Please check your responses and try again." 
+        });
+        setIsSubmitting(false);
+        return;
     } catch (error) {
         console.error("Submission error:", error);
-        const errorMessage = `Submission failed: ${error instanceof Error ? error.message : 'An unknown error occurred'}. Check console for details.`;
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+        console.error("14. Final error message:", errorMessage);
         toast({ variant: "destructive", title: "Submission Failed", description: errorMessage });
     } finally {
         setIsSubmitting(false);
@@ -1487,6 +1586,7 @@ export default function CompleteAssignmentPage() {
                       <Select
                         value={photo.assignedToQuestion || "unassigned"}
                         onValueChange={(value) => assignPhotoToQuestion(photo.id, value === "unassigned" ? null : value)}
+                        key={`select-${photo.id || index}`}
                       >
                         <SelectTrigger className="h-6 text-xs">
                           <SelectValue placeholder="Assign to question" />
@@ -1494,7 +1594,7 @@ export default function CompleteAssignmentPage() {
                         <SelectContent>
                           <SelectItem value="unassigned">Unassigned</SelectItem>
                           {assignment?.questions?.filter(q => q.photoUpload).map((question) => (
-                            <SelectItem key={question.id} value={question.id}>
+                            <SelectItem key={`option-${question.id}`} value={question.id}>
                               Q{assignment.questions.indexOf(question) + 1}: {question.label.substring(0, 30)}{question.label.length > 30 ? '...' : ''}
                             </SelectItem>
                           ))}
@@ -2226,14 +2326,17 @@ export default function CompleteAssignmentPage() {
           <ScrollArea className="h-[60vh]">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
               {photoBankFiles.map((photo, index) => (
-                <div
-                  key={index}
+                <div key={`available-${photo.id || index}`} className="relative group">
+                  key={`modal-${photo.id || index}`}
                   className="relative cursor-pointer group"
                   onClick={() => handleSelectPhotoFromBank(photo)}
                 >
                   <Image
                     src={photo.url}
                     alt={photo.name}
+                    key={`modal-img-${photo.id || index}`}
+                    key={`available-img-${photo.id || index}`}
+                    key={`img-${photo.id || index}`}
                     width={200}
                     height={200}
                     className="w-full h-32 object-cover rounded border hover:border-primary transition-colors"
