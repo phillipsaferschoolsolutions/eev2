@@ -9,7 +9,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import Image from "next/image";
 import { format } from "date-fns";
-import { ArrowLeft, X, Loader2, Eye, Trash2, ImageIcon, Camera, Upload } from "lucide-react";
+import { ArrowLeft, X, Loader2, Eye, Trash2, ImageIcon, Camera, Upload, Images } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +45,15 @@ interface UploadedFileDetail {
   uploadDate?: string;
   fileSize?: number;
   questionId?: string;
+}
+
+interface UploadedPhoto {
+  id: string;
+  file: File;
+  url: string;
+  name: string;
+  uploadedAt: string;
+  assignedTo: string | null;
 }
 
 const UNASSIGNED_FILTER_VALUE = "n/a";
@@ -97,7 +106,7 @@ export default function CompleteAssignmentPage() {
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<{ [key: string]: any }>({});
-  const [uploadedPhotos, setUploadedPhotos] = useState<{ [questionId: string]: UploadedFileDetail }>({});
+  const [uploadedPhotos, setUploadedPhotos] = useState<{ [photoId: string]: UploadedPhoto }>({});
   const [selectedQuestionForPhoto, setSelectedQuestionForPhoto] = useState<string | null>(null);
   const [photoBankPhotos, setPhotoBankPhotos] = useState<Array<{ id: string; url: string; name: string; uploadedAt: string; size: number }>>([]);
   const [photoBankFiles, setPhotoBankFiles] = useState<UploadedFileDetail[]>([]);
@@ -106,7 +115,7 @@ export default function CompleteAssignmentPage() {
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
   const [isPhotoBankModalOpen, setIsPhotoBankModalOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [selectedPhotoForModal, setSelectedPhotoForModal] = useState<string | null>(null);
+  const [selectedPhotoForModal, setSelectedPhotoForModal] = useState<UploadedPhoto | null>(null);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -289,63 +298,59 @@ export default function CompleteAssignmentPage() {
   });
 
   // Handle file upload
-  const handleFileUpload = async (questionId: string, file: File) => {
-    if (!user || !assignment) {
-      setUploadErrors(prev => ({ ...prev, [questionId]: "User or assignment data missing." }));
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadErrors(prev => ({ ...prev, [questionId]: "File exceeds 5MB limit." }));
-      toast({ variant: "destructive", title: "Upload Error", description: "File exceeds 5MB limit." });
-      return;
-    }
-
-    setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
-    setUploadErrors(prev => ({ ...prev, [questionId]: null }));
-    setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
-    setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
-
-    if (file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreviewUrls(prev => ({ ...prev, [questionId]: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
-    }
-
-    const storagePath = `assignment_uploads/${assignment.id}/${user.uid}/${questionId}/${Date.now()}_${file.name}`;
-    const storageRefInstance = ref(storage, storagePath);
-    const uploadTask = uploadBytesResumable(storageRefInstance, file);
-
-    uploadTask.on('state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(prev => ({ ...prev, [questionId]: progress }));
-      },
-      (error) => {
-        console.error("Upload failed for question " + questionId + ":", error);
-        setUploadErrors(prev => ({ ...prev, [questionId]: error.message }));
-        toast({ variant: "destructive", title: "Upload Failed", description: `Could not upload ${file.name}: ${error.message}` });
-        setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
-        setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
-      },
-      async () => {
-        try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          setUploadedFileDetails(prev => ({ 
-            ...prev, 
-            [questionId]: { name: file.name, url: downloadURL }
-          }));
-          setUploadProgress(prev => ({ ...prev, [questionId]: 100 }));
-        } catch (err) {
-          console.error("Failed to get download URL for " + questionId + ":", err);
-          const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-          setUploadErrors(prev => ({ ...prev, [questionId]: errorMessage }));
-          setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
-        }
+  const handleFileUpload = async (files: FileList, questionId?: string) => {
+    const newPhotos: Record<string, UploadedPhoto> = {};
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.type.startsWith('image/')) {
+        const photoId = `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const url = URL.createObjectURL(file);
+        
+        newPhotos[photoId] = {
+          id: photoId,
+          file,
+          url,
+          name: file.name,
+          uploadedAt: new Date().toISOString(),
+          assignedTo: questionId || null, // Assign to question if uploaded directly to a question
+        };
       }
-    );
+    }
+    
+    setUploadedPhotos(prev => ({ ...prev, ...newPhotos }));
+    
+    // If uploaded to a specific question, also update the form data
+    if (questionId && Object.keys(newPhotos).length > 0) {
+      const firstPhotoId = Object.keys(newPhotos)[0];
+      setFormData(prev => ({
+        ...prev,
+        [questionId]: firstPhotoId // Store the photo ID as the answer
+      }));
+    }
   };
+  
+  // Function to assign/unassign photos to questions
+  const handleAssignPhotoToQuestion = (photoId: string, questionId: string | null) => {
+    setUploadedPhotos(prev => ({
+      ...prev,
+      [photoId]: {
+        ...prev[photoId],
+        assignedTo: questionId
+      }
+    }));
+    
+    // Update form data if assigning to a question
+    if (questionId) {
+      setFormData(prev => ({
+        ...prev,
+        [questionId]: photoId
+      }));
+    }
+  };
+  
+  // Get questions that allow photo uploads
+  const photoUploadQuestions = assignment?.questions?.filter(q => q.photoUpload) || [];
 
   // Remove uploaded file
   const removeUploadedFile = (questionId: string) => {
@@ -408,9 +413,9 @@ export default function CompleteAssignmentPage() {
           allPhotos.push({
             name: photoData.name || 'Uploaded Photo',
             url: photoData.url,
-            uploadDate: photoData.uploadDate || new Date().toISOString(),
-            fileSize: photoData.fileSize || 0,
-            questionId: photoData.questionId
+            uploadDate: photoData.uploadedAt || new Date().toISOString(),
+            fileSize: photoData.file?.size || 0,
+            questionId: photoData.assignedTo || undefined
           });
         }
       });
@@ -462,7 +467,14 @@ export default function CompleteAssignmentPage() {
             
             setUploadedPhotos(prev => ({
               ...prev,
-              [questionId]: photoData
+              [questionId]: {
+                id: questionId,
+                file: file,
+                url: downloadURL,
+                name: file.name,
+                uploadedAt: new Date().toISOString(),
+                assignedTo: questionId
+              }
             }));
             
             setUploadProgress(prev => ({ ...prev, [questionId]: undefined }));
@@ -502,11 +514,12 @@ export default function CompleteAssignmentPage() {
       setUploadedPhotos(prev => ({
         ...prev,
         [selectedQuestionForPhoto]: {
-          name: photo.name,
+          id: selectedQuestionForPhoto,
+          file: new File([], photo.name),
           url: photo.url,
-          uploadDate: photo.uploadDate,
-          fileSize: photo.fileSize,
-          questionId: selectedQuestionForPhoto
+          name: photo.name,
+          uploadedAt: photo.uploadDate || new Date().toISOString(),
+          assignedTo: selectedQuestionForPhoto
         }
       }));
       setIsPhotoModalOpen(false);
@@ -537,6 +550,24 @@ export default function CompleteAssignmentPage() {
       console.error('Error deleting photo:', error);
       toast({ variant: "destructive", title: "Delete Failed", description: "Failed to delete photo" });
     }
+  };
+
+  // Function to delete photo from bank
+  const handleDeletePhoto = (photoId: string) => {
+    setUploadedPhotos(prev => {
+      const photoToDelete = prev[photoId];
+      if (photoToDelete?.url.startsWith('blob:')) {
+        URL.revokeObjectURL(photoToDelete.url);
+      }
+      const newPhotos = { ...prev };
+      delete newPhotos[photoId];
+      return newPhotos;
+    });
+    
+    toast({
+      title: "Photo Deleted",
+      description: "Photo removed from Photo Bank",
+    });
   };
 
   // Handle drag and drop for photo bank
@@ -644,7 +675,7 @@ export default function CompleteAssignmentPage() {
 
   // Open photo in modal
   const openPhotoModal = (photoUrl: string) => {
-    setSelectedPhotoForModal(photoUrl);
+    setSelectedPhotoForModal(null);
     setIsPhotoModalOpen(true);
   };
 
@@ -943,11 +974,11 @@ export default function CompleteAssignmentPage() {
           <div className="flex justify-end mt-4">
             <Button
               variant="outline"
-              onClick={() => setIsPhotoModalOpen(true)}
+              onClick={() => setIsPhotoBankModalOpen(true)}
               className="flex items-center gap-2"
             >
-              <ImageIcon className="h-4 w-4" />
-              Photo Bank ({photoBankFiles.length})
+              <Camera className="h-4 w-4" />
+              Photo Bank ({Object.keys(uploadedPhotos).length})
             </Button>
           </div>
         </CardHeader>
@@ -1042,7 +1073,7 @@ export default function CompleteAssignmentPage() {
                 Photo Bank
               </CardTitle>
               <CardDescription>
-                {photoBankPhotos.length} photo(s) available for assignment questions
+                {Object.keys(uploadedPhotos).length} photo(s) available for assignment questions
               </CardDescription>
             </div>
             <Button 
@@ -1066,7 +1097,7 @@ export default function CompleteAssignmentPage() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            {photoBankPhotos.length === 0 ? (
+            {Object.keys(uploadedPhotos).length === 0 ? (
               <div className="flex flex-col items-center gap-4">
                 <div className="p-4 bg-muted rounded-full">
                   <Camera className="h-8 w-8 text-muted-foreground" />
@@ -1096,38 +1127,73 @@ export default function CompleteAssignmentPage() {
               </div>
             ) : (
               <div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
-                  {photoBankPhotos.slice(0, 6).map((photo) => (
-                    <div key={photo.id} className="relative group">
-                      <div 
-                        className="aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => openPhotoModal(photo.url)}
-                      >
-                        <img 
-                          src={photo.url} 
-                          alt={photo.name}
-                          className="w-full h-full object-cover"
-                        />
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    {Object.entries(uploadedPhotos).map(([photoId, photo]) => (
+                      <div key={photoId} className="relative group">
+                        <div 
+                          className="aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                          onClick={() => setSelectedPhotoForModal(photo)}
+                        >
+                          <Image
+                            src={photo.url}
+                            alt={photo.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        
+                        {/* Assignment Status Badge */}
+                        <div className="absolute top-1 left-1">
+                          {photo.assignedTo ? (
+                            <Badge variant="default" className="text-xs px-1 py-0">
+                              Assigned
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs px-1 py-0">
+                              Unassigned
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {/* Delete button */}
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePhoto(photoId);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                        
+                        {/* Assignment Selector */}
+                        <div className="absolute bottom-1 left-1 right-1">
+                          <Select
+                            value={photo.assignedTo || "unassigned"}
+                            onValueChange={(value) => handleAssignPhotoToQuestion(photoId, value === "unassigned" ? null : value)}
+                          >
+                            <SelectTrigger className="h-6 text-xs bg-background/90 backdrop-blur-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="unassigned">Unassigned</SelectItem>
+                              {photoUploadQuestions.map((question) => (
+                                <SelectItem key={question.id} value={question.id}>
+                                  {question.label.length > 30 ? `${question.label.substring(0, 30)}...` : question.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => deletePhotoFromBank(photo.id)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
                 
-                {photoBankPhotos.length > 6 && (
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Showing 6 of {photoBankPhotos.length} photos
-                  </p>
-                )}
-                
-                <div className="flex gap-2 justify-center">
+                <div className="flex gap-2 justify-center mt-4">
                   <Button 
                     onClick={() => fileInputRef.current?.click()}
                     variant="outline"
@@ -1534,86 +1600,78 @@ export default function CompleteAssignmentPage() {
 
                     case 'photoUpload':
                       return (
-                        <div className="space-y-4">
-                          <div className="flex gap-2">
-                            <Input
-                              id={`${question.id}_file`}
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  handleFileUpload(question.id, file);
-                                }
-                              }}
-                              className="flex-1"
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedQuestionForPhotoBank(question.id);
-                                setIsPhotoBankModalOpen(true);
-                              }}
-                            >
-                              <ImageIcon className="mr-2 h-4 w-4" />
-                              From Bank
-                            </Button>
-                          </div>
-
-                          {/* Upload Progress */}
-                          {uploadProgress[question.id] > 0 && uploadProgress[question.id] < 100 && (
+                        <div className="space-y-2">
+                          <Label htmlFor={`photo-${question.id}`}>Upload Photo</Label>
+                          
+                          {/* Show assigned photo if exists */}
+                          {formData[question.id] && uploadedPhotos[formData[question.id]] ? (
                             <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span>Uploading...</span>
-                                <span>{Math.round(uploadProgress[question.id])}%</span>
-                              </div>
-                              <ShadProgress value={uploadProgress[question.id]} />
-                            </div>
-                          )}
-
-                          {/* Upload Error */}
-                          {uploadErrors[question.id] && (
-                            <Alert variant="destructive">
-                              <AlertDescription>{uploadErrors[question.id]}</AlertDescription>
-                            </Alert>
-                          )}
-
-                          {/* Image Preview */}
-                          {imagePreviewUrls[question.id] && (
-                            <div className="relative">
-                              <Image
-                                src={imagePreviewUrls[question.id]!}
-                                alt="Preview"
-                                width={200}
-                                height={200}
-                                className="rounded border object-cover"
-                              />
-                            </div>
-                          )}
-
-                          {/* Uploaded File */}
-                          {uploadedFileDetails[question.id] && (
-                            <div className="flex items-center justify-between p-3 border rounded">
-                              <div className="flex items-center gap-3">
+                              <div className="relative w-32 h-32 mx-auto">
                                 <Image
-                                  src={uploadedFileDetails[question.id]!.url}
-                                  alt={uploadedFileDetails[question.id]!.name}
-                                  width={50}
-                                  height={50}
-                                  className="rounded object-cover"
+                                  src={uploadedPhotos[formData[question.id]].url}
+                                  alt={uploadedPhotos[formData[question.id]].name}
+                                  fill
+                                  className="object-cover rounded-lg cursor-pointer"
+                                  onClick={() => setSelectedPhotoForModal(uploadedPhotos[formData[question.id]])}
                                 />
-                                <span className="text-sm">{uploadedFileDetails[question.id]!.name}</span>
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  className="absolute -top-2 -right-2 h-6 w-6"
+                                  onClick={() => {
+                                    const photoId = formData[question.id];
+                                    setFormData(prev => ({ ...prev, [question.id]: '' }));
+                                    setUploadedPhotos(prev => {
+                                      const updated = { ...prev };
+                                      if (updated[photoId]) {
+                                        updated[photoId].assignedTo = null;
+                                      }
+                                      return updated;
+                                    });
+                                  }}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
                               </div>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => removeUploadedFile(question.id)}
-                              >
-                                Remove
-                              </Button>
+                              <p className="text-xs text-center text-muted-foreground">
+                                {uploadedPhotos[formData[question.id]].name}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                              <input
+                                type="file"
+                                id={`photo-${question.id}`}
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files.length > 0) {
+                                    handleFileUpload(e.target.files, question.id);
+                                  }
+                                }}
+                              />
+                              <label htmlFor={`photo-${question.id}`} className="cursor-pointer">
+                                <Camera className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                                <p className="text-sm text-muted-foreground">Click to upload a photo</p>
+                              </label>
+                              
+                              {/* Option to select from Photo Bank */}
+                              {Object.keys(uploadedPhotos).length > 0 && (
+                                <div className="mt-4">
+                                  <p className="text-xs text-muted-foreground mb-2">Or select from Photo Bank:</p>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedQuestionForPhotoBank(question.id);
+                                      setIsPhotoBankModalOpen(true);
+                                    }}
+                                  >
+                                    <Images className="h-4 w-4 mr-2" />
+                                    Choose from Bank
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1683,22 +1741,13 @@ export default function CompleteAssignmentPage() {
 
       {/* Photo Bank Modal */}
       <Dialog open={isPhotoBankModalOpen} onOpenChange={setIsPhotoBankModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Camera className="h-5 w-5" />
-              Photo Bank
-              {selectedQuestionForPhotoBank && (
-                <Badge variant="secondary">
-                  Selecting for Question
-                </Badge>
-              )}
+            <DialogTitle>
+              {selectedQuestionForPhotoBank ? `Select Photo for: ${photoUploadQuestions.find(q => q.id === selectedQuestionForPhotoBank)?.label}` : 'Photo Bank Management'}
             </DialogTitle>
             <DialogDescription>
-              {selectedQuestionForPhotoBank 
-                ? "Select a photo to assign to the current question"
-                : "Manage all photos for this assignment"
-              }
+              {selectedQuestionForPhotoBank ? 'Choose a photo to assign to this question.' : 'Upload, organize, and assign photos to questions.'}
             </DialogDescription>
           </DialogHeader>
           
@@ -1707,7 +1756,98 @@ export default function CompleteAssignmentPage() {
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
-            ) : photoBankPhotos.length === 0 ? (
+            ) : Object.keys(uploadedPhotos).length > 0 ? (
+              <div>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    {Object.entries(uploadedPhotos).map(([photoId, photo]) => (
+                      <div key={photoId} className="relative group">
+                        <div 
+                          className={`aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer transition-all ${
+                            selectedQuestionForPhotoBank ? 'hover:ring-2 hover:ring-primary' : ''
+                          }`}
+                          onClick={() => {
+                            if (selectedQuestionForPhotoBank) {
+                              setSelectedPhotoForModal(photo);
+                            }
+                          }}
+                        >
+                          <Image
+                            src={photo.url}
+                            alt={photo.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        
+                        {/* Assignment Status Badge */}
+                        <div className="absolute top-1 left-1">
+                          {photo.assignedTo ? (
+                            <Badge variant="default" className="text-xs px-1 py-0">
+                              Assigned
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs px-1 py-0">
+                              Unassigned
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        {selectedQuestionForPhotoBank && (
+                          <Button
+                            size="sm"
+                            className="absolute inset-0 bg-primary/20 hover:bg-primary/30 transition-colors"
+                            onClick={() => {
+                              // Assign photo to the selected question
+                              handleAssignPhotoToQuestion(photoId, selectedQuestionForPhotoBank);
+                              setSelectedQuestionForPhotoBank(null);
+                              setIsPhotoBankModalOpen(false);
+                              toast({ title: "Photo Assigned", description: "Photo has been assigned to the question." });
+                            }}
+                          >
+                            Select Photo
+                          </Button>
+                        )}
+                        
+                        {!selectedQuestionForPhotoBank && (
+                          <div className="absolute bottom-1 left-1 right-1">
+                            <Select
+                              value={photo.assignedTo || "unassigned"}
+                              onValueChange={(value) => handleAssignPhotoToQuestion(photoId, value === "unassigned" ? null : value)}
+                            >
+                              <SelectTrigger className="h-6 text-xs bg-background/90 backdrop-blur-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unassigned">Unassigned</SelectItem>
+                                {photoUploadQuestions.map((question) => (
+                                  <SelectItem key={question.id} value={question.id}>
+                                    {question.label.length > 30 ? `${question.label.substring(0, 30)}...` : question.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                        
+                        {/* Delete button */}
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePhoto(photoId);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
               <div 
                 className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                   isDragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'
@@ -1726,72 +1866,17 @@ export default function CompleteAssignmentPage() {
                   Upload Photos
                 </Button>
               </div>
-            ) : (
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm text-muted-foreground">
-                    {photoBankPhotos.length} photo(s) in bank
-                  </p>
-                  <Button 
-                    onClick={() => fileInputRef.current?.click()}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Add Photos
-                  </Button>
-                </div>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {photoBankPhotos.map((photo) => (
-                    <div key={photo.id} className="relative group">
-                      <div 
-                        className="aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => openPhotoModal(photo.url)}
-                      >
-                        <img 
-                          src={photo.url} 
-                          alt={photo.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                        {selectedQuestionForPhotoBank && (
-                          <Button
-                            size="sm"
-                            onClick={() => assignPhotoToQuestion(photo.id, selectedQuestionForPhotoBank)}
-                          >
-                            Select
-                          </Button>
-                        )}
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => deletePhotoFromBank(photo.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      
-                      <div className="absolute bottom-2 left-2 right-2">
-                        <p className="text-xs text-white bg-black/50 rounded px-2 py-1 truncate">
-                          {photo.name}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             )}
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsPhotoBankModalOpen(false);
-              setSelectedQuestionForPhotoBank(null);
-            }}>
-              {selectedQuestionForPhotoBank ? 'Cancel Selection' : 'Close'}
+            {selectedQuestionForPhotoBank && (
+              <Button variant="outline" onClick={() => setSelectedQuestionForPhotoBank(null)}>
+                Cancel Selection
+              </Button>
+            )}
+            <Button onClick={() => setIsPhotoBankModalOpen(false)}>
+              {selectedQuestionForPhotoBank ? 'Done' : 'Close'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1807,7 +1892,7 @@ export default function CompleteAssignmentPage() {
             {selectedPhotoForModal && (
               <div className="relative">
                 <img 
-                  src={selectedPhotoForModal} 
+                  src={selectedPhotoForModal.url} 
                   alt="Full size photo"
                   className="w-full h-auto max-h-[70vh] object-contain rounded-lg"
                 />
