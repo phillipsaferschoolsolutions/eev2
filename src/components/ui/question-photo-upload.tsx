@@ -1,7 +1,7 @@
 ```tsx
 "use client";
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -19,10 +19,10 @@ interface QuestionPhotoUploadProps {
   onPhotosChange?: (photos: PhotoItem[]) => void;
 }
 
-export function QuestionPhotoUpload({
+export function QuestionPhotoUpload({ 
   questionId,
   assignmentId,
-  className,
+  className, 
   maxPhotos = 3,
   onPhotosChange,
 }: QuestionPhotoUploadProps) {
@@ -30,13 +30,13 @@ export function QuestionPhotoUpload({
   const [dragOver, setDragOver] = useState(false);
   const [selectedPhotoForModal, setSelectedPhotoForModal] = useState<PhotoItem | null>(null);
   
-  const {
+  const { 
     addPhoto,
     updatePhoto,
     removePhoto,
     getPhotosForQuestion,
     state: { isUploading, uploadProgress },
-    setUploading,
+    setUploading, 
     setUploadProgress,
   } = usePhotoBank();
 
@@ -44,7 +44,7 @@ export function QuestionPhotoUpload({
 
   const handleFileSelect = (files: FileList | null) => {
     if (!files) return;
-
+    
     const remainingSlots = maxPhotos - questionPhotos.length;
     const filesToProcess = Array.from(files).slice(0, remainingSlots);
 
@@ -52,7 +52,7 @@ export function QuestionPhotoUpload({
       if (!file.type.startsWith('image/')) {
         console.warn('Only image files are allowed');
         return;
-      }
+      } 
 
       if (file.size > 10 * 1024 * 1024) { // 10MB limit
         console.warn('File size must be less than 10MB');
@@ -60,7 +60,7 @@ export function QuestionPhotoUpload({
       }
 
       const photoId = `${questionId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const photoUrl = URL.createObjectURL(file);
+      const photoUrl = URL.createObjectURL(file); 
 
       const newPhoto: PhotoItem = {
         id: photoId,
@@ -71,14 +71,14 @@ export function QuestionPhotoUpload({
         questionId,
         assignmentId,
         status: 'uploading',
-        progress: 0,
+        progress: 0, 
       };
 
       addPhoto(newPhoto); // Dispatch to global state
       simulateUpload(photoId, file);
     });
   };
-
+  
   const simulateUpload = async (photoId: string, file: File) => {
     setUploading(true);
     
@@ -86,7 +86,7 @@ export function QuestionPhotoUpload({
       // Simulate upload progress
       for (let progress = 0; progress <= 100; progress += 10) {
         await new Promise(resolve => setTimeout(resolve, 100));
-        updatePhoto(photoId, { progress: progress });
+        updatePhoto(photoId, { progress: progress }); 
         setUploadProgress(progress);
       }
 
@@ -94,7 +94,7 @@ export function QuestionPhotoUpload({
       updatePhoto(photoId, { 
         status: 'uploaded',
         progress: 100,
-      });
+      }); 
 
       // Notify parent component (if needed, though global state is primary)
       if (onPhotosChange) {
@@ -104,7 +104,7 @@ export function QuestionPhotoUpload({
     } catch (error) {
       updatePhoto(photoId, { 
         status: 'error',
-        error: error instanceof Error ? error.message : 'Upload failed',
+        error: error instanceof Error ? error.message : 'Upload failed', 
       });
     } finally {
       setUploading(false);
@@ -112,7 +112,7 @@ export function QuestionPhotoUpload({
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => { 
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
@@ -122,7 +122,7 @@ export function QuestionPhotoUpload({
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setDragOver(true);
+    setDragOver(true); 
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -130,7 +130,7 @@ export function QuestionPhotoUpload({
     e.stopPropagation();
     setDragOver(false);
   };
-
+  
   const handleRemovePhoto = (e: React.MouseEvent, photoId: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -145,7 +145,7 @@ export function QuestionPhotoUpload({
       const updatedPhotos = getPhotosForQuestion(questionId);
       onPhotosChange(updatedPhotos);
     }
-  };
+  }; 
 
   const handleChooseFiles = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -153,7 +153,7 @@ export function QuestionPhotoUpload({
     fileInputRef.current?.click();
   };
 
-  const handlePhotoClick = (e: React.MouseEvent, photo: PhotoItem) => {
+  const handlePhotoClick = (e: React.MouseEvent, photo: PhotoItem) => { 
     e.preventDefault();
     e.stopPropagation();
     setSelectedPhotoForModal(photo);
@@ -164,7 +164,7 @@ export function QuestionPhotoUpload({
   return (
     <div className={cn("space-y-1", className)}>
       {/* Compact Upload Area */}
-      {canAddMore && (
+      {canAddMore && ( 
         <div
           className={cn(
             "border border-dashed rounded p-2 transition-colors cursor-pointer text-center text-xs",
@@ -177,7 +177,7 @@ export function QuestionPhotoUpload({
           onClick={handleChooseFiles}
         >
           <div className="flex flex-col items-center space-y-1">
-            <Camera className="w-4 h-4 text-muted-foreground" />
+            <Camera className="w-4 h-4 text-muted-foreground" /> 
             <p className="text-sm font-medium">Upload Photos</p>
             <p className="text-xs text-muted-foreground text-center">
               Drag & drop or click
@@ -186,7 +186,7 @@ export function QuestionPhotoUpload({
               type="button"
               variant="outline" 
               size="sm" 
-              disabled={isUploading}
+              disabled={isUploading} 
               onClick={handleChooseFiles} // Corrected to handleChooseFiles
               className="h-5 text-xs px-2 py-0"
             >
@@ -199,7 +199,7 @@ export function QuestionPhotoUpload({
           </div>
         </div>
       )}
-
+      
       {/* Hidden File Input */}
       <input
         ref={fileInputRef}
@@ -210,7 +210,7 @@ export function QuestionPhotoUpload({
         onChange={(e) => handleFileSelect(e.target.files)}
         disabled={isUploading}
       />
-
+      
       {/* Upload Progress */}
       {isUploading && (
         <div className="space-y-1">
@@ -220,7 +220,7 @@ export function QuestionPhotoUpload({
           </div>
           <Progress value={uploadProgress} className="h-1" />
         </div>
-      )}
+      )} 
 
       {/* Compact Photo Grid */}
       {questionPhotos.length > 0 && (
@@ -267,6 +267,8 @@ export function QuestionPhotoUpload({
                   className="absolute top-0 right-0 w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity text-xs p-0"
                   onClick={(e) => handleRemovePhoto(e, photo.id)}
                 >
+                  <X className="w-2 h-2" />
+                </Button>
                   <X className="w-2 h-2" />
                 </Button>
               </div>
