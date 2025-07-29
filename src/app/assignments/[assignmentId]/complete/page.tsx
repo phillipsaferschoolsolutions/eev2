@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, ChangeEvent, useMemo, useRef, useCallback } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback, type ChangeEvent } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-
+// Form schema
 const formSchema = z.record(z.any());
 type FormDataSchema = z.infer<typeof formSchema>;
 
@@ -111,7 +111,6 @@ function getGradientClassForText(text?: string): string {
   return pillGradientClasses[index];
 }
 
-
 export default function CompleteAssignmentPage() {
   const params = useParams();
   const router = useRouter();
@@ -146,7 +145,6 @@ export default function CompleteAssignmentPage() {
   const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
   const amPm = ["AM", "PM"];
 
-
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [selectedSubSection, setSelectedSubSection] = useState<string>("all");
   const [answeredStatusFilter, setAnsweredStatusFilter] = useState<'all' | 'answered' | 'unanswered'>('all');
@@ -163,7 +161,6 @@ export default function CompleteAssignmentPage() {
   const [audioPlayerStates, setAudioPlayerStates] = useState<Record<string, AudioPlayerState>>({});
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
 
-
   const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, getValues } = useForm<FormDataSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {},
@@ -171,7 +168,6 @@ export default function CompleteAssignmentPage() {
 
   const allWatchedValues = watch();
 
-  // A more robust parseOptions function that handles multiple possible data formats
   type OptionInput = string | string[] | { label: string; value?: string }[];
   const parseOptions = (options: OptionInput, question?: AssignmentQuestion): { label: string; value: string }[] => {
     // Special handling for schoolSelector - use locations instead of question.options
@@ -211,7 +207,6 @@ export default function CompleteAssignmentPage() {
     // Fallback if the format is unknown
     return [];
   };
-
 
   const shouldBeVisible = (conditionalConfig: AssignmentQuestion['conditional'] | undefined, currentQuestionId: string): boolean => {
     if (!conditionalConfig) {
@@ -256,7 +251,6 @@ export default function CompleteAssignmentPage() {
     return assignment.questions.filter(q => shouldBeVisible(q.conditional, q.id));
   }, [assignment?.questions, allWatchedValues, shouldBeVisible]);
 
-  // Add this useMemo hook near your other useMemo hooks
   const totalPages = useMemo(() => {
     if (!conditionallyVisibleQuestions || conditionallyVisibleQuestions.length === 0) {
       return 1;
@@ -323,7 +317,6 @@ export default function CompleteAssignmentPage() {
     return (answeredCount / totalQuestions) * 100;
   }, [conditionallyVisibleQuestions, allWatchedValues, isQuestionAnswered]);
 
-  // Add this near your other useMemo hooks
   const sectionProgress = useMemo(() => {
     const progressData: Record<string, Record<string, { total: number; answered: number; progress: number }>> = {};
 
@@ -475,7 +468,6 @@ export default function CompleteAssignmentPage() {
     e.target.value = ''; // Clear the input
   };
 
-  // Function to delete a photo from the photo bank
   const removeFromPhotoBank = (photoId: string) => {
     setPhotoBankFiles(prev => prev.filter(photo => photo.id !== photoId));
     toast({
@@ -485,7 +477,7 @@ export default function CompleteAssignmentPage() {
   };
 
   // Function to upload photo directly to a specific question
- const handleQuestionPhotoUpload = async (questionId: string, file: File) => {
+  const handleQuestionPhotoUpload = async (questionId: string, file: File) => {
   if (!userProfile?.account || !user || !assignment) {
     toast({
       variant: "destructive",
@@ -498,6 +490,7 @@ export default function CompleteAssignmentPage() {
   const timestamp = Date.now();
   const storagePath = `photo_bank/${assignment.id}/${user.uid}/${timestamp}_${file.name}`;
   const storageRefInstance = ref(storage, storagePath);
+  
   const uploadTask = uploadBytesResumable(storageRefInstance, file);
 
   setUploadingQuestionId(questionId);
@@ -543,7 +536,7 @@ export default function CompleteAssignmentPage() {
       }
     }
   );
-};
+  };
 
   // Function to assign/unassign photos to questions
   const assignPhotoToQuestion = (photoId: string, questionId: string | null) => {
@@ -561,7 +554,6 @@ export default function CompleteAssignmentPage() {
     });
   };
 
-  // Function to unassign photo from question
   const unassignPhotoFromQuestion = (questionId: string, photoId: string) => {
     setPhotoBankFiles(prev => prev.map(photo => 
       photo.id === photoId 
@@ -678,7 +670,6 @@ export default function CompleteAssignmentPage() {
   useEffect(() => {
     const hasSchoolSelector = assignment?.questions.some(q => q.component === 'schoolSelector');
     if (hasSchoolSelector && userProfile?.account && !isLoading) {
-      console.log("There is a schoolSelector Item")
       setIsLoadingLocations(true);
       setLocationsError(null);
       getLocationsForLookup(userProfile.account)
@@ -698,7 +689,6 @@ export default function CompleteAssignmentPage() {
   useEffect(() => {
     setSelectedSubSection("all");
   }, [selectedSection]);
-
 
   useEffect(() => {
     const audioRefsSnapshot = audioRefs.current;
@@ -1108,7 +1098,6 @@ export default function CompleteAssignmentPage() {
     }
   };
 
-  // Function to handle form submission
   const onSubmit: SubmitHandler<FormDataSchema> = async (data) => {
     if (!assignment || !userProfile?.account || !user || !user.email) {
         toast({ variant: "destructive", title: "Submission Error", description: "Cannot submit, critical assignment or user account data missing." });
