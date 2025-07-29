@@ -826,7 +826,7 @@ export default function CompleteAssignmentPage() {
           <div className="flex justify-end mt-4">
             <Button
               variant="outline"
-              onClick={() => setIsPhotoBankOpen(true)}
+              onClick={() => setIsPhotoModalOpen(true)}
               className="flex items-center gap-2"
             >
               <ImageIcon className="h-4 w-4" />
@@ -1420,8 +1420,8 @@ export default function CompleteAssignmentPage() {
                             )}
                           </div>
                           <Button type="button" variant="outline" size="sm" onClick={() => {
-                            setSelectedQuestionForPhotoBank(question.id);
-                            setIsPhotoBankOpen(true);
+                            setSelectedQuestionForPhoto(question.id);
+                            setIsPhotoModalOpen(true);
                           }}>
                             <ImageIcon className="h-4 w-4 mr-2" />
                             From Bank
@@ -1555,7 +1555,12 @@ export default function CompleteAssignmentPage() {
       </form>
 
       {/* Photo Bank Modal */}
-      <Dialog open={isPhotoModalOpen} onOpenChange={setIsPhotoModalOpen}>
+      <Dialog open={isPhotoModalOpen} onOpenChange={(open) => {
+        setIsPhotoModalOpen(open);
+        if (!open) {
+          setSelectedQuestionForPhoto(null);
+        }
+      }}>
         <DialogContent className="max-w-4xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1563,7 +1568,7 @@ export default function CompleteAssignmentPage() {
               Photo Bank ({photoBankFiles.length} {photoBankFiles.length === 1 ? 'photo' : 'photos'})
             </DialogTitle>
             <DialogDescription>
-              {selectedQuestionForPhotoBank 
+              {selectedQuestionForPhoto 
                 ? "Select a photo to assign to the current question, or manage your photo library."
                 : "Manage your uploaded photos and view your photo library."}
             </DialogDescription>
@@ -1607,11 +1612,11 @@ export default function CompleteAssignmentPage() {
                       <TableCell>{(file.fileSize / 1024).toFixed(1)} KB</TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
-                          {selectedQuestionForPhotoBank && (
+                          {selectedQuestionForPhoto && (
                             <Button
                               variant="default"
                               size="sm"
-                              onClick={() => handleSelectPhotoFromBank(file, selectedQuestionForPhotoBank)}
+                              onClick={() => handleSelectPhotoFromBank(file)}
                             >
                               Select
                             </Button>
@@ -1626,7 +1631,7 @@ export default function CompleteAssignmentPage() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleDeleteFromPhotoBank(file.id)}
+                            onClick={() => handleDeletePhotoFromBank(file)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1640,8 +1645,8 @@ export default function CompleteAssignmentPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
-              setIsPhotoBankOpen(false);
-              setSelectedQuestionForPhotoBank(null);
+              setIsPhotoModalOpen(false);
+              setSelectedQuestionForPhoto(null);
             }}>
               Close
             </Button>
