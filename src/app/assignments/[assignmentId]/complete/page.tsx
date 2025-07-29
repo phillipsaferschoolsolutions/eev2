@@ -483,7 +483,7 @@ export default function CompleteAssignmentPage() {
   };
 
   // Function to upload photo directly to a specific question
- const handleQuestionPhotoUpload = async (questionId: string, file: File) => {
+ const handleQuestionPhotoUpload = (questionId: string, file: File) => {
   if (!userProfile?.account || !user || !assignment) {
     toast({
       variant: "destructive",
@@ -519,9 +519,9 @@ export default function CompleteAssignmentPage() {
       try {
         const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
         const newPhoto: UploadedFileDetail = {
-          id: `photo-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
           url: downloadURL,
           name: file.name,
+          id: `photo-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
           uploadedAt: new Date().toISOString(),
           assignedToQuestion: questionId
         };
@@ -541,7 +541,7 @@ export default function CompleteAssignmentPage() {
       }
     }
   );
-};
+ };
 
   // Function to assign/unassign photos to questions
   const assignPhotoToQuestion = (photoId: string, questionId: string | null) => {
