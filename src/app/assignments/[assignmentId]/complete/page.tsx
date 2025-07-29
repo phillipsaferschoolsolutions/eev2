@@ -102,6 +102,7 @@ export default function CompleteAssignmentPage() {
   const [photoBankPhotos, setPhotoBankPhotos] = useState<Array<{ id: string; url: string; name: string; uploadedAt: string; size: number }>>([]);
   const [photoBankFiles, setPhotoBankFiles] = useState<UploadedFileDetail[]>([]);
   const [isLoadingPhotoBank, setIsLoadingPhotoBank] = useState(false);
+  const [selectedQuestionForPhotoBank, setSelectedQuestionForPhotoBank] = useState<string | null>(null);
 
   const hours12 = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
   const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
