@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef, useCallback, type ChangeEvent } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,61 +31,16 @@ import { getAssignmentById, getAssignmentDraft, submitCompletedAssignment, saveA
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
-// Form schema
 const formSchema = z.record(z.any());
 type FormDataSchema = z.infer<typeof formSchema>;
 
 interface UploadedFileDetail {
   name: string;
   url: string;
-  id?: string;
-  uploadedAt?: string;
-  assignedToQuestion?: string | null;
-}
-
-interface AudioNoteDetail {
-  blob?: Blob;
-  url?: string;
-  name?: string;
-  isUploading?: boolean;
-  uploadProgress?: number;
-  uploadError?: string | null;
-  downloadURL?: string;
-}
-
-interface AudioPlayerState {
-  isPlaying: boolean;
-  currentTime: number;
-  duration: number;
-}
-
-interface PhotoBankItem {
-  id: string;
-  url: string;
-  name: string;
-  uploadedAt: string;
-  assignedToQuestion?: string | null;
-}
-
-interface PhotoBankFile {
-  id: string;
-  url: string;
-  name: string;
-  uploadedAt: string;
-  assignedToQuestion?: string | null;
 }
 
 const UNASSIGNED_FILTER_VALUE = "n/a";
-const MAX_AUDIO_RECORDING_MS = 20000;
 
 const pillGradientClasses = [
   "bg-gradient-to-r from-primary to-accent text-primary-foreground",
@@ -129,13 +84,6 @@ export default function CompleteAssignmentPage() {
   const [uploadedFileDetails, setUploadedFileDetails] = useState<{ [questionId: string]: UploadedFileDetail | null }>({});
   const [uploadErrors, setUploadErrors] = useState<{ [questionId: string]: string | null }>({});
   const [imagePreviewUrls, setImagePreviewUrls] = useState<{ [questionId: string]: string | null }>({});
-  const [photoBankFiles, setPhotoBankFiles] = useState<UploadedFileDetail[]>([]);
-  const [photoBankUploads, setPhotoBankUploads] = useState<{ [key: string]: { progress: number; error: string | null } }>({});
-  const [isPhotoBankModalOpen, setIsPhotoBankModalOpen] = useState(false);
-  const [activeQuestionIdForPhotoBank, setActiveQuestionIdForPhotoBank] = useState<string | null>(null);
-  const [uploadingQuestionId, setUploadingQuestionId] = useState<string | null>(null);
-  const [comments, setComments] = useState<Record<string, string>>({});
-  const [modalPhoto, setModalPhoto] = useState<{ url: string; name: string } | null>(null);
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
@@ -149,18 +97,6 @@ export default function CompleteAssignmentPage() {
   const [selectedSubSection, setSelectedSubSection] = useState<string>("all");
   const [answeredStatusFilter, setAnsweredStatusFilter] = useState<'all' | 'answered' | 'unanswered'>('all');
 
-
-  const [audioNotes, setAudioNotes] = useState<{ [questionId: string]: AudioNoteDetail | null }>({});
-  const [isRecordingQuestionId, setIsRecordingQuestionId] = useState<string | null>(null);
-  const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
-  const [micPermissionError, setMicPermissionError] = useState<string | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const maxRecordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const [audioPlayerStates, setAudioPlayerStates] = useState<Record<string, AudioPlayerState>>({});
-  const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
-
   const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, getValues } = useForm<FormDataSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {},
@@ -168,46 +104,33 @@ export default function CompleteAssignmentPage() {
 
   const allWatchedValues = watch();
 
+  // Parse options function
   type OptionInput = string | string[] | { label: string; value?: string }[];
   const parseOptions = (options: OptionInput, question?: AssignmentQuestion): { label: string; value: string }[] => {
-    // Special handling for schoolSelector - use locations instead of question.options
     if (question?.component === 'schoolSelector') {
-      const mapped = locations.map(location => {
-        console.log('Location data:', location); // Debug log
-        return {
-          label: location.locationName || location.name || 'Unknown Location',
-          value: location.id
-        };
-      });
-      return mapped as { label: string; value: string }[];
+      return locations.map(location => ({
+        label: location.locationName || location.name || 'Unknown Location',
+        value: location.id
+      }));
     }
     
-    // Case 1: It's already an array of objects with label/value properties
-    if (
-      Array.isArray(options) && 
-      options.length > 0 && 
-      typeof options[0] === 'object' && 
-      options[0] !== null && 
-      'label' in options[0]
-    ) {
-        const objectOptions = options as { label: string; value?: string }[];
-        return objectOptions.map(opt => ({ label: String(opt.label), value: String(opt.value ?? opt.label) }));
+    if (Array.isArray(options) && options.length > 0 && typeof options[0] === 'object' && options[0] !== null && 'label' in options[0]) {
+      const objectOptions = options as { label: string; value?: string }[];
+      return objectOptions.map(opt => ({ label: String(opt.label), value: String(opt.value ?? opt.label) }));
     }
     
-    // Case 2: It's a simple array of strings
     if (Array.isArray(options)) {
       return options.map(opt => ({ label: String(opt), value: String(opt) }));
     }
     
-    // Case 3: It's a semicolon-separated string
     if (typeof options === 'string') {
       return options.split(';').map(opt => opt.trim()).filter(Boolean).map(opt => ({ label: opt, value: opt }));
     }
 
-    // Fallback if the format is unknown
     return [];
   };
 
+  // Check if question should be visible based on conditional logic
   const shouldBeVisible = (conditionalConfig: AssignmentQuestion['conditional'] | undefined, currentQuestionId: string): boolean => {
     if (!conditionalConfig) {
       return true;
@@ -246,20 +169,15 @@ export default function CompleteAssignmentPage() {
     }
   };
 
-  const conditionallyVisibleQuestions = useMemo(() => {
-    if (!assignment?.questions) return [];
-    return assignment.questions.filter(q => shouldBeVisible(q.conditional, q.id));
-  }, [assignment?.questions, allWatchedValues, shouldBeVisible]);
+  // Get conditionally visible questions
+  const conditionallyVisibleQuestions = assignment?.questions.filter(q => shouldBeVisible(q.conditional, q.id)) || [];
 
-  const totalPages = useMemo(() => {
-    if (!conditionallyVisibleQuestions || conditionallyVisibleQuestions.length === 0) {
-      return 1;
-    }
-    // Find the maximum page number from the visible questions
-    const maxPage = Math.max(...conditionallyVisibleQuestions.map(q => q.pageNumber || 1));
-    return maxPage;
-  }, [conditionallyVisibleQuestions]);
+  // Calculate total pages
+  const totalPages = conditionallyVisibleQuestions.length > 0 
+    ? Math.max(...conditionallyVisibleQuestions.map(q => q.pageNumber || 1))
+    : 1;
 
+  // Check if question is answered
   const isQuestionAnswered = useCallback((question: AssignmentQuestion, formData: FieldValues): boolean => {
     const value = formData[question.id];
     switch (question.component) {
@@ -284,7 +202,7 @@ export default function CompleteAssignmentPage() {
       case 'time':
       case 'completionTime':
         if (typeof value === 'object' && value !== null && value.hour && value.minute && value.period) {
-             return true;
+          return true;
         }
         return false;
       case 'checkbox':
@@ -306,267 +224,254 @@ export default function CompleteAssignmentPage() {
       default:
         return false;
     }
-  }, [uploadedFileDetails, locations]);
+  }, [uploadedFileDetails]);
 
-  const overallProgress = useMemo(() => {
-    const totalQuestions = conditionallyVisibleQuestions.length;
-    if (totalQuestions === 0) {
-      return 0;
+  // Calculate overall progress
+  const overallProgress = conditionallyVisibleQuestions.length > 0
+    ? (conditionallyVisibleQuestions.filter(q => isQuestionAnswered(q, allWatchedValues)).length / conditionallyVisibleQuestions.length) * 100
+    : 0;
+
+  // Get available sections
+  const availableSections = Array.from(new Set(
+    conditionallyVisibleQuestions.map(q => q.section || UNASSIGNED_FILTER_VALUE)
+  )).sort((a, b) => a === UNASSIGNED_FILTER_VALUE ? 1 : b === UNASSIGNED_FILTER_VALUE ? -1 : a.localeCompare(b));
+
+  // Get available sub-sections
+  const availableSubSections = Array.from(new Set(
+    conditionallyVisibleQuestions
+      .filter(q => selectedSection === "all" || (q.section || UNASSIGNED_FILTER_VALUE) === selectedSection)
+      .map(q => q.subSection || UNASSIGNED_FILTER_VALUE)
+  )).sort((a, b) => a === UNASSIGNED_FILTER_VALUE ? 1 : b === UNASSIGNED_FILTER_VALUE ? -1 : a.localeCompare(b));
+
+  // Get questions to render based on filters
+  const questionsToRender = conditionallyVisibleQuestions.filter(q => {
+    const pageMatch = (Number(q.pageNumber) || 1) === currentPage;
+    if (!pageMatch) return false;
+
+    const sectionMatch = selectedSection === "all" || (q.section || UNASSIGNED_FILTER_VALUE) === selectedSection;
+    const subSectionMatch = selectedSubSection === "all" || (q.subSection || UNASSIGNED_FILTER_VALUE) === selectedSubSection;
+    if (!sectionMatch || !subSectionMatch) return false;
+
+    if (answeredStatusFilter === 'all') {
+      return true;
     }
-    const answeredCount = conditionallyVisibleQuestions.filter(q => isQuestionAnswered(q, allWatchedValues)).length;
-    return (answeredCount / totalQuestions) * 100;
-  }, [conditionallyVisibleQuestions, allWatchedValues, isQuestionAnswered]);
+    const answered = isQuestionAnswered(q, allWatchedValues);
+    return answeredStatusFilter === 'answered' ? answered : !answered;
+  });
 
-  const sectionProgress = useMemo(() => {
-    const progressData: Record<string, Record<string, { total: number; answered: number; progress: number }>> = {};
-
-    conditionallyVisibleQuestions.forEach(q => {
-      const sectionName = q.section || 'Uncategorized';
-      const subSectionName = q.subSection || 'General';
-
-      // Initialize section if it doesn't exist
-      if (!progressData[sectionName]) {
-        progressData[sectionName] = {};
-      }
-      // Initialize sub-section if it doesn't exist
-      if (!progressData[sectionName][subSectionName]) {
-        progressData[sectionName][subSectionName] = { total: 0, answered: 0, progress: 0 };
-      }
-
-      progressData[sectionName][subSectionName].total++;
-      if (isQuestionAnswered(q, allWatchedValues)) {
-        progressData[sectionName][subSectionName].answered++;
-      }
-    });
-
-    // Calculate progress percentage for each sub-section
-    for (const section in progressData) {
-      for (const subSection in progressData[section]) {
-        const { total, answered } = progressData[section][subSection];
-        progressData[section][subSection].progress = total > 0 ? (answered / total) * 100 : 0;
-      }
+  // Handle file upload
+  const handleFileUpload = async (questionId: string, file: File) => {
+    if (!user || !assignment) {
+      setUploadErrors(prev => ({ ...prev, [questionId]: "User or assignment data missing." }));
+      return;
     }
-
-    return progressData;
-  }, [conditionallyVisibleQuestions, allWatchedValues, isQuestionAnswered]);
-
-  const availableSections = useMemo(() => {
-    const sections = new Set<string>();
-    conditionallyVisibleQuestions.forEach(q => {
-      sections.add(q.section || UNASSIGNED_FILTER_VALUE);
-    });
-    return Array.from(sections).sort((a,b) => a === UNASSIGNED_FILTER_VALUE ? 1 : b === UNASSIGNED_FILTER_VALUE ? -1 : a.localeCompare(b));
-  }, [conditionallyVisibleQuestions]);
-
-  const availableSubSections = useMemo(() => {
-    const subSections = new Set<string>();
-    conditionallyVisibleQuestions.forEach(q => {
-      const questionSection = q.section || UNASSIGNED_FILTER_VALUE;
-      if (selectedSection === "all" || questionSection === selectedSection) {
-        subSections.add(q.subSection || UNASSIGNED_FILTER_VALUE);
-      }
-    });
-    return Array.from(subSections).sort((a,b) => a === UNASSIGNED_FILTER_VALUE ? 1 : b === UNASSIGNED_FILTER_VALUE ? -1 : a.localeCompare(b));
-  }, [conditionallyVisibleQuestions, selectedSection]);
-
-  const questionsToRender = useMemo(() => {
-    return conditionallyVisibleQuestions.filter(q => {
-      // THE FIX: Convert q.pageNumber to a number before comparing.
-      const pageMatch = (Number(q.pageNumber) || 1) === currentPage;
-      if (!pageMatch) return false;
-
-      // Existing filters (no changes needed here)
-      const sectionMatch = selectedSection === "all" || (q.section || UNASSIGNED_FILTER_VALUE) === selectedSection;
-      const subSectionMatch = selectedSubSection === "all" || (q.subSection || UNASSIGNED_FILTER_VALUE) === selectedSubSection;
-      if (!sectionMatch || !subSectionMatch) return false;
-
-      if (answeredStatusFilter === 'all') {
-        return true;
-      }
-      const answered = isQuestionAnswered(q, allWatchedValues);
-      return answeredStatusFilter === 'answered' ? answered : !answered;
-    });
-  }, [conditionallyVisibleQuestions, selectedSection, selectedSubSection, answeredStatusFilter, allWatchedValues, currentPage, isQuestionAnswered]);
-
-  const handlePhotoBankUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0 || !user || !assignment) {
-      if (!user || !assignment) {
-          toast({ variant: "destructive", title: "Upload Error", description: "Cannot upload files without user and assignment context." });
-      }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadErrors(prev => ({ ...prev, [questionId]: "File exceeds 5MB limit." }));
+      toast({ variant: "destructive", title: "Upload Error", description: "File exceeds 5MB limit." });
       return;
     }
 
-    const newUploads: { [key: string]: { progress: number; error: string | null } } = {};
-    
-    Array.from(files).forEach(file => {
-      // Basic validation for each file
-      if (file.size > 5 * 1024 * 1024) {
-        newUploads[file.name] = { progress: 0, error: "File exceeds 5MB limit." };
-        return; // Skip this file
-      }
+    setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
+    setUploadErrors(prev => ({ ...prev, [questionId]: null }));
+    setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
+    setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
 
-      newUploads[file.name] = { progress: 0, error: null };
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviewUrls(prev => ({ ...prev, [questionId]: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
 
-      const storagePath = `photo_bank/${assignment.id}/${user.uid}/${Date.now()}_${file.name}`;
-      const storageRefInstance = ref(storage, storagePath);
-      const uploadTask = uploadBytesResumable(storageRefInstance, file);
+    const storagePath = `assignment_uploads/${assignment.id}/${user.uid}/${questionId}/${Date.now()}_${file.name}`;
+    const storageRefInstance = ref(storage, storagePath);
+    const uploadTask = uploadBytesResumable(storageRefInstance, file);
 
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setPhotoBankUploads(prev => ({
-            ...prev,
-            [file.name]: { ...prev[file.name], progress, error: null }
+    uploadTask.on('state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(prev => ({ ...prev, [questionId]: progress }));
+      },
+      (error) => {
+        console.error("Upload failed for question " + questionId + ":", error);
+        setUploadErrors(prev => ({ ...prev, [questionId]: error.message }));
+        toast({ variant: "destructive", title: "Upload Failed", description: `Could not upload ${file.name}: ${error.message}` });
+        setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
+        setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          setUploadedFileDetails(prev => ({ 
+            ...prev, 
+            [questionId]: { name: file.name, url: downloadURL }
           }));
-        },
-        (error) => {
-          console.error(`Upload failed for ${file.name}:`, error);
-          setPhotoBankUploads(prev => ({
-            ...prev,
-            [file.name]: { ...prev[file.name], progress: 0, error: error.message }
-          }));
-        },
-        async () => {
-          try {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            const newPhoto: UploadedFileDetail = {
-              id: `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              name: file.name,
-              url: downloadURL,
-              uploadedAt: new Date().toISOString(),
-              assignedToQuestion: null
-            };
-            setPhotoBankFiles(prev => [...prev, newPhoto]);
-            // Update the progress state to show completion and remove from "in-progress" view
-            setPhotoBankUploads(prev => {
-                const newProgress = { ...prev };
-                newProgress[file.name] = { ...newProgress[file.name], progress: 100, error: null };
-                // Optionally remove from progress tracker after a delay
-                setTimeout(() => {
-                    setPhotoBankUploads(p => {
-                        const finalProgress = {...p};
-                        delete finalProgress[file.name];
-                        return finalProgress;
-                    });
-                }, 2000);
-
-                return newProgress;
-            });
-          } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : "Unknown error getting URL.";
-            setPhotoBankUploads(prev => ({
-              ...prev,
-              [file.name]: { ...prev[file.name], progress: 0, error: "Failed to get file URL: " + errorMessage }
-            }));
-          }
+          setUploadProgress(prev => ({ ...prev, [questionId]: 100 }));
+        } catch (err) {
+          console.error("Failed to get download URL for " + questionId + ":", err);
+          const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+          setUploadErrors(prev => ({ ...prev, [questionId]: errorMessage }));
+          setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
         }
-      );
-    });
-
-    setPhotoBankUploads(prev => ({ ...prev, ...newUploads }));
-    e.target.value = ''; // Clear the input
+      }
+    );
   };
 
-  const removeFromPhotoBank = (photoId: string) => {
-    setPhotoBankFiles(prev => prev.filter(photo => photo.id !== photoId));
-    toast({
-      title: "Photo Removed",
-      description: "Photo has been removed from the photo bank."
-    });
+  // Remove uploaded file
+  const removeUploadedFile = (questionId: string) => {
+    setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
+    setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
+    setUploadErrors(prev => ({ ...prev, [questionId]: null }));
+    setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
+    const fileInput = document.getElementById(`${questionId}_file`) as HTMLInputElement;
+    if (fileInput) fileInput.value = "";
   };
 
-  // Function to upload photo directly to a specific question
-  const handleQuestionPhotoUpload = async (questionId: string, file: File) => {
-  if (!userProfile?.account || !user || !assignment) {
-    toast({
-      variant: "destructive",
-      title: "Upload Error",
-      description: "Missing user, account, or assignment context."
-    });
-    return;
-  }
+  // Save draft
+  const handleSaveDraft = async () => {
+    if (!userProfile?.account || !assignmentId) {
+      toast({ variant: "destructive", title: "Cannot Save Draft", description: "User account or assignment ID is missing." });
+      return;
+    }
 
-  const timestamp = Date.now();
-  const storagePath = `photo_bank/${assignment.id}/${user.uid}/${timestamp}_${file.name}`;
-  const storageRefInstance = ref(storage, storagePath);
-  
-  const uploadTask = uploadBytesResumable(storageRefInstance, file);
+    const draftData = getValues();
+    
+    const dataToSave = {
+      formValues: draftData,
+      uploadedFileDetails: uploadedFileDetails,
+      savedAt: new Date().toISOString(),
+    };
 
-  setUploadingQuestionId(questionId);
+    setIsSubmitting(true);
+    toast({ title: "Saving Draft...", description: "Please wait." });
 
-  uploadTask.on(
-    'state_changed',
-    (snapshot) => {
-      const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-      setUploadProgress(prev => ({ ...prev, [questionId]: progress }));
-    },
-    (error) => {
-      console.error('Upload error:', error);
+    try {
+      await saveAssignmentDraft(assignmentId, dataToSave, userProfile.account);
+      toast({
+        title: "Draft Saved Successfully",
+        description: "Your progress has been saved.",
+      });
+    } catch (error: unknown) {
+      console.error("Error saving draft:", error);
+      const errMsg = error instanceof Error ? error.message : "An unknown error occurred.";
       toast({
         variant: "destructive",
-        title: "Upload Failed",
-        description: error.message
+        title: "Error Saving Draft",
+        description: errMsg,
       });
-      setUploadingQuestionId(null);
-    },
-    async () => {
-      try {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        const newPhoto: UploadedFileDetail = {
-          id: `photo-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
-          url: downloadURL,
-          name: file.name,
-          uploadedAt: new Date().toISOString(),
-          assignedToQuestion: questionId
-        };
-        setPhotoBankFiles(prev => [...prev, newPhoto]);
-        toast({
-          title: "Photo Uploaded",
-          description: `Photo uploaded and assigned to question.`
-        });
-      } catch (urlError) {
-        toast({
-          variant: "destructive",
-          title: "URL Retrieval Error",
-          description: "Could not retrieve download URL."
-        });
-      } finally {
-        setUploadingQuestionId(null);
-      }
+    } finally {
+      setIsSubmitting(false);
     }
-  );
   };
 
-  // Function to assign/unassign photos to questions
-  const assignPhotoToQuestion = (photoId: string, questionId: string | null) => {
-    setPhotoBankFiles(prev => prev.map(photo => 
-      photo.id === photoId 
-        ? { ...photo, assignedToQuestion: questionId }
-        : photo
-    ));
+  // Form submission
+  const onSubmit: SubmitHandler<FormDataSchema> = async (data) => {
+    if (!assignment || !userProfile?.account || !user || !user.email) {
+      toast({ variant: "destructive", title: "Submission Error", description: "Cannot submit, critical assignment or user account data missing." });
+      return;
+    }
     
-    toast({
-      title: questionId ? "Photo Assigned" : "Photo Unassigned",
-      description: questionId 
-        ? "Photo has been assigned to the question."
-        : "Photo has been unassigned from questions."
-    });
-  };
-
-  const unassignPhotoFromQuestion = (questionId: string, photoId: string) => {
-    setPhotoBankFiles(prev => prev.map(photo => 
-      photo.id === photoId 
-        ? { ...photo, assignedToQuestion: null }
-        : photo
-    ));
+    const currentFormData = getValues();
+    const formDataToProcess = Object.keys(currentFormData).length > 0 ? currentFormData : data;
     
-    toast({
-      title: "Photo Unassigned",
-      description: "Photo has been unassigned from the question."
+    setIsSubmitting(true);
+
+    const formDataForSubmission = new FormData();
+    const answersObject: Record<string, unknown> = {};
+    const commentsObject: Record<string, unknown> = {};
+
+    conditionallyVisibleQuestions.forEach((question) => {
+      const rawAnswer = formDataToProcess[question.id];
+      let questionAnswer: unknown;
+
+      if (question.component === 'checkbox' && question.options) {
+        const selectedOptions = parseOptions(question.options, question)
+          .filter(opt => formDataToProcess[`${question.id}.${opt.value}`] === true)
+          .map(opt => opt.value);
+        questionAnswer = selectedOptions;
+      } else if ((question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options) {
+        const selectedOptions: string[] = [];
+        parseOptions(question.options, question).forEach(opt => {
+          if (formDataToProcess[`${question.id}.${opt.value}`]) {
+            selectedOptions.push(opt.value);
+          }
+        });
+        questionAnswer = selectedOptions;
+      } else if (question.component === 'checkbox' && !question.options) {
+        questionAnswer = formDataToProcess[question.id] === true;
+      } else if ((question.component === 'date' || question.component === 'completionDate') && formDataToProcess[question.id] instanceof Date) {
+        questionAnswer = format(formDataToProcess[question.id] as Date, "yyyy-MM-dd");
+      } else if (question.component === 'time' || question.component === 'completionTime') {
+        const timeValue = formDataToProcess[question.id];
+        if (typeof timeValue === 'object' && timeValue !== null && timeValue.hour && timeValue.minute && timeValue.period) {
+          questionAnswer = `${timeValue.hour}:${timeValue.minute} ${timeValue.period}`;
+        } else {
+          questionAnswer = '';
+        }
+      } else if (question.component === 'photoUpload') {
+        const fileDetail = uploadedFileDetails[question.id];
+        if (fileDetail) {
+          questionAnswer = fileDetail.name;
+        } else {
+          questionAnswer = '';
+        }
+      } else {
+        questionAnswer = formDataToProcess[question.id] ?? '';
+      }
+
+      answersObject[question.id] = questionAnswer;
+
+      const commentKey = `${question.id}_comment`;
+      if (question.comment && formDataToProcess[commentKey]) {
+        commentsObject[question.id] = formDataToProcess[commentKey];
+      }
     });
+    
+    try {
+      formDataForSubmission.append('content', JSON.stringify(answersObject));
+      formDataForSubmission.append('commentsData', JSON.stringify(commentsObject));
+      formDataForSubmission.append('completedBy', user.email);
+      formDataForSubmission.append('account', userProfile.account);
+      formDataForSubmission.append('status', 'completed');
+      formDataForSubmission.append('date', new Date().toLocaleDateString('en-US', { 
+        month: '2-digit', 
+        day: '2-digit', 
+        year: 'numeric', 
+        timeZone: 'America/New_York' 
+      }));
+      
+      const schoolSelectorQuestion = assignment.questions.find(q => q.component === 'schoolSelector');
+      if (schoolSelectorQuestion && formDataToProcess[schoolSelectorQuestion.id]) {
+        const selectedLocationId = formDataToProcess[schoolSelectorQuestion.id];
+        const selectedLocation = locations.find(loc => loc.id === selectedLocationId);
+        if (selectedLocation) {
+          formDataForSubmission.append('locationName', selectedLocation.locationName);
+        }
+      }
+
+      const result = await submitCompletedAssignment(
+        assignment.id, 
+        formDataForSubmission, 
+        userProfile.account
+      );
+      
+      if (result && (result.success !== false)) {
+        toast({ title: "Assignment Submitted Successfully", description: "Your assignment has been submitted." });
+        router.push('/assessment-forms');
+      } else {
+        throw new Error(result?.error || "Submission failed - no success confirmation received");
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      toast({ variant: "destructive", title: "Submission Failed", description: errorMessage });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
+  // Load assignment and draft data
   useEffect(() => {
     if (!assignmentId) {
       setError("Assignment ID is missing.");
@@ -575,13 +480,13 @@ export default function CompleteAssignmentPage() {
     }
 
     if (authLoading || profileLoading) {
-        setIsLoading(true);
-        return;
+      setIsLoading(true);
+      return;
     }
 
     if (!user) {
       setError("You must be logged in to complete an assignment.");
-      toast({ variant: "destructive", title: "Not Authenticated", description: "Please log in."});
+      toast({ variant: "destructive", title: "Not Authenticated", description: "Please log in." });
       setIsLoading(false);
       router.push(`/auth?redirect=${encodeURIComponent(pathname)}`);
       return;
@@ -596,7 +501,6 @@ export default function CompleteAssignmentPage() {
       setIsLoading(true);
       setError(null);
       try {
-        // Step 1: Fetch the main assignment structure
         const fetchedAssignment = await getAssignmentById(assignmentId, userProfile!.account);
         if (!fetchedAssignment) {
           setError("Assignment not found or you do not have permission to access it.");
@@ -606,43 +510,30 @@ export default function CompleteAssignmentPage() {
         }
         setAssignment(fetchedAssignment);
 
-        // Step 2: Try to fetch the user's draft for this assignment
-        const draftData = userProfile?.account ? await getAssignmentDraft(assignmentId, userProfile.account) : null;
+        const draftData = await getAssignmentDraft(assignmentId, userProfile.account);
         
         const defaultVals: FieldValues = {};
         
         if (draftData) {
-          // If a draft exists, use its data to populate the form
           toast({ title: "Draft Loaded", description: "Your previous progress has been restored." });
-          
-          // Populate form fields from the draft
           reset(draftData.formValues || {});
-
-          // Restore uploaded file details and audio notes from the draft
-          setUploadedFileDetails(
-            (draftData.uploadedFileDetails || {}) as { [questionId: string]: UploadedFileDetail | null }
-          );
-          setAudioNotes(
-            (draftData.audioNotes || {}) as { [questionId: string]: AudioNoteDetail | null }
-          );
-
+          setUploadedFileDetails((draftData.uploadedFileDetails || {}) as { [questionId: string]: UploadedFileDetail | null });
         } else {
-          // If no draft exists, set up the form with default values
           const now = new Date();
           fetchedAssignment.questions.forEach(q => {
             if (q.component === 'date' || q.component === 'completionDate') {
               defaultVals[q.id] = new Date(); 
             } else if (q.component === 'time' || q.component === 'completionTime') {
-                let currentHour12 = now.getHours();
-                const currentPeriod = currentHour12 >= 12 ? "PM" : "AM";
-                currentHour12 = currentHour12 % 12;
-                currentHour12 = currentHour12 ? currentHour12 : 12; 
+              let currentHour12 = now.getHours();
+              const currentPeriod = currentHour12 >= 12 ? "PM" : "AM";
+              currentHour12 = currentHour12 % 12;
+              currentHour12 = currentHour12 ? currentHour12 : 12; 
 
-                defaultVals[q.id] = {
-                    hour: String(currentHour12),
-                    minute: String(now.getMinutes()).padStart(2, '0'),
-                    period: currentPeriod
-                };
+              defaultVals[q.id] = {
+                hour: String(currentHour12),
+                minute: String(now.getMinutes()).padStart(2, '0'),
+                period: currentPeriod
+              };
             } else if (q.component === 'checkbox' && q.options) {
               parseOptions(q.options, q).forEach(opt => {
                 defaultVals[`${q.id}.${opt.value}`] = false;
@@ -667,6 +558,7 @@ export default function CompleteAssignmentPage() {
     fetchAssignmentAndDraft();
   }, [assignmentId, user, userProfile?.account, authLoading, profileLoading, reset, toast, router, pathname]);
 
+  // Load locations for school selector
   useEffect(() => {
     const hasSchoolSelector = assignment?.questions.some(q => q.component === 'schoolSelector');
     if (hasSchoolSelector && userProfile?.account && !isLoading) {
@@ -674,7 +566,6 @@ export default function CompleteAssignmentPage() {
       setLocationsError(null);
       getLocationsForLookup(userProfile.account)
         .then(fetchedLocations => {
-          console.log("These are the fetched locations: ", fetchedLocations);
           setLocations(fetchedLocations);
         })
         .catch(err => {
@@ -684,678 +575,12 @@ export default function CompleteAssignmentPage() {
         })
         .finally(() => setIsLoadingLocations(false));
     }
-  }, [assignment, userProfile?.account, toast, isLoading, userProfile]);
+  }, [assignment, userProfile?.account, toast, isLoading]);
 
+  // Reset sub-section when section changes
   useEffect(() => {
     setSelectedSubSection("all");
   }, [selectedSection]);
-
-  useEffect(() => {
-    const audioRefsSnapshot = audioRefs.current;
-    return () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-        mediaRecorderRef.current.stop();
-      }
-      if (maxRecordingTimerRef.current) {
-        clearTimeout(maxRecordingTimerRef.current);
-      }
-      Object.values(audioRefsSnapshot).forEach(audioEl => {
-        if (audioEl) {
-          audioEl.pause();
-          audioEl.removeAttribute('src');
-          audioEl.load();
-        }
-      });
-      Object.values(audioNotes).forEach(note => {
-        if (note?.url && note.url.startsWith('blob:')) {
-          URL.revokeObjectURL(note.url);
-        }
-      });
-    };
-  }, [audioNotes]);
-
-  const requestMicPermission = async () => {
-    if (hasMicPermission) return true;
-    setMicPermissionError(null);
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      setHasMicPermission(true);
-      toast({ title: "Microphone Access Granted" });
-      return true;
-    } catch (error) {
-      console.error('Error accessing microphone:', error);
-      const permErrorMsg = 'Microphone permission denied. Please enable it in your browser settings.';
-      setMicPermissionError(permErrorMsg);
-      setHasMicPermission(false);
-      toast({ variant: 'destructive', title: 'Microphone Access Denied', description: permErrorMsg });
-      return false;
-    }
-  };
-
-  const playChime = (type: 'start' | 'stop') => {
-    try {
-        const audioFile = type === 'start' ? '/audio/start-chime.mp3' : '/audio/stop-chime.mp3';
-        const chime = new Audio(audioFile);
-        chime.play().catch(e => console.warn(`Chime play error: ${(e as Error).message}`));
-    } catch (e) {
-        console.warn(`Could not play chime: ${e}`);
-    }
-  };
-
-  const handleStartRecording = async (questionId: string) => {
-    const permissionGranted = await requestMicPermission();
-    if (!permissionGranted) return;
-
-    if (isRecordingQuestionId) {
-      handleStopRecording(isRecordingQuestionId, false);
-    }
-
-    setIsRecordingQuestionId(questionId);
-    audioChunksRef.current = [];
-     setAudioNotes(prev => ({
-      ...prev,
-      [questionId]: {
-        blob: undefined, url: undefined, name: undefined,
-        isUploading: false, uploadProgress: 0, uploadError: null, downloadURL: undefined
-      }
-    }));
-    setAudioPlayerStates(prev => ({ ...prev, [questionId]: { isPlaying: false, currentTime: 0, duration: 0 } }));
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      playChime('start');
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
-
-      mediaRecorderRef.current.onstop = () => {
-        const oldNote = audioNotes[questionId];
-        if (oldNote?.url && oldNote.url.startsWith('blob:')) {
-          URL.revokeObjectURL(oldNote.url);
-        }
-
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audioName = `audio_note_${questionId}_${Date.now()}.webm`;
-
-        setAudioNotes(prev => ({
-          ...prev,
-          [questionId]: {
-            blob: audioBlob, url: audioUrl, name: audioName,
-            isUploading: false, uploadProgress: 0, uploadError: null, downloadURL: undefined
-          }
-        }));
-        playChime('stop');
-        
-        // Ensure UI reflects recording stopped state reliably here
-        if (isRecordingQuestionId === questionId) {
-           setIsRecordingQuestionId(null);
-        }
-
-        stream.getTracks().forEach(track => track.stop());
-        if (maxRecordingTimerRef.current) {
-          clearTimeout(maxRecordingTimerRef.current);
-          maxRecordingTimerRef.current = null;
-        }
-      };
-
-      mediaRecorderRef.current.onerror = (event) => {
-        console.error("MediaRecorder error:", event);
-        setMicPermissionError("An error occurred during recording.");
-        toast({ variant: "destructive", title: "Recording Error", description: "An unexpected error occurred." });
-        if (isRecordingQuestionId === questionId) setIsRecordingQuestionId(null);
-        if (maxRecordingTimerRef.current) clearTimeout(maxRecordingTimerRef.current);
-      };
-
-      mediaRecorderRef.current.start();
-      maxRecordingTimerRef.current = setTimeout(() => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording" && isRecordingQuestionId === questionId) {
-          handleStopRecording(questionId, true);
-          toast({ title: "Recording Limit Reached", description: `Recording stopped after ${MAX_AUDIO_RECORDING_MS / 1000} seconds.`});
-        }
-      }, MAX_AUDIO_RECORDING_MS);
-
-    } catch (error) {
-      console.error('Error starting recording:', error);
-      setMicPermissionError('Failed to start recording.');
-      if (isRecordingQuestionId === questionId) setIsRecordingQuestionId(null);
-      if (maxRecordingTimerRef.current) clearTimeout(maxRecordingTimerRef.current);
-    }
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleStopRecording = (questionId: string, playTheStopChime: boolean = true) => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop(); // This will trigger 'onstop' where isRecordingQuestionId is set to null
-    } else if(isRecordingQuestionId === questionId) {
-      // If recorder isn't "recording" but UI thinks it is for this question, reset UI
-      setIsRecordingQuestionId(null);
-    }
-
-    if (maxRecordingTimerRef.current) {
-        clearTimeout(maxRecordingTimerRef.current);
-        maxRecordingTimerRef.current = null;
-    }
-  };
-
-  const removeAudioNote = (questionId: string) => {
-    const note = audioNotes[questionId];
-    if (note?.url && note.url.startsWith('blob:')) {
-      URL.revokeObjectURL(note.url);
-    }
-    setAudioNotes(prev => ({ ...prev, [questionId]: null }));
-    setAudioPlayerStates(prev => ({ ...prev, [questionId]: { isPlaying: false, currentTime: 0, duration: 0 } }));
-    const audioEl = audioRefs.current[questionId];
-    if (audioEl) {
-        audioEl.pause();
-        audioEl.removeAttribute('src');
-        audioEl.load();
-    }
-  };
-
- const togglePlayPause = async (questionId: string) => {
-    const audio = audioRefs.current[questionId];
-    const note = audioNotes[questionId];
-    const noteUrl = note?.url;
-
-    if (!audio || !noteUrl) {
-      console.error("Audio element or note URL missing for playback:", questionId, noteUrl);
-      toast({variant: "destructive", title: "Playback Error", description: "Audio source missing."});
-      return;
-    }
-
-    try {
-      if (audio.paused) {
-        if (!audio.currentSrc || audio.currentSrc !== noteUrl) {
-          audio.src = noteUrl;
-          audio.load(); 
-
-          await new Promise<void>((resolve, reject) => {
-            const canPlayHandler = () => {
-              audio.removeEventListener('canplay', canPlayHandler);
-              audio.removeEventListener('error', errorHandler);
-              resolve();
-            };
-            const errorHandler = (e: Event) => {
-              audio.removeEventListener('canplay', canPlayHandler);
-              audio.removeEventListener('error', errorHandler);
-              const mediaError = (e.target as HTMLAudioElement).error;
-              reject(new Error(`Error loading audio: ${mediaError?.message || 'Unknown error'}`));
-            };
-            audio.addEventListener('canplay', canPlayHandler, { once: true });
-            audio.addEventListener('error', errorHandler, { once: true });
-          });
-        }
-        await audio.play();
-      } else {
-        audio.pause();
-      }
-    } catch (error: unknown) {
-      console.error(`[togglePlayPause] Error for ${questionId}: ${(error as Error).name} - ${(error as Error).message}`);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast({ variant: "destructive", title: "Playback Error", description: errorMessage });
-      if (audio.paused && audioPlayerStates[questionId]?.isPlaying) {
-        setAudioPlayerStates(prev => ({
-          ...prev,
-          [questionId]: { ...prev[questionId]!, isPlaying: false }
-        }));
-      }
-    }
-  };
-
-  const handleAudioTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement, Event>, questionId: string) => {
-    const audio = e.currentTarget;
-    const currentDuration = audioPlayerStates[questionId]?.duration || 0;
-    setAudioPlayerStates(prev => ({ 
-        ...prev, 
-        [questionId]: { 
-            ...prev[questionId]!, 
-            currentTime: Math.min(audio.currentTime, currentDuration), // Cap currentTime at duration
-            duration: currentDuration 
-        } 
-    }));
-  };
-
-  const handleAudioLoadedMetadata = (e: React.SyntheticEvent<HTMLAudioElement, Event>, questionId: string) => {
-    const audio = e.currentTarget;
-    let newDuration = audio.duration;
-    if (isNaN(newDuration) || !isFinite(newDuration) || newDuration <= 0) {
-        newDuration = 0; // Default to 0 if duration is invalid
-    }
-    setAudioPlayerStates(prev => ({ 
-        ...prev, 
-        [questionId]: { 
-            ...prev[questionId]!, 
-            duration: newDuration, 
-            currentTime: 0 // Reset currentTime when metadata loads
-        } 
-    }));
-  };
-
-  const handleAudioEnded = (questionId: string) => {
-     setAudioPlayerStates(prev => ({ 
-        ...prev, 
-        [questionId]: { 
-            ...prev[questionId]!, 
-            isPlaying: false, 
-            currentTime: 0 // Reset currentTime on end
-        } 
-    }));
-      if (audioRefs.current[questionId]) {
-        audioRefs.current[questionId]!.currentTime = 0;
-      }
-  };
-
-  const formatAudioTime = (timeInSeconds: number) => {
-    if (isNaN(timeInSeconds) || !isFinite(timeInSeconds) || timeInSeconds < 0) {
-        return "0:00";
-    }
-    const minutes = Math.floor(timeInSeconds / 60);
-    const seconds = Math.floor(timeInSeconds % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  const handleOpenPhotoBank = (questionId: string) => {
-    if (photoBankFiles.length === 0) {
-      toast({
-        variant: "default",
-        title: "Photo Bank is Empty",
-        description: "Please upload photos to the Photo Bank first.",
-      });
-      return;
-    }
-    setActiveQuestionIdForPhotoBank(questionId);
-    setIsPhotoBankModalOpen(true);
-  };
-
-  const handleSelectPhotoFromBank = (photo: PhotoBankFile) => {
-    if (!activeQuestionIdForPhotoBank) return;
-
-    // Create a simple UploadedFileDetail for the question
-    setUploadedFileDetails(prev => ({
-      ...prev,
-      [activeQuestionIdForPhotoBank]: {
-        name: photo.name,
-        url: photo.url
-      }
-    }));
-
-    // Reset and close the modal
-    setIsPhotoBankModalOpen(false);
-    setActiveQuestionIdForPhotoBank(null);
-  };
-
-  const handleFileUpload = async (questionId: string, file: File) => {
-    if (!user || !assignment) {
-      setUploadErrors(prev => ({ ...prev, [questionId]: "User or assignment data missing." }));
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-        setUploadErrors(prev => ({ ...prev, [questionId]: "File exceeds 5MB limit." }));
-        toast({ variant: "destructive", title: "Upload Error", description: "File exceeds 5MB limit."});
-        return;
-    }
-
-    setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
-    setUploadErrors(prev => ({ ...prev, [questionId]: null }));
-    setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
-    setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
-
-    if (file.type.startsWith("image/")) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setImagePreviewUrls(prev => ({ ...prev, [questionId]: reader.result as string }));
-        };
-        reader.readAsDataURL(file);
-    }
-
-    const storagePath = `assignment_uploads/${assignment.id}/${user.uid}/${questionId}/${Date.now()}_${file.name}`;
-    const storageRefInstance = ref(storage, storagePath);
-    const uploadTask = uploadBytesResumable(storageRefInstance, file);
-
-    uploadTask.on('state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(prev => ({ ...prev, [questionId]: progress }));
-      },
-      (error) => {
-        console.error("Upload failed for question " + questionId + ":", error);
-        setUploadErrors(prev => ({ ...prev, [questionId]: error.message }));
-        toast({ variant: "destructive", title: "Upload Failed", description: `Could not upload ${file.name}: ${error.message}` });
-        setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
-        setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
-      },
-      async () => {
-        try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          const newPhoto: UploadedFileDetail = { 
-            id: `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            name: file.name, 
-            url: downloadURL,
-            uploadedAt: new Date().toISOString(),
-            assignedToQuestion: null
-          };
-          setPhotoBankFiles(prev => [...prev, newPhoto]);
-          setUploadProgress(prev => ({ ...prev, [questionId]: 100 }));
-        } catch (err) {
-            console.error("Failed to get download URL for " + questionId + ":", err);
-          const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
-          setUploadErrors(prev => ({ ...prev, [questionId]: errorMessage }));
-            setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
-        }
-      }
-    );
-  };
-
-  const removeUploadedFile = (questionId: string) => {
-    setUploadedFileDetails(prev => ({ ...prev, [questionId]: null }));
-    setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
-    setUploadErrors(prev => ({ ...prev, [questionId]: null }));
-    setImagePreviewUrls(prev => ({ ...prev, [questionId]: null }));
-    const fileInput = document.getElementById(`${questionId}_file`) as HTMLInputElement;
-    if (fileInput) fileInput.value = "";
-  };
-
-  const handleSaveDraft = async () => {
-    if (!userProfile?.account || !assignmentId) {
-        toast({ variant: "destructive", title: "Cannot Save Draft", description: "User account or assignment ID is missing." });
-        return;
-    }
-
-    // Use getValues() to get the current form state without triggering validation
-    const draftData = getValues();
-    
-    const dataToSave = {
-      formValues: draftData,
-      uploadedFileDetails: uploadedFileDetails,
-      audioNotes: audioNotes,
-      savedAt: new Date().toISOString(),
-    };
-
-    setIsSubmitting(true); // Disable buttons while saving
-    toast({ title: "Saving Draft...", description: "Please wait." });
-
-    try {
-      // Call the new service function
-      await saveAssignmentDraft(assignmentId, dataToSave, userProfile.account);
-      
-      toast({
-        title: "Draft Saved Successfully",
-        description: "Your progress has been saved.",
-      });
-    } catch (error: unknown) {
-      console.error("Error saving draft:");
-      const errMsg = error instanceof Error ? error.message : "An unknown error occurred.";
-      toast({
-        variant: "destructive",
-        title: "Error Saving Draft",
-        description: errMsg,
-      });
-    } finally {
-      setIsSubmitting(false); // Re-enable buttons
-    }
-  };
-
-  const onSubmit: SubmitHandler<FormDataSchema> = async (data) => {
-    if (!assignment || !userProfile?.account || !user || !user.email) {
-        toast({ variant: "destructive", title: "Submission Error", description: "Cannot submit, critical assignment or user account data missing." });
-        return;
-    }
-    
-    // Get the current form values to ensure we have the latest data
-    const currentFormData = getValues();
-    
-    // Enhanced logging for debugging submission issues
-    console.log("=== ASSIGNMENT SUBMISSION DEBUG START ===");
-    console.log("1. Form data from onSubmit:", data);
-    console.log("2. Current form values from getValues():", currentFormData);
-    console.log("3. Current photoBankFiles:", photoBankFiles);
-    console.log("4. Current uploadedFileDetails:", uploadedFileDetails);
-    console.log("5. Current comments state:", comments);
-    console.log("4. Assignment ID:", assignmentId);
-    console.log("5. User Profile Account:", userProfile?.account);
-    
-    // Use currentFormData instead of data parameter to ensure we have latest values
-    const formDataToProcess = Object.keys(currentFormData).length > 0 ? currentFormData : data;
-    console.log("6. Final form data to process:", formDataToProcess);
-    
-    setIsSubmitting(true);
-
-    const finalAudioNotesForSubmission: Record<string, { name?: string; url?: string }> = {};
-    const audioUploadPromises: Promise<void>[] = [];
-
-    Object.keys(audioNotes).forEach(questionId => {
-        const note = audioNotes[questionId];
-        if (note?.blob && !note.downloadURL && !note.isUploading) {
-            setAudioNotes(prev => ({
-            ...prev,
-            [questionId]: { ...note, isUploading: true, uploadProgress: 0, uploadError: null }
-            }));
-            const audioFileName = note.name || `audio_note_${questionId}_${Date.now()}.webm`;
-            const audioStoragePath = `assignment_audio_notes/${assignment.id}/${user.uid}/${questionId}/${audioFileName}`;
-            const audioStorageRef = ref(storage, audioStoragePath);
-            const audioUploadTask = uploadBytesResumable(audioStorageRef, note.blob);
-
-            const promise = new Promise<void>((resolve, reject) => {
-            audioUploadTask.on('state_changed',
-                (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, uploadProgress: progress }}));
-                },
-                (error) => {
-                console.error(`Audio upload failed for ${questionId}:`, error);
-                setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, uploadError: error.message, isUploading: false }}));
-                reject(error);
-                },
-                async () => {
-                  try {
-                      const url = await getDownloadURL(audioUploadTask.snapshot.ref);
-                      setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, downloadURL: url, name: audioFileName, isUploading: false, uploadProgress: 100 }}));
-                      finalAudioNotesForSubmission[questionId] = { name: audioFileName, url: url };
-                      resolve();
-                  } catch (getUrlError) {
-                      console.error(`Failed to get audio download URL for ${questionId}:`, getUrlError);
-                      setAudioNotes(prev => ({ ...prev, [questionId]: { ...prev[questionId]!, uploadError: (getUrlError as Error).message, isUploading: false }}));
-                      reject(getUrlError);
-                  }
-                }
-            );
-            });
-            audioUploadPromises.push(promise);
-        } else if (note?.downloadURL) { 
-            finalAudioNotesForSubmission[questionId] = { name: note.name, url: note.downloadURL };
-        }
-    });
-
-    try {
-        await Promise.all(audioUploadPromises);
-    } catch (error) {
-      toast({ variant: "destructive", title: "Audio Upload Failed", description: `One or more audio notes could not be uploaded. Please review any errors and try again.` });
-      setIsSubmitting(false);
-      return;
-    }
-
-    const formDataForSubmission = new FormData();
-    const answersObject: Record<string, unknown> = {};
-    const photoLinksForSync: Record<string, string> = {};
-    const commentsObject: Record<string, unknown> = {};
-
-    console.log("--- Processing questions for submission ---");
-    conditionallyVisibleQuestions.forEach((question, idx) => {
-        console.log(`Processing question ${idx + 1} (ID: ${question.id}, Label: ${question.label})`);
-        
-        // Get the answer from the processed form data
-        const rawAnswer = formDataToProcess[question.id];
-        console.log(`  Raw answer for ${question.id}:`, rawAnswer);
-        
-        let questionAnswer: unknown;
-
-        // Check if the component is a multi-option checkbox
-        // Clean, single‐pass checkbox handler:
-        if (question.component === 'checkbox' && question.options) {
-          const selectedOptions = parseOptions(question.options, question)
-            .filter(opt => formDataToProcess[`${question.id}.${opt.value}`] === true)
-            .map(opt => opt.value);
-
-          // Always send an array (even if empty)
-          questionAnswer = selectedOptions;
-          console.log(`  Checkbox options for ${question.id}:`, selectedOptions);
-        } else if ((question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options && Array.isArray(parseOptions(question.options, question))) {
-             const selectedOptions: string[] = [];
-             parseOptions(question.options, question).forEach(opt => {
-               if (formDataToProcess[`${question.id}.${opt.value}`]) {
-                   selectedOptions.push(opt.value);
-                }
-            });
-            questionAnswer = selectedOptions;
-            console.log(`  Multi-select options for ${question.id}:`, selectedOptions);
-        } else if (question.component === 'checkbox' && !question.options) {
-            questionAnswer = formDataToProcess[question.id] === true;
-            console.log(`  Single checkbox for ${question.id}:`, questionAnswer);
-        } else if ((question.component === 'date' || question.component === 'completionDate') && formDataToProcess[question.id] instanceof Date) {
-            questionAnswer = format(formDataToProcess[question.id] as Date, "yyyy-MM-dd");
-            console.log(`  Date for ${question.id}:`, questionAnswer);
-        } else if (question.component === 'time' || question.component === 'completionTime') {
-            const timeValue = formDataToProcess[question.id];
-            if (typeof timeValue === 'object' && timeValue !== null && timeValue.hour && timeValue.minute && timeValue.period) {
-                questionAnswer = `${timeValue.hour}:${timeValue.minute} ${timeValue.period}`;
-            } else {
-                questionAnswer = '';
-            }
-            console.log(`  Time for ${question.id}:`, questionAnswer);
-        } else if (question.component === 'photoUpload') {
-            const fileDetail = uploadedFileDetails[question.id];
-            if (fileDetail) {
-                photoLinksForSync[question.id] = fileDetail.url;
-                questionAnswer = fileDetail.name;
-            } else {
-                // Check if photo is assigned from photo bank
-                const assignedPhoto = photoBankFiles.find(photo => 
-                  photo.assignedToQuestion === question.id
-                );
-                if (assignedPhoto) {
-                    photoLinksForSync[question.id] = assignedPhoto.url;
-                    questionAnswer = assignedPhoto.name;
-                } else {
-                questionAnswer = '';
-                }
-            }
-            console.log(`  Photo upload for ${question.id}:`, questionAnswer, 'URL:', photoLinksForSync[question.id]);
-        } else {
-            questionAnswer = formDataToProcess[question.id] ?? '';
-            console.log(`  Standard answer for ${question.id}:`, questionAnswer);
-        }
-
-        answersObject[question.id] = questionAnswer;
-
-        // Handle comments
-        const commentKey = `${question.id}_comment`;
-        if (question.comment && formDataToProcess[commentKey]) {
-            commentsObject[question.id] = formDataToProcess[commentKey];
-            console.log(`  Comment for ${question.id}:`, formDataToProcess[commentKey]);
-        }
-    });
-    
-    console.log("7. Final answers object:", answersObject);
-    console.log("8. Final comments object:", commentsObject);
-    console.log("9. Final photo links:", photoLinksForSync);
-    console.log("10. Final audio notes:", finalAudioNotesForSubmission);
-    
-    // Validate that we have some data to submit
-    const hasAnswers = Object.keys(answersObject).length > 0;
-    const hasValidAnswers = Object.values(answersObject).some(answer => 
-      answer !== null && answer !== undefined && answer !== ''
-    );
-    
-    if (!hasAnswers) {
-        console.error("No answers found in form data!");
-        toast({ 
-            variant: "destructive", 
-            title: "Submission Error", 
-            description: "No answers found. Please fill out at least one question before submitting." 
-        });
-        setIsSubmitting(false);
-        return;
-    }
-    
-    if (!hasValidAnswers) {
-        console.warn("All answers are empty, but proceeding with submission...");
-    }
-    
-    // Build FormData for submission
-    try {
-        // Use the expected field names from the backend
-        formDataForSubmission.append('content', JSON.stringify(answersObject));
-        formDataForSubmission.append('commentsData', JSON.stringify(commentsObject));
-        formDataForSubmission.append('syncPhotoLinks', JSON.stringify(photoLinksForSync));
-        formDataForSubmission.append('audioNotesData', JSON.stringify(finalAudioNotesForSubmission));
-        formDataForSubmission.append('completedBy', user.email);
-        formDataForSubmission.append('account', userProfile.account);
-        formDataForSubmission.append('status', 'completed');
-        formDataForSubmission.append('date', new Date().toLocaleDateString('en-US', { 
-            month: '2-digit', 
-            day: '2-digit', 
-            year: 'numeric', 
-            timeZone: 'America/New_York' 
-        }));
-        
-        // Add location name if available from schoolSelector
-        const schoolSelectorQuestion = assignment.questions.find(q => q.component === 'schoolSelector');
-        if (schoolSelectorQuestion && formDataToProcess[schoolSelectorQuestion.id]) {
-            const selectedLocationId = formDataToProcess[schoolSelectorQuestion.id];
-            const selectedLocation = locations.find(loc => loc.id === selectedLocationId);
-            if (selectedLocation) {
-                formDataForSubmission.append('locationName', selectedLocation.locationName);
-            }
-        }
-        
-        console.log("11. FormData prepared for submission");
-        
-        // Log FormData contents for debugging
-        for (const [key, value] of formDataForSubmission.entries()) {
-            console.log(`FormData[${key}]:`, value);
-        }
-
-        try {
-            const result = await submitCompletedAssignment(
-              assignment.id, 
-              formDataForSubmission, 
-              userProfile.account
-            );
-            
-            console.log("12. Submission result:", result);
-            
-            if (result && (result.success !== false)) {
-                toast({ title: "Assignment Submitted Successfully", description: "Your assignment has been submitted." });
-                router.push('/assignments');
-            } else {
-                throw new Error(result?.error || "Submission failed - no success confirmation received");
-            }
-        } catch (submissionError) {
-            console.error("13. Submission error details:", submissionError);
-            throw submissionError;
-        }
-    } catch (dataError) {
-        console.error("Error preparing submission data:", dataError);
-        toast({ 
-            variant: "destructive", 
-            title: "Data Preparation Failed", 
-            description: "Failed to prepare submission data. Please check your responses and try again." 
-        });
-        setIsSubmitting(false);
-        return;
-    } catch (error) {
-        console.error("Submission error:", error);
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-        console.error("14. Final error message:", errorMessage);
-        toast({ variant: "destructive", title: "Submission Failed", description: errorMessage });
-    } finally {
-        setIsSubmitting(false);
-        console.log("=== ASSIGNMENT SUBMISSION DEBUG END ===");
-    }
-  };
 
   if (authLoading || profileLoading || isLoading) {
     return (
@@ -1406,7 +631,7 @@ export default function CompleteAssignmentPage() {
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{assignment.title}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{assignment.assessmentName}</h1>
             <p className="text-muted-foreground mt-1">{assignment.description}</p>
           </div>
           <Button variant="outline" onClick={() => router.push('/assessment-forms')} className="self-start">
@@ -1508,102 +733,6 @@ export default function CompleteAssignmentPage() {
               </Select>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Photo Bank */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Photo Bank</CardTitle>
-          <CardDescription>
-            Upload photos here to reuse across multiple questions
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handlePhotoBankUpload}
-              className="mb-4"
-            />
-          </div>
-
-          {/* Upload Progress */}
-          {Object.keys(photoBankUploads).length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium">Uploading...</h4>
-              {Object.entries(photoBankUploads).map(([fileName, upload]) => (
-                <div key={fileName} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="truncate">{fileName}</span>
-                    <span>{Math.round(upload.progress)}%</span>
-                  </div>
-                  <ShadProgress value={upload.progress} />
-                  {upload.error && (
-                    <p className="text-sm text-destructive">{upload.error}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Uploaded Photos */}
-          {photoBankFiles.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium">Available Photos ({photoBankFiles.length})</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {photoBankFiles.map((photo, index) => (
-                  <div key={photo.id || index} className="relative group border rounded-lg overflow-hidden">
-                    {/* Delete button on hover */}
-                    {/* Delete button - appears on hover */}
-                    <button
-                      type="button"
-                      onClick={() => removeFromPhotoBank(photo.id!)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                      style={{ lineHeight: 1 }}
-                    >
-                      ×
-                    </button>
-                    {/* Photo with click to enlarge */}
-                    {/* Photo with click to enlarge */}
-                    <Image
-                      src={photo.url}
-                      alt={photo.name}
-                      width={120}
-                      height={120}
-                      className="w-full h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => setModalPhoto({ url: photo.url, name: photo.name })}
-                    />
-                    <div className="p-2">
-                      <p className="text-xs truncate mb-2">{photo.name}</p>
-                      {/* Assignment dropdown */}
-                      {/* Assignment dropdown */}
-                      <Select
-                        value={photo.assignedToQuestion || "unassigned"}
-                        onValueChange={(value) => assignPhotoToQuestion(photo.id!, value === "unassigned" ? null : value)}
-                        key={`select-${photo.id || index}`}
-                      >
-                        <SelectTrigger className="h-6 text-xs">
-                          <SelectValue placeholder="Assign to question" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="unassigned">Unassigned</SelectItem>
-                          {assignment?.questions?.filter(q => q.photoUpload).map((question) => (
-                            <SelectItem key={`option-${question.id}`} value={question.id}>
-                              Q{assignment.questions.indexOf(question) + 1}: {question.label.length > 30 ? question.label.substring(0, 30) + '...' : question.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
         </CardContent>
       </Card>
 
@@ -1804,28 +933,6 @@ export default function CompleteAssignmentPage() {
                   </div>
                 )}
 
-                {question.component === 'multiSelect' && (
-                  <div className="space-y-2">
-                    {parseOptions(question.options, question).map((option) => (
-                      <Controller
-                        key={option.value}
-                        name={`${question.id}.${option.value}`}
-                        control={control}
-                        render={({ field }) => (
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`${question.id}-${option.value}`}
-                              checked={field.value || false}
-                              onCheckedChange={field.onChange}
-                            />
-                            <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
-                          </div>
-                        )}
-                      />
-                    ))}
-                  </div>
-                )}
-
                 {question.component === 'checkbox' && question.options && (
                   <div className="space-y-2">
                     {parseOptions(question.options, question).map((option) => (
@@ -2008,28 +1115,17 @@ export default function CompleteAssignmentPage() {
 
                 {question.component === 'photoUpload' && (
                   <div className="space-y-4">
-                    <div className="flex gap-2">
-                      <Input
-                        id={`${question.id}_file`}
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            handleFileUpload(question.id, file);
-                          }
-                        }}
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => handleOpenPhotoBank(question.id)}
-                        disabled={photoBankFiles.length === 0}
-                      >
-                        Photo Bank
-                      </Button>
-                    </div>
+                    <Input
+                      id={`${question.id}_file`}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleFileUpload(question.id, file);
+                        }
+                      }}
+                    />
 
                     {/* Upload Progress */}
                     {uploadProgress[question.id] > 0 && uploadProgress[question.id] < 100 && (
@@ -2088,178 +1184,6 @@ export default function CompleteAssignmentPage() {
                   </div>
                 )}
 
-                {question.photoUpload && (
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Photo Upload</Label>
-                    <div className="space-y-3">
-                      {/* Direct upload to question */}
-                      <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              handleQuestionPhotoUpload(question.id, file);
-                              e.target.value = ''; // Reset input
-                            }
-                          }}
-                          disabled={uploadingQuestionId === question.id}
-                          className="mb-2"
-                        />
-                        {uploadingQuestionId === question.id ? (
-                          <div className="flex items-center justify-center">
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            <span className="text-sm">Uploading...</span>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-muted-foreground text-center">
-                            Upload a photo directly to this question
-                          </p>
-                        )}
-                      </div>
-                      
-                      {/* Show assigned photos */}
-                      {photoBankFiles.filter(photo => photo.assignedToQuestion === question.id).length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium mb-2">Assigned Photos:</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {photoBankFiles
-                              .filter(photo => photo.assignedToQuestion === question.id)
-                              .map((photo, idx) => (
-                                <div key={photo.id || `assigned-${idx}`} className="relative group">
-                                  <Image
-                                    src={photo.url}
-                                    alt={photo.name}
-                                    width={80}
-                                    height={80}
-                                    className="w-16 h-16 object-cover rounded border cursor-pointer"
-                                    onClick={() => setModalPhoto({ url: photo.url, name: photo.name })}
-                                  />
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Audio Note Section */}
-                <div className="space-y-3 border-t pt-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium">Audio Note (Optional)</Label>
-                    {hasMicPermission === false && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={requestMicPermission}
-                      >
-                        Enable Microphone
-                      </Button>
-                    )}
-                  </div>
-
-                  {micPermissionError && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{micPermissionError}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  <div className="flex items-center gap-2">
-                    {!audioNotes[question.id] && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleStartRecording(question.id)}
-                        disabled={isRecordingQuestionId !== null || hasMicPermission === false}
-                      >
-                        {isRecordingQuestionId === question.id ? "Recording..." : "Start Recording"}
-                      </Button>
-                    )}
-
-                    {isRecordingQuestionId === question.id && (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleStopRecording(question.id)}
-                      >
-                        Stop Recording
-                      </Button>
-                    )}
-
-                    {audioNotes[question.id] && (
-                      <div className="flex items-center gap-2 flex-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => togglePlayPause(question.id)}
-                          disabled={audioNotes[question.id]?.isUploading}
-                        >
-                          {audioPlayerStates[question.id]?.isPlaying ? "Pause" : "Play"}
-                        </Button>
-                        
-                        <div className="flex-1 text-sm">
-                          <div className="flex justify-between">
-                            <span>{audioNotes[question.id]?.name}</span>
-                            <span>
-                              {formatAudioTime(audioPlayerStates[question.id]?.currentTime || 0)} / 
-                              {formatAudioTime(audioPlayerStates[question.id]?.duration || 0)}
-                            </span>
-                          </div>
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeAudioNote(question.id)}
-                          disabled={audioNotes[question.id]?.isUploading}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Audio Upload Progress */}
-                  {audioNotes[question.id]?.isUploading && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Uploading audio...</span>
-                        <span>{Math.round(audioNotes[question.id]?.uploadProgress || 0)}%</span>
-                      </div>
-                      <ShadProgress value={audioNotes[question.id]?.uploadProgress || 0} />
-                    </div>
-                  )}
-
-                  {/* Audio Upload Error */}
-                  {audioNotes[question.id]?.uploadError && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{audioNotes[question.id]?.uploadError}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  {/* Hidden Audio Element */}
-                  {audioNotes[question.id]?.url && (
-                    <audio
-                      ref={(el) => {
-                        audioRefs.current[question.id] = el;
-                      }}
-                      onTimeUpdate={(e) => handleAudioTimeUpdate(e, question.id)}
-                      onLoadedMetadata={(e) => handleAudioLoadedMetadata(e, question.id)}
-                      onPlay={() => setAudioPlayerStates(prev => ({ ...prev, [question.id]: { ...prev[question.id]!, isPlaying: true } }))}
-                      onPause={() => setAudioPlayerStates(prev => ({ ...prev, [question.id]: { ...prev[question.id]!, isPlaying: false } }))}
-                      onEnded={() => handleAudioEnded(question.id)}
-                      style={{ display: 'none' }}
-                    />
-                  )}
-                </div>
-
                 {/* Comment Section */}
                 {question.comment && (
                   <div className="space-y-2 border-t pt-4">
@@ -2310,60 +1234,6 @@ export default function CompleteAssignmentPage() {
           </Button>
         </div>
       </form>
-
-      {/* Photo Bank Modal */}
-      <Dialog open={isPhotoBankModalOpen} onOpenChange={setIsPhotoBankModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>Select Photo from Bank</DialogTitle>
-            <DialogDescription>
-              Choose a photo from your uploaded collection
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="h-[60vh]">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
-              {photoBankFiles.map((photo, index) => (
-                <div
-                  key={photo.id || `modal-${index}`}
-                  className="relative cursor-pointer group"
-                  onClick={() => handleSelectPhotoFromBank(photo)}
-                >
-                  <Image
-                    src={photo.url}
-                    alt={photo.name}
-                    width={200}
-                    height={200}
-                    className="w-full h-32 object-cover rounded border hover:border-primary transition-colors"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                    <span className="text-white text-sm text-center p-2">
-                      {photo.name}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
-
-      {/* Photo Modal */}
-      <Dialog open={!!modalPhoto} onOpenChange={() => setModalPhoto(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-          <DialogHeader className="p-6 pb-0">
-            <DialogTitle>{modalPhoto?.name}</DialogTitle>
-          </DialogHeader>
-          <div className="p-6 pt-0">
-            <Image
-              src={modalPhoto?.url || ''}
-              alt={modalPhoto?.name || ''}
-              width={800}
-              height={600}
-              className="w-full h-auto max-h-[70vh] object-contain rounded"
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
