@@ -9,7 +9,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import Image from "next/image";
 import { format } from "date-fns";
-import { ArrowLeft, X, Loader2, Eye, Trash2, ImageIcon } from "lucide-react";
+import { ArrowLeft, X, Loader2, Eye, Trash2, ImageIcon, Camera } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -923,43 +923,44 @@ export default function CompleteAssignmentPage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  <Camera className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <Camera className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg text-blue-900 dark:text-blue-100">Photo Library</h3>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      {photoBankPhotos.length} photos available for assignment questions
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-lg text-blue-900 dark:text-blue-100">Photo Library</h3>
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    {photoBankPhotos.length} photos available for assignment questions
-                  </p>
+                <Button 
+                  onClick={() => {
+                    setSelectedQuestionForPhotoBank(null);
+                    setIsPhotoBankModalOpen(true);
+                  }}
+                  size="lg"
+                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                >
+                  <Camera className="h-5 w-5 mr-2" />
+                  Open Photo Bank
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  Upload new photos to library
                 </div>
-              </div>
-              <Button 
-                onClick={() => {
-                  setSelectedQuestionForPhotoBank(null);
-                  setIsPhotoBankModalOpen(true);
-                }}
-                size="lg"
-                className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-              >
-                <Camera className="h-5 w-5 mr-2" />
-                Open Photo Bank
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                Upload new photos to library
-              </div>
-              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                Assign photos to questions
-              </div>
-              <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                Manage photo metadata
+                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  Assign photos to questions
+                </div>
+                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  Manage photo metadata
+                </div>
               </div>
             </div>
           </CardTitle>
@@ -1430,7 +1431,7 @@ export default function CompleteAssignmentPage() {
                           <div className="flex-1">
                             <p className="text-sm font-medium">{uploadedPhotos[question.id]!.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {new Date(uploadedPhotos[question.id]!.uploadDate).toLocaleDateString()}
+                              {new Date(uploadedPhotos[question.id]!.uploadDate || '').toLocaleDateString()}
                             </p>
                           </div>
                           <Button
@@ -1698,7 +1699,7 @@ export default function CompleteAssignmentPage() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleDeletePhotoFromBank(photo.id)}
+                            onClick={() => handleDeletePhotoFromBank(photo)}
                           >
                             Delete
                           </Button>
