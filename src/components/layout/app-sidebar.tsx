@@ -1,3 +1,4 @@
+```tsx
 "use client";
 
 import Link from "next/link";
@@ -178,3 +179,4 @@ export function AppSidebar({ navItems }: AppSidebarProps) {
     </Sidebar>
   );
 }
+```
