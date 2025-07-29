@@ -56,7 +56,6 @@ import { cn } from "@/lib/utils";
 const formSchema = z.record(z.any());
 type FormDataSchema = z.infer<typeof formSchema>;
 
-
 export function QuestionRenderer({
   question, control, register, errors, formData, setFormData,
   locations, isLoadingLocations, parseOptions, hours12, minutes, amPm,
