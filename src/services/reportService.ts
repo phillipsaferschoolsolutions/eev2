@@ -1,8 +1,91 @@
 // src/services/reportService.ts
 'use client';
 
+import { auth } from '@/lib/firebase';
+import type { User } from 'firebase/auth';
 import { getCompletionDetails, getAssignmentById } from '@/services/assignmentFunctionsService';
-import { generateReport, type GenerateReportInput, type GenerateReportOutput } from '@/ai/flows/generate-report-flow';
+// Define the GenerateReportOutput type locally since we're not using the AI flow anymore
+export interface GenerateReportOutput {
+  title: string;
+  executiveSummary: string;
+  methodology: string;
+  riskAssessment: {
+    riskMatrix: string;
+    criticalRisks: string[];
+    moderateRisks: string[];
+    lowRisks: string[];
+  };
+  complianceEvaluation: {
+    overview: string;
+    standardsReviewed: string[];
+    complianceStrengths: string[];
+    complianceGaps: string[];
+  };
+  domains: {
+    people: {
+      strengths: string[];
+      improvements: string[];
+      observations: string;
+      recommendations: Array<{
+        recommendation: string;
+        severity: string;
+        timeline: string;
+        reference?: string;
+      }>;
+    };
+    process: {
+      strengths: string[];
+      improvements: string[];
+      observations: string;
+      recommendations: Array<{
+        recommendation: string;
+        severity: string;
+        timeline: string;
+        reference?: string;
+      }>;
+    };
+    technology: {
+      strengths: string[];
+      improvements: string[];
+      observations: string;
+      recommendations: Array<{
+        recommendation: string;
+        severity: string;
+        timeline: string;
+        reference?: string;
+      }>;
+    };
+  };
+  detailedFindings: {
+    safetyMetrics: string;
+    benchmarkComparison: string;
+    trendAnalysis: string;
+    incidentAnalysis: string;
+  };
+  actionPlan: {
+    immediateActions: Array<{
+      action: string;
+      timeline: string;
+      responsibility: string;
+      resources: string;
+    }>;
+    shortTermActions: Array<{
+      action: string;
+      timeline: string;
+      responsibility: string;
+      resources: string;
+    }>;
+    longTermActions: Array<{
+      action: string;
+      timeline: string;
+      responsibility: string;
+      resources: string;
+    }>;
+  };
+  nextSteps: string[];
+  appendices: string;
+  conclusion: string;
+}
 
 // Import the robust getIdToken function from assignmentFunctionsService
 import { getIdToken as getIdTokenRobust } from '@/services/assignmentFunctionsService';
@@ -59,14 +142,14 @@ async function authedFetch<T>(
   }
 
   if (response.status === 204) {
-    return undefined as unknown as T;
+    return undefined as any as T;
   }
   
   const textResponse = await response.text();
   try {
     return JSON.parse(textResponse);
-  } catch {
-    return textResponse as unknown as T; // Fallback for non-JSON responses
+  } catch (e) {
+    return textResponse as any as T; // Fallback for non-JSON responses
   }
 }
 
@@ -89,34 +172,28 @@ export async function generateReportForCompletion(
   }
 
   try {
-    // Fetch the completion data
-    const completionData = await getCompletionDetails(assignmentId, completionId, accountName);
-    if (!completionData) {
-      throw new Error("Completion data not found.");
-    }
+    // Call the Firebase Cloud Function for AI report generation
+    const { httpsCallable } = await import('firebase/functions');
+    const { getFunctions } = await import('firebase/functions');
+    
+    const functions = getFunctions();
+    const generateReportFunction = httpsCallable(functions, 'generateReport');
 
-    // Fetch the assignment data
-    const assignmentData = await getAssignmentById(assignmentId, accountName);
-    if (!assignmentData) {
-      throw new Error("Assignment data not found.");
-    }
-
-    // Prepare input for the AI flow
-    const input: GenerateReportInput = {
-      completionData,
-      assignmentData,
+    const result = await generateReportFunction({
+      assignmentId,
+      completionId,
       accountName,
-    };
+      customPrompt: options?.customPrompt,
+      promptMode: options?.promptMode
+    });
 
-    // Add custom prompt options if provided
-    if (options?.customPrompt) {
-      input.customPrompt = options.customPrompt;
-      input.promptMode = options.promptMode as 'replace' | 'extend';
+    const response = result.data as { success: boolean; report: GenerateReportOutput };
+    
+    if (!response.success || !response.report) {
+      throw new Error("Failed to generate report from AI service");
     }
 
-    // Call the AI flow to generate the report
-    const report = await generateReport(input);
-    return report;
+    return response.report;
   } catch (error) {
     console.error("Error generating report:", error);
     throw new Error(`Failed to generate report: ${error instanceof Error ? error.message : String(error)}`);
@@ -135,6 +212,8 @@ export async function exportToPdf(htmlContent: string, fileName: string = 'safet
   }
 
   try {
+    // Dynamic import to avoid SSR issues
+    const html2pdf = (await import('html2pdf.js')).default;
     
     const options = {
       margin: [15, 15, 15, 15],
@@ -233,14 +312,14 @@ export async function saveReport(
  * @param accountName The account ID.
  * @returns A promise that resolves with an array of saved report metadata.
  */
-export async function getSavedReports(accountName: string): Promise<unknown[]> {
+export async function getSavedReports(accountName: string): Promise<any[]> {
   if (!accountName) {
     throw new Error("Account name is required to fetch saved reports.");
   }
 
   const REPORT_STUDIO_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/reportstudio';
   
-  const result = await authedFetch<unknown[]>(`${REPORT_STUDIO_BASE_URL}/reports`, {
+  const result = await authedFetch<any[]>(`${REPORT_STUDIO_BASE_URL}/reports`, {
     method: 'GET',
   }, accountName);
 
@@ -253,14 +332,14 @@ export async function getSavedReports(accountName: string): Promise<unknown[]> {
  * @param accountName The account ID.
  * @returns A promise that resolves with the report data.
  */
-export async function getReportById(reportId: string, accountName: string): Promise<unknown> {
+export async function getReportById(reportId: string, accountName: string): Promise<any> {
   if (!reportId || !accountName) {
     throw new Error("Report ID and account name are required to fetch a report.");
   }
 
   const REPORT_STUDIO_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/reportstudio';
   
-  const result = await authedFetch<unknown>(`${REPORT_STUDIO_BASE_URL}/reports/${reportId}`, {
+  const result = await authedFetch<any>(`${REPORT_STUDIO_BASE_URL}/reports/${reportId}`, {
     method: 'GET',
   }, accountName);
 
@@ -327,7 +406,7 @@ export async function savePromptSettings(accountName: string, settings: PromptSe
   const result = await authedFetch<{ message: string }>(`${REPORT_STUDIO_BASE_URL}/prompt-settings`, {
     method: 'POST',
     body: JSON.stringify(settings),
-  });
+  }, accountName);
 
   return result;
 }
@@ -335,7 +414,7 @@ export async function savePromptSettings(accountName: string, settings: PromptSe
 /**
  * Generates a comprehensive table of questions and responses for the appendix.
  */
-function generateQuestionResponseTable(completionData?: Record<string, unknown>, assignmentData?: Record<string, unknown>): string {
+function generateQuestionResponseTable(completionData: any, assignmentData: any): string {
   if (!completionData?.content || !assignmentData?.questions) {
     return '<p>No question and response data available.</p>';
   }
@@ -353,10 +432,10 @@ function generateQuestionResponseTable(completionData?: Record<string, unknown>,
       <tbody>
   `;
 
-  (assignmentData.questions as Record<string, unknown>[]).forEach((question: Record<string, unknown>, index: number) => {
-    const answer = (completionData.content as Record<string, unknown>)[question.id as string];
-    const comment = (completionData.commentsData as Record<string, unknown>)?.[question.id as string];
-    const photo = (completionData.uploadedPhotos as Record<string, Record<string, unknown>>)?.[question.id as string];
+  assignmentData.questions.forEach((question: any, index: number) => {
+    const answer = completionData.content[question.id];
+    const comment = completionData.commentsData?.[question.id];
+    const photo = completionData.uploadedPhotos?.[question.id];
     
     // Format the answer based on its type
     let formattedAnswer = 'No response';
@@ -373,9 +452,9 @@ function generateQuestionResponseTable(completionData?: Record<string, unknown>,
     tableHtml += `
       <tr>
         <td class="question-cell">
-          <strong>Q${index + 1}:</strong> ${question.label as string}
+          <strong>Q${index + 1}:</strong> ${question.label}
           ${question.required ? '<span style="color: #d32f2f;"> *</span>' : ''}
-          <br><small style="color: #666;">Type: ${question.component as string}</small>
+          <br><small style="color: #666;">Type: ${question.component}</small>
         </td>
         <td class="response-cell">
           ${formattedAnswer === 'No response' ? '<span class="no-response">No response</span>' : formattedAnswer}
@@ -384,7 +463,7 @@ function generateQuestionResponseTable(completionData?: Record<string, unknown>,
           ${comment ? `"${comment}"` : '<span class="no-response">No comment</span>'}
         </td>
         <td class="photo-cell">
-          ${(photo as Record<string, unknown>)?.link ? `<img src="${(photo as Record<string, unknown>).link}" alt="Photo for question ${index + 1}" title="${(photo as Record<string, unknown>).originalName || 'Uploaded photo'}" />` : '<span class="no-response">No photo</span>'}
+          ${photo?.link ? `<img src="${photo.link}" alt="Photo for question ${index + 1}" title="${photo.originalName || 'Uploaded photo'}" />` : '<span class="no-response">No photo</span>'}
         </td>
       </tr>
     `;
@@ -407,13 +486,13 @@ export function reportToHtml(
   report: GenerateReportOutput, 
   accountName: string, 
   generatedBy: string,
-  completionData?: Record<string, unknown>,
-  assignmentData?: Record<string, unknown>
+  completionData?: any,
+  assignmentData?: any
 ): string {
   // Extract metadata from the report or completion data if available
   const assignmentName = report.title || "Safety Assessment Report";
-  const completedBy = (completionData?.completedBy as string) || "Not specified";
-  const completionDate = (completionData?.completionDate as string) || (completionData?.date as string) || "Not specified";
+  const completedBy = completionData?.completedBy || "Not specified";
+  const completionDate = completionData?.completionDate || completionData?.date || "Not specified";
   
   // This function converts the structured report data to HTML with enhanced styling
   let html = `

@@ -566,14 +566,11 @@ export default function CompleteAssignmentPage() {
   };
 
   const simulateUpload = async (photoId: string, file: File) => {
-    photoBank.setUploading(true);
-    
     try {
       // Simulate upload progress
       for (let progress = 0; progress <= 100; progress += 10) {
         await new Promise(resolve => setTimeout(resolve, 100));
         photoBank.updatePhoto(photoId, { progress }); 
-        photoBank.setUploadProgress(progress);
       }
 
       // Mark as uploaded
@@ -586,9 +583,6 @@ export default function CompleteAssignmentPage() {
         status: 'error',
         error: error instanceof Error ? error.message : 'Upload failed', 
       });
-    } finally {
-      photoBank.setUploading(false);
-      photoBank.setUploadProgress(0);
     }
   };
 
@@ -630,23 +624,61 @@ export default function CompleteAssignmentPage() {
     const formDataForSubmission = new FormData();
     const answersObject: Record<string, unknown> = {};
     const commentsObject: Record<string, unknown> = {};
+    
+    // Process Photo Bank photos that have been assigned to questions
+    const photoBankPhotos = photoBank.getAllPhotos().filter(p => p.assignmentId === assignmentId);
+    const uploadedPhotos: Record<string, any> = {};
+    
+    // Add photos from Photo Bank that are assigned to questions
+    photoBankPhotos.forEach(photo => {
+      if (photo.questionId && photo.status === 'uploaded') {
+        uploadedPhotos[photo.questionId] = {
+          date: new Date().toLocaleDateString('en-US', { 
+            month: '2-digit', 
+            day: '2-digit', 
+            year: 'numeric', 
+            timeZone: 'America/New_York' 
+          }),
+          link: photo.url,
+          submittedBy: user.email,
+          originalName: photo.name
+        };
+      }
+    });
+    
+    // Add photos from individual question uploads
+    Object.keys(uploadedFileDetails).forEach(questionId => {
+      const fileDetail = uploadedFileDetails[questionId];
+      if (fileDetail) {
+        uploadedPhotos[questionId] = {
+          date: new Date().toLocaleDateString('en-US', { 
+            month: '2-digit', 
+            day: '2-digit', 
+            year: 'numeric', 
+            timeZone: 'America/New_York' 
+          }),
+          link: fileDetail.url,
+          submittedBy: user.email,
+          originalName: fileDetail.name
+        };
+      }
+    });
 
-    conditionallyVisibleQuestions.forEach((question) => {
-      const rawAnswer = formDataToProcess[question.id];
+    // Process each question
+    assignment.questions.forEach((question) => {
       let questionAnswer: unknown;
 
-      if (question.component === 'checkbox' && question.options) {
-        const selectedOptions = parseOptions(question.options, question)
-          .filter(opt => formDataToProcess[`${question.id}.${opt.value}`] === true)
-          .map(opt => opt.value);
-        questionAnswer = selectedOptions;
-      } else if ((question.component === 'multiButtonSelect' || question.component === 'multiSelect') && question.options) {
-        const selectedOptions: string[] = [];
-        parseOptions(question.options, question).forEach(opt => {
-          if (formDataToProcess[`${question.id}.${opt.value}`]) {
-            selectedOptions.push(opt.value);
-          }
-        });
+      if (question.component === 'select' || question.component === 'options') {
+        const selectedOptions = formDataToProcess[question.id];
+        if (Array.isArray(selectedOptions)) {
+          questionAnswer = selectedOptions;
+        } else if (typeof selectedOptions === 'string') {
+          questionAnswer = selectedOptions;
+        } else {
+          questionAnswer = '';
+        }
+      } else if (question.component === 'checkbox' && question.options) {
+        const selectedOptions = formDataToProcess[question.id] || [];
         questionAnswer = selectedOptions;
       } else if (question.component === 'checkbox' && !question.options) {
         questionAnswer = formDataToProcess[question.id] === true;
@@ -660,12 +692,9 @@ export default function CompleteAssignmentPage() {
           questionAnswer = '';
         }
       } else if (question.component === 'photoUpload') {
-        const fileDetail = uploadedFileDetails[question.id];
-        if (fileDetail) {
-          questionAnswer = fileDetail.name;
-        } else {
-          questionAnswer = '';
-        }
+        // Check if there's a photo assigned to this question (from Photo Bank or direct upload)
+        const hasPhoto = uploadedPhotos[question.id] || uploadedFileDetails[question.id];
+        questionAnswer = hasPhoto ? (uploadedPhotos[question.id]?.originalName || uploadedFileDetails[question.id]?.name) : '';
       } else {
         questionAnswer = formDataToProcess[question.id] ?? '';
       }
@@ -690,6 +719,11 @@ export default function CompleteAssignmentPage() {
         year: 'numeric', 
         timeZone: 'America/New_York' 
       }));
+      
+      // Add uploaded photos data
+      if (Object.keys(uploadedPhotos).length > 0) {
+        formDataForSubmission.append('uploadedPhotos', JSON.stringify(uploadedPhotos));
+      }
       
       const schoolSelectorQuestion = assignment.questions.find(q => q.component === 'schoolSelector');
       if (schoolSelectorQuestion && formDataToProcess[schoolSelectorQuestion.id]) {
@@ -1102,6 +1136,39 @@ export default function CompleteAssignmentPage() {
                           className="w-full h-full object-cover"
                         />
                       </div>
+                      
+                      {/* Question Assignment Dropdown - Positioned at bottom */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-2">
+                        <div className="space-y-1">
+                          <p className="text-xs text-white truncate">{photo.name}</p>
+                          
+                          {/* Assignment Dropdown */}
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Select 
+                              value={photo.questionId || 'unassigned'}
+                              onValueChange={(value) => {
+                                const newQuestionId = value === 'unassigned' ? undefined : value;
+                                photoBank.updatePhoto(photo.id, { questionId: newQuestionId });
+                              }}
+                            >
+                              <SelectTrigger className="h-6 text-xs bg-white/10 border-white/20 text-white hover:bg-white/20">
+                                <SelectValue placeholder="Assign to..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unassigned">Unassigned</SelectItem>
+                                {assignment?.questions
+                                  ?.filter(q => q.photoUpload)
+                                  .map(question => (
+                                  <SelectItem key={question.id} value={question.id}>
+                                    {question.label || `Question ${question.id.substring(0, 8)}...`}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                      
                       <Button
                         variant="destructive"
                         size="icon"
@@ -1724,7 +1791,7 @@ export default function CompleteAssignmentPage() {
             <DialogDescription>
               {selectedQuestionForPhotoBank 
                 ? "Select a photo to assign to the current question"
-                : "Manage all photos for this assignment"
+                : "Manage all photos for this assignment. Assign photos to specific questions or mark as unassigned."
               }
             </DialogDescription>
           </DialogHeader>
