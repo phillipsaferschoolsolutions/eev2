@@ -250,10 +250,14 @@ export default function CompleteAssignmentPage() {
           return value === true;
         }
       case 'multiButtonSelect':
-      case 'multiSelect':
         if (question.options) {
           const options = parseOptions(question.options, question);
           return options.some(opt => formData[`${question.id}.${opt.value}`] === true);
+        }
+        return false;
+      case 'multiSelect':
+        if (Array.isArray(value)) {
+          return value.length > 0;
         }
         return false;
       case 'photoUpload':
@@ -1441,6 +1445,31 @@ export default function CompleteAssignmentPage() {
                             ))}
                           </SelectContent>
                         </Select>
+                      );
+
+                    case 'multiSelect':
+                      const multiSelectOptions = parseOptions(question.options);
+                      const multiSelectedValues = Array.isArray(formData[question.id]) ? formData[question.id] as string[] : [];
+                      
+                      return (
+                        <div className="space-y-2">
+                          {multiSelectOptions.map((option) => (
+                            <div key={option.value} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`${question.id}-${option.value}`}
+                                checked={multiSelectedValues.includes(option.value)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    handleInputChange(question.id, [...multiSelectedValues, option.value]);
+                                  } else {
+                                    handleInputChange(question.id, multiSelectedValues.filter(v => v !== option.value));
+                                  }
+                                }}
+                              />
+                              <Label htmlFor={`${question.id}-${option.value}`}>{option.label}</Label>
+                            </div>
+                          ))}
+                        </div>
                       );
 
                     case 'options':

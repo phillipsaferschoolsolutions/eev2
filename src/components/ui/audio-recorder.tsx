@@ -328,6 +328,7 @@ export function AudioRecorder({
               className="flex-1 h-2" 
             />
             <Button
+              type="button"
               variant="destructive"
               size="sm"
               onClick={stopRecording}
@@ -343,6 +344,7 @@ export function AudioRecorder({
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <Button
+                type="button"
                 variant="outline"
                 size="icon"
                 onClick={togglePlayPause}
@@ -368,6 +370,7 @@ export function AudioRecorder({
               </div>
               
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
                 onClick={removeAudio}
@@ -400,6 +403,7 @@ export function AudioRecorder({
         {/* Record Button */}
         {!audioData && !isRecording && (
           <Button
+            type="button"
             variant="outline"
             className="w-full h-12"
             onMouseDown={startRecording}
