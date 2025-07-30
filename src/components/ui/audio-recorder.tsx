@@ -121,7 +121,9 @@ export function AudioRecorder({
 
         // Create audio element to get duration
         const tempAudio = new Audio(audioUrl);
-        tempAudio.onloadedmetadata = () => {
+        
+        // Set up metadata loading handler
+        const handleMetadataLoad = () => {
           const detectedDuration = tempAudio.duration;
           // Ensure duration is valid
           const validDuration = isNaN(detectedDuration) || !isFinite(detectedDuration) ? 0 : detectedDuration;
@@ -136,10 +138,14 @@ export function AudioRecorder({
           onAudioChange(newAudioData);
           setDuration(validDuration);
           setCurrentTime(0);
+          
+          // Clean up
+          tempAudio.removeEventListener('loadedmetadata', handleMetadataLoad);
+          tempAudio.removeEventListener('error', handleError);
         };
-
-        // Fallback if metadata doesn't load
-        tempAudio.onerror = () => {
+        
+        // Set up error handler
+        const handleError = () => {
           const newAudioData: AudioData = {
             blob: audioBlob,
             url: audioUrl,
@@ -150,7 +156,18 @@ export function AudioRecorder({
           onAudioChange(newAudioData);
           setDuration(0);
           setCurrentTime(0);
+          
+          // Clean up
+          tempAudio.removeEventListener('loadedmetadata', handleMetadataLoad);
+          tempAudio.removeEventListener('error', handleError);
         };
+        
+        // Add event listeners
+        tempAudio.addEventListener('loadedmetadata', handleMetadataLoad);
+        tempAudio.addEventListener('error', handleError);
+        
+        // Load the audio to trigger metadata loading
+        tempAudio.load();
 
         playAudioFeedback('stop');
         stream.getTracks().forEach(track => track.stop());
@@ -224,6 +241,22 @@ export function AudioRecorder({
         if (!audioRef.current.src || audioRef.current.src !== audioData.url) {
           audioRef.current.src = audioData.url;
           audioRef.current.load();
+        }
+        
+        // Wait for metadata to load before playing
+        if (audioRef.current.readyState < 1) {
+          await new Promise<void>((resolve, reject) => {
+            const handleLoadedMetadata = () => {
+              audioRef.current?.removeEventListener('loadedmetadata', handleLoadedMetadata);
+              resolve();
+            };
+            const handleError = () => {
+              audioRef.current?.removeEventListener('error', handleError);
+              reject(new Error('Failed to load audio metadata'));
+            };
+            audioRef.current?.addEventListener('loadedmetadata', handleLoadedMetadata);
+            audioRef.current?.addEventListener('error', handleError);
+          });
         }
         
         await audioRef.current.play();
@@ -312,6 +345,9 @@ export function AudioRecorder({
         setAudioData(updatedAudioData);
         onAudioChange(updatedAudioData);
       }
+      
+      // Also update current time to 0 when metadata loads
+      setCurrentTime(0);
     }
   }, [audioData, onAudioChange]);
 
@@ -405,7 +441,7 @@ export function AudioRecorder({
               <div className="flex-1 space-y-2">
                 <Slider
                   value={[currentTime]}
-                  max={duration || 1}
+                  max={Math.max(duration, 0.1)}
                   step={0.1}
                   onValueChange={handleSliderChange}
                   disabled={disabled || isUploading}

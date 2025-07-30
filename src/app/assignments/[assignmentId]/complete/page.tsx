@@ -659,6 +659,19 @@ export default function CompleteAssignmentPage() {
     
     console.log("Merged form data to process:", formDataToProcess);
     
+    // Debug: Check specific text questions
+    assignment.questions.forEach(q => {
+      if (q.component === 'text' || q.component === 'textarea') {
+        console.log(`DEBUG - Text question ${q.id} (${q.component}):`, {
+          label: q.label,
+          currentFormDataValue: currentFormData[q.id],
+          localFormDataValue: localFormData[q.id],
+          mergedValue: formDataToProcess[q.id],
+          hasValue: formDataToProcess[q.id] !== undefined && formDataToProcess[q.id] !== null && formDataToProcess[q.id] !== ''
+        });
+      }
+    });
+    
     setIsSubmitting(true);
 
     const formDataForSubmission = new FormData();
@@ -779,10 +792,22 @@ export default function CompleteAssignmentPage() {
         } else {
           questionAnswer = '';
         }
+      } else if (question.component === 'text' || question.component === 'textarea' || question.component === 'email' || question.component === 'url' || question.component === 'telephone' || question.component === 'number') {
+        // Handle text-based questions (React Hook Form registered fields)
+        const textValue = formDataToProcess[question.id];
+        console.log(`Text/textarea question ${question.id} (${question.component}):`, { 
+          textValue, 
+          type: typeof textValue,
+          isUndefined: textValue === undefined,
+          isNull: textValue === null,
+          isEmpty: textValue === '',
+          trimmedLength: typeof textValue === 'string' ? textValue.trim().length : 'N/A'
+        });
+        questionAnswer = textValue ?? '';
       } else {
-        // Default case for text, textarea, and other components
+        // Default case for any other components
         const defaultValue = formDataToProcess[question.id];
-        console.log(`Default question ${question.id}:`, { defaultValue, type: typeof defaultValue });
+        console.log(`Default question ${question.id} (${question.component}):`, { defaultValue, type: typeof defaultValue });
         questionAnswer = defaultValue ?? '';
       }
 
