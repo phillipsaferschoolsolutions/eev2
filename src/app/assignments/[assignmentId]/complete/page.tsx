@@ -636,17 +636,21 @@ export default function CompleteAssignmentPage() {
       return;
     }
     
-    const currentFormData = getValues();
-    console.log("Current form data:", currentFormData);
+    const currentFormData = getValues(); // React Hook Form data (text, textarea, schoolSelector, etc.)
+    const localFormData = formData; // Local state data (select, checkbox, multiSelect, etc.)
+    
+    console.log("Current form data (React Hook Form):", currentFormData);
+    console.log("Local form data (handleInputChange):", localFormData);
     console.log("Form data from submit handler:", data);
+    console.log("Assignment questions:", assignment.questions.map(q => ({ id: q.id, component: q.component, label: q.label })));
     
-    // Use the form data that has actual values
-    const formDataToProcess = Object.keys(currentFormData).length > 0 && 
-      Object.values(currentFormData).some(val => val !== undefined && val !== null && val !== '') 
-      ? currentFormData 
-      : data;
+    // Merge both data sources - local state takes precedence for components that use handleInputChange
+    const formDataToProcess = {
+      ...currentFormData, // Start with React Hook Form data
+      ...localFormData    // Override with local state data (select, checkbox, multiSelect, etc.)
+    };
     
-    console.log("Form data to process:", formDataToProcess);
+    console.log("Merged form data to process:", formDataToProcess);
     
     setIsSubmitting(true);
 
@@ -695,11 +699,18 @@ export default function CompleteAssignmentPage() {
 
     // Process each question - ensure we process ALL questions, not just visible ones
     assignment.questions.forEach((question) => {
+      console.log(`Processing question ${question.id} (${question.component}):`, {
+        label: question.label,
+        rawValue: formDataToProcess[question.id],
+        hasValue: formDataToProcess[question.id] !== undefined && formDataToProcess[question.id] !== null && formDataToProcess[question.id] !== ''
+      });
+      
       let questionAnswer: unknown;
 
       // Handle different question types
       if (question.component === 'select' || question.component === 'options') {
         const selectedOptions = formDataToProcess[question.id];
+        console.log(`Select/options question ${question.id}:`, { selectedOptions, type: typeof selectedOptions });
         if (Array.isArray(selectedOptions)) {
           questionAnswer = selectedOptions;
         } else if (typeof selectedOptions === 'string') {
@@ -710,6 +721,7 @@ export default function CompleteAssignmentPage() {
       } else if (question.component === 'multiSelect') {
         // Handle multiSelect questions (checkboxes with multiple options)
         const selectedValues = formDataToProcess[question.id];
+        console.log(`MultiSelect question ${question.id}:`, { selectedValues, type: typeof selectedValues });
         if (Array.isArray(selectedValues)) {
           questionAnswer = selectedValues;
         } else {
@@ -717,9 +729,12 @@ export default function CompleteAssignmentPage() {
         }
       } else if (question.component === 'checkbox' && question.options) {
         const selectedOptions = formDataToProcess[question.id] || [];
+        console.log(`Checkbox with options question ${question.id}:`, { selectedOptions, type: typeof selectedOptions });
         questionAnswer = selectedOptions;
       } else if (question.component === 'checkbox' && !question.options) {
-        questionAnswer = formDataToProcess[question.id] === true;
+        const checkboxValue = formDataToProcess[question.id];
+        console.log(`Checkbox without options question ${question.id}:`, { checkboxValue, type: typeof checkboxValue });
+        questionAnswer = checkboxValue === true;
       } else if (question.component === 'multiButtonSelect') {
         // Handle multiButtonSelect questions (multiple buttons that can be selected)
         const selectedValues: string[] = [];
@@ -732,6 +747,7 @@ export default function CompleteAssignmentPage() {
             }
           });
         }
+        console.log(`MultiButtonSelect question ${question.id}:`, { selectedValues });
         questionAnswer = selectedValues;
       } else if ((question.component === 'date' || question.component === 'completionDate') && formDataToProcess[question.id] instanceof Date) {
         questionAnswer = format(formDataToProcess[question.id] as Date, "yyyy-MM-dd");
@@ -749,6 +765,7 @@ export default function CompleteAssignmentPage() {
       } else if (question.component === 'schoolSelector') {
         // Handle school selector questions
         const selectedLocationId = formDataToProcess[question.id];
+        console.log(`SchoolSelector question ${question.id}:`, { selectedLocationId });
         if (selectedLocationId) {
           const selectedLocation = locations.find(loc => loc.id === selectedLocationId);
           questionAnswer = selectedLocation ? selectedLocation.locationName : selectedLocationId;
@@ -757,9 +774,12 @@ export default function CompleteAssignmentPage() {
         }
       } else {
         // Default case for text, textarea, and other components
-        questionAnswer = formDataToProcess[question.id] ?? '';
+        const defaultValue = formDataToProcess[question.id];
+        console.log(`Default question ${question.id}:`, { defaultValue, type: typeof defaultValue });
+        questionAnswer = defaultValue ?? '';
       }
 
+      console.log(`Final answer for ${question.id}:`, questionAnswer);
       answersObject[question.id] = questionAnswer;
 
       // Handle comments for questions that have them enabled
@@ -770,6 +790,8 @@ export default function CompleteAssignmentPage() {
     });
     
     console.log("Processed answers object:", answersObject);
+    console.log("Number of questions processed:", Object.keys(answersObject).length);
+    console.log("Number of questions in assignment:", assignment.questions.length);
     
     try {
       formDataForSubmission.append('content', JSON.stringify(answersObject));
@@ -873,6 +895,7 @@ export default function CompleteAssignmentPage() {
         
         // Clear form data and uploaded files
         reset({});
+        setFormData({}); // Clear local form data
         setUploadedFileDetails({});
         setAudioNotes({});
         setUploadedPhotos({});
