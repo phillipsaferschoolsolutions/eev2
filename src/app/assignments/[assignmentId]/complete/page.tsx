@@ -637,7 +637,16 @@ export default function CompleteAssignmentPage() {
     }
     
     const currentFormData = getValues();
-    const formDataToProcess = Object.keys(currentFormData).length > 0 ? currentFormData : data;
+    console.log("Current form data:", currentFormData);
+    console.log("Form data from submit handler:", data);
+    
+    // Use the form data that has actual values
+    const formDataToProcess = Object.keys(currentFormData).length > 0 && 
+      Object.values(currentFormData).some(val => val !== undefined && val !== null && val !== '') 
+      ? currentFormData 
+      : data;
+    
+    console.log("Form data to process:", formDataToProcess);
     
     setIsSubmitting(true);
 
@@ -684,7 +693,7 @@ export default function CompleteAssignmentPage() {
       }
     });
 
-    // Process each question
+    // Process each question - ensure we process ALL questions, not just visible ones
     assignment.questions.forEach((question) => {
       let questionAnswer: unknown;
 
@@ -759,6 +768,8 @@ export default function CompleteAssignmentPage() {
         commentsObject[question.id] = formDataToProcess[commentKey];
       }
     });
+    
+    console.log("Processed answers object:", answersObject);
     
     try {
       formDataForSubmission.append('content', JSON.stringify(answersObject));
@@ -853,6 +864,19 @@ export default function CompleteAssignmentPage() {
       );
       
       if (result) {
+        // Clear Photo Bank data for this assignment after successful submission
+        // Remove photos for this specific assignment
+        const photosForAssignment = photoBank.getPhotosForAssignment(assignmentId);
+        photosForAssignment.forEach(photo => {
+          photoBank.removePhoto(photo.id);
+        });
+        
+        // Clear form data and uploaded files
+        reset({});
+        setUploadedFileDetails({});
+        setAudioNotes({});
+        setUploadedPhotos({});
+        
         toast({ title: "Assignment Submitted Successfully", description: "Your assignment has been submitted." });
         router.push('/assessment-forms');
       } else {
