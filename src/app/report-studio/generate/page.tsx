@@ -149,7 +149,7 @@ export default function GenerateReportPage() {
         undefined, // No school filter
         "alltime" // Get all completions
       );
-      setCompletions(fetchedCompletions as CompletionItem[]);
+      setCompletions(fetchedCompletions as unknown as CompletionItem[]);
     } catch (error) {
       console.error("Failed to fetch completions:", error);
       setCompletionsError("Failed to load completions. Please try again.");
@@ -178,12 +178,15 @@ export default function GenerateReportPage() {
   
   // Function to generate a report
   const handleGenerateReport = async () => {
-    if (!selectedAssignmentId || !selectedCompletionId || !userProfile?.account) {
-      setReportError("Please select both an assignment and a completion.");
+    if (!selectedAssignmentId || !userProfile?.account) {
+      setReportError("Please select an assignment.");
       return;
     }
     
-    if (reportGenerationMode === "template" && !selectedTemplateId) {
+    // Check if we're generating a template report (no completion selected)
+    const isTemplateReport = !selectedCompletionId;
+    
+    if (!isTemplateReport && reportGenerationMode === "template" && !selectedTemplateId) {
       setReportError("Please select a template for template-based report generation.");
       return;
     }
@@ -193,23 +196,17 @@ export default function GenerateReportPage() {
     setSavedReportId(null); // Reset saved status on new generation
     
     try {
-      // Fetch completion and assignment data at the beginning
-      const { getCompletionDetails, getAssignmentById } = await import("@/services/assignmentFunctionsService");
-      const fetchedCompletionData = await getCompletionDetails(selectedAssignmentId, selectedCompletionId, userProfile.account);
+      // Fetch assignment data
+      const { getAssignmentById } = await import("@/services/assignmentFunctionsService");
       const fetchedAssignmentData = await getAssignmentById(selectedAssignmentId, userProfile.account);
       
-      if (reportGenerationMode === "ai") {
-        // AI-generated report
-        const useCustomSettings = useCustomPrompt && promptSettings && promptSettings.customPrompt.trim() !== "";
-        
-        const report = await generateReportForCompletion(
+      if (isTemplateReport) {
+        // Generate template report for assignment with no completion data
+        const { generateTemplateReportForAssignment } = await import("@/services/reportService");
+        const report = generateTemplateReportForAssignment(
           selectedAssignmentId,
-          selectedCompletionId,
           userProfile.account,
-          useCustomSettings ? {
-            customPrompt: promptSettings.customPrompt,
-            promptMode: promptSettings.promptMode
-          } : undefined
+          fetchedAssignmentData as any
         );
         
         // Convert the structured report data to HTML
@@ -217,29 +214,59 @@ export default function GenerateReportPage() {
           report, 
           userProfile.account, 
           userProfile.email || user?.email || "Unknown User",
-          fetchedCompletionData,
-          fetchedAssignmentData as Record<string, unknown> || {}
+          null, // No completion data
+          fetchedAssignmentData as any
         );
         setReportHtml(html);
-        setReportName(report.reportName || report.title || "Untitled Report");
+        setReportName(report.title || "Template Report");
       } else {
-        // Template-based report
-        const selectedTemplate = templates.find((t: ReportTemplate) => t.id === selectedTemplateId);
-        if (!selectedTemplate) {
-          throw new Error("Selected template not found.");
+        // Fetch completion data for normal report generation
+        const { getCompletionDetails } = await import("@/services/assignmentFunctionsService");
+        const fetchedCompletionData = await getCompletionDetails(selectedAssignmentId, selectedCompletionId, userProfile.account);
+        
+        if (reportGenerationMode === "ai") {
+          // AI-generated report
+          const useCustomSettings = useCustomPrompt && promptSettings && promptSettings.customPrompt.trim() !== "";
+          
+          const report = await generateReportForCompletion(
+            selectedAssignmentId,
+            selectedCompletionId,
+            userProfile.account,
+            useCustomSettings ? {
+              customPrompt: promptSettings.customPrompt,
+              promptMode: promptSettings.promptMode
+            } : undefined
+          );
+          
+          // Convert the structured report data to HTML
+          const html = reportToHtml(
+            report, 
+            userProfile.account, 
+            userProfile.email || user?.email || "Unknown User",
+            fetchedCompletionData,
+            fetchedAssignmentData as any
+          );
+          setReportHtml(html);
+          setReportName(report.title || "Untitled Report");
+        } else {
+          // Template-based report
+          const selectedTemplate = templates.find((t: ReportTemplate) => t.id === selectedTemplateId);
+          if (!selectedTemplate) {
+            throw new Error("Selected template not found.");
+          }
+          
+          // Replace placeholders in the template
+          const html = replacePlaceholders(
+            selectedTemplate.htmlContent,
+            fetchedCompletionData,
+            fetchedAssignmentData as any,
+            userProfile.account,
+            userProfile.email || "Unknown User"
+          );
+          
+          setReportHtml(html);
+          setReportName(`${selectedTemplate.name} - ${fetchedAssignmentData?.assessmentName || "Report"}`);
         }
-        
-        // Replace placeholders in the template
-        const html = replacePlaceholders(
-          selectedTemplate.htmlContent,
-          fetchedCompletionData,
-          fetchedAssignmentData as Record<string, unknown> || {},
-          userProfile.account,
-          userProfile.email || "Unknown User"
-        );
-        
-        setReportHtml(html);
-        setReportName(`${selectedTemplate.name} - ${fetchedAssignmentData?.assessmentName || "Report"}`);
       }
       
       // Switch to the editor tab
@@ -254,7 +281,7 @@ export default function GenerateReportPage() {
 
   // Function to save the report
   const handleSaveReport = async () => {
-    if (!reportName || !reportHtml || !selectedAssignmentId || !selectedCompletionId || !userProfile?.account) {
+    if (!reportName || !reportHtml || !selectedAssignmentId || !userProfile?.account) {
       toast({ variant: "destructive", title: "Save Failed", description: "Missing report data to save." });
       return;
     }
@@ -265,7 +292,7 @@ export default function GenerateReportPage() {
         reportName,
         reportHtml,
         selectedAssignmentId,
-        selectedCompletionId,
+        selectedCompletionId || "template", // Use "template" as completion ID for template reports
         userProfile.account
       );
       setSavedReportId(result.id);
@@ -378,7 +405,7 @@ export default function GenerateReportPage() {
               
               {/* Completion Selection */}
               <div>
-                <label className="block text-sm font-medium mb-2">Select Completion</label>
+                <label className="block text-sm font-medium mb-2">Select Completion (Optional)</label>
                 {isLoadingCompletions ? (
                   <Skeleton className="h-10 w-full" />
                 ) : completionsError ? (
@@ -403,22 +430,26 @@ export default function GenerateReportPage() {
                     onValueChange={setSelectedCompletionId}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={completions.length > 0 ? "Select a completion" : "No completions found"} />
+                      <SelectValue placeholder={completions.length > 0 ? "Select a completion (optional)" : "No completions found - will generate template report"} />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="">
+                        Generate Template Report (No completion data)
+                      </SelectItem>
                       {completions.length > 0 ? (
                         completions.map((completion: CompletionItem) => (
                           <SelectItem key={completion.id} value={completion.id}>
-                            {completion.data.locationName || "Unknown Location"} - {completion.data.completedBy || "Unknown User"} - {new Date(completion.data.completionDate || completion.data.submittedTimeServer).toLocaleDateString()}
+                            {completion.data.locationName || "Unknown Location"} - {completion.data.completedBy || "Unknown User"} - {new Date(String(completion.data.completionDate || completion.data.submittedTimeServer || Date.now())).toLocaleDateString()}
                           </SelectItem>
                         ))
-                      ) : (
-                        <SelectItem value="none" disabled>
-                          No completions found
-                        </SelectItem>
-                      )}
+                      ) : null}
                     </SelectContent>
                   </Select>
+                )}
+                {selectedAssignmentId && completions.length === 0 && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    No completions found for this assessment. You can generate a template report to see the assessment structure.
+                  </p>
                 )}
               </div>
               
@@ -435,7 +466,7 @@ export default function GenerateReportPage() {
                         id="useCustomPrompt" 
                         checked={useCustomPrompt} 
                         onCheckedChange={setUseCustomPrompt}
-                        disabled={!promptSettings || !promptSettings.customPrompt}
+                        disabled={!promptSettings || !Boolean(promptSettings.customPrompt)}
                       />
                       <Label htmlFor="useCustomPrompt">
                         {useCustomPrompt ? "Using Custom Prompt" : "Using Default Prompt"}
@@ -482,21 +513,22 @@ export default function GenerateReportPage() {
                 onClick={handleGenerateReport} 
                 disabled={
                   !selectedAssignmentId || 
-                  !selectedCompletionId || 
                   isGeneratingReport ||
-                  (reportGenerationMode === "template" && !selectedTemplateId)
+                  Boolean(reportGenerationMode === "template" && !selectedTemplateId && selectedCompletionId)
                 }
                 className="ml-auto"
               >
                 {isGeneratingReport ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {reportGenerationMode === "ai" ? "Generating AI Report..." : "Generating Template Report..."}
+                    {!selectedCompletionId ? "Generating Template Report..." : 
+                     (reportGenerationMode === "ai" ? "Generating AI Report..." : "Generating Template Report...")}
                   </>
                 ) : (
                   <>
                     <FilePlus className="mr-2 h-4 w-4" />
-                    {reportGenerationMode === "ai" ? "Generate AI Report" : "Generate from Template"}
+                    {!selectedCompletionId ? "Generate Template Report" : 
+                     (reportGenerationMode === "ai" ? "Generate AI Report" : "Generate from Template")}
                   </>
                 )}
               </Button>

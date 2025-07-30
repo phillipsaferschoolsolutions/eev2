@@ -92,7 +92,7 @@ export async function getDashboardWidgetsSandbox(accountName: string): Promise<W
     throw new Error("Account name is required for getDashboardWidgetsSandbox.");
   }
   // Ensure this uses the WIDGETS_BASE_URL and the /sandbox path
-  const result = await authedFetch<WidgetSandboxData | undefined>(`${WIDGETS_BASE_URL}/sandbox`, {}, accountName);
+  const result = await authedFetch<WidgetSandboxData | undefined>(`${WIDGETS_BASE_URL}/sandbox`);
   return result || null;
 }
 
@@ -118,8 +118,7 @@ export async function getRawResponses(
     {
       method: 'POST',
       body: JSON.stringify(payload),
-    },
-    accountName
+    }
   );
   return result || [];
 }
@@ -149,7 +148,7 @@ export async function getLastCompletions(
   try {
     const result = await authedFetch<CompletedAssignmentSummary[] | undefined>(url, {
       method: 'GET',
-    }, accountName);
+    });
     console.log("Completed Assignments API response:", result);
     return result || null;
   } catch (error: unknown) {
@@ -177,9 +176,7 @@ export async function getCommonResponsesForAssignment(
   }
   const encodedAssignmentId = encodeURIComponent(assignmentId);
   const result = await authedFetch<SchoolsWithQuestionsResponse | undefined>(
-    `${ANALYSIS_V2_BASE_URL}/schoolswithquestions/${encodedAssignmentId}/${period}`,
-    {},
-    accountName
+    `${ANALYSIS_V2_BASE_URL}/schoolswithquestions/${encodedAssignmentId}/${period}`
   );
   return result || null;
 }
@@ -201,8 +198,7 @@ export async function getAggregatedCompletions(
     {
       method: 'POST',
       body: JSON.stringify(payload),
-    },
-    accountName
+    }
   );
   
   return result || null;
@@ -217,9 +213,7 @@ export async function getSavedReports(accountName: string): Promise<SavedReportM
     throw new Error("Account name is required for getSavedReports.");
   }
   const result = await authedFetch<SavedReportMetadata[] | undefined>(
-    `${ANALYSIS_BASE_URL}/reporting`,
-    {},
-    accountName
+    `${ANALYSIS_BASE_URL}/reporting`
   );
   return result || [];
 }
@@ -233,7 +227,7 @@ export async function getWidgetTrends(accountName: string): Promise<TrendsRespon
     throw new Error("Account name is required for getWidgetTrends.");
   }
   // Corrected to use WIDGETS_BASE_URL and /trends path
-  const result = await authedFetch<TrendsResponse | undefined>(`${WIDGETS_BASE_URL}/trends`, {}, accountName);
+  const result = await authedFetch<TrendsResponse | undefined>(`${WIDGETS_BASE_URL}/trends`);
   return result || null;
 }
 

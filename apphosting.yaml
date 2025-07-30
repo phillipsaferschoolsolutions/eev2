@@ -5,3 +5,65 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
+
+# Environment variables and secrets
+env:
+-   variable: GEMINI_API_KEY
+    value: AIzaSyBeK15_zNGSYNswe5lZPh3fnJpqu2kGStA
+    availability:
+    -   BUILD
+    -   RUNTIME
+
+-   variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyAkVi5N96SP0nLPy4LRTIBjeF2k6RO_yz0
+    availability:
+    -   BUILD
+    -   RUNTIME
+
+-   variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: webmvp-5b733.firebaseapp.com
+    availability:
+    -   BUILD
+    -   RUNTIME
+
+-   variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: webmvp-5b733
+    availability:
+    -   BUILD
+    -   RUNTIME
+
+-   variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: webmvp-5b733.appspot.com
+    availability:
+    -   BUILD
+    -   RUNTIME
+
+-   variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: 680177719529
+    availability:
+    -   BUILD
+    -   RUNTIME
+
+-   variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:680177719529:web:b5868649b93b105a28b878
+    availability:
+    -   BUILD
+    -   RUNTIME
+
+-   variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+    value: G-YVRNETGM2D
+    availability:
+    -   BUILD
+    -   RUNTIME
+
+-   variable: NEXT_PUBLIC_PEXEL_API_KEY
+    value: fJc3QeugalYSw2tVEAPoLIZnpDLXCBIUxxHLPN5lDgpxxQYCdf2bW7va
+    availability:
+    -   BUILD
+    -   RUNTIME
+
+-   variable: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    value: AIzaSyD_J3varra7MWW9WvbXBoPCY0mGfBS8EDA
+    availability:
+    -   BUILD
+    -   RUNTIME

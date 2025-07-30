@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import PivotTableUI from 'react-pivottable/PivotTableUI';
-import 'react-pivottable/pivottable.css';
 import type { PivotTableData } from '@/types/Analysis';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -13,10 +11,26 @@ interface PivotTableComponentProps {
 export default function PivotTableComponent({ data }: PivotTableComponentProps) {
   const [pivotState, setPivotState] = useState({});
   const [isClient, setIsClient] = useState(false);
+  const [PivotTableUI, setPivotTableUI] = useState<any>(null);
 
   // Use useEffect to ensure we only render the pivot table on the client
   useEffect(() => {
     setIsClient(true);
+    
+    // Dynamically import the pivot table component to avoid SSR issues
+    const loadPivotTable = async () => {
+      try {
+        // Import CSS first
+        await import('react-pivottable/pivottable.css');
+        // Then import the component
+        const module = await import('react-pivottable/PivotTableUI');
+        setPivotTableUI(() => module.default);
+      } catch (error) {
+        console.error('Failed to load pivot table:', error);
+      }
+    };
+    
+    loadPivotTable();
   }, []);
 
   // If no data, show a message
@@ -29,7 +43,7 @@ export default function PivotTableComponent({ data }: PivotTableComponentProps) 
   }
 
   // If we're on the server or haven't mounted yet, show a skeleton
-  if (!isClient) {
+  if (!isClient || !PivotTableUI) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-full" />
@@ -57,7 +71,7 @@ export default function PivotTableComponent({ data }: PivotTableComponentProps) 
     <div className="pivot-table-container">
       <PivotTableUI
         data={data}
-        onChange={s => setPivotState(s)}
+        onChange={(s: any) => setPivotState(s)}
         {...initialPivotState}
         {...pivotState}
       />

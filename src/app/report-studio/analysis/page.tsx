@@ -20,8 +20,8 @@ import { getAggregatedCompletions } from "@/services/analysisService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { ArrowLeft, BarChart2, PieChart, LineChart, Table as TableIcon, Download, RefreshCw, Shield, Loader2, X, CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-// import PivotTableComponent from "@/components/analysis/PivotTableComponent";
-// import VisualizationComponent from "@/components/analysis/VisualizationComponent";
+import PivotTableComponent from "@/components/analysis/PivotTableComponent";
+import VisualizationComponent from "@/components/analysis/VisualizationComponent";
 import type { AggregatedCompletionsPayload, AggregatedCompletionsResponse, PivotTableData } from "@/types/Analysis";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
@@ -688,10 +688,7 @@ export default function DataAnalysisPage() {
               
               <TabsContent value="pivot" className="p-6 pt-4">
                 <div className="border rounded-md overflow-auto">
-                  {/* <PivotTableComponent data={pivotData} /> */}
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Pivot table component temporarily disabled</p>
-                  </div>
+                  <PivotTableComponent data={pivotData} />
                 </div>
               </TabsContent>
               
@@ -721,15 +718,12 @@ export default function DataAnalysisPage() {
                 </div>
                 
                 <div className="border rounded-md p-4 h-[500px]">
-                  {/* <VisualizationComponent
+                  <VisualizationComponent
                     data={pivotData}
                     type={chartType}
                     dimensions={rowDimensions}
                     measures={measures}
-                  /> */}
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Visualization component temporarily disabled</p>
-                  </div>
+                  />
                 </div>
               </TabsContent>
             </Tabs>

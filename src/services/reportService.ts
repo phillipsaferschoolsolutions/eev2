@@ -415,10 +415,52 @@ export async function savePromptSettings(accountName: string, settings: PromptSe
  * Generates a comprehensive table of questions and responses for the appendix.
  */
 function generateQuestionResponseTable(completionData: any, assignmentData: any): string {
-  if (!completionData?.content || !assignmentData?.questions) {
-    return '<p>No question and response data available.</p>';
+  // If no assignment data, show a message
+  if (!assignmentData?.questions) {
+    return '<p>No assignment questions available.</p>';
   }
 
+  // If no completion data, show questions with "No response" indicators
+  if (!completionData?.content) {
+    let tableHtml = `
+      <table class="question-response-table">
+        <thead>
+          <tr>
+            <th class="question-cell">Question</th>
+            <th class="response-cell">Response</th>
+            <th class="comment-cell">Comments</th>
+            <th class="photo-cell">Photo</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    assignmentData.questions.forEach((question: any, index: number) => {
+      tableHtml += `
+        <tr>
+          <td class="question-cell">
+            <strong>Q${index + 1}:</strong> ${question.label}
+            ${question.required ? '<span style="color: #d32f2f;"> *</span>' : ''}
+            <br><small style="color: #666;">Type: ${question.component}</small>
+          </td>
+          <td class="response-cell">
+            <span class="no-response">No response provided</span>
+          </td>
+          <td class="comment-cell">
+            <span class="no-response">No comment</span>
+          </td>
+          <td class="photo-cell">
+            <span class="no-response">No photo</span>
+          </td>
+        </tr>
+      `;
+    });
+
+    tableHtml += '</tbody></table>';
+    return tableHtml;
+  }
+
+  // Normal case with completion data
   let tableHtml = `
     <table class="question-response-table">
       <thead>
@@ -474,6 +516,109 @@ function generateQuestionResponseTable(completionData: any, assignmentData: any)
 }
 
 /**
+ * Generates a template report for an assignment with no completion data.
+ * This creates a report structure showing the assignment questions but indicating no responses.
+ * @param assignmentId The ID of the assignment.
+ * @param accountName The account name.
+ * @param assignmentData The assignment data.
+ * @returns A template report structure.
+ */
+export function generateTemplateReportForAssignment(
+  assignmentId: string,
+  accountName: string,
+  assignmentData: any
+): GenerateReportOutput {
+  const assignmentName = assignmentData?.assessmentName || "Safety Assessment";
+  
+  return {
+    title: `${assignmentName} - Template Report`,
+    executiveSummary: `This is a template report for the ${assignmentName} assessment. No completion data is available at this time. This report shows the assessment structure and questions that would be included in a completed assessment.`,
+    methodology: `This template report was generated for an assessment that has not yet been completed. The report structure follows standard safety assessment methodology and includes all assessment questions that would be evaluated during a full completion.`,
+    riskAssessment: {
+      riskMatrix: "Risk assessment data will be available once the assessment is completed.",
+      criticalRisks: ["Assessment not yet completed - critical risks will be identified during completion"],
+      moderateRisks: ["Assessment not yet completed - moderate risks will be identified during completion"],
+      lowRisks: ["Assessment not yet completed - low risks will be identified during completion"]
+    },
+    complianceEvaluation: {
+      overview: "Compliance evaluation will be conducted once the assessment is completed.",
+      standardsReviewed: ["Standards will be reviewed during assessment completion"],
+      complianceStrengths: ["Compliance strengths will be identified during assessment completion"],
+      complianceGaps: ["Compliance gaps will be identified during assessment completion"]
+    },
+    domains: {
+      people: {
+        strengths: ["Staff strengths will be evaluated during assessment completion"],
+        improvements: ["Areas for improvement will be identified during assessment completion"],
+        observations: "Site-specific observations will be documented during assessment completion.",
+        recommendations: [{
+          recommendation: "Complete the assessment to receive specific recommendations",
+          severity: "Medium",
+          timeline: "Immediate",
+          reference: "Assessment completion required"
+        }]
+      },
+      process: {
+        strengths: ["Process strengths will be evaluated during assessment completion"],
+        improvements: ["Process improvements will be identified during assessment completion"],
+        observations: "Process observations will be documented during assessment completion.",
+        recommendations: [{
+          recommendation: "Complete the assessment to receive specific recommendations",
+          severity: "Medium",
+          timeline: "Immediate",
+          reference: "Assessment completion required"
+        }]
+      },
+      technology: {
+        strengths: ["Technology strengths will be evaluated during assessment completion"],
+        improvements: ["Technology improvements will be identified during assessment completion"],
+        observations: "Technology observations will be documented during assessment completion.",
+        recommendations: [{
+          recommendation: "Complete the assessment to receive specific recommendations",
+          severity: "Medium",
+          timeline: "Immediate",
+          reference: "Assessment completion required"
+        }]
+      }
+    },
+    detailedFindings: {
+      safetyMetrics: "Safety metrics will be calculated once the assessment is completed.",
+      benchmarkComparison: "Benchmark comparisons will be available once the assessment is completed.",
+      trendAnalysis: "Trend analysis will be available once the assessment is completed.",
+      incidentAnalysis: "Incident analysis will be available once the assessment is completed."
+    },
+    actionPlan: {
+      immediateActions: [{
+        action: "Complete the safety assessment",
+        timeline: "Immediate",
+        responsibility: "Site leadership",
+        resources: "Assessment team and necessary documentation"
+      }],
+      shortTermActions: [{
+        action: "Review assessment results and develop action plan",
+        timeline: "30-90 days",
+        responsibility: "Site leadership and safety team",
+        resources: "Assessment data and safety resources"
+      }],
+      longTermActions: [{
+        action: "Implement long-term safety improvements based on assessment findings",
+        timeline: "90+ days",
+        responsibility: "Site leadership and stakeholders",
+        resources: "Comprehensive safety improvement plan"
+      }]
+    },
+    nextSteps: [
+      "Complete the safety assessment with all required questions",
+      "Review and validate all assessment responses",
+      "Generate a comprehensive AI-powered report",
+      "Develop and implement action plan based on findings"
+    ],
+    appendices: "This template report includes the complete list of assessment questions that would be evaluated during a full completion.",
+    conclusion: `This template report demonstrates the structure and scope of the ${assignmentName} assessment. To receive a comprehensive safety evaluation and actionable recommendations, please complete the assessment with all required questions and responses.`
+  };
+}
+
+/**
  * Converts the structured report data to HTML for display in the editor.
  * @param report The structured report data.
  * @param accountName The account name to replace placeholders with.
@@ -493,6 +638,9 @@ export function reportToHtml(
   const assignmentName = report.title || "Safety Assessment Report";
   const completedBy = completionData?.completedBy || "Not specified";
   const completionDate = completionData?.completionDate || completionData?.date || "Not specified";
+  
+  // Check if this is a template report (no completion data)
+  const isTemplateReport = !completionData;
   
   // This function converts the structured report data to HTML with enhanced styling
   let html = `
@@ -567,6 +715,18 @@ export function reportToHtml(
         .report-metadata p {
           margin: 5px 0;
           font-size: 14px;
+        }
+        
+        /* Template Report Notice */
+        .template-notice {
+          background-color: #FFF3CD;
+          border: 1px solid #FFEAA7;
+          color: #856404;
+          padding: 15px;
+          border-radius: 5px;
+          margin-bottom: 20px;
+          text-align: center;
+          font-weight: bold;
         }
         
         /* Section Styles */
@@ -781,6 +941,13 @@ export function reportToHtml(
             <p><strong>Report Generated:</strong> ${new Date().toLocaleDateString()}</p>
           </div>
         </div>
+        
+        ${isTemplateReport ? `
+          <div class="template-notice">
+            ⚠️ TEMPLATE REPORT - This report was generated for an assessment with no completion data. 
+            The report shows the assessment structure and questions that would be evaluated during a full completion.
+          </div>
+        ` : ''}
         
         <div class="report-section">
           <h2>Executive Summary</h2>

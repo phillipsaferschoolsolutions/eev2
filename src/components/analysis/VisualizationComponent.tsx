@@ -1,22 +1,8 @@
 "use client";
 
-import React, { useMemo } from 'react';
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { PivotTableData } from '@/types/Analysis';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface VisualizationComponentProps {
   data: PivotTableData[];
@@ -31,6 +17,54 @@ export default function VisualizationComponent({
   dimensions, 
   measures 
 }: VisualizationComponentProps) {
+  const [isClient, setIsClient] = useState(false);
+  const [ChartComponents, setChartComponents] = useState<any>(null);
+
+  useEffect(() => {
+    setIsClient(true);
+    
+    // Dynamically import recharts components to avoid SSR issues
+    const loadCharts = async () => {
+      try {
+        const {
+          BarChart,
+          Bar,
+          LineChart,
+          Line,
+          PieChart,
+          Pie,
+          Cell,
+          XAxis,
+          YAxis,
+          CartesianGrid,
+          Tooltip,
+          Legend,
+          ResponsiveContainer,
+        } = await import('recharts');
+        
+        setChartComponents({
+          BarChart,
+          Bar,
+          LineChart,
+          Line,
+          PieChart,
+          Pie,
+          Cell,
+          XAxis,
+          YAxis,
+          CartesianGrid,
+          Tooltip,
+          Legend,
+          ResponsiveContainer,
+        });
+      } catch (error) {
+        console.error('Failed to load chart components:', error);
+      }
+    };
+    
+    loadCharts();
+  }, []);
+  
   // Prepare data for visualization
   const chartData = useMemo(() => {
     if (!data.length) return [];
@@ -54,7 +88,9 @@ export default function VisualizationComponent({
       // Sum up measures
       measures.forEach(measure => {
         if (item[measure] !== undefined) {
-          acc[dimensionValue as string][measure] += Number(item[measure]);
+          const currentValue = acc[dimensionValue as string][measure] as number;
+          const newValue = Number(item[measure]);
+          acc[dimensionValue as string][measure] = currentValue + newValue;
         }
       });
       
@@ -96,6 +132,32 @@ export default function VisualizationComponent({
       </div>
     );
   }
+
+  // If we're on the server or haven't loaded chart components yet, show a skeleton
+  if (!isClient || !ChartComponents) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  const {
+    BarChart,
+    Bar,
+    LineChart,
+    Line,
+    PieChart,
+    Pie,
+    Cell,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+  } = ChartComponents;
   
   // Render the appropriate chart based on the type
   return (

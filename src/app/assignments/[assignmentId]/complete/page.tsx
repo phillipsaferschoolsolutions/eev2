@@ -3,6 +3,7 @@
 import { usePhotoBank } from '@/hooks/use-photo-bank';
 import { QuestionPhotoUpload } from '@/components/ui/question-photo-upload';
 import { PhotoBank } from '@/components/ui/photo-bank';
+import { AudioRecorder, type AudioData } from '@/components/ui/audio-recorder';
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
@@ -95,6 +96,11 @@ export default function CompleteAssignmentPage() {
   const [uploadedFileDetails, setUploadedFileDetails] = useState<{ [questionId: string]: UploadedFileDetail | null }>({});
   const [uploadErrors, setUploadErrors] = useState<{ [questionId: string]: string | null }>({});
   const [imagePreviewUrls, setImagePreviewUrls] = useState<{ [questionId: string]: string | null }>({});
+
+  // Audio notes state management
+  const [audioNotes, setAudioNotes] = useState<{ [questionId: string]: AudioData | null }>({});
+  const [audioUploadProgress, setAudioUploadProgress] = useState<{ [questionId: string]: number }>({});
+  const [audioUploadErrors, setAudioUploadErrors] = useState<{ [questionId: string]: string | null }>({});
 
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationsError, setLocationsError] = useState<string | null>(null);
@@ -359,6 +365,15 @@ export default function CompleteAssignmentPage() {
     if (fileInput) fileInput.value = "";
   };
 
+  // Audio notes handler
+  const handleAudioChange = (questionId: string, audioData: AudioData | null) => {
+    setAudioNotes(prev => ({ ...prev, [questionId]: audioData }));
+    if (!audioData) {
+      setAudioUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
+      setAudioUploadErrors(prev => ({ ...prev, [questionId]: null }));
+    }
+  };
+
   // Save draft
   const handleSaveDraft = async () => {
     if (!userProfile?.account || !assignmentId) {
@@ -371,6 +386,7 @@ export default function CompleteAssignmentPage() {
     const dataToSave = {
       formValues: draftData,
       uploadedFileDetails: uploadedFileDetails,
+      audioNotes: audioNotes,
       savedAt: new Date().toISOString(),
     };
 
@@ -710,6 +726,64 @@ export default function CompleteAssignmentPage() {
     try {
       formDataForSubmission.append('content', JSON.stringify(answersObject));
       formDataForSubmission.append('commentsData', JSON.stringify(commentsObject));
+      
+      // Process and upload audio notes
+      const audioNotesData: Record<string, any> = {};
+      const audioUploadPromises: Promise<void>[] = [];
+      
+      Object.keys(audioNotes).forEach(questionId => {
+        const audioNote = audioNotes[questionId];
+        if (audioNote?.blob) {
+          // Upload audio note to Firebase Storage
+          const audioFileName = audioNote.name || `audio_note_${questionId}_${Date.now()}.webm`;
+          const audioStoragePath = `assignment_audio_notes/${assignment.id}/${user.uid}/${questionId}/${audioFileName}`;
+          const audioStorageRef = ref(storage, audioStoragePath);
+          const audioUploadTask = uploadBytesResumable(audioStorageRef, audioNote.blob);
+          
+          const promise = new Promise<void>((resolve, reject) => {
+            audioUploadTask.on('state_changed',
+              (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setAudioUploadProgress(prev => ({ ...prev, [questionId]: progress }));
+              },
+              (error) => {
+                console.error(`Audio upload failed for ${questionId}:`, error);
+                setAudioUploadErrors(prev => ({ ...prev, [questionId]: error.message }));
+                reject(error);
+              },
+              async () => {
+                try {
+                  const downloadURL = await getDownloadURL(audioUploadTask.snapshot.ref);
+                  audioNotesData[questionId] = {
+                    name: audioFileName,
+                    url: downloadURL,
+                    duration: audioNote.duration,
+                    uploadedAt: new Date().toISOString()
+                  };
+                  setAudioUploadProgress(prev => ({ ...prev, [questionId]: 100 }));
+                  resolve();
+                } catch (error) {
+                  console.error(`Failed to get audio download URL for ${questionId}:`, error);
+                  setAudioUploadErrors(prev => ({ ...prev, [questionId]: 'Failed to get download URL' }));
+                  reject(error);
+                }
+              }
+            );
+          });
+          audioUploadPromises.push(promise);
+        }
+      });
+      
+      // Wait for all audio uploads to complete
+      if (audioUploadPromises.length > 0) {
+        await Promise.all(audioUploadPromises);
+      }
+      
+      // Add audio notes data to form submission
+      if (Object.keys(audioNotesData).length > 0) {
+        formDataForSubmission.append('audioNotesData', JSON.stringify(audioNotesData));
+      }
+      
       formDataForSubmission.append('completedBy', user.email);
       formDataForSubmission.append('account', userProfile.account);
       formDataForSubmission.append('status', 'completed');
@@ -802,6 +876,7 @@ export default function CompleteAssignmentPage() {
           toast({ title: "Draft Loaded", description: "Your previous progress has been restored." });
           reset(draftData.formValues || {});
           setUploadedFileDetails((draftData.uploadedFileDetails || {}) as { [questionId: string]: UploadedFileDetail | null });
+          setAudioNotes((draftData.audioNotes || {}) as { [questionId: string]: AudioData | null });
         } else {
           const now = new Date();
           fetchedAssignment.questions.forEach(q => {
@@ -1714,6 +1789,19 @@ export default function CompleteAssignmentPage() {
                     />
                   </div>
                 )}
+
+                {/* Audio Notes Section */}
+                <div className="space-y-2 border-t pt-4">
+                  <Label className="text-sm font-medium">
+                    Audio Notes (Optional)
+                  </Label>
+                  <AudioRecorder
+                    questionId={question.id}
+                    onAudioChange={(audioData) => handleAudioChange(question.id, audioData)}
+                    disabled={isSubmitting}
+                    maxDuration={30}
+                  />
+                </div>
 
                 {/* Photo Upload Component */}
                 {question.photoUpload && (
