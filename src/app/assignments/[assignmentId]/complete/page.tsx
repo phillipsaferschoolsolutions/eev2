@@ -1487,6 +1487,14 @@ export default function CompleteAssignmentPage() {
                           {...register(question.id)}
                           placeholder={question.placeholder}
                           className={formErrors[question.id] ? "border-destructive" : ""}
+                          onChange={(e) => {
+                            console.log(`Text input change for ${question.id}:`, e.target.value);
+                            // Also update local state as backup
+                            setFormData(prev => ({
+                              ...prev,
+                              [question.id]: e.target.value
+                            }));
+                          }}
                         />
                       );
 
@@ -1497,6 +1505,14 @@ export default function CompleteAssignmentPage() {
                           placeholder={question.placeholder}
                           rows={4}
                           className={formErrors[question.id] ? "border-destructive" : ""}
+                          onChange={(e) => {
+                            console.log(`Textarea change for ${question.id}:`, e.target.value);
+                            // Also update local state as backup
+                            setFormData(prev => ({
+                              ...prev,
+                              [question.id]: e.target.value
+                            }));
+                          }}
                         />
                       );
 
@@ -1507,6 +1523,13 @@ export default function CompleteAssignmentPage() {
                           {...register(question.id)}
                           placeholder={question.placeholder}
                           className={formErrors[question.id] ? "border-destructive" : ""}
+                          onChange={(e) => {
+                            console.log(`Email input change for ${question.id}:`, e.target.value);
+                            setFormData(prev => ({
+                              ...prev,
+                              [question.id]: e.target.value
+                            }));
+                          }}
                         />
                       );
 
@@ -1517,6 +1540,13 @@ export default function CompleteAssignmentPage() {
                           {...register(question.id)}
                           placeholder={question.placeholder}
                           className={formErrors[question.id] ? "border-destructive" : ""}
+                          onChange={(e) => {
+                            console.log(`URL input change for ${question.id}:`, e.target.value);
+                            setFormData(prev => ({
+                              ...prev,
+                              [question.id]: e.target.value
+                            }));
+                          }}
                         />
                       );
 
@@ -1527,6 +1557,13 @@ export default function CompleteAssignmentPage() {
                           {...register(question.id)}
                           placeholder={question.placeholder}
                           className={formErrors[question.id] ? "border-destructive" : ""}
+                          onChange={(e) => {
+                            console.log(`Telephone input change for ${question.id}:`, e.target.value);
+                            setFormData(prev => ({
+                              ...prev,
+                              [question.id]: e.target.value
+                            }));
+                          }}
                         />
                       );
 
@@ -1537,6 +1574,13 @@ export default function CompleteAssignmentPage() {
                           {...register(question.id)}
                           placeholder={question.placeholder}
                           className={formErrors[question.id] ? "border-destructive" : ""}
+                          onChange={(e) => {
+                            console.log(`Number input change for ${question.id}:`, e.target.value);
+                            setFormData(prev => ({
+                              ...prev,
+                              [question.id]: e.target.value
+                            }));
+                          }}
                         />
                       );
 
