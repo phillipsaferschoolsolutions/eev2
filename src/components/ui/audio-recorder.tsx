@@ -122,15 +122,33 @@ export function AudioRecorder({
         // Create audio element to get duration
         const tempAudio = new Audio(audioUrl);
         tempAudio.onloadedmetadata = () => {
+          const detectedDuration = tempAudio.duration;
+          // Ensure duration is valid
+          const validDuration = isNaN(detectedDuration) || !isFinite(detectedDuration) ? 0 : detectedDuration;
+          
           const newAudioData: AudioData = {
             blob: audioBlob,
             url: audioUrl,
             name: audioName,
-            duration: tempAudio.duration
+            duration: validDuration
           };
           setAudioData(newAudioData);
           onAudioChange(newAudioData);
-          setDuration(tempAudio.duration);
+          setDuration(validDuration);
+          setCurrentTime(0);
+        };
+
+        // Fallback if metadata doesn't load
+        tempAudio.onerror = () => {
+          const newAudioData: AudioData = {
+            blob: audioBlob,
+            url: audioUrl,
+            name: audioName,
+            duration: 0
+          };
+          setAudioData(newAudioData);
+          onAudioChange(newAudioData);
+          setDuration(0);
           setCurrentTime(0);
         };
 
@@ -202,13 +220,28 @@ export function AudioRecorder({
 
     try {
       if (audioRef.current.paused) {
+        // Ensure audio source is set
+        if (!audioRef.current.src || audioRef.current.src !== audioData.url) {
+          audioRef.current.src = audioData.url;
+          audioRef.current.load();
+        }
+        
         await audioRef.current.play();
         setIsPlaying(true);
         
         // Start playback timer
         playbackTimerRef.current = setInterval(() => {
-          if (audioRef.current) {
-            setCurrentTime(audioRef.current.currentTime);
+          if (audioRef.current && !audioRef.current.paused) {
+            const currentTime = audioRef.current.currentTime;
+            const duration = audioRef.current.duration;
+            
+            // Update current time and ensure it doesn't exceed duration
+            setCurrentTime(Math.min(currentTime, duration || 0));
+            
+            // Update duration if it's valid and different
+            if (duration && !isNaN(duration) && isFinite(duration) && duration !== 0) {
+              setDuration(duration);
+            }
           }
         }, 100);
       } else {
@@ -255,6 +288,11 @@ export function AudioRecorder({
 
   // Format time display
   const formatTime = useCallback((time: number) => {
+    // Handle invalid time values
+    if (isNaN(time) || !isFinite(time) || time < 0) {
+      return "0:00";
+    }
+    
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
@@ -263,9 +301,19 @@ export function AudioRecorder({
   // Handle audio events
   const handleAudioLoadedMetadata = useCallback(() => {
     if (audioRef.current) {
-      setDuration(audioRef.current.duration);
+      const detectedDuration = audioRef.current.duration;
+      // Ensure duration is valid
+      const validDuration = isNaN(detectedDuration) || !isFinite(detectedDuration) || detectedDuration <= 0 ? 0 : detectedDuration;
+      setDuration(validDuration);
+      
+      // If we have audioData but duration is 0, try to update it
+      if (audioData && validDuration > 0 && audioData.duration === 0) {
+        const updatedAudioData = { ...audioData, duration: validDuration };
+        setAudioData(updatedAudioData);
+        onAudioChange(updatedAudioData);
+      }
     }
-  }, []);
+  }, [audioData, onAudioChange]);
 
   const handleAudioEnded = useCallback(() => {
     setIsPlaying(false);

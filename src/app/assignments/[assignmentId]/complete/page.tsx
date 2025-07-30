@@ -418,12 +418,12 @@ export default function CompleteAssignmentPage() {
 
   // Function to handle photo upload for questions
   const handleQuestionPhotoUpload = async (questionId: string, file: File) => {
-    if (!userProfile?.account) return;
+    if (!userProfile?.account || !storage) return;
     
     setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
     
     try {
-      const storageRef = ref(storage, `assignment_uploads/${userProfile.account}/${assignmentId}/${questionId}/${Date.now()}_${file.name}`);
+      const storageRef = ref(storage as any, `assignment_uploads/${userProfile.account}/${assignmentId}/${questionId}/${Date.now()}_${file.name}`);
       const uploadTask = uploadBytesResumable(storageRef, file);
       
       uploadTask.on('state_changed',
@@ -434,7 +434,7 @@ export default function CompleteAssignmentPage() {
         (error) => {
           console.error('Upload failed:', error);
           toast({ variant: "destructive", title: "Upload Failed", description: error.message });
-          setUploadProgress(prev => ({ ...prev, [questionId]: undefined }));
+          setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
         },
         async () => {
           try {
@@ -452,19 +452,19 @@ export default function CompleteAssignmentPage() {
               [questionId]: photoData
             }));
             
-            setUploadProgress(prev => ({ ...prev, [questionId]: undefined }));
+            setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
             toast({ title: "Photo Uploaded", description: `Photo uploaded successfully for ${questionId}` });
           } catch (error) {
             console.error('Error getting download URL:', error);
             toast({ variant: "destructive", title: "Upload Failed", description: "Failed to get download URL" });
-            setUploadProgress(prev => ({ ...prev, [questionId]: undefined }));
+            setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
           }
         }
       );
     } catch (error) {
       console.error('Error starting upload:', error);
       toast({ variant: "destructive", title: "Upload Failed", description: "Failed to start upload" });
-      setUploadProgress(prev => ({ ...prev, [questionId]: undefined }));
+      setUploadProgress(prev => ({ ...prev, [questionId]: 0 }));
     }
   };
 
@@ -688,6 +688,7 @@ export default function CompleteAssignmentPage() {
     assignment.questions.forEach((question) => {
       let questionAnswer: unknown;
 
+      // Handle different question types
       if (question.component === 'select' || question.component === 'options') {
         const selectedOptions = formDataToProcess[question.id];
         if (Array.isArray(selectedOptions)) {
@@ -697,11 +698,32 @@ export default function CompleteAssignmentPage() {
         } else {
           questionAnswer = '';
         }
+      } else if (question.component === 'multiSelect') {
+        // Handle multiSelect questions (checkboxes with multiple options)
+        const selectedValues = formDataToProcess[question.id];
+        if (Array.isArray(selectedValues)) {
+          questionAnswer = selectedValues;
+        } else {
+          questionAnswer = [];
+        }
       } else if (question.component === 'checkbox' && question.options) {
         const selectedOptions = formDataToProcess[question.id] || [];
         questionAnswer = selectedOptions;
       } else if (question.component === 'checkbox' && !question.options) {
         questionAnswer = formDataToProcess[question.id] === true;
+      } else if (question.component === 'multiButtonSelect') {
+        // Handle multiButtonSelect questions (multiple buttons that can be selected)
+        const selectedValues: string[] = [];
+        if (question.options) {
+          const options = parseOptions(question.options, question);
+          options.forEach(option => {
+            const buttonKey = `${question.id}.${option.value}`;
+            if (formDataToProcess[buttonKey] === true) {
+              selectedValues.push(option.value);
+            }
+          });
+        }
+        questionAnswer = selectedValues;
       } else if ((question.component === 'date' || question.component === 'completionDate') && formDataToProcess[question.id] instanceof Date) {
         questionAnswer = format(formDataToProcess[question.id] as Date, "yyyy-MM-dd");
       } else if (question.component === 'time' || question.component === 'completionTime') {
@@ -715,12 +737,23 @@ export default function CompleteAssignmentPage() {
         // Check if there's a photo assigned to this question (from Photo Bank or direct upload)
         const hasPhoto = uploadedPhotos[question.id] || uploadedFileDetails[question.id];
         questionAnswer = hasPhoto ? (uploadedPhotos[question.id]?.originalName || uploadedFileDetails[question.id]?.name) : '';
+      } else if (question.component === 'schoolSelector') {
+        // Handle school selector questions
+        const selectedLocationId = formDataToProcess[question.id];
+        if (selectedLocationId) {
+          const selectedLocation = locations.find(loc => loc.id === selectedLocationId);
+          questionAnswer = selectedLocation ? selectedLocation.locationName : selectedLocationId;
+        } else {
+          questionAnswer = '';
+        }
       } else {
+        // Default case for text, textarea, and other components
         questionAnswer = formDataToProcess[question.id] ?? '';
       }
 
       answersObject[question.id] = questionAnswer;
 
+      // Handle comments for questions that have them enabled
       const commentKey = `${question.id}_comment`;
       if (question.comment && formDataToProcess[commentKey]) {
         commentsObject[question.id] = formDataToProcess[commentKey];
@@ -737,11 +770,11 @@ export default function CompleteAssignmentPage() {
       
       Object.keys(audioNotes).forEach(questionId => {
         const audioNote = audioNotes[questionId];
-        if (audioNote?.blob) {
+        if (audioNote?.blob && storage) {
           // Upload audio note to Firebase Storage
           const audioFileName = audioNote.name || `audio_note_${questionId}_${Date.now()}.webm`;
           const audioStoragePath = `assignment_audio_notes/${assignment.id}/${user.uid}/${questionId}/${audioFileName}`;
-          const audioStorageRef = ref(storage, audioStoragePath);
+          const audioStorageRef = ref(storage as any, audioStoragePath);
           const audioUploadTask = uploadBytesResumable(audioStorageRef, audioNote.blob);
           
           const promise = new Promise<void>((resolve, reject) => {
@@ -789,7 +822,7 @@ export default function CompleteAssignmentPage() {
       }
       
       formDataForSubmission.append('completedBy', user.email);
-      formDataForSubmission.append('account', userProfile.account);
+      formDataForSubmission.append('account', userProfile?.account || '');
       formDataForSubmission.append('status', 'completed');
       formDataForSubmission.append('date', new Date().toLocaleDateString('en-US', { 
         month: '2-digit', 
@@ -798,11 +831,12 @@ export default function CompleteAssignmentPage() {
         timeZone: 'America/New_York' 
       }));
       
-      // Add uploaded photos data
+      // Add uploaded photos data - use syncPhotoLinks as expected by backend
       if (Object.keys(uploadedPhotos).length > 0) {
-        formDataForSubmission.append('uploadedPhotos', JSON.stringify(uploadedPhotos));
+        formDataForSubmission.append('syncPhotoLinks', JSON.stringify(uploadedPhotos));
       }
       
+      // Set location name from school selector if available
       const schoolSelectorQuestion = assignment.questions.find(q => q.component === 'schoolSelector');
       if (schoolSelectorQuestion && formDataToProcess[schoolSelectorQuestion.id]) {
         const selectedLocationId = formDataToProcess[schoolSelectorQuestion.id];
@@ -815,14 +849,14 @@ export default function CompleteAssignmentPage() {
       const result = await submitCompletedAssignment(
         assignment.id, 
         formDataForSubmission, 
-        userProfile.account
+        userProfile?.account || ''
       );
       
-      if (result && (result.success !== false)) {
+      if (result) {
         toast({ title: "Assignment Submitted Successfully", description: "Your assignment has been submitted." });
         router.push('/assessment-forms');
       } else {
-        throw new Error(result?.error || "Submission failed - no success confirmation received");
+        throw new Error("Submission failed - no response received");
       }
     } catch (error) {
       console.error("Submission error:", error);
