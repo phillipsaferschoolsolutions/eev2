@@ -4,7 +4,7 @@ import { usePhotoBank } from '@/hooks/use-photo-bank';
 import { QuestionPhotoUpload } from '@/components/ui/question-photo-upload';
 import { PhotoBank } from '@/components/ui/photo-bank';
 import { AudioRecorder, type AudioData } from '@/components/ui/audio-recorder';
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -217,6 +217,7 @@ export default function CompleteAssignmentPage() {
   // Check if question is answered
   const isQuestionAnswered = useCallback((question: AssignmentQuestion, formData: FieldValues): boolean => {
     const value = formData[question.id];
+    
     switch (question.component) {
       case 'text':
       case 'textarea':
@@ -267,9 +268,15 @@ export default function CompleteAssignmentPage() {
     }
   }, [uploadedFileDetails]);
 
+  // Create merged data for question answering status
+  const mergedFormData = useMemo(() => ({
+    ...allWatchedValues,
+    ...formData
+  }), [allWatchedValues, formData]);
+
   // Calculate overall progress
   const overallProgress = conditionallyVisibleQuestions.length > 0
-    ? (conditionallyVisibleQuestions.filter(q => isQuestionAnswered(q, allWatchedValues)).length / conditionallyVisibleQuestions.length) * 100
+    ? (conditionallyVisibleQuestions.filter(q => isQuestionAnswered(q, mergedFormData)).length / conditionallyVisibleQuestions.length) * 100
     : 0;
 
   // Get available sections
@@ -296,7 +303,7 @@ export default function CompleteAssignmentPage() {
     if (answeredStatusFilter === 'all') {
       return true;
     }
-    const answered = isQuestionAnswered(q, allWatchedValues);
+    const answered = isQuestionAnswered(q, mergedFormData);
     return answeredStatusFilter === 'answered' ? answered : !answered;
   });
 
@@ -1438,7 +1445,7 @@ export default function CompleteAssignmentPage() {
                   {/* Answer Status Indicator */}
                   <div className={cn(
                     "w-3 h-3 rounded-full ml-4 mt-1 flex-shrink-0",
-                    isQuestionAnswered(question, allWatchedValues) 
+                    isQuestionAnswered(question, mergedFormData) 
                       ? "bg-green-500" 
                       : "bg-gray-300"
                   )} />
