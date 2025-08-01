@@ -386,7 +386,7 @@ export function AudioRecorder({
   }, [audioData]);
 
   return (
-    <Card className="w-full">
+    <Card className="w-full shadow-none">
       <CardContent className="p-4 space-y-4">
         {/* Permission Error */}
         {permissionError && (

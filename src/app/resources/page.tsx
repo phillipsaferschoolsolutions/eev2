@@ -16,8 +16,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { UploadCloud, FileText, Search, Filter, Info, Mic, PlayIcon, PauseIcon, Trash2, Brain, Loader2, Radio, Eye as EyeIcon } from "lucide-react";
+import { UploadCloud, FileText, Search, Filter, Info, Mic, PlayIcon, PauseIcon, Trash2, FileText as FileTextIcon, Loader2, Radio, Eye as EyeIcon, X } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { ResourceDocument } from "@/types/Resource";
 import { 
   uploadResourceDocument, 
@@ -47,6 +48,8 @@ interface AudioPlayerState {
 export default function ResourcesPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [selectedSummary, setSelectedSummary] = useState<{ title: string; content: string } | null>(null);
   const { toast } = useToast();
   const [documents, setDocuments] = useState<ResourceDocument[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
@@ -123,18 +126,28 @@ export default function ResourcesPage() {
   const handleGenerateSummary = async (docId: string, docName: string) => {
     if (!userProfile?.account) return;
 
-    setDocuments(prevDocs => prevDocs.map(d => d.id === docId ? { ...d, summaryGenerating: true, geminiSummary: "Generating..." } : d));
+    setDocuments(prevDocs => prevDocs.map(d => d.id === docId ? { ...d, summaryGenerating: true } : d));
 
     try {
-      const summary = await generateResourceSummary(docId, userProfile.account); 
+      const response = await generateResourceSummary(docId, userProfile.account); 
 
-      setDocuments(prevDocs => prevDocs.map(d => d.id === docId ? { ...d, geminiSummary: summary, summaryGenerating: false } : d));
+      setDocuments(prevDocs => prevDocs.map(d => d.id === docId ? { 
+        ...d, 
+        summary: response.summary, 
+        summaryGeneratedAt: new Date().toISOString(),
+        summaryGenerating: false 
+      } : d));
       toast({ title: "Summary Generated", description: `Summary for "${docName}" is ready.` });
     } catch (error) {
       console.error("Error generating summary:", error);
       toast({ variant: "destructive", title: "Summary Generation Failed", description: (error as Error).message });
-      setDocuments(prevDocs => prevDocs.map(d => d.id === docId ? { ...d, geminiSummary: "Failed to generate summary.", summaryGenerating: false } : d));
+      setDocuments(prevDocs => prevDocs.map(d => d.id === docId ? { ...d, summaryGenerating: false } : d));
     }
+  };
+
+  const handleViewSummary = (docName: string, summary: string) => {
+    setSelectedSummary({ title: docName, content: summary });
+    setSummaryModalOpen(true);
   };
 
 
@@ -408,13 +421,13 @@ export default function ResourcesPage() {
                             <div className="flex items-center text-xs text-muted-foreground">
                               <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Generating...
                             </div>
-                          ) : doc.geminiSummary ? (
-                            <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => alert(doc.geminiSummary)}>
+                          ) : doc.summary ? (
+                            <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => handleViewSummary(doc.name, doc.summary!)}>
                               View
                             </Button>
                           ) : (
-                            <Button variant="outline" size="xs" onClick={() => handleGenerateSummary(doc.id, doc.name, doc.storagePath)} disabled={doc.summaryGenerating}>
-                              <Brain className="mr-1 h-3 w-3" /> Gen
+                            <Button variant="outline" size="xs" onClick={() => handleGenerateSummary(doc.id, doc.name)} disabled={doc.summaryGenerating}>
+                              <FileTextIcon className="mr-1 h-3 w-3" /> Gen
                             </Button>
                           )}
                         </TableCell>
@@ -492,6 +505,25 @@ export default function ResourcesPage() {
           </CardFooter>
         </CardContent>
       </Card>
+
+      {/* Summary Modal */}
+      <Dialog open={summaryModalOpen} onOpenChange={setSummaryModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileTextIcon className="h-5 w-5" />
+              Document Summary: {selectedSummary?.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            <div className="prose prose-sm max-w-none">
+              <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                {selectedSummary?.content}
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

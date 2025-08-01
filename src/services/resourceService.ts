@@ -153,14 +153,14 @@ export async function updateResourcePermissions(resourceId: string, permissions:
  * The backend will fetch the document content, call Gemini, and save the summary.
  * @param resourceId The ID of the resource document.
  * @param account The account ID.
- * @returns The generated summary string.
+ * @returns The response object containing the summary.
  */
-export async function generateResourceSummary(resourceId: string, account: string): Promise<string> {
+export async function generateResourceSummary(resourceId: string, account: string): Promise<{ summary: string }> {
   // This endpoint on the backend will orchestrate fetching the document, calling Genkit, and saving.
   const response = await authedFetch<{ summary: string }>(`${RESOURCES_BASE_URL}/${resourceId}/generate-summary`, {
     method: 'POST', // POST request to trigger an action
   }, account);
-  return response.summary;
+  return response;
 }
 
 // Placeholder for future functions:

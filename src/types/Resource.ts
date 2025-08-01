@@ -40,7 +40,8 @@ export interface ResourceDocument {
   accessControl?: AccessControl;
   audioNotes?: AudioNote[];
 
-  geminiSummary?: string;
+  summary?: string;
+  summaryGeneratedAt?: string; // ISO Date string
   summaryGenerating?: boolean; // UI state flag
 }
 
