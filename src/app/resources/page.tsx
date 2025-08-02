@@ -112,6 +112,39 @@ export default function ResourcesPage() {
     resolver: zodResolver(resourceFormSchema),
   });
 
+  // Initialize audio player states for documents with existing audio notes
+  useEffect(() => {
+    const newAudioPlayerStates: Record<string, AudioPlayerState> = {};
+    documents.forEach(doc => {
+      if (doc.audioNotes && doc.audioNotes.length > 0) {
+        newAudioPlayerStates[doc.id] = { isPlaying: false, currentTime: 0, duration: 0 };
+      }
+    });
+    setAudioPlayerStates(prev => ({ ...prev, ...newAudioPlayerStates }));
+  }, [documents]);
+
+  // Cleanup audio resources on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup blob URLs
+      Object.values(audioNotes).forEach(note => {
+        if (note?.url && note.url.startsWith('blob:')) {
+          URL.revokeObjectURL(note.url);
+        }
+      });
+      
+      // Stop any ongoing recording
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+      
+      // Clear timers
+      if (maxRecordingTimerRef.current) {
+        clearTimeout(maxRecordingTimerRef.current);
+      }
+    };
+  }, [audioNotes]);
+
   const fetchDocuments = useCallback(async (page: number = 1) => {
     if (!userProfile?.account) {
       setDocumentsError("Account information is not available.");
@@ -276,78 +309,213 @@ export default function ResourcesPage() {
   };
 
   const handleStartRecording = async (resourceId: string) => {
-    const permissionGranted = await requestMicPermission();
-    if (!permissionGranted) return;
-    if (isRecordingResourceId) handleStopRecording(isRecordingResourceId, false);
-
-    setIsRecordingResourceId(resourceId);
-    audioChunksRef.current = [];
-    setAudioNotes(prev => ({ ...prev, [resourceId]: { blob: undefined, url: undefined, name: undefined, isUploading: false } }));
-    setAudioPlayerStates(prev => ({ ...prev, [resourceId]: { isPlaying: false, currentTime: 0, duration: 0 } }));
-
     try {
+      const permissionGranted = await requestMicPermission();
+      if (!permissionGranted) return;
+      
+      // Stop any existing recording first
+      if (isRecordingResourceId && isRecordingResourceId !== resourceId) {
+        handleStopRecording(isRecordingResourceId, false);
+      }
+
+      // Set recording state immediately
+      setIsRecordingResourceId(resourceId);
+      setMicPermissionError(null);
+      audioChunksRef.current = [];
+      
+      // Initialize audio note state for this resource
+      setAudioNotes(prev => ({ 
+        ...prev, 
+        [resourceId]: { 
+          blob: undefined, 
+          url: undefined, 
+          name: undefined, 
+          isUploading: false,
+          error: undefined 
+        } 
+      }));
+      
+      // Initialize audio player state
+      setAudioPlayerStates(prev => ({ 
+        ...prev, 
+        [resourceId]: { isPlaying: false, currentTime: 0, duration: 0 } 
+      }));
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
-      playChime('start');
-      mediaRecorderRef.current.ondataavailable = (event) => audioChunksRef.current.push(event.data);
-      mediaRecorderRef.current.onstop = async () => {
-        const oldNote = audioNotes[resourceId];
-        if (oldNote?.url && oldNote.url.startsWith('blob:')) URL.revokeObjectURL(oldNote.url);
-
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const audioName = `audio_note_${resourceId}_${Date.now()}.webm`;
-        
-        setAudioNotes(prev => ({ ...prev, [resourceId]: { blob: audioBlob, url: audioUrl, name: audioName, isUploading: false } }));
-        playChime('stop');
-        if (isRecordingResourceId === resourceId) setIsRecordingResourceId(null);
-        stream.getTracks().forEach(track => track.stop());
-        if (maxRecordingTimerRef.current) clearTimeout(maxRecordingTimerRef.current);
-
-        if (userProfile?.account && audioBlob) {
-            setAudioNotes(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, isUploading: true } }));
-            try {
-                const downloadURL = await addAudioNoteToResource(resourceId, audioBlob, userProfile.account);
-                setAudioNotes(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, downloadURL, isUploading: false, url: downloadURL } })); 
-                toast({ title: "Audio Note Saved", description: `Note for document ID ${resourceId} saved.`});
-            } catch (uploadError) {
-                console.error("Audio upload error:", uploadError);
-                setAudioNotes(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, isUploading: false, error: (uploadError as Error).message } }));
-                toast({ variant: "destructive", title: "Audio Save Failed", description: (uploadError as Error).message });
-            }
+      
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
         }
-
       };
+      
+      mediaRecorderRef.current.onstop = async () => {
+        try {
+          // Cleanup old blob URL
+          const oldNote = audioNotes[resourceId];
+          if (oldNote?.url && oldNote.url.startsWith('blob:')) {
+            URL.revokeObjectURL(oldNote.url);
+          }
+
+          if (audioChunksRef.current.length === 0) {
+            console.warn('No audio data recorded');
+            setIsRecordingResourceId(null);
+            stream.getTracks().forEach(track => track.stop());
+            return;
+          }
+
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audioName = `audio_note_${resourceId}_${Date.now()}.webm`;
+          
+          setAudioNotes(prev => ({ 
+            ...prev, 
+            [resourceId]: { 
+              blob: audioBlob, 
+              url: audioUrl, 
+              name: audioName, 
+              isUploading: false 
+            } 
+          }));
+          
+          playChime('stop');
+          
+          // Stop recording state
+          if (isRecordingResourceId === resourceId) {
+            setIsRecordingResourceId(null);
+          }
+          
+          // Cleanup stream
+          stream.getTracks().forEach(track => track.stop());
+          
+          // Clear timer
+          if (maxRecordingTimerRef.current) {
+            clearTimeout(maxRecordingTimerRef.current);
+            maxRecordingTimerRef.current = null;
+          }
+
+          // Upload to server
+          if (userProfile?.account && audioBlob) {
+            setAudioNotes(prev => ({ 
+              ...prev, 
+              [resourceId]: { ...prev[resourceId]!, isUploading: true } 
+            }));
+            
+            try {
+              const downloadURL = await addAudioNoteToResource(resourceId, audioBlob, userProfile.account);
+              setAudioNotes(prev => ({ 
+                ...prev, 
+                [resourceId]: { 
+                  ...prev[resourceId]!, 
+                  downloadURL, 
+                  isUploading: false, 
+                  url: downloadURL 
+                } 
+              })); 
+              toast({ title: "Audio Note Saved", description: "Audio note saved successfully." });
+            } catch (uploadError) {
+              console.error("Audio upload error:", uploadError);
+              setAudioNotes(prev => ({ 
+                ...prev, 
+                [resourceId]: { 
+                  ...prev[resourceId]!, 
+                  isUploading: false, 
+                  error: (uploadError as Error).message 
+                } 
+              }));
+              toast({ 
+                variant: "destructive", 
+                title: "Audio Save Failed", 
+                description: (uploadError as Error).message 
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error in onstop handler:', error);
+          setIsRecordingResourceId(null);
+          stream.getTracks().forEach(track => track.stop());
+        }
+      };
+      
+      mediaRecorderRef.current.onerror = (event) => {
+        console.error('MediaRecorder error:', event);
+        setMicPermissionError('Recording error occurred.');
+        setIsRecordingResourceId(null);
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      playChime('start');
       mediaRecorderRef.current.start();
+      
+      // Set recording timeout
       maxRecordingTimerRef.current = setTimeout(() => {
         if (mediaRecorderRef.current?.state === "recording" && isRecordingResourceId === resourceId) {
           handleStopRecording(resourceId, true);
-          toast({ title: "Recording Limit Reached", description: `Recording stopped after ${MAX_AUDIO_RECORDING_MS / 1000} seconds.`});
+          toast({ 
+            title: "Recording Limit Reached", 
+            description: `Recording stopped after ${MAX_AUDIO_RECORDING_MS / 1000} seconds.` 
+          });
         }
       }, MAX_AUDIO_RECORDING_MS);
+      
     } catch (error) {
       console.error('Error starting recording:', error);
       setMicPermissionError('Failed to start recording.');
-      if (isRecordingResourceId === resourceId) setIsRecordingResourceId(null);
+      setIsRecordingResourceId(null);
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleStopRecording = (resourceId: string, playTheStopChime: boolean = true) => {
-    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
-    else if(isRecordingResourceId === resourceId) setIsRecordingResourceId(null);
-    if (maxRecordingTimerRef.current) clearTimeout(maxRecordingTimerRef.current);
+    try {
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      } else if (isRecordingResourceId === resourceId) {
+        setIsRecordingResourceId(null);
+      }
+      
+      if (maxRecordingTimerRef.current) {
+        clearTimeout(maxRecordingTimerRef.current);
+        maxRecordingTimerRef.current = null;
+      }
+    } catch (error) {
+      console.error('Error stopping recording:', error);
+      setIsRecordingResourceId(null);
+    }
   };
   
   const removeAudioNote = (resourceId: string) => { 
-    const note = audioNotes[resourceId];
-    if (note?.url && note.url.startsWith('blob:')) URL.revokeObjectURL(note.url);
-    setAudioNotes(prev => ({ ...prev, [resourceId]: undefined }));
-    setAudioPlayerStates(prev => ({ ...prev, [resourceId]: { isPlaying: false, currentTime: 0, duration: 0 } }));
-    if (audioRefs.current[resourceId]) {
+    try {
+      const note = audioNotes[resourceId];
+      if (note?.url && note.url.startsWith('blob:')) {
+        URL.revokeObjectURL(note.url);
+      }
+      
+      // Stop any playing audio
+      if (audioRefs.current[resourceId]) {
         audioRefs.current[resourceId]!.pause();
         audioRefs.current[resourceId]!.removeAttribute('src');
         audioRefs.current[resourceId]!.load();
+      }
+      
+      // Clear states
+      setAudioNotes(prev => {
+        const newState = { ...prev };
+        delete newState[resourceId];
+        return newState;
+      });
+      
+      setAudioPlayerStates(prev => ({ 
+        ...prev, 
+        [resourceId]: { isPlaying: false, currentTime: 0, duration: 0 } 
+      }));
+      
+      // Clear any recording state
+      if (isRecordingResourceId === resourceId) {
+        setIsRecordingResourceId(null);
+      }
+    } catch (error) {
+      console.error('Error removing audio note:', error);
     }
   };
 
@@ -503,18 +671,36 @@ export default function ResourcesPage() {
                     
                     // Handle different types of updatedAt values
                     if (doc.updatedAt) {
-                      if (typeof doc.updatedAt === 'object' && doc.updatedAt !== null && 'toDate' in doc.updatedAt && typeof doc.updatedAt.toDate === 'function') {
-                        // Firestore Timestamp
-                        parsedDate = doc.updatedAt.toDate();
-                      } else if (typeof doc.updatedAt === 'string') {
-                        // String date
-                        parsedDate = new Date(doc.updatedAt);
-                      } else if (typeof doc.updatedAt === 'number') {
-                        // Unix timestamp
-                        parsedDate = new Date(doc.updatedAt);
-                      } else if (doc.updatedAt instanceof Date) {
-                        // Already a Date object
-                        parsedDate = doc.updatedAt;
+                      try {
+                        if (typeof doc.updatedAt === 'object' && doc.updatedAt !== null) {
+                          if ('toDate' in doc.updatedAt && typeof doc.updatedAt.toDate === 'function') {
+                            // Firestore Timestamp
+                            parsedDate = doc.updatedAt.toDate();
+                          } else if ('seconds' in doc.updatedAt && typeof doc.updatedAt.seconds === 'number') {
+                            // Firestore Timestamp with seconds
+                            parsedDate = new Date(doc.updatedAt.seconds * 1000);
+                          } else if ('_seconds' in doc.updatedAt && typeof doc.updatedAt._seconds === 'number') {
+                            // Firestore Timestamp with _seconds
+                            parsedDate = new Date(doc.updatedAt._seconds * 1000);
+                          }
+                        } else if (typeof doc.updatedAt === 'string') {
+                          // String date
+                          parsedDate = new Date(doc.updatedAt);
+                        } else if (typeof doc.updatedAt === 'number') {
+                          // Unix timestamp (check if it's seconds or milliseconds)
+                          if (doc.updatedAt > 1000000000000) {
+                            // Likely milliseconds
+                            parsedDate = new Date(doc.updatedAt);
+                          } else {
+                            // Likely seconds
+                            parsedDate = new Date(doc.updatedAt * 1000);
+                          }
+                        } else if (doc.updatedAt instanceof Date) {
+                          // Already a Date object
+                          parsedDate = doc.updatedAt;
+                        }
+                      } catch (error) {
+                        console.warn('Error parsing date for document:', doc.id, doc.updatedAt, error);
                       }
                     }
                     
