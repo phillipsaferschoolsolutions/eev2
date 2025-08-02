@@ -115,12 +115,30 @@ export default function ResourcesPage() {
   // Initialize audio player states for documents with existing audio notes
   useEffect(() => {
     const newAudioPlayerStates: Record<string, AudioPlayerState> = {};
+    const newAudioNotes: Record<string, { blob?: Blob; url?: string; name?: string; isUploading?: boolean; downloadURL?: string; error?: string }> = {};
+    
     documents.forEach(doc => {
+      // Initialize audio player state for documents with existing audio notes
       if (doc.audioNotes && doc.audioNotes.length > 0) {
+        console.log('Initializing audio state for document:', doc.id, 'with audio notes:', doc.audioNotes);
         newAudioPlayerStates[doc.id] = { isPlaying: false, currentTime: 0, duration: 0 };
+        
+        // Initialize audio note state for existing audio notes
+        const existingAudioNote = doc.audioNotes[0];
+        if (existingAudioNote) {
+          newAudioNotes[doc.id] = {
+            url: existingAudioNote.storagePath, // Use storagePath from the AudioNote type
+            name: `audio_note_${doc.id}`,
+            isUploading: false,
+            downloadURL: existingAudioNote.storagePath // Use storagePath as downloadURL for existing notes
+          };
+          console.log('Set audio note state for', doc.id, ':', newAudioNotes[doc.id]);
+        }
       }
     });
+    
     setAudioPlayerStates(prev => ({ ...prev, ...newAudioPlayerStates }));
+    setAudioNotes(prev => ({ ...prev, ...newAudioNotes }));
   }, [documents]);
 
   // Cleanup audio resources on unmount
@@ -523,17 +541,59 @@ export default function ResourcesPage() {
     const audio = audioRefs.current[resourceId];
     const noteUrl = audioNotes[resourceId]?.downloadURL || audioNotes[resourceId]?.url;
 
-    if (!audio || !noteUrl) return;
+    if (!audio) {
+      console.warn('Audio element not found for resource:', resourceId);
+      return;
+    }
+
+    if (!noteUrl) {
+      console.warn('No audio URL found for resource:', resourceId);
+      return;
+    }
+
     try {
       if (audio.paused) {
-        if (audio.currentSrc !== noteUrl) audio.src = noteUrl;
+        // Set the source if it's different
+        if (audio.currentSrc !== noteUrl) {
+          audio.src = noteUrl;
+          // Wait for the audio to load before playing
+          await new Promise((resolve, reject) => {
+            audio.onloadeddata = resolve;
+            audio.onerror = reject;
+            // Set a timeout in case loading takes too long
+            setTimeout(reject, 5000);
+          });
+        }
+        
         await audio.play();
-        setAudioPlayerStates(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, isPlaying: true } }));
+        setAudioPlayerStates(prev => ({ 
+          ...prev, 
+          [resourceId]: { 
+            ...prev[resourceId]!, 
+            isPlaying: true 
+          } 
+        }));
       } else {
         audio.pause();
-        setAudioPlayerStates(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, isPlaying: false } }));
+        setAudioPlayerStates(prev => ({ 
+          ...prev, 
+          [resourceId]: { 
+            ...prev[resourceId]!, 
+            isPlaying: false 
+          } 
+        }));
       }
-    } catch (error) { console.error("Playback error:", error); }
+    } catch (error) { 
+      console.error("Playback error:", error);
+      // Reset playing state on error
+      setAudioPlayerStates(prev => ({ 
+        ...prev, 
+        [resourceId]: { 
+          ...prev[resourceId]!, 
+          isPlaying: false 
+        } 
+      }));
+    }
   };
 
   const handleAudioTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement, Event>, resourceId: string) => {
@@ -734,7 +794,7 @@ export default function ResourcesPage() {
                         <TableCell>
                         {/* Audio Note UI */}
                         {micPermissionError && isRecordingResourceId === doc.id && <Alert variant="destructive" className="text-xs p-1"><AlertDescription>{micPermissionError}</AlertDescription></Alert>}
-                        {audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.url ? ( // Check existing persisted notes or new local recording
+                        {audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.storagePath ? ( // Check existing persisted notes or new local recording
                             <div className="flex items-center gap-1">
                             <audio
                                 ref={(el) => {audioRefs.current[doc.id] = el}}
@@ -742,7 +802,7 @@ export default function ResourcesPage() {
                                 onTimeUpdate={(e) => handleAudioTimeUpdate(e, doc.id)}
                                 onEnded={() => handleAudioEnded(doc.id)}
                                 className="hidden"
-                                src={audioNotes[doc.id]?.downloadURL || audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.url}
+                                src={audioNotes[doc.id]?.downloadURL || audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.storagePath}
                             />
                             <Button type="button" variant="ghost" size="icon" onClick={() => togglePlayPause(doc.id)} className="h-7 w-7" disabled={audioNotes[doc.id]?.isUploading}>
                                 {audioPlayerStates[doc.id]?.isPlaying ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
