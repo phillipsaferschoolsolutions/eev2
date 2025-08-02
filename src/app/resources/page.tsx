@@ -499,9 +499,25 @@ export default function ResourcesPage() {
                   </TableRow>
                 ) : (searchTerm ? filteredDocuments : documents).length > 0 ? (
                   (searchTerm ? filteredDocuments : documents).map((doc) => {
-                    const parsedDate = typeof doc.updatedAt?.toDate === "function"
-                      ? doc.updatedAt.toDate()
-                      : new Date(doc.updatedAt as string); // Added 'as string' to satisfy TS if updatedAt might not be a Timestamp-like object
+                    let parsedDate: Date | null = null;
+                    
+                    // Handle different types of updatedAt values
+                    if (doc.updatedAt) {
+                      if (typeof doc.updatedAt === 'object' && doc.updatedAt !== null && 'toDate' in doc.updatedAt && typeof doc.updatedAt.toDate === 'function') {
+                        // Firestore Timestamp
+                        parsedDate = doc.updatedAt.toDate();
+                      } else if (typeof doc.updatedAt === 'string') {
+                        // String date
+                        parsedDate = new Date(doc.updatedAt);
+                      } else if (typeof doc.updatedAt === 'number') {
+                        // Unix timestamp
+                        parsedDate = new Date(doc.updatedAt);
+                      } else if (doc.updatedAt instanceof Date) {
+                        // Already a Date object
+                        parsedDate = doc.updatedAt;
+                      }
+                    }
+                    
                     const isValidDate = parsedDate instanceof Date && !isNaN(parsedDate.getTime());
 
                     return (
@@ -532,7 +548,7 @@ export default function ResourcesPage() {
                         <TableCell>
                         {/* Audio Note UI */}
                         {micPermissionError && isRecordingResourceId === doc.id && <Alert variant="destructive" className="text-xs p-1"><AlertDescription>{micPermissionError}</AlertDescription></Alert>}
-                        {audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.storagePath ? ( // Check existing persisted notes or new local recording
+                        {audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.url ? ( // Check existing persisted notes or new local recording
                             <div className="flex items-center gap-1">
                             <audio
                                 ref={(el) => {audioRefs.current[doc.id] = el}}
@@ -540,7 +556,7 @@ export default function ResourcesPage() {
                                 onTimeUpdate={(e) => handleAudioTimeUpdate(e, doc.id)}
                                 onEnded={() => handleAudioEnded(doc.id)}
                                 className="hidden"
-                                src={audioNotes[doc.id]?.downloadURL || audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.storagePath}
+                                src={audioNotes[doc.id]?.downloadURL || audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.url}
                             />
                             <Button type="button" variant="ghost" size="icon" onClick={() => togglePlayPause(doc.id)} className="h-7 w-7" disabled={audioNotes[doc.id]?.isUploading}>
                                 {audioPlayerStates[doc.id]?.isPlaying ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}

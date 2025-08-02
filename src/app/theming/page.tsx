@@ -215,18 +215,30 @@ export default function ThemingPage() {
   const { theme: currentTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [showEnhanced, setShowEnhanced] = useState(true);
+  const [localTheme, setLocalTheme] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Update local theme when currentTheme changes
+  useEffect(() => {
+    if (currentTheme) {
+      setLocalTheme(currentTheme);
+    }
+  }, [currentTheme]);
+
   const handleThemeChange = async (themeId: string) => {
     try {
+      // Update local state immediately for responsive UI
+      setLocalTheme(themeId);
+      
+      // Then update the actual theme
       await setTheme(themeId);
-      // Force a re-render by updating the current theme state
-      setCurrentTheme(themeId);
     } catch (error) {
       console.error('Error changing theme:', error);
+      // Revert local state if theme change failed
+      setLocalTheme(currentTheme);
     }
   };
 
@@ -348,9 +360,9 @@ export default function ThemingPage() {
                     <Button
                       onClick={() => handleThemeChange(themeOption.id)}
                       className={`w-full mt-auto ${themeOption.isEnhanced ? 'backdrop-blur-md bg-white/20 dark:bg-black/20 border-white/30 dark:border-white/20 hover:bg-white/30 dark:hover:bg-black/30 transition-all duration-300' : ''}`}
-                      variant={mounted && currentTheme === themeOption.id ? "default" : "outline"}
+                      variant={mounted && localTheme === themeOption.id ? "default" : "outline"}
                     >
-                      {mounted && currentTheme === themeOption.id ? "Active Theme" : "Apply Theme"}
+                      {mounted && localTheme === themeOption.id ? "Active Theme" : "Apply Theme"}
                     </Button>
                   </motion.div>
                 </CardContent>
