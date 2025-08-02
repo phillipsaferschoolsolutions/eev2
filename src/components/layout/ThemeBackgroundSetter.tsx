@@ -34,6 +34,17 @@ export function ThemeBackgroundSetter() {
         '--theme-tropical-paradise-dark-background-image',
         '--theme-aurora-borealis-background-image',
         '--theme-aurora-borealis-dark-background-image',
+        // New bold enhanced themes
+        '--theme-neon-pulse-background-image',
+        '--theme-neon-pulse-dark-background-image',
+        '--theme-solar-flare-background-image',
+        '--theme-solar-flare-dark-background-image',
+        '--theme-cyberpunk-background-image',
+        '--theme-cyberpunk-dark-background-image',
+        '--theme-aurora-storm-background-image',
+        '--theme-aurora-storm-dark-background-image',
+        '--theme-volcanic-ice-background-image',
+        '--theme-volcanic-ice-dark-background-image',
       ];
       themeVariables.forEach(variable => {
         if (variable !== currentThemeVar) {
@@ -92,6 +103,28 @@ export function ThemeBackgroundSetter() {
       } else if (resolvedTheme === 'theme-aurora-borealis') {
         clearOtherThemeVariables('');
       } else if (resolvedTheme === 'theme-aurora-borealis-dark') {
+        clearOtherThemeVariables('');
+      }
+      // NEW BOLD ENHANCED THEMES
+      else if (resolvedTheme === 'theme-neon-pulse') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-neon-pulse-dark') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-solar-flare') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-solar-flare-dark') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-cyberpunk') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-cyberpunk-dark') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-aurora-storm') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-aurora-storm-dark') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-volcanic-ice') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-volcanic-ice-dark') {
         clearOtherThemeVariables('');
       } else {
         // For any other theme that is not photo-heavy, clear all photo background variables

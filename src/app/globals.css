@@ -117,6 +117,487 @@
   }
 
   /* Enhanced Themes - Light Variants */
+  /* NEW BOLD ENHANCED THEMES */
+  
+  .theme-neon-pulse {
+    /* Logo Accent Color - Electric Cyan */
+    --logo-accent-color: 180 100% 60%;
+    
+    --background: 180 30% 95%;
+    --foreground: 180 50% 10%;
+    --card: 180 30% 100% / 0.8;
+    --card-foreground: 180 50% 10%;
+    --popover: 180 30% 100% / 0.9;
+    --popover-foreground: 180 50% 10%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 180 20% 90% / 0.7;
+    --secondary-foreground: 180 50% 10%;
+    --muted: 180 20% 90% / 0.7;
+    --muted-foreground: 180 20% 40%;
+    --accent: 330 100% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 180 30% 85% / 0.8;
+    --input: 180 30% 85% / 0.8;
+    --ring: 180 100% 50%;
+    --chart-1: 180 100% 50%;
+    --chart-2: 330 100% 60%;
+    --chart-3: 280 100% 60%;
+    --chart-4: 120 100% 60%;
+    --chart-5: 60 100% 60%;
+    --sidebar-background: 180 30% 90% / 0.8;
+    --sidebar-foreground: 180 50% 10%;
+    --sidebar-primary: 180 100% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 330 100% 60%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 180 30% 85% / 0.8;
+    --sidebar-ring: 180 100% 50%;
+  }
+
+  .theme-neon-pulse-dark {
+    /* Logo Accent Color - Electric Magenta */
+    --logo-accent-color: 330 100% 60%;
+    
+    --background: 0 0% 5%;
+    --foreground: 180 20% 95%;
+    --card: 0 0% 8% / 0.8;
+    --card-foreground: 180 20% 95%;
+    --popover: 0 0% 8% / 0.9;
+    --popover-foreground: 180 20% 95%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 12% / 0.7;
+    --secondary-foreground: 180 20% 95%;
+    --muted: 0 0% 12% / 0.7;
+    --muted-foreground: 180 20% 70%;
+    --accent: 330 100% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15% / 0.8;
+    --input: 0 0% 15% / 0.8;
+    --ring: 180 100% 50%;
+    --chart-1: 180 100% 50%;
+    --chart-2: 330 100% 60%;
+    --chart-3: 280 100% 60%;
+    --chart-4: 120 100% 60%;
+    --chart-5: 60 100% 60%;
+    --sidebar-background: 0 0% 10% / 0.8;
+    --sidebar-foreground: 180 20% 95%;
+    --sidebar-primary: 180 100% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 330 100% 60%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 15% / 0.8;
+    --sidebar-ring: 180 100% 50%;
+  }
+
+  .theme-solar-flare {
+    /* Logo Accent Color - Burning Orange */
+    --logo-accent-color: 25 100% 60%;
+    
+    --background: 25 30% 95%;
+    --foreground: 25 50% 10%;
+    --card: 25 30% 100% / 0.8;
+    --card-foreground: 25 50% 10%;
+    --popover: 25 30% 100% / 0.9;
+    --popover-foreground: 25 50% 10%;
+    --primary: 25 100% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 25 20% 90% / 0.7;
+    --secondary-foreground: 25 50% 10%;
+    --muted: 25 20% 90% / 0.7;
+    --muted-foreground: 25 20% 40%;
+    --accent: 220 100% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 25 30% 85% / 0.8;
+    --input: 25 30% 85% / 0.8;
+    --ring: 25 100% 50%;
+    --chart-1: 25 100% 50%;
+    --chart-2: 220 100% 60%;
+    --chart-3: 0 100% 60%;
+    --chart-4: 45 100% 60%;
+    --chart-5: 280 100% 60%;
+    --sidebar-background: 25 30% 90% / 0.8;
+    --sidebar-foreground: 25 50% 10%;
+    --sidebar-primary: 25 100% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 220 100% 60%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 25 30% 85% / 0.8;
+    --sidebar-ring: 25 100% 50%;
+  }
+
+  .theme-solar-flare-dark {
+    /* Logo Accent Color - Electric Blue */
+    --logo-accent-color: 220 100% 60%;
+    
+    --background: 0 0% 5%;
+    --foreground: 25 20% 95%;
+    --card: 0 0% 8% / 0.8;
+    --card-foreground: 25 20% 95%;
+    --popover: 0 0% 8% / 0.9;
+    --popover-foreground: 25 20% 95%;
+    --primary: 25 100% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 12% / 0.7;
+    --secondary-foreground: 25 20% 95%;
+    --muted: 0 0% 12% / 0.7;
+    --muted-foreground: 25 20% 70%;
+    --accent: 220 100% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15% / 0.8;
+    --input: 0 0% 15% / 0.8;
+    --ring: 25 100% 50%;
+    --chart-1: 25 100% 50%;
+    --chart-2: 220 100% 60%;
+    --chart-3: 0 100% 60%;
+    --chart-4: 45 100% 60%;
+    --chart-5: 280 100% 60%;
+    --sidebar-background: 0 0% 10% / 0.8;
+    --sidebar-foreground: 25 20% 95%;
+    --sidebar-primary: 25 100% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 220 100% 60%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 15% / 0.8;
+    --sidebar-ring: 25 100% 50%;
+  }
+
+  .theme-cyberpunk {
+    /* Logo Accent Color - Hot Pink */
+    --logo-accent-color: 330 100% 60%;
+    
+    --background: 330 30% 95%;
+    --foreground: 330 50% 10%;
+    --card: 330 30% 100% / 0.8;
+    --card-foreground: 330 50% 10%;
+    --popover: 330 30% 100% / 0.9;
+    --popover-foreground: 330 50% 10%;
+    --primary: 330 100% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 330 20% 90% / 0.7;
+    --secondary-foreground: 330 50% 10%;
+    --muted: 330 20% 90% / 0.7;
+    --muted-foreground: 330 20% 40%;
+    --accent: 120 100% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 330 30% 85% / 0.8;
+    --input: 330 30% 85% / 0.8;
+    --ring: 330 100% 50%;
+    --chart-1: 330 100% 50%;
+    --chart-2: 120 100% 60%;
+    --chart-3: 60 100% 60%;
+    --chart-4: 180 100% 60%;
+    --chart-5: 280 100% 60%;
+    --sidebar-background: 330 30% 90% / 0.8;
+    --sidebar-foreground: 330 50% 10%;
+    --sidebar-primary: 330 100% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 120 100% 60%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 330 30% 85% / 0.8;
+    --sidebar-ring: 330 100% 50%;
+  }
+
+  .theme-cyberpunk-dark {
+    /* Logo Accent Color - Toxic Green */
+    --logo-accent-color: 120 100% 60%;
+    
+    --background: 0 0% 5%;
+    --foreground: 330 20% 95%;
+    --card: 0 0% 8% / 0.8;
+    --card-foreground: 330 20% 95%;
+    --popover: 0 0% 8% / 0.9;
+    --popover-foreground: 330 20% 95%;
+    --primary: 330 100% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 12% / 0.7;
+    --secondary-foreground: 330 20% 95%;
+    --muted: 0 0% 12% / 0.7;
+    --muted-foreground: 330 20% 70%;
+    --accent: 120 100% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15% / 0.8;
+    --input: 0 0% 15% / 0.8;
+    --ring: 330 100% 50%;
+    --chart-1: 330 100% 50%;
+    --chart-2: 120 100% 60%;
+    --chart-3: 60 100% 60%;
+    --chart-4: 180 100% 60%;
+    --chart-5: 280 100% 60%;
+    --sidebar-background: 0 0% 10% / 0.8;
+    --sidebar-foreground: 330 20% 95%;
+    --sidebar-primary: 330 100% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 120 100% 60%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 15% / 0.8;
+    --sidebar-ring: 330 100% 50%;
+  }
+
+  .theme-aurora-storm {
+    /* Logo Accent Color - Vibrant Teal */
+    --logo-accent-color: 180 100% 60%;
+    
+    --background: 180 30% 95%;
+    --foreground: 180 50% 10%;
+    --card: 180 30% 100% / 0.8;
+    --card-foreground: 180 50% 10%;
+    --popover: 180 30% 100% / 0.9;
+    --popover-foreground: 180 50% 10%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 180 20% 90% / 0.7;
+    --secondary-foreground: 180 50% 10%;
+    --muted: 180 20% 90% / 0.7;
+    --muted-foreground: 180 20% 40%;
+    --accent: 15 100% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 180 30% 85% / 0.8;
+    --input: 180 30% 85% / 0.8;
+    --ring: 180 100% 50%;
+    --chart-1: 180 100% 50%;
+    --chart-2: 15 100% 60%;
+    --chart-3: 200 100% 60%;
+    --chart-4: 160 100% 60%;
+    --chart-5: 220 100% 60%;
+    --sidebar-background: 180 30% 90% / 0.8;
+    --sidebar-foreground: 180 50% 10%;
+    --sidebar-primary: 180 100% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 15 100% 60%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 180 30% 85% / 0.8;
+    --sidebar-ring: 180 100% 50%;
+  }
+
+  .theme-aurora-storm-dark {
+    /* Logo Accent Color - Bioluminescent Coral */
+    --logo-accent-color: 15 100% 60%;
+    
+    --background: 220 50% 5%;
+    --foreground: 180 20% 95%;
+    --card: 220 50% 8% / 0.8;
+    --card-foreground: 180 20% 95%;
+    --popover: 220 50% 8% / 0.9;
+    --popover-foreground: 180 20% 95%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 220 50% 12% / 0.7;
+    --secondary-foreground: 180 20% 95%;
+    --muted: 220 50% 12% / 0.7;
+    --muted-foreground: 180 20% 70%;
+    --accent: 15 100% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 50% 15% / 0.8;
+    --input: 220 50% 15% / 0.8;
+    --ring: 180 100% 50%;
+    --chart-1: 180 100% 50%;
+    --chart-2: 15 100% 60%;
+    --chart-3: 200 100% 60%;
+    --chart-4: 160 100% 60%;
+    --chart-5: 220 100% 60%;
+    --sidebar-background: 220 50% 10% / 0.8;
+    --sidebar-foreground: 180 20% 95%;
+    --sidebar-primary: 180 100% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 15 100% 60%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 220 50% 15% / 0.8;
+    --sidebar-ring: 180 100% 50%;
+  }
+
+  .theme-volcanic-ice {
+    /* Logo Accent Color - Fiery Red */
+    --logo-accent-color: 0 100% 60%;
+    
+    --background: 0 30% 95%;
+    --foreground: 0 50% 10%;
+    --card: 0 30% 100% / 0.8;
+    --card-foreground: 0 50% 10%;
+    --popover: 0 30% 100% / 0.9;
+    --popover-foreground: 0 50% 10%;
+    --primary: 0 100% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 20% 90% / 0.7;
+    --secondary-foreground: 0 50% 10%;
+    --muted: 0 20% 90% / 0.7;
+    --muted-foreground: 0 20% 40%;
+    --accent: 220 100% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 30% 85% / 0.8;
+    --input: 0 30% 85% / 0.8;
+    --ring: 0 100% 50%;
+    --chart-1: 0 100% 50%;
+    --chart-2: 220 100% 60%;
+    --chart-3: 25 100% 60%;
+    --chart-4: 45 100% 60%;
+    --chart-5: 280 100% 60%;
+    --sidebar-background: 0 30% 90% / 0.8;
+    --sidebar-foreground: 0 50% 10%;
+    --sidebar-primary: 0 100% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 220 100% 60%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 30% 85% / 0.8;
+    --sidebar-ring: 0 100% 50%;
+  }
+
+  .theme-volcanic-ice-dark {
+    /* Logo Accent Color - Arctic Blue */
+    --logo-accent-color: 220 100% 60%;
+    
+    --background: 220 50% 5%;
+    --foreground: 0 20% 95%;
+    --card: 220 50% 8% / 0.8;
+    --card-foreground: 0 20% 95%;
+    --popover: 220 50% 8% / 0.9;
+    --popover-foreground: 0 20% 95%;
+    --primary: 0 100% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 220 50% 12% / 0.7;
+    --secondary-foreground: 0 20% 95%;
+    --muted: 220 50% 12% / 0.7;
+    --muted-foreground: 0 20% 70%;
+    --accent: 220 100% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 50% 15% / 0.8;
+    --input: 220 50% 15% / 0.8;
+    --ring: 0 100% 50%;
+    --chart-1: 0 100% 50%;
+    --chart-2: 220 100% 60%;
+    --chart-3: 25 100% 60%;
+    --chart-4: 45 100% 60%;
+    --chart-5: 280 100% 60%;
+    --sidebar-background: 220 50% 10% / 0.8;
+    --sidebar-foreground: 0 20% 95%;
+    --sidebar-primary: 0 100% 55%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 220 100% 60%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 220 50% 15% / 0.8;
+    --sidebar-ring: 0 100% 50%;
+  }
+
+  /* Enhanced Glass Effects for Bold Themes */
+  .theme-neon-pulse .card,
+  .theme-neon-pulse-dark .card,
+  .theme-solar-flare .card,
+  .theme-solar-flare-dark .card,
+  .theme-cyberpunk .card,
+  .theme-cyberpunk-dark .card,
+  .theme-aurora-storm .card,
+  .theme-aurora-storm-dark .card,
+  .theme-volcanic-ice .card,
+  .theme-volcanic-ice-dark .card {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 
+      0 8px 32px 0 rgba(31, 38, 135, 0.37),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .theme-neon-pulse .card:hover,
+  .theme-neon-pulse-dark .card:hover,
+  .theme-solar-flare .card:hover,
+  .theme-solar-flare-dark .card:hover,
+  .theme-cyberpunk .card:hover,
+  .theme-cyberpunk-dark .card:hover,
+  .theme-aurora-storm .card:hover,
+  .theme-aurora-storm-dark .card:hover,
+  .theme-volcanic-ice .card:hover,
+  .theme-volcanic-ice-dark .card:hover {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 
+      0 12px 40px 0 rgba(31, 38, 135, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+  }
+
+  /* Enhanced Button Effects */
+  .theme-neon-pulse button,
+  .theme-neon-pulse-dark button,
+  .theme-solar-flare button,
+  .theme-solar-flare-dark button,
+  .theme-cyberpunk button,
+  .theme-cyberpunk-dark button,
+  .theme-aurora-storm button,
+  .theme-aurora-storm-dark button,
+  .theme-volcanic-ice button,
+  .theme-volcanic-ice-dark button {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+  }
+
+  .theme-neon-pulse button:hover,
+  .theme-neon-pulse-dark button:hover,
+  .theme-solar-flare button:hover,
+  .theme-solar-flare-dark button:hover,
+  .theme-cyberpunk button:hover,
+  .theme-cyberpunk-dark button:hover,
+  .theme-aurora-storm button:hover,
+  .theme-aurora-storm-dark button:hover,
+  .theme-volcanic-ice button:hover,
+  .theme-volcanic-ice-dark button:hover {
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+  }
+
+  /* Enhanced Input Effects */
+  .theme-neon-pulse input,
+  .theme-neon-pulse-dark input,
+  .theme-solar-flare input,
+  .theme-solar-flare-dark input,
+  .theme-cyberpunk input,
+  .theme-cyberpunk-dark input,
+  .theme-aurora-storm input,
+  .theme-aurora-storm-dark input,
+  .theme-volcanic-ice input,
+  .theme-volcanic-ice-dark input {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .theme-neon-pulse input:focus,
+  .theme-neon-pulse-dark input:focus,
+  .theme-solar-flare input:focus,
+  .theme-solar-flare-dark input:focus,
+  .theme-cyberpunk input:focus,
+  .theme-cyberpunk-dark input:focus,
+  .theme-aurora-storm input:focus,
+  .theme-aurora-storm-dark input:focus,
+  .theme-volcanic-ice input:focus,
+  .theme-volcanic-ice-dark input:focus {
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+  }
+
+  /* OLD THEMES - Keeping for compatibility */
   .theme-coastal-breeze {
     /* Logo Accent Color */
     --logo-accent-color: 220 100% 60%;

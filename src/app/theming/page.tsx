@@ -11,31 +11,23 @@ const appThemes = [
   { id: "light", name: "Default Light", description: "The standard clean and professional theme.", icon: Sun, isDark: false, gradient: "bg-gradient-to-br from-blue-100 to-indigo-100" },
   { id: "dark", name: "Default Dark", description: "For low-light conditions, reduces eye strain.", icon: Moon, isDark: true, gradient: "bg-gradient-to-br from-slate-800 to-slate-900" },
   
-  // New enhanced themes
-  { id: "theme-coastal-breeze", name: "Coastal Breeze", description: "Serene coastal landscapes with glassmorphic UI.", icon: Sailboat, isDark: false, gradient: "bg-gradient-to-br from-sky-300/70 to-blue-500/70 backdrop-blur-md", isEnhanced: true },
-  { id: "theme-coastal-breeze-dark", name: "Coastal Breeze Dark", description: "Moonlit shores with frosted glass elements.", icon: Sailboat, isDark: true, gradient: "bg-gradient-to-br from-blue-900/70 to-slate-900/70 backdrop-blur-md", isEnhanced: true },
+  // NEW BOLD ENHANCED THEMES - 10 total (5 light, 5 dark)
+  { id: "theme-neon-pulse", name: "Neon Pulse", description: "Electric cyan and magenta with glassmorphic effects.", icon: Zap, isDark: false, gradient: "bg-gradient-to-br from-cyan-300/80 via-pink-400/70 to-purple-500/80 backdrop-blur-xl", isEnhanced: true },
+  { id: "theme-neon-pulse-dark", name: "Neon Pulse Dark", description: "Deep blacks with electric neon accents.", icon: Zap, isDark: true, gradient: "bg-gradient-to-br from-black/90 via-purple-900/70 to-cyan-800/80 backdrop-blur-xl", isEnhanced: true },
   
-  { id: "theme-urban-pulse", name: "Urban Pulse", description: "Dynamic cityscapes with glassmorphic UI elements.", icon: Building, isDark: false, gradient: "bg-gradient-to-br from-orange-200/70 to-rose-300/70 backdrop-blur-md", isEnhanced: true },
-  { id: "theme-urban-pulse-dark", name: "Urban Pulse Dark", description: "Neon-lit city nights with frosted glass elements.", icon: Building, isDark: true, gradient: "bg-gradient-to-br from-slate-900/70 to-purple-900/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-solar-flare", name: "Solar Flare", description: "Burning oranges and electric blues in stark contrast.", icon: Flame, isDark: false, gradient: "bg-gradient-to-br from-orange-400/80 via-red-500/70 to-blue-600/80 backdrop-blur-xl", isEnhanced: true },
+  { id: "theme-solar-flare-dark", name: "Solar Flare Dark", description: "Molten lava reds against deep space blues.", icon: Flame, isDark: true, gradient: "bg-gradient-to-br from-red-900/90 via-orange-800/70 to-blue-900/80 backdrop-blur-xl", isEnhanced: true },
   
-  { id: "theme-forest-whisper", name: "Forest Whisper", description: "Lush forest canopies with glassmorphic UI elements.", icon: Trees, isDark: false, gradient: "bg-gradient-to-br from-green-200/70 to-emerald-300/70 backdrop-blur-md", isEnhanced: true },
-  { id: "theme-forest-whisper-dark", name: "Forest Whisper Dark", description: "Mystical night forests with frosted glass elements.", icon: Trees, isDark: true, gradient: "bg-gradient-to-br from-green-900/70 to-emerald-800/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-cyberpunk", name: "Cyberpunk", description: "Hot pink and toxic green with digital glitch effects.", icon: CircuitBoard, isDark: false, gradient: "bg-gradient-to-br from-pink-400/80 via-green-400/70 to-yellow-500/80 backdrop-blur-xl", isEnhanced: true },
+  { id: "theme-cyberpunk-dark", name: "Cyberpunk Dark", description: "Neon pinks and greens on obsidian black.", icon: CircuitBoard, isDark: true, gradient: "bg-gradient-to-br from-black/95 via-pink-900/70 to-green-800/80 backdrop-blur-xl", isEnhanced: true },
   
-  { id: "theme-desert-mirage", name: "Desert Mirage", description: "Warm desert landscapes with glassmorphic UI elements.", icon: Palmtree, isDark: false, gradient: "bg-gradient-to-br from-amber-200/70 to-yellow-400/70 backdrop-blur-md", isEnhanced: true },
-  { id: "theme-desert-mirage-dark", name: "Desert Mirage Dark", description: "Starlit desert nights with frosted glass elements.", icon: Palmtree, isDark: true, gradient: "bg-gradient-to-br from-amber-900/70 to-yellow-800/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-aurora-storm", name: "Aurora Storm", description: "Vibrant teal and coral with ethereal glow effects.", icon: Sparkles, isDark: false, gradient: "bg-gradient-to-br from-teal-400/80 via-cyan-500/70 to-coral-500/80 backdrop-blur-xl", isEnhanced: true },
+  { id: "theme-aurora-storm-dark", name: "Aurora Storm Dark", description: "Deep ocean blues with bioluminescent corals.", icon: Sparkles, isDark: true, gradient: "bg-gradient-to-br from-blue-900/95 via-teal-800/70 to-coral-800/80 backdrop-blur-xl", isEnhanced: true },
   
-  { id: "theme-mountain-majesty", name: "Mountain Majesty", description: "Majestic peaks with glassmorphic UI elements.", icon: Mountain, isDark: false, gradient: "bg-gradient-to-br from-indigo-200/70 to-purple-300/70 backdrop-blur-md", isEnhanced: true },
-  { id: "theme-mountain-majesty-dark", name: "Mountain Majesty Dark", description: "Alpine nights with frosted glass elements.", icon: Mountain, isDark: true, gradient: "bg-gradient-to-br from-indigo-900/70 to-purple-800/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-volcanic-ice", name: "Volcanic Ice", description: "Fiery reds and icy blues in dramatic contrast.", icon: Snowflake, isDark: false, gradient: "bg-gradient-to-br from-red-500/80 via-orange-400/70 to-blue-500/80 backdrop-blur-xl", isEnhanced: true },
+  { id: "theme-volcanic-ice-dark", name: "Volcanic Ice Dark", description: "Molten magma against arctic ice blues.", icon: Snowflake, isDark: true, gradient: "bg-gradient-to-br from-red-900/95 via-orange-800/70 to-blue-900/80 backdrop-blur-xl", isEnhanced: true },
   
-  { id: "theme-tech-horizon", name: "Tech Horizon", description: "Futuristic interfaces with glassmorphic UI elements.", icon: CircuitBoard, isDark: false, gradient: "bg-gradient-to-br from-cyan-200/70 to-blue-300/70 backdrop-blur-md", isEnhanced: true },
-  { id: "theme-tech-horizon-dark", name: "Tech Horizon Dark", description: "Cyberpunk aesthetics with frosted glass elements.", icon: CircuitBoard, isDark: true, gradient: "bg-gradient-to-br from-cyan-900/70 to-blue-800/70 backdrop-blur-md", isEnhanced: true },
-  
-  { id: "theme-tropical-paradise", name: "Tropical Paradise", description: "Vibrant beaches with glassmorphic UI elements.", icon: Umbrella, isDark: false, gradient: "bg-gradient-to-br from-teal-200/70 to-lime-300/70 backdrop-blur-md", isEnhanced: true },
-  { id: "theme-tropical-paradise-dark", name: "Tropical Paradise Dark", description: "Tropical nights with frosted glass elements.", icon: Umbrella, isDark: true, gradient: "bg-gradient-to-br from-teal-900/70 to-lime-800/70 backdrop-blur-md", isEnhanced: true },
-  
-  { id: "theme-aurora-borealis", name: "Aurora Borealis", description: "Northern lights with glassmorphic UI elements.", icon: Lightbulb, isDark: false, gradient: "bg-gradient-to-br from-purple-200/70 to-pink-300/70 backdrop-blur-md", isEnhanced: true },
-  { id: "theme-aurora-borealis-dark", name: "Aurora Borealis Dark", description: "Polar nights with frosted glass elements.", icon: Lightbulb, isDark: true, gradient: "bg-gradient-to-br from-purple-900/70 to-pink-800/70 backdrop-blur-md", isEnhanced: true },
-  
+  // Standard themes (keeping existing ones)
   { id: "theme-nature-embrace", name: "Nature's Embrace", description: "Dynamic nature background. Serene & organic.", icon: Trees, isDark: true, gradient: "bg-gradient-to-br from-green-500 to-emerald-700" },
   { id: "theme-guardian-shield", name: "Guardian Shield", description: "Metallic & blue hues. Sense of security.", icon: Shield, isDark: true, gradient: "bg-gradient-to-br from-slate-600 to-blue-700" },
   { id: "theme-tranquil-library", name: "Tranquil Library", description: "Warm woods & soft light. Calm & focused.", icon: BookOpen, isDark: true, gradient: "bg-gradient-to-br from-yellow-700 to-orange-800" },
@@ -144,22 +136,25 @@ const iconVariants = {
 
 // Animation variants for enhanced theme cards
 const enhancedCardVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 20, rotateX: -10 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
+    rotateX: 0,
     transition: {
       delay: i * 0.05,
-      duration: 0.5,
+      duration: 0.6,
       ease: [0.4, 0, 0.2, 1]
     }
   }),
   hover: {
-    y: -8,
-    scale: 1.03,
-    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)",
+    y: -12,
+    scale: 1.05,
+    rotateX: 5,
+    rotateY: 2,
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1)",
     transition: {
-      duration: 0.4,
+      duration: 0.5,
       ease: "easeOut"
     }
   }
@@ -174,18 +169,19 @@ const enhancedIconVariants = {
     rotate: 0,
     transition: { 
       delay: 0.2,
-      duration: 0.5,
+      duration: 0.6,
       ease: "backOut"
     }
   },
   hover: { 
-    scale: 1.2,
-    rotate: [0, 10, -10, 0],
+    scale: 1.3,
+    rotate: [0, 15, -15, 0],
+    filter: "drop-shadow(0 0 8px currentColor)",
     transition: { 
-      duration: 1,
+      duration: 1.2,
       ease: "easeInOut",
       repeat: Infinity,
-      repeatType: "mirror"
+      repeatType: "mirror" as const
     }
   }
 };
@@ -262,12 +258,30 @@ export default function ThemingPage() {
               whileHover="hover"
               className="h-full"
             >
-              <Card className="overflow-hidden flex flex-col h-full">
+              <Card className={`overflow-hidden flex flex-col h-full ${themeOption.isEnhanced ? 'backdrop-blur-xl bg-white/10 dark:bg-black/10 border-white/20 dark:border-white/10 shadow-2xl' : ''}`}>
                 <CardHeader className="p-0">
                   <div
-                    className={`h-32 w-full flex items-center justify-center ${themeOption.gradient}`}
+                    className={`h-32 w-full flex items-center justify-center ${themeOption.gradient} ${themeOption.isEnhanced ? 'relative overflow-hidden' : ''}`}
                     data-ai-hint="theme color palette"
                   >
+                    {themeOption.isEnhanced && (
+                      <motion.div
+                        className="absolute inset-0 opacity-30"
+                        animate={{
+                          background: [
+                            "radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 50%)",
+                            "radial-gradient(circle at 80% 20%, rgba(255,255,255,0.3) 0%, transparent 50%)",
+                            "radial-gradient(circle at 40% 40%, rgba(255,255,255,0.3) 0%, transparent 50%)",
+                            "radial-gradient(circle at 20% 80%, rgba(255,255,255,0.3) 0%, transparent 50%)"
+                          ]
+                        }}
+                        transition={{
+                          duration: 8,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                      />
+                    )}
                     <motion.div
                       variants={themeOption.isEnhanced ? enhancedIconVariants : iconVariants}
                       initial="hidden"
@@ -302,10 +316,10 @@ export default function ThemingPage() {
                   >
                     <Button
                       onClick={() => handleThemeChange(themeOption.id)}
-                      className="w-full mt-auto"
+                      className={`w-full mt-auto ${themeOption.isEnhanced ? 'backdrop-blur-md bg-white/20 dark:bg-black/20 border-white/30 dark:border-white/20 hover:bg-white/30 dark:hover:bg-black/30 transition-all duration-300' : ''}`}
                       variant={mounted && currentTheme === themeOption.id ? "default" : "outline"}
                     >
-                      Apply Theme
+                      {mounted && currentTheme === themeOption.id ? "Active Theme" : "Apply Theme"}
                     </Button>
                   </motion.div>
                 </CardContent>

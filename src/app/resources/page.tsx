@@ -497,8 +497,8 @@ export default function ResourcesPage() {
                       {documentsError}
                     </TableCell>
                   </TableRow>
-                ) : filteredDocuments.length > 0 ? (
-                  filteredDocuments.map((doc) => {
+                ) : (searchTerm ? filteredDocuments : documents).length > 0 ? (
+                  (searchTerm ? filteredDocuments : documents).map((doc) => {
                     const parsedDate = typeof doc.updatedAt?.toDate === "function"
                       ? doc.updatedAt.toDate()
                       : new Date(doc.updatedAt as string); // Added 'as string' to satisfy TS if updatedAt might not be a Timestamp-like object
@@ -617,7 +617,7 @@ export default function ResourcesPage() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={8} className="h-24 text-center">
-                      No documents found.
+                      {searchTerm ? "No documents found matching your search." : "No documents found."}
                     </TableCell>
                   </TableRow>
                 )}
@@ -625,7 +625,12 @@ export default function ResourcesPage() {
             </Table>
           </ScrollArea>
           <CardFooter className="pt-4 dark:bg-transparent">
-            <p className="text-xs text-muted-foreground dark:text-slate-300">Showing {documents.length} of {totalCount} documents.</p>
+            <p className="text-xs text-muted-foreground dark:text-slate-300">
+              {searchTerm 
+                ? `Showing ${filteredDocuments.length} of ${totalCount} documents matching "${searchTerm}".`
+                : `Showing ${documents.length} of ${totalCount} documents.`
+              }
+            </p>
           </CardFooter>
         </CardContent>
       </Card>
@@ -933,7 +938,7 @@ export default function ResourcesPage() {
       </Dialog>
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
+      {totalPages > 1 && !searchTerm && (
         <div className="flex items-center justify-between mt-4">
           <div className="text-sm text-muted-foreground">
             Showing {((currentPage - 1) * 5) + 1} to {Math.min(currentPage * 5, totalCount)} of {totalCount} documents
