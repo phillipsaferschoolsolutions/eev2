@@ -30,7 +30,13 @@ const THEME_IDS = [
   'theme-mountain-majesty', 'theme-mountain-majesty-dark',
   'theme-tech-horizon', 'theme-tech-horizon-dark',
   'theme-tropical-paradise', 'theme-tropical-paradise-dark',
-  'theme-aurora-borealis', 'theme-aurora-borealis-dark'
+  'theme-aurora-borealis', 'theme-aurora-borealis-dark',
+  // NEW BOLD ENHANCED THEMES
+  'theme-neon-pulse', 'theme-neon-pulse-dark',
+  'theme-solar-flare', 'theme-solar-flare-dark',
+  'theme-cyberpunk', 'theme-cyberpunk-dark',
+  'theme-aurora-storm', 'theme-aurora-storm-dark',
+  'theme-volcanic-ice', 'theme-volcanic-ice-dark'
 ];
 
 export function ClientAppShell({ children }: { children: React.ReactNode }) {
