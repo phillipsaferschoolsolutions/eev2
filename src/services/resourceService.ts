@@ -105,14 +105,36 @@ export async function uploadResourceDocument(formData: FormData, account: string
 }
 
 /**
- * Fetches all resource documents for a given account.
+ * Fetches all resource documents for a given account with pagination.
  * @param account The account ID to filter resources by.
+ * @param page The page number (default: 1).
+ * @param limit The number of items per page (default: 5).
  */
-export async function getResourceDocuments(account: string): Promise<ResourceDocument[]> {
-  const result = await authedFetch<ResourceDocument[] | undefined>(`${RESOURCES_BASE_URL}/`, {
+export async function getResourceDocuments(account: string, page: number = 1, limit: number = 5): Promise<{
+  resources: ResourceDocument[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalCount: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+}> {
+  const result = await authedFetch<{
+    resources: ResourceDocument[];
+    pagination: {
+      page: number;
+      limit: number;
+      totalCount: number;
+      totalPages: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  }>(`${RESOURCES_BASE_URL}/?page=${page}&limit=${limit}`, {
     method: 'GET',
   }, account);
-  return result || [];
+  return result || { resources: [], pagination: { page: 1, limit: 5, totalCount: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false } };
 }
 
 /**
@@ -163,8 +185,73 @@ export async function generateResourceSummary(resourceId: string, account: strin
   return response;
 }
 
-// Placeholder for future functions:
-// export async function getResourceDocumentById(resourceId: string, account: string): Promise<ResourceDocument | null> { /* ... */ return null; }
-// export async function updateResourceDocument(resourceId: string, updates: Partial<ResourceDocument>, account: string): Promise<void> { /* ... */ }
-// export async function deleteResourceDocument(resourceId: string, account: string): Promise<void> { /* ... */ }
-// export async function getResourceDocumentVersions(resourceId: string, account: string): Promise<any[]> { /* ... */ return []; }
+/**
+ * Renames a resource document.
+ * @param resourceId The ID of the resource document.
+ * @param newName The new name for the document.
+ * @param account The account ID.
+ */
+export async function renameResourceDocument(resourceId: string, newName: string, account: string): Promise<void> {
+  await authedFetch<void>(`${RESOURCES_BASE_URL}/${resourceId}/rename`, {
+    method: 'PUT',
+    body: JSON.stringify({ newName }),
+  }, account);
+}
+
+/**
+ * Deletes a resource document.
+ * @param resourceId The ID of the resource document.
+ * @param account The account ID.
+ */
+export async function deleteResourceDocument(resourceId: string, account: string): Promise<void> {
+  await authedFetch<void>(`${RESOURCES_BASE_URL}/${resourceId}`, {
+    method: 'DELETE',
+  }, account);
+}
+
+/**
+ * Clones a resource document.
+ * @param resourceId The ID of the resource document to clone.
+ * @param account The account ID.
+ * @returns The cloned resource document.
+ */
+export async function cloneResourceDocument(resourceId: string, account: string): Promise<ResourceDocument> {
+  return authedFetch<ResourceDocument>(`${RESOURCES_BASE_URL}/${resourceId}/clone`, {
+    method: 'POST',
+  }, account);
+}
+
+/**
+ * Shares a resource document with another user.
+ * @param resourceId The ID of the resource document.
+ * @param shareData The sharing data including email, name, title, location, and message.
+ * @param account The account ID.
+ */
+export async function shareResourceDocument(resourceId: string, shareData: {
+  email: string;
+  name: string;
+  title?: string;
+  location?: string;
+  message?: string;
+}, account: string): Promise<void> {
+  await authedFetch<void>(`${RESOURCES_BASE_URL}/${resourceId}/share`, {
+    method: 'POST',
+    body: JSON.stringify(shareData),
+  }, account);
+}
+
+/**
+ * Updates resource metadata (tags, fileType).
+ * @param resourceId The ID of the resource document.
+ * @param metadata The metadata to update.
+ * @param account The account ID.
+ */
+export async function updateResourceMetadata(resourceId: string, metadata: {
+  tags?: string[];
+  fileType?: string;
+}, account: string): Promise<void> {
+  await authedFetch<void>(`${RESOURCES_BASE_URL}/${resourceId}/metadata`, {
+    method: 'PUT',
+    body: JSON.stringify(metadata),
+  }, account);
+}

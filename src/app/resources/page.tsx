@@ -16,15 +16,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { UploadCloud, FileText, Search, Filter, Info, Mic, PlayIcon, PauseIcon, Trash2, FileText as FileTextIcon, Loader2, Radio, Eye as EyeIcon, X } from "lucide-react";
+import { UploadCloud, FileText, Search, Filter, Info, Mic, PlayIcon, PauseIcon, Trash2, FileText as FileTextIcon, Loader2, Radio, Eye as EyeIcon, X, MoreHorizontal, Download, Share2, Copy, Edit, Trash } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ResourceDocument } from "@/types/Resource";
 import { 
   uploadResourceDocument, 
   getResourceDocuments, 
   addAudioNoteToResource, 
-  generateResourceSummary
+  generateResourceSummary,
+  renameResourceDocument,
+  deleteResourceDocument,
+  cloneResourceDocument,
+  shareResourceDocument,
+  updateResourceMetadata
 } from "@/services/resourceService"; 
 import Link from "next/link";
 
@@ -50,11 +57,44 @@ export default function ResourcesPage() {
   const { user, userProfile, loading: authLoading, profileLoading } = useAuth();
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [selectedSummary, setSelectedSummary] = useState<{ title: string; content: string } | null>(null);
+  
+  // Document viewer modal
+  const [documentModalOpen, setDocumentModalOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<ResourceDocument | null>(null);
+  
+  // Action modals
+  const [renameModalOpen, setRenameModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [cloneModalOpen, setCloneModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [editMetadataModalOpen, setEditMetadataModalOpen] = useState(false);
+  const [actionDocument, setActionDocument] = useState<ResourceDocument | null>(null);
+  
+  // Form states
+  const [newFileName, setNewFileName] = useState("");
+  const [shareForm, setShareForm] = useState({
+    email: "",
+    name: "",
+    title: "",
+    location: "",
+    message: ""
+  });
+  const [editMetadataForm, setEditMetadataForm] = useState({
+    tags: "",
+    fileType: ""
+  });
   const { toast } = useToast();
   const [documents, setDocuments] = useState<ResourceDocument[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
   const [documentsError, setDocumentsError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPrevPage, setHasPrevPage] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Audio state
@@ -72,7 +112,7 @@ export default function ResourcesPage() {
     resolver: zodResolver(resourceFormSchema),
   });
 
-  const fetchDocuments = useCallback(async () => {
+  const fetchDocuments = useCallback(async (page: number = 1) => {
     if (!userProfile?.account) {
       setDocumentsError("Account information is not available.");
       setIsLoadingDocuments(false);
@@ -81,8 +121,13 @@ export default function ResourcesPage() {
     setIsLoadingDocuments(true);
     setDocumentsError(null);
     try {
-      const fetchedDocs = await getResourceDocuments(userProfile.account);
-      setDocuments(fetchedDocs.map(doc => ({ ...doc, summaryGenerating: false })));
+      const result = await getResourceDocuments(userProfile.account, page, 5);
+      setDocuments(result.resources.map(doc => ({ ...doc, summaryGenerating: false })));
+      setCurrentPage(result.pagination.page);
+      setTotalPages(result.pagination.totalPages);
+      setTotalCount(result.pagination.totalCount);
+      setHasNextPage(result.pagination.hasNextPage);
+      setHasPrevPage(result.pagination.hasPrevPage);
     } catch (err) {
       console.error("Failed to fetch documents:", err);
       setDocumentsError((err as Error).message || "Could not load documents.");
@@ -148,6 +193,59 @@ export default function ResourcesPage() {
   const handleViewSummary = (docName: string, summary: string) => {
     setSelectedSummary({ title: docName, content: summary });
     setSummaryModalOpen(true);
+  };
+
+  const handleViewDocument = (doc: ResourceDocument) => {
+    setSelectedDocument(doc);
+    setDocumentModalOpen(true);
+  };
+
+  const handleRename = (doc: ResourceDocument) => {
+    setActionDocument(doc);
+    setNewFileName(doc.name);
+    setRenameModalOpen(true);
+  };
+
+  const handleDelete = (doc: ResourceDocument) => {
+    setActionDocument(doc);
+    setDeleteModalOpen(true);
+  };
+
+  const handleClone = (doc: ResourceDocument) => {
+    setActionDocument(doc);
+    setCloneModalOpen(true);
+  };
+
+  const handleShare = (doc: ResourceDocument) => {
+    setActionDocument(doc);
+    setShareForm({
+      email: "",
+      name: "",
+      title: "",
+      location: "",
+      message: ""
+    });
+    setShareModalOpen(true);
+  };
+
+  const handleEditMetadata = (doc: ResourceDocument) => {
+    setActionDocument(doc);
+    setEditMetadataForm({
+      tags: doc.tags?.join(', ') || "",
+      fileType: doc.fileType || ""
+    });
+    setEditMetadataModalOpen(true);
+  };
+
+  const handleDownload = (doc: ResourceDocument) => {
+    if (doc.downloadURL) {
+      const link = document.createElement('a');
+      link.href = doc.downloadURL;
+      link.download = doc.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
 
@@ -426,7 +524,7 @@ export default function ResourcesPage() {
                               View
                             </Button>
                           ) : (
-                            <Button variant="outline" size="xs" onClick={() => handleGenerateSummary(doc.id, doc.name)} disabled={doc.summaryGenerating}>
+                            <Button variant="outline" size="sm" onClick={() => handleGenerateSummary(doc.id, doc.name)} disabled={doc.summaryGenerating} className="text-xs px-1.5 py-0.5 h-auto">
                               <FileTextIcon className="mr-1 h-3 w-3" /> Gen
                             </Button>
                           )}
@@ -473,19 +571,45 @@ export default function ResourcesPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           {doc.downloadURL ? (
-                            <Button asChild variant="outline" size="xs" className="text-xs px-1.5 py-0.5 h-auto">
-                              <Link href={doc.downloadURL} target="_blank" rel="noopener noreferrer">
-                                <EyeIcon className="mr-1 h-3 w-3" /> View
-                              </Link>
+                            <Button variant="outline" size="sm" className="text-xs px-1.5 py-0.5 h-auto" onClick={() => handleViewDocument(doc)}>
+                              <EyeIcon className="mr-1 h-3 w-3" /> View
                             </Button>
                           ) : (
-                            <Button variant="outline" size="xs" disabled className="text-xs px-1.5 py-0.5 h-auto">
+                            <Button variant="outline" size="sm" disabled className="text-xs px-1.5 py-0.5 h-auto">
                              <EyeIcon className="mr-1 h-3 w-3" /> View
                             </Button>
                           )}
                         </TableCell>
                          <TableCell className="text-right">
-                            <Button variant="ghost" size="xs" disabled className="text-xs px-1.5 py-0.5 h-auto">Manage</Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="text-xs px-1.5 py-0.5 h-auto">
+                                  <MoreHorizontal className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleRename(doc)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEditMetadata(doc)}>
+                                  <FileText className="mr-2 h-4 w-4" />
+                                  Edit Tags & Type
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleClone(doc)}>
+                                  <Copy className="mr-2 h-4 w-4" />
+                                  Clone
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleShare(doc)}>
+                                  <Share2 className="mr-2 h-4 w-4" />
+                                  Share
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDelete(doc)} className="text-destructive">
+                                  <Trash className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     );
@@ -501,7 +625,7 @@ export default function ResourcesPage() {
             </Table>
           </ScrollArea>
           <CardFooter className="pt-4 dark:bg-transparent">
-            <p className="text-xs text-muted-foreground dark:text-slate-300">Showing {filteredDocuments.length} of {documents.length} documents.</p>
+            <p className="text-xs text-muted-foreground dark:text-slate-300">Showing {documents.length} of {totalCount} documents.</p>
           </CardFooter>
         </CardContent>
       </Card>
@@ -524,6 +648,319 @@ export default function ResourcesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Document Viewer Modal */}
+      <Dialog open={documentModalOpen} onOpenChange={setDocumentModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileTextIcon className="h-5 w-5" />
+              {selectedDocument?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            {selectedDocument?.downloadURL ? (
+              <div className="space-y-4">
+                <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
+                  <iframe 
+                    src={selectedDocument.downloadURL} 
+                    className="w-full h-full rounded-lg"
+                    title={selectedDocument.name}
+                  />
+                </div>
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-muted-foreground">
+                    <p>Type: {selectedDocument.fileType || 'Unknown'}</p>
+                    <p>Size: {selectedDocument.fileSize ? `${(selectedDocument.fileSize / 1024 / 1024).toFixed(2)} MB` : 'Unknown'}</p>
+                  </div>
+                  <Button onClick={() => handleDownload(selectedDocument!)}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Document not available for viewing.</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Modal */}
+      <Dialog open={renameModalOpen} onOpenChange={setRenameModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Document</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="newFileName">New Name</Label>
+              <Input
+                id="newFileName"
+                value={newFileName}
+                onChange={(e) => setNewFileName(e.target.value)}
+                placeholder="Enter new file name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={async () => {
+              if (!actionDocument || !userProfile?.account) return;
+              
+              try {
+                await renameResourceDocument(actionDocument.id, newFileName, userProfile.account);
+                setDocuments(prevDocs => prevDocs.map(d => 
+                  d.id === actionDocument.id ? { ...d, name: newFileName } : d
+                ));
+                toast({ title: "Success", description: "Document renamed successfully." });
+                setRenameModalOpen(false);
+              } catch (error) {
+                toast({ variant: "destructive", title: "Error", description: (error as Error).message });
+              }
+            }}>
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Modal */}
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Document</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>Are you sure you want to delete "{actionDocument?.name}"? This action cannot be undone.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={async () => {
+              if (!actionDocument || !userProfile?.account) return;
+              
+              try {
+                await deleteResourceDocument(actionDocument.id, userProfile.account);
+                setDocuments(prevDocs => prevDocs.filter(d => d.id !== actionDocument.id));
+                toast({ title: "Success", description: "Document deleted successfully." });
+                setDeleteModalOpen(false);
+              } catch (error) {
+                toast({ variant: "destructive", title: "Error", description: (error as Error).message });
+              }
+            }}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clone Modal */}
+      <Dialog open={cloneModalOpen} onOpenChange={setCloneModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clone Document</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>Create a copy of "{actionDocument?.name}"?</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCloneModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={async () => {
+              if (!actionDocument || !userProfile?.account) return;
+              
+              try {
+                const clonedDoc = await cloneResourceDocument(actionDocument.id, userProfile.account);
+                setDocuments(prevDocs => [...prevDocs, clonedDoc]);
+                toast({ title: "Success", description: "Document cloned successfully." });
+                setCloneModalOpen(false);
+              } catch (error) {
+                toast({ variant: "destructive", title: "Error", description: (error as Error).message });
+              }
+            }}>
+              Clone
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Share Modal */}
+      <Dialog open={shareModalOpen} onOpenChange={setShareModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share Document</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="shareEmail">Email</Label>
+              <Input
+                id="shareEmail"
+                type="email"
+                value={shareForm.email}
+                onChange={(e) => setShareForm(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="Enter email address"
+              />
+            </div>
+            <div>
+              <Label htmlFor="shareName">Name</Label>
+              <Input
+                id="shareName"
+                value={shareForm.name}
+                onChange={(e) => setShareForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Enter recipient name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="shareTitle">Title</Label>
+              <Input
+                id="shareTitle"
+                value={shareForm.title}
+                onChange={(e) => setShareForm(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Enter recipient title"
+              />
+            </div>
+            <div>
+              <Label htmlFor="shareLocation">Location</Label>
+              <Select value={shareForm.location} onValueChange={(value) => setShareForm(prev => ({ ...prev, location: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="main-office">Main Office</SelectItem>
+                  <SelectItem value="north-campus">North Campus</SelectItem>
+                  <SelectItem value="south-campus">South Campus</SelectItem>
+                  <SelectItem value="east-wing">East Wing</SelectItem>
+                  <SelectItem value="west-wing">West Wing</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="shareMessage">Message (Optional)</Label>
+              <Textarea
+                id="shareMessage"
+                value={shareForm.message}
+                onChange={(e) => setShareForm(prev => ({ ...prev, message: e.target.value }))}
+                placeholder="Add a personal message"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShareModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={async () => {
+              if (!actionDocument || !userProfile?.account) return;
+              
+              try {
+                await shareResourceDocument(actionDocument.id, shareForm, userProfile.account);
+                toast({ title: "Success", description: "Document shared successfully." });
+                setShareModalOpen(false);
+              } catch (error) {
+                toast({ variant: "destructive", title: "Error", description: (error as Error).message });
+              }
+            }}>
+              Share
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Metadata Modal */}
+      <Dialog open={editMetadataModalOpen} onOpenChange={setEditMetadataModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Document Metadata</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="editTags">Tags (comma-separated)</Label>
+              <Input
+                id="editTags"
+                value={editMetadataForm.tags}
+                onChange={(e) => setEditMetadataForm(prev => ({ ...prev, tags: e.target.value }))}
+                placeholder="Enter tags separated by commas"
+              />
+            </div>
+            <div>
+              <Label htmlFor="editFileType">File Type</Label>
+              <Input
+                id="editFileType"
+                value={editMetadataForm.fileType}
+                onChange={(e) => setEditMetadataForm(prev => ({ ...prev, fileType: e.target.value }))}
+                placeholder="Enter file type (e.g., PDF, DOC, XLS)"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditMetadataModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={async () => {
+              if (!actionDocument || !userProfile?.account) return;
+              
+              try {
+                const tags = editMetadataForm.tags.split(',').map(tag => tag.trim()).filter(Boolean);
+                await updateResourceMetadata(actionDocument.id, {
+                  tags,
+                  fileType: editMetadataForm.fileType
+                }, userProfile.account);
+                
+                setDocuments(prevDocs => prevDocs.map(d => 
+                  d.id === actionDocument.id ? { 
+                    ...d, 
+                    tags,
+                    fileType: editMetadataForm.fileType
+                  } : d
+                ));
+                toast({ title: "Success", description: "Document metadata updated successfully." });
+                setEditMetadataModalOpen(false);
+              } catch (error) {
+                toast({ variant: "destructive", title: "Error", description: (error as Error).message });
+              }
+            }}>
+              Update
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <div className="text-sm text-muted-foreground">
+            Showing {((currentPage - 1) * 5) + 1} to {Math.min(currentPage * 5, totalCount)} of {totalCount} documents
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchDocuments(currentPage - 1)}
+              disabled={!hasPrevPage}
+            >
+              Previous
+            </Button>
+            <div className="text-sm">
+              Page {currentPage} of {totalPages}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchDocuments(currentPage + 1)}
+              disabled={!hasNextPage}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
