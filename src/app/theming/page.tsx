@@ -223,10 +223,8 @@ export default function ThemingPage() {
   const handleThemeChange = async (themeId: string) => {
     try {
       await setTheme(themeId);
-      // Force a re-render to update the button states
-      setTimeout(() => {
-        // This will trigger a re-render and update the button states
-      }, 100);
+      // Force a re-render by updating the current theme state
+      setCurrentTheme(themeId);
     } catch (error) {
       console.error('Error changing theme:', error);
     }
