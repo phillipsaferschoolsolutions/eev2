@@ -27,6 +27,31 @@ const appThemes = [
   { id: "theme-volcanic-ice", name: "Volcanic Ice", description: "Fiery reds and icy blues in dramatic contrast.", icon: Snowflake, isDark: false, gradient: "bg-gradient-to-br from-red-500/80 via-orange-400/70 to-blue-500/80 backdrop-blur-xl", isEnhanced: true },
   { id: "theme-volcanic-ice-dark", name: "Volcanic Ice Dark", description: "Molten magma against arctic ice blues.", icon: Snowflake, isDark: true, gradient: "bg-gradient-to-br from-red-900/95 via-orange-800/70 to-blue-900/80 backdrop-blur-xl", isEnhanced: true },
   
+  // ORIGINAL ENHANCED THEMES - Restored
+  { id: "theme-coastal-breeze", name: "Coastal Breeze", description: "Serene coastal landscapes with glassmorphic UI.", icon: Sailboat, isDark: false, gradient: "bg-gradient-to-br from-sky-300/70 to-blue-500/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-coastal-breeze-dark", name: "Coastal Breeze Dark", description: "Moonlit shores with frosted glass elements.", icon: Sailboat, isDark: true, gradient: "bg-gradient-to-br from-blue-900/70 to-slate-900/70 backdrop-blur-md", isEnhanced: true },
+  
+  { id: "theme-urban-pulse", name: "Urban Pulse", description: "Dynamic cityscapes with glassmorphic UI elements.", icon: Building, isDark: false, gradient: "bg-gradient-to-br from-orange-200/70 to-rose-300/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-urban-pulse-dark", name: "Urban Pulse Dark", description: "Neon-lit city nights with frosted glass elements.", icon: Building, isDark: true, gradient: "bg-gradient-to-br from-slate-900/70 to-purple-900/70 backdrop-blur-md", isEnhanced: true },
+  
+  { id: "theme-forest-whisper", name: "Forest Whisper", description: "Lush forest canopies with glassmorphic UI elements.", icon: Trees, isDark: false, gradient: "bg-gradient-to-br from-green-200/70 to-emerald-300/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-forest-whisper-dark", name: "Forest Whisper Dark", description: "Mystical night forests with frosted glass elements.", icon: Trees, isDark: true, gradient: "bg-gradient-to-br from-green-900/70 to-emerald-800/70 backdrop-blur-md", isEnhanced: true },
+  
+  { id: "theme-desert-mirage", name: "Desert Mirage", description: "Warm desert landscapes with glassmorphic UI elements.", icon: Palmtree, isDark: false, gradient: "bg-gradient-to-br from-amber-200/70 to-yellow-400/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-desert-mirage-dark", name: "Desert Mirage Dark", description: "Starlit desert nights with frosted glass elements.", icon: Palmtree, isDark: true, gradient: "bg-gradient-to-br from-amber-900/70 to-yellow-800/70 backdrop-blur-md", isEnhanced: true },
+  
+  { id: "theme-mountain-majesty", name: "Mountain Majesty", description: "Majestic peaks with glassmorphic UI elements.", icon: Mountain, isDark: false, gradient: "bg-gradient-to-br from-indigo-200/70 to-purple-300/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-mountain-majesty-dark", name: "Mountain Majesty Dark", description: "Alpine nights with frosted glass elements.", icon: Mountain, isDark: true, gradient: "bg-gradient-to-br from-indigo-900/70 to-purple-800/70 backdrop-blur-md", isEnhanced: true },
+  
+  { id: "theme-tech-horizon", name: "Tech Horizon", description: "Futuristic interfaces with glassmorphic UI elements.", icon: CircuitBoard, isDark: false, gradient: "bg-gradient-to-br from-cyan-200/70 to-blue-300/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-tech-horizon-dark", name: "Tech Horizon Dark", description: "Cyberpunk aesthetics with frosted glass elements.", icon: CircuitBoard, isDark: true, gradient: "bg-gradient-to-br from-cyan-900/70 to-blue-800/70 backdrop-blur-md", isEnhanced: true },
+  
+  { id: "theme-tropical-paradise", name: "Tropical Paradise", description: "Vibrant beaches with glassmorphic UI elements.", icon: Umbrella, isDark: false, gradient: "bg-gradient-to-br from-teal-200/70 to-lime-300/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-tropical-paradise-dark", name: "Tropical Paradise Dark", description: "Tropical nights with frosted glass elements.", icon: Umbrella, isDark: true, gradient: "bg-gradient-to-br from-teal-900/70 to-lime-800/70 backdrop-blur-md", isEnhanced: true },
+  
+  { id: "theme-aurora-borealis", name: "Aurora Borealis", description: "Northern lights with glassmorphic UI elements.", icon: Lightbulb, isDark: false, gradient: "bg-gradient-to-br from-purple-200/70 to-pink-300/70 backdrop-blur-md", isEnhanced: true },
+  { id: "theme-aurora-borealis-dark", name: "Aurora Borealis Dark", description: "Polar nights with frosted glass elements.", icon: Lightbulb, isDark: true, gradient: "bg-gradient-to-br from-purple-900/70 to-pink-800/70 backdrop-blur-md", isEnhanced: true },
+  
   // Standard themes (keeping existing ones)
   { id: "theme-nature-embrace", name: "Nature's Embrace", description: "Dynamic nature background. Serene & organic.", icon: Trees, isDark: true, gradient: "bg-gradient-to-br from-green-500 to-emerald-700" },
   { id: "theme-guardian-shield", name: "Guardian Shield", description: "Metallic & blue hues. Sense of security.", icon: Shield, isDark: true, gradient: "bg-gradient-to-br from-slate-600 to-blue-700" },
@@ -195,8 +220,16 @@ export default function ThemingPage() {
     setMounted(true);
   }, []);
 
-  const handleThemeChange = (themeId: string) => {
-    setTheme(themeId);
+  const handleThemeChange = async (themeId: string) => {
+    try {
+      await setTheme(themeId);
+      // Force a re-render to update the button states
+      setTimeout(() => {
+        // This will trigger a re-render and update the button states
+      }, 100);
+    } catch (error) {
+      console.error('Error changing theme:', error);
+    }
   };
 
   // Filter themes based on the showEnhanced state

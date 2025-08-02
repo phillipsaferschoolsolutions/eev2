@@ -126,6 +126,40 @@ export function ThemeBackgroundSetter() {
         clearOtherThemeVariables('');
       } else if (resolvedTheme === 'theme-volcanic-ice-dark') {
         clearOtherThemeVariables('');
+      }
+      // ORIGINAL ENHANCED THEMES - Restored
+      else if (resolvedTheme === 'theme-coastal-breeze') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-coastal-breeze-dark') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-urban-pulse') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-urban-pulse-dark') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-forest-whisper') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-forest-whisper-dark') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-desert-mirage') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-desert-mirage-dark') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-mountain-majesty') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-mountain-majesty-dark') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-tech-horizon') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-tech-horizon-dark') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-tropical-paradise') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-tropical-paradise-dark') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-aurora-borealis') {
+        clearOtherThemeVariables('');
+      } else if (resolvedTheme === 'theme-aurora-borealis-dark') {
+        clearOtherThemeVariables('');
       } else {
         // For any other theme that is not photo-heavy, clear all photo background variables
         clearOtherThemeVariables(''); // Pass empty string to clear all
