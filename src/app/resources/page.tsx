@@ -393,121 +393,8 @@ export default function ResourcesPage() {
       
       mediaRecorderRef.current.onstop = async () => {
         console.log('onstop event triggered for resource:', resourceId);
-        try {
-          // Prevent multiple onstop executions
-          if (processingStop === resourceId) {
-            console.log('onstop already processing for resource:', resourceId);
-            return;
-          }
-          
-          setProcessingStop(resourceId);
-          
-          // Cleanup old blob URL
-          const oldNote = audioNotes[resourceId];
-          if (oldNote?.url && oldNote.url.startsWith('blob:')) {
-            URL.revokeObjectURL(oldNote.url);
-          }
-
-          if (audioChunksRef.current.length === 0) {
-            console.warn('No audio data recorded');
-            setIsRecordingResourceId(null);
-            stream.getTracks().forEach(track => track.stop());
-            return;
-          }
-
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          const audioUrl = URL.createObjectURL(audioBlob);
-          const audioName = `audio_note_${resourceId}_${Date.now()}.webm`;
-          
-          setAudioNotes(prev => ({ 
-            ...prev, 
-            [resourceId]: { 
-              blob: audioBlob, 
-              url: audioUrl, 
-              name: audioName, 
-              isUploading: false 
-            } 
-          }));
-          
-          playChime('stop');
-          
-          // Stop recording state
-          if (isRecordingResourceId === resourceId) {
-            setIsRecordingResourceId(null);
-          }
-          
-          // Cleanup stream
-          stream.getTracks().forEach(track => track.stop());
-          
-          // Clear timer
-          if (maxRecordingTimerRef.current) {
-            clearTimeout(maxRecordingTimerRef.current);
-            maxRecordingTimerRef.current = null;
-          }
-
-          // Upload to server - prevent multiple simultaneous uploads
-          if (userProfile?.account && audioBlob) {
-            // Check if already uploading to prevent double uploads
-            const currentNote = audioNotes[resourceId];
-            if (currentNote?.isUploading) {
-              console.log('Upload already in progress, skipping...');
-              return;
-            }
-            
-            // Use a single state update to prevent race conditions
-            setAudioNotes(prev => ({ 
-              ...prev, 
-              [resourceId]: { 
-                ...prev[resourceId]!, 
-                isUploading: true,
-                error: undefined // Clear any previous errors
-              } 
-            }));
-            
-            try {
-              const downloadURL = await addAudioNoteToResource(resourceId, audioBlob, userProfile.account);
-              
-              // Single state update after successful upload
-              setAudioNotes(prev => ({ 
-                ...prev, 
-                [resourceId]: { 
-                  blob: audioBlob,
-                  url: downloadURL,
-                  name: audioName,
-                  downloadURL, 
-                  isUploading: false,
-                  error: undefined
-                } 
-              })); 
-              
-              toast({ title: "Audio Note Saved", description: "Audio note saved successfully." });
-            } catch (uploadError) {
-              console.error("Audio upload error:", uploadError);
-              
-              // Single state update on error
-              setAudioNotes(prev => ({ 
-                ...prev, 
-                [resourceId]: { 
-                  ...prev[resourceId]!, 
-                  isUploading: false, 
-                  error: (uploadError as Error).message 
-                } 
-              }));
-              
-              toast({ 
-                variant: "destructive", 
-                title: "Audio Save Failed", 
-                description: (uploadError as Error).message 
-              });
-            }
-          }
-        } catch (error) {
-          console.error('Error in onstop handler:', error);
-          setIsRecordingResourceId(null);
-          stream.getTracks().forEach(track => track.stop());
-        } finally {
-          setProcessingStop(null);
-        }
+        // Use the centralized processing function
+        processRecordingData(resourceId, stream);
       };
       
       mediaRecorderRef.current.onerror = (event) => {
@@ -544,13 +431,158 @@ export default function ResourcesPage() {
     }
   };
 
+  const processRecordingData = async (resourceId: string, stream: MediaStream) => {
+    try {
+      console.log('Processing recording data for resource:', resourceId);
+      
+      // Prevent multiple processing executions
+      if (processingStop === resourceId) {
+        console.log('Already processing for resource:', resourceId);
+        return;
+      }
+      
+      setProcessingStop(resourceId);
+      
+      // Cleanup old blob URL
+      const oldNote = audioNotes[resourceId];
+      if (oldNote?.url && oldNote.url.startsWith('blob:')) {
+        URL.revokeObjectURL(oldNote.url);
+      }
+
+      if (audioChunksRef.current.length === 0) {
+        console.warn('No audio data recorded');
+        setIsRecordingResourceId(null);
+        stream.getTracks().forEach(track => track.stop());
+        setProcessingStop(null);
+        return;
+      }
+
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audioName = `audio_note_${resourceId}_${Date.now()}.webm`;
+      
+      console.log('Created audio blob:', audioBlob.size, 'bytes');
+      
+      setAudioNotes(prev => ({ 
+        ...prev, 
+        [resourceId]: { 
+          blob: audioBlob, 
+          url: audioUrl, 
+          name: audioName, 
+          isUploading: false 
+        } 
+      }));
+      
+      playChime('stop');
+      
+      // Stop recording state
+      if (isRecordingResourceId === resourceId) {
+        setIsRecordingResourceId(null);
+      }
+      
+      // Cleanup stream
+      stream.getTracks().forEach(track => track.stop());
+      
+      // Clear timer
+      if (maxRecordingTimerRef.current) {
+        clearTimeout(maxRecordingTimerRef.current);
+        maxRecordingTimerRef.current = null;
+      }
+
+      // Upload to server - prevent multiple simultaneous uploads
+      if (userProfile?.account && audioBlob) {
+        // Check if already uploading to prevent double uploads
+        const currentNote = audioNotes[resourceId];
+        if (currentNote?.isUploading) {
+          console.log('Upload already in progress, skipping...');
+          setProcessingStop(null);
+          return;
+        }
+        
+        // Use a single state update to prevent race conditions
+        setAudioNotes(prev => ({ 
+          ...prev, 
+          [resourceId]: { 
+            ...prev[resourceId]!, 
+            isUploading: true,
+            error: undefined // Clear any previous errors
+          } 
+        }));
+        
+        try {
+          console.log('Uploading audio to server...');
+          const downloadURL = await addAudioNoteToResource(resourceId, audioBlob, userProfile.account);
+          console.log('Upload successful, download URL:', downloadURL);
+          
+          // Single state update after successful upload
+          setAudioNotes(prev => ({ 
+            ...prev, 
+            [resourceId]: { 
+              blob: audioBlob,
+              url: downloadURL,
+              name: audioName,
+              downloadURL, 
+              isUploading: false,
+              error: undefined
+            } 
+          })); 
+          
+          toast({ title: "Audio Note Saved", description: "Audio note saved successfully." });
+        } catch (uploadError) {
+          console.error("Audio upload error:", uploadError);
+          
+          // Single state update on error
+          setAudioNotes(prev => ({ 
+            ...prev, 
+            [resourceId]: { 
+              ...prev[resourceId]!, 
+              isUploading: false, 
+              error: (uploadError as Error).message 
+            } 
+          }));
+          
+          toast({ 
+            variant: "destructive", 
+            title: "Audio Save Failed", 
+            description: (uploadError as Error).message 
+          });
+        }
+      }
+      
+      setProcessingStop(null);
+    } catch (error) {
+      console.error('Error processing recording data:', error);
+      setIsRecordingResourceId(null);
+      setProcessingStop(null);
+    }
+  };
+
   const handleStopRecording = (resourceId: string, playTheStopChime: boolean = true) => {
     try {
       console.log('Stopping recording for resource:', resourceId, 'MediaRecorder state:', mediaRecorderRef.current?.state);
       
       if (mediaRecorderRef.current?.state === "recording") {
+        // Store the stream reference before stopping
+        const stream = mediaRecorderRef.current.stream;
+        
+        // Set up a timeout to handle the case where onstop doesn't fire
+        const stopTimeout = setTimeout(() => {
+          console.log('onstop event did not fire, processing manually');
+          processRecordingData(resourceId, stream);
+        }, 1000);
+        
+        // Store the timeout reference to clear it if onstop fires
         mediaRecorderRef.current.stop();
         console.log('MediaRecorder.stop() called');
+        
+        // Clear the timeout if onstop fires normally
+        const originalOnStop = mediaRecorderRef.current.onstop;
+        mediaRecorderRef.current.onstop = async (event) => {
+          clearTimeout(stopTimeout);
+          if (originalOnStop) {
+            originalOnStop.call(mediaRecorderRef.current, event);
+          }
+        };
       } else if (isRecordingResourceId === resourceId) {
         console.log('No active MediaRecorder, just clearing state');
         setIsRecordingResourceId(null);
