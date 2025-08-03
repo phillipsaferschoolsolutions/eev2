@@ -268,12 +268,16 @@ export function AudioRecorder({
             const currentTime = audioRef.current.currentTime;
             const duration = audioRef.current.duration;
             
-            // Update current time and ensure it doesn't exceed duration
-            setCurrentTime(Math.min(currentTime, duration || 0));
-            
-            // Update duration if it's valid and different
-            if (duration && !isNaN(duration) && isFinite(duration) && duration !== 0) {
-              setDuration(duration);
+            // Only update if we have a valid duration and current time
+            if (duration && !isNaN(duration) && isFinite(duration) && duration > 0) {
+              // Update current time and ensure it doesn't exceed duration
+              const clampedTime = Math.min(currentTime, duration);
+              setCurrentTime(clampedTime);
+              
+              // Update duration if it's different from what we have
+              if (Math.abs(duration - (audioData?.duration || 0)) > 0.1) {
+                setDuration(duration);
+              }
             }
           }
         }, 100);
@@ -337,7 +341,11 @@ export function AudioRecorder({
       const detectedDuration = audioRef.current.duration;
       // Ensure duration is valid
       const validDuration = isNaN(detectedDuration) || !isFinite(detectedDuration) || detectedDuration <= 0 ? 0 : detectedDuration;
-      setDuration(validDuration);
+      
+      // Only update duration if it's valid and different from current
+      if (validDuration > 0 && Math.abs(validDuration - duration) > 0.1) {
+        setDuration(validDuration);
+      }
       
       // If we have audioData but duration is 0, try to update it
       if (audioData && validDuration > 0 && audioData.duration === 0) {
@@ -346,10 +354,10 @@ export function AudioRecorder({
         onAudioChange(updatedAudioData);
       }
       
-      // Also update current time to 0 when metadata loads
+      // Reset current time to 0 when metadata loads
       setCurrentTime(0);
     }
-  }, [audioData, onAudioChange]);
+  }, [audioData, onAudioChange, duration]);
 
   const handleAudioEnded = useCallback(() => {
     setIsPlaying(false);
@@ -441,10 +449,10 @@ export function AudioRecorder({
               <div className="flex-1 space-y-2">
                 <Slider
                   value={[currentTime]}
-                  max={Math.max(duration, 0.1)}
+                  max={duration > 0 ? duration : 0.1}
                   step={0.1}
                   onValueChange={handleSliderChange}
-                  disabled={disabled || isUploading}
+                  disabled={disabled || isUploading || duration <= 0}
                   className="w-full"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">

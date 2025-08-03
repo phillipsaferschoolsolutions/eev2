@@ -575,30 +575,18 @@ export default function ResourcesPage() {
 
   const togglePlayPause = async (resourceId: string) => {
     const audio = audioRefs.current[resourceId];
-    const noteUrl = audioNotes[resourceId]?.downloadURL || audioNotes[resourceId]?.url;
 
     if (!audio) {
       console.warn('Audio element not found for resource:', resourceId);
       return;
     }
 
-    if (!noteUrl) {
-      console.warn('No audio URL found for resource:', resourceId);
-      return;
-    }
-
     try {
       if (audio.paused) {
-        // Set the source if it's different
-        if (audio.currentSrc !== noteUrl) {
-          audio.src = noteUrl;
-          // Wait for the audio to load before playing
-          await new Promise((resolve, reject) => {
-            audio.onloadeddata = resolve;
-            audio.onerror = reject;
-            // Set a timeout in case loading takes too long
-            setTimeout(reject, 5000);
-          });
+        // Check if audio is ready to play
+        if (audio.readyState < 2) { // HAVE_CURRENT_DATA
+          console.warn('Audio not ready to play for resource:', resourceId);
+          return;
         }
         
         await audio.play();
