@@ -32,7 +32,11 @@ import {
   cloneResourceDocument,
   shareResourceDocument,
   updateResourceMetadata
-} from "@/services/resourceService"; 
+} from "@/services/resourceService";
+import { auth } from "@/lib/firebase";
+
+// IMPORTANT: Replace this with your actual Cloud Functions base URL for resources
+const RESOURCES_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/resources'; 
 import Link from "next/link";
 
 const MAX_AUDIO_RECORDING_MS = 30000; // 30 seconds
@@ -126,11 +130,13 @@ export default function ResourcesPage() {
         // Initialize audio note state for existing audio notes
         const existingAudioNote = doc.audioNotes[0];
         if (existingAudioNote) {
+          // Handle both old format (storagePath) and new format (url)
+          const audioUrl = existingAudioNote.url || existingAudioNote.storagePath;
           newAudioNotes[doc.id] = {
-            url: existingAudioNote.storagePath, // Use storagePath from the AudioNote type
+            url: audioUrl,
             name: `audio_note_${doc.id}`,
             isUploading: false,
-            downloadURL: existingAudioNote.storagePath // Use storagePath as downloadURL for existing notes
+            downloadURL: audioUrl
           };
           console.log('Set audio note state for', doc.id, ':', newAudioNotes[doc.id]);
         }
@@ -413,27 +419,39 @@ export default function ResourcesPage() {
             maxRecordingTimerRef.current = null;
           }
 
-          // Upload to server
-          if (userProfile?.account && audioBlob) {
+          // Upload to server - prevent multiple simultaneous uploads
+          if (userProfile?.account && audioBlob && !audioNotes[resourceId]?.isUploading) {
+            // Use a single state update to prevent race conditions
             setAudioNotes(prev => ({ 
               ...prev, 
-              [resourceId]: { ...prev[resourceId]!, isUploading: true } 
+              [resourceId]: { 
+                ...prev[resourceId]!, 
+                isUploading: true,
+                error: undefined // Clear any previous errors
+              } 
             }));
             
             try {
               const downloadURL = await addAudioNoteToResource(resourceId, audioBlob, userProfile.account);
+              
+              // Single state update after successful upload
               setAudioNotes(prev => ({ 
                 ...prev, 
                 [resourceId]: { 
-                  ...prev[resourceId]!, 
+                  blob: audioBlob,
+                  url: downloadURL,
+                  name: audioName,
                   downloadURL, 
-                  isUploading: false, 
-                  url: downloadURL 
+                  isUploading: false,
+                  error: undefined
                 } 
               })); 
+              
               toast({ title: "Audio Note Saved", description: "Audio note saved successfully." });
             } catch (uploadError) {
               console.error("Audio upload error:", uploadError);
+              
+              // Single state update on error
               setAudioNotes(prev => ({ 
                 ...prev, 
                 [resourceId]: { 
@@ -442,6 +460,7 @@ export default function ResourcesPage() {
                   error: (uploadError as Error).message 
                 } 
               }));
+              
               toast({ 
                 variant: "destructive", 
                 title: "Audio Save Failed", 
@@ -502,7 +521,7 @@ export default function ResourcesPage() {
     }
   };
   
-  const removeAudioNote = (resourceId: string) => { 
+  const removeAudioNote = async (resourceId: string) => { 
     try {
       const note = audioNotes[resourceId];
       if (note?.url && note.url.startsWith('blob:')) {
@@ -516,7 +535,7 @@ export default function ResourcesPage() {
         audioRefs.current[resourceId]!.load();
       }
       
-      // Clear states
+      // Clear states immediately for responsive UI
       setAudioNotes(prev => {
         const newState = { ...prev };
         delete newState[resourceId];
@@ -531,6 +550,23 @@ export default function ResourcesPage() {
       // Clear any recording state
       if (isRecordingResourceId === resourceId) {
         setIsRecordingResourceId(null);
+      }
+
+      // Update backend to remove audio note from document
+      if (userProfile?.account) {
+        try {
+          // Call backend to remove audio note
+          await fetch(`${RESOURCES_BASE_URL}/${resourceId}/audio`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`,
+              'account': userProfile.account
+            }
+          });
+        } catch (error) {
+          console.error('Error removing audio note from backend:', error);
+          // Don't revert UI state on backend error - user can retry
+        }
       }
     } catch (error) {
       console.error('Error removing audio note:', error);
@@ -598,7 +634,17 @@ export default function ResourcesPage() {
 
   const handleAudioTimeUpdate = (e: React.SyntheticEvent<HTMLAudioElement, Event>, resourceId: string) => {
     const audio = e.currentTarget;
-    setAudioPlayerStates(prev => ({ ...prev, [resourceId]: { ...prev[resourceId]!, currentTime: audio.currentTime } }));
+    // Only update if the difference is significant to avoid excessive re-renders
+    const currentState = audioPlayerStates[resourceId];
+    if (!currentState || Math.abs(currentState.currentTime - audio.currentTime) > 0.1) {
+      setAudioPlayerStates(prev => ({ 
+        ...prev, 
+        [resourceId]: { 
+          ...prev[resourceId]!, 
+          currentTime: audio.currentTime 
+        } 
+      }));
+    }
   };
   const handleAudioLoadedMetadata = (e: React.SyntheticEvent<HTMLAudioElement, Event>, resourceId: string) => {
     const audio = e.currentTarget;
@@ -794,7 +840,7 @@ export default function ResourcesPage() {
                         <TableCell>
                         {/* Audio Note UI */}
                         {micPermissionError && isRecordingResourceId === doc.id && <Alert variant="destructive" className="text-xs p-1"><AlertDescription>{micPermissionError}</AlertDescription></Alert>}
-                        {audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.storagePath ? ( // Check existing persisted notes or new local recording
+                        {audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.url || doc.audioNotes?.[0]?.storagePath ? ( // Check existing persisted notes or new local recording
                             <div className="flex items-center gap-1">
                             <audio
                                 ref={(el) => {audioRefs.current[doc.id] = el}}
@@ -802,12 +848,31 @@ export default function ResourcesPage() {
                                 onTimeUpdate={(e) => handleAudioTimeUpdate(e, doc.id)}
                                 onEnded={() => handleAudioEnded(doc.id)}
                                 className="hidden"
-                                src={audioNotes[doc.id]?.downloadURL || audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.storagePath}
+                                src={audioNotes[doc.id]?.downloadURL || audioNotes[doc.id]?.url || doc.audioNotes?.[0]?.url || doc.audioNotes?.[0]?.storagePath}
                             />
                             <Button type="button" variant="ghost" size="icon" onClick={() => togglePlayPause(doc.id)} className="h-7 w-7" disabled={audioNotes[doc.id]?.isUploading}>
                                 {audioPlayerStates[doc.id]?.isPlaying ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
                             </Button>
-                            <Slider value={[audioPlayerStates[doc.id]?.currentTime || 0]} max={audioPlayerStates[doc.id]?.duration || 1} step={0.1} className="w-16 h-1" disabled={audioNotes[doc.id]?.isUploading}/>
+                            <Slider 
+                                value={[audioPlayerStates[doc.id]?.currentTime || 0]} 
+                                max={audioPlayerStates[doc.id]?.duration || 1} 
+                                step={0.1} 
+                                className="w-16 h-1" 
+                                disabled={audioNotes[doc.id]?.isUploading}
+                                onValueChange={(value) => {
+                                    const audio = audioRefs.current[doc.id];
+                                    if (audio && value[0] !== undefined) {
+                                        audio.currentTime = value[0];
+                                        setAudioPlayerStates(prev => ({ 
+                                            ...prev, 
+                                            [doc.id]: { 
+                                                ...prev[doc.id]!, 
+                                                currentTime: value[0] 
+                                            } 
+                                        }));
+                                    }
+                                }}
+                            />
                             <Button type="button" variant="ghost" size="icon" className="text-destructive h-7 w-7" onClick={() => removeAudioNote(doc.id)} disabled={audioNotes[doc.id]?.isUploading}>
                                 <Trash2 className="h-3.5 w-3.5" />
                             </Button>
