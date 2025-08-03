@@ -410,36 +410,45 @@ export default function ResourcesPage() {
         [resourceId]: { isPlaying: false, currentTime: 0, duration: 0 } 
       }));
 
+      console.log('Getting user media...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      console.log('User media obtained, stream active:', stream.active);
       
       // Ensure we're still recording this resource (user might have clicked stop while we were setting up)
       if (isRecordingResourceId !== resourceId) {
+        console.log('Recording state changed during setup, aborting');
         stream.getTracks().forEach(track => track.stop());
         return;
       }
+
+      console.log('Creating MediaRecorder...');
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      console.log('MediaRecorder created, state:', mediaRecorder.state);
       
-      mediaRecorderRef.current.ondataavailable = (event) => {
+      mediaRecorder.ondataavailable = (event) => {
+        console.log('Data available, size:', event.data.size);
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
       
-      mediaRecorderRef.current.onstop = async () => {
+      mediaRecorder.onstop = async () => {
         console.log('onstop event triggered for resource:', resourceId);
         // Note: Processing is now handled by the timeout in handleStopRecording
       };
       
-      mediaRecorderRef.current.onerror = (event) => {
+      mediaRecorder.onerror = (event) => {
         console.error('MediaRecorder error:', event);
         setMicPermissionError('Recording error occurred.');
         setIsRecordingResourceId(null);
         stream.getTracks().forEach(track => track.stop());
       };
       
+      console.log('Starting MediaRecorder...');
       playChime('start');
-      mediaRecorderRef.current.start();
-      console.log('MediaRecorder started for resource:', resourceId);
+      mediaRecorder.start(1000); // Collect data every second
+      console.log('MediaRecorder started, state:', mediaRecorder.state);
       
       // Set recording timeout
       maxRecordingTimerRef.current = setTimeout(() => {
@@ -592,11 +601,14 @@ export default function ResourcesPage() {
 
   const handleStopRecording = (resourceId: string, playTheStopChime: boolean = true) => {
     try {
-      console.log('Stopping recording for resource:', resourceId, 'MediaRecorder state:', mediaRecorderRef.current?.state);
+      console.log('Stopping recording for resource:', resourceId);
+      console.log('MediaRecorder state:', mediaRecorderRef.current?.state);
+      console.log('Is recording resource ID:', isRecordingResourceId);
       
-      if (mediaRecorderRef.current?.state === "recording") {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
         // Store the stream reference before stopping
         const stream = mediaRecorderRef.current.stream;
+        console.log('MediaRecorder is recording, stopping...');
         
         // Force stop the MediaRecorder
         mediaRecorderRef.current.stop();
@@ -608,8 +620,19 @@ export default function ResourcesPage() {
           processRecordingData(resourceId, stream);
         }, 100);
       } else if (isRecordingResourceId === resourceId) {
-        console.log('No active MediaRecorder, just clearing state');
-        setIsRecordingResourceId(null);
+        console.log('No active MediaRecorder but state indicates recording, processing anyway');
+        // Even if MediaRecorder is not in recording state, try to process any data we have
+        if (audioChunksRef.current.length > 0) {
+          console.log('Found audio chunks, processing...');
+          // Create a dummy stream for processing
+          const dummyStream = new MediaStream();
+          processRecordingData(resourceId, dummyStream);
+        } else {
+          console.log('No audio chunks found, just clearing state');
+          setIsRecordingResourceId(null);
+        }
+      } else {
+        console.log('Not recording this resource, no action needed');
       }
       
       if (maxRecordingTimerRef.current) {
