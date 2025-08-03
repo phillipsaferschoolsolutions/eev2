@@ -106,6 +106,7 @@ export default function ResourcesPage() {
   const [isRecordingResourceId, setIsRecordingResourceId] = useState<string | null>(null);
   const [hasMicPermission, setHasMicPermission] = useState<boolean | null>(null);
   const [micPermissionError, setMicPermissionError] = useState<string | null>(null);
+  const [processingStop, setProcessingStop] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const maxRecordingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -376,6 +377,14 @@ export default function ResourcesPage() {
       
       mediaRecorderRef.current.onstop = async () => {
         try {
+          // Prevent multiple onstop executions
+          if (processingStop === resourceId) {
+            console.log('onstop already processing for resource:', resourceId);
+            return;
+          }
+          
+          setProcessingStop(resourceId);
+          
           // Cleanup old blob URL
           const oldNote = audioNotes[resourceId];
           if (oldNote?.url && oldNote.url.startsWith('blob:')) {
@@ -420,7 +429,14 @@ export default function ResourcesPage() {
           }
 
           // Upload to server - prevent multiple simultaneous uploads
-          if (userProfile?.account && audioBlob && !audioNotes[resourceId]?.isUploading) {
+          if (userProfile?.account && audioBlob) {
+            // Check if already uploading to prevent double uploads
+            const currentNote = audioNotes[resourceId];
+            if (currentNote?.isUploading) {
+              console.log('Upload already in progress, skipping...');
+              return;
+            }
+            
             // Use a single state update to prevent race conditions
             setAudioNotes(prev => ({ 
               ...prev, 
@@ -472,6 +488,8 @@ export default function ResourcesPage() {
           console.error('Error in onstop handler:', error);
           setIsRecordingResourceId(null);
           stream.getTracks().forEach(track => track.stop());
+        } finally {
+          setProcessingStop(null);
         }
       };
       
@@ -546,6 +564,13 @@ export default function ResourcesPage() {
         ...prev, 
         [resourceId]: { isPlaying: false, currentTime: 0, duration: 0 } 
       }));
+      
+      // Update documents state to reflect the deletion in UI
+      setDocuments(prev => prev.map(doc => 
+        doc.id === resourceId 
+          ? { ...doc, audioNotes: [] } // Clear audio notes array
+          : doc
+      ));
       
       // Clear any recording state
       if (isRecordingResourceId === resourceId) {
