@@ -335,18 +335,28 @@ export default function ResourcesPage() {
 
   const handleStartRecording = async (resourceId: string) => {
     try {
-      const permissionGranted = await requestMicPermission();
-      if (!permissionGranted) return;
+      // Prevent starting if already recording this resource
+      if (isRecordingResourceId === resourceId) {
+        console.log('Already recording this resource:', resourceId);
+        return;
+      }
       
       // Stop any existing recording first
       if (isRecordingResourceId && isRecordingResourceId !== resourceId) {
         handleStopRecording(isRecordingResourceId, false);
       }
 
-      // Set recording state immediately
+      // Set recording state immediately for responsive UI
       setIsRecordingResourceId(resourceId);
       setMicPermissionError(null);
       audioChunksRef.current = [];
+      
+      const permissionGranted = await requestMicPermission();
+      if (!permissionGranted) {
+        // Reset state if permission denied
+        setIsRecordingResourceId(null);
+        return;
+      }
       
       // Initialize audio note state for this resource
       setAudioNotes(prev => ({ 
@@ -368,6 +378,12 @@ export default function ResourcesPage() {
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
+      
+      // Ensure we're still recording this resource (user might have clicked stop while we were setting up)
+      if (isRecordingResourceId !== resourceId) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
       
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -518,6 +534,11 @@ export default function ResourcesPage() {
       console.error('Error starting recording:', error);
       setMicPermissionError('Failed to start recording.');
       setIsRecordingResourceId(null);
+      
+      // Cleanup any partial setup
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current = null;
+      }
     }
   };
 
@@ -895,15 +916,18 @@ export default function ResourcesPage() {
                             type="button"
                             variant={isRecordingResourceId === doc.id ? "destructive" : "outline"}
                             size="xs"
-                            onMouseDown={() => handleStartRecording(doc.id)}
-                            onMouseUp={() => handleStopRecording(doc.id)}
-                            onTouchStart={(e) => { e.preventDefault(); handleStartRecording(doc.id);}}
-                            onTouchEnd={(e) => { e.preventDefault(); handleStopRecording(doc.id);}}
+                            onClick={() => {
+                              if (isRecordingResourceId === doc.id) {
+                                handleStopRecording(doc.id);
+                              } else {
+                                handleStartRecording(doc.id);
+                              }
+                            }}
                             disabled={!!isRecordingResourceId && isRecordingResourceId !== doc.id || audioNotes[doc.id]?.isUploading}
                             className="text-xs px-1.5 py-0.5 h-auto"
                             >
                             {isRecordingResourceId === doc.id ? <Radio className="mr-1 h-3 w-3 animate-pulse"/> : <Mic className="mr-1 h-3 w-3" />}
-                            {isRecordingResourceId === doc.id ? 'Rec...' : 'Note'}
+                            {isRecordingResourceId === doc.id ? 'Stop' : 'Note'}
                             </Button>
                         )}
                         {audioNotes[doc.id]?.isUploading && <Loader2 className="h-3 w-3 animate-spin" />}
