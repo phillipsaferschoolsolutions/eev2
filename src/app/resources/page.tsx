@@ -392,6 +392,7 @@ export default function ResourcesPage() {
       };
       
       mediaRecorderRef.current.onstop = async () => {
+        console.log('onstop event triggered for resource:', resourceId);
         try {
           // Prevent multiple onstop executions
           if (processingStop === resourceId) {
@@ -518,6 +519,7 @@ export default function ResourcesPage() {
       
       playChime('start');
       mediaRecorderRef.current.start();
+      console.log('MediaRecorder started for resource:', resourceId);
       
       // Set recording timeout
       maxRecordingTimerRef.current = setTimeout(() => {
@@ -544,9 +546,13 @@ export default function ResourcesPage() {
 
   const handleStopRecording = (resourceId: string, playTheStopChime: boolean = true) => {
     try {
+      console.log('Stopping recording for resource:', resourceId, 'MediaRecorder state:', mediaRecorderRef.current?.state);
+      
       if (mediaRecorderRef.current?.state === "recording") {
         mediaRecorderRef.current.stop();
+        console.log('MediaRecorder.stop() called');
       } else if (isRecordingResourceId === resourceId) {
+        console.log('No active MediaRecorder, just clearing state');
         setIsRecordingResourceId(null);
       }
       
