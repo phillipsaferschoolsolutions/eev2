@@ -253,9 +253,43 @@ export default function ResourcesPage() {
     setSummaryModalOpen(true);
   };
 
-  const handleViewDocument = (doc: ResourceDocument) => {
-    setSelectedDocument(doc);
-    setDocumentModalOpen(true);
+  const handleViewDocument = async (doc: ResourceDocument) => {
+    try {
+      // Refresh the download URL to ensure it's not expired
+      if (userProfile?.account) {
+        console.log('Refreshing download URL for document:', doc.id);
+        
+        // Call the backend to get a fresh download URL
+        const response = await fetch(`${RESOURCES_BASE_URL}/${doc.id}/download`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`,
+            'account': userProfile.account
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const refreshedDoc = { ...doc, downloadURL: data.downloadURL };
+          setSelectedDocument(refreshedDoc);
+          setDocumentModalOpen(true);
+        } else {
+          console.error('Failed to refresh download URL:', response.status);
+          // Fallback to original document
+          setSelectedDocument(doc);
+          setDocumentModalOpen(true);
+        }
+      } else {
+        // Fallback if no account info
+        setSelectedDocument(doc);
+        setDocumentModalOpen(true);
+      }
+    } catch (error) {
+      console.error('Error refreshing download URL:', error);
+      // Fallback to original document
+      setSelectedDocument(doc);
+      setDocumentModalOpen(true);
+    }
   };
 
   const handleRename = (doc: ResourceDocument) => {
@@ -393,8 +427,7 @@ export default function ResourcesPage() {
       
       mediaRecorderRef.current.onstop = async () => {
         console.log('onstop event triggered for resource:', resourceId);
-        // Use the centralized processing function
-        processRecordingData(resourceId, stream);
+        // Note: Processing is now handled by the timeout in handleStopRecording
       };
       
       mediaRecorderRef.current.onerror = (event) => {
@@ -565,24 +598,15 @@ export default function ResourcesPage() {
         // Store the stream reference before stopping
         const stream = mediaRecorderRef.current.stream;
         
-        // Set up a timeout to handle the case where onstop doesn't fire
-        const stopTimeout = setTimeout(() => {
-          console.log('onstop event did not fire, processing manually');
-          processRecordingData(resourceId, stream);
-        }, 1000);
-        
-        // Store the timeout reference to clear it if onstop fires
+        // Force stop the MediaRecorder
         mediaRecorderRef.current.stop();
         console.log('MediaRecorder.stop() called');
         
-        // Clear the timeout if onstop fires normally
-        const originalOnStop = mediaRecorderRef.current.onstop;
-        mediaRecorderRef.current.onstop = async (event) => {
-          clearTimeout(stopTimeout);
-          if (originalOnStop) {
-            originalOnStop.call(mediaRecorderRef.current, event);
-          }
-        };
+        // Immediately process the recording data
+        setTimeout(() => {
+          console.log('Processing recording data after stop');
+          processRecordingData(resourceId, stream);
+        }, 100);
       } else if (isRecordingResourceId === resourceId) {
         console.log('No active MediaRecorder, just clearing state');
         setIsRecordingResourceId(null);
