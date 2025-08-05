@@ -60,6 +60,7 @@ export function AudioRecorder({
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const playbackTimerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const recordingTimeRef = useRef<number>(0);
 
   // Request microphone permission
   const requestPermission = useCallback(async () => {
@@ -103,20 +104,92 @@ export function AudioRecorder({
     if (!permissionGranted) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
       streamRef.current = stream;
       
-      const mediaRecorder = new MediaRecorder(stream);
+      // Try to use the best available MIME type
+      let mimeType = '';
+      const supportedTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/ogg;codecs=opus',
+        'audio/wav'
+      ];
+      
+      for (const type of supportedTypes) {
+        if (MediaRecorder.isTypeSupported(type)) {
+          mimeType = type;
+          break;
+        }
+      }
+      
+      console.log('Using MIME type:', mimeType || 'browser default');
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+        console.log('Data available:', event.data.size, 'bytes');
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.log('MediaRecorder stopped, chunks:', audioChunksRef.current.length);
+        
+        // Use the recording time from the ref
+        const finalRecordingTime = recordingTimeRef.current;
+        console.log('Final recording time:', finalRecordingTime);
+        
+        // Determine the correct MIME type for the blob
+        let blobType = 'audio/webm';
+        if (mimeType && mimeType.includes('mp4')) {
+          blobType = 'audio/mp4';
+        } else if (mimeType && mimeType.includes('ogg')) {
+          blobType = 'audio/ogg';
+        } else if (mimeType && mimeType.includes('wav')) {
+          blobType = 'audio/wav';
+        }
+        
+        const audioBlob = new Blob(audioChunksRef.current, { type: blobType });
+        console.log('Audio blob size:', audioBlob.size, 'bytes', 'type:', blobType);
+        
+        // Validate the blob
+        if (audioBlob.size === 0) {
+          console.error('Audio blob is empty!');
+          toast({ 
+            variant: "destructive", 
+            title: "Recording Error", 
+            description: "No audio data was captured." 
+          });
+          return;
+        }
+        
+        // Create blob URL and validate it
         const audioUrl = URL.createObjectURL(audioBlob);
+        console.log('Created blob URL:', audioUrl);
+        
+        // Test if the blob URL is accessible
+        fetch(audioUrl)
+          .then(response => {
+            if (!response.ok) {
+              console.error('Blob URL not accessible:', response.status);
+            } else {
+              console.log('Blob URL is accessible');
+            }
+          })
+          .catch(error => {
+            console.error('Error accessing blob URL:', error);
+          });
+        
         const audioName = `audio_note_${questionId}_${Date.now()}.webm`;
 
         // Create audio element to get duration
@@ -125,27 +198,72 @@ export function AudioRecorder({
         // Set up metadata loading handler
         const handleMetadataLoad = () => {
           const detectedDuration = tempAudio.duration;
-          // Ensure duration is valid
-          const validDuration = isNaN(detectedDuration) || !isFinite(detectedDuration) ? 0 : detectedDuration;
+          console.log('Raw detected duration:', detectedDuration);
           
-          const newAudioData: AudioData = {
-            blob: audioBlob,
-            url: audioUrl,
-            name: audioName,
-            duration: validDuration
-          };
-          setAudioData(newAudioData);
-          onAudioChange(newAudioData);
-          setDuration(validDuration);
-          setCurrentTime(0);
+          // Handle Infinity and invalid durations
+          let validDuration = 0;
+          if (isFinite(detectedDuration) && detectedDuration > 0 && detectedDuration < 3600) { // Max 1 hour
+            validDuration = detectedDuration;
+          } else {
+            console.log('Invalid duration detected, will use fallback');
+          }
+          
+          console.log('Metadata loaded - detected duration:', detectedDuration, 'valid duration:', validDuration);
+          
+          // If metadata duration is invalid, use recording time immediately
+          if (validDuration === 0) {
+            const recordingDuration = Math.max(1, Math.min(30, finalRecordingTime));
+            console.log('Using recording time immediately:', recordingDuration);
+            const newAudioData: AudioData = {
+              blob: audioBlob,
+              url: audioUrl,
+              name: audioName,
+              duration: recordingDuration
+            };
+            setAudioData(newAudioData);
+            onAudioChange(newAudioData);
+            setDuration(recordingDuration);
+            setCurrentTime(0);
+            
+            // Clear the fallback timeout since we've set the correct duration
+            clearTimeout(fallbackTimeout);
+            console.log('Fallback timeout cleared - using recording time');
+          } else {
+            const newAudioData: AudioData = {
+              blob: audioBlob,
+              url: audioUrl,
+              name: audioName,
+              duration: validDuration
+            };
+            setAudioData(newAudioData);
+            onAudioChange(newAudioData);
+            setDuration(validDuration);
+            setCurrentTime(0);
+            
+            // Clear the fallback timeout since we have valid metadata
+            clearTimeout(fallbackTimeout);
+            console.log('Fallback timeout cleared - using metadata duration');
+          }
+          
+          console.log('Audio data set with duration:', validDuration || finalRecordingTime);
           
           // Clean up
           tempAudio.removeEventListener('loadedmetadata', handleMetadataLoad);
           tempAudio.removeEventListener('error', handleError);
+          tempAudio.removeEventListener('canplaythrough', handleCanPlayThrough);
+        };
+        
+        // Set up canplaythrough handler for additional duration detection
+        const handleCanPlayThrough = () => {
+          if (tempAudio.duration > 0) {
+            console.log('Can play through - duration:', tempAudio.duration);
+            setDuration(tempAudio.duration);
+          }
         };
         
         // Set up error handler
-        const handleError = () => {
+        const handleError = (error: Event) => {
+          console.error('Audio loading error:', error);
           const newAudioData: AudioData = {
             blob: audioBlob,
             url: audioUrl,
@@ -160,14 +278,57 @@ export function AudioRecorder({
           // Clean up
           tempAudio.removeEventListener('loadedmetadata', handleMetadataLoad);
           tempAudio.removeEventListener('error', handleError);
+          tempAudio.removeEventListener('canplaythrough', handleCanPlayThrough);
         };
         
         // Add event listeners
         tempAudio.addEventListener('loadedmetadata', handleMetadataLoad);
         tempAudio.addEventListener('error', handleError);
+        tempAudio.addEventListener('canplaythrough', handleCanPlayThrough);
         
         // Load the audio to trigger metadata loading
         tempAudio.load();
+        
+        // Fallback: if metadata doesn't load within 1 second, try to get duration anyway
+        const fallbackTimeout = setTimeout(() => {
+          // Check if we already have valid audio data with correct duration
+          if (audioData && audioData.duration > 0 && audioData.duration === finalRecordingTime) {
+            console.log('Fallback skipped - already have correct duration');
+            return;
+          }
+          
+          const fallbackDuration = tempAudio.duration;
+          console.log('Fallback duration detection:', fallbackDuration);
+          
+          if (isFinite(fallbackDuration) && fallbackDuration > 0 && fallbackDuration < 3600) {
+            console.log('Using fallback duration:', fallbackDuration);
+            const newAudioData: AudioData = {
+              blob: audioBlob,
+              url: audioUrl,
+              name: audioName,
+              duration: fallbackDuration
+            };
+            setAudioData(newAudioData);
+            onAudioChange(newAudioData);
+            setDuration(fallbackDuration);
+            setCurrentTime(0);
+          } else {
+            console.log('Fallback duration also invalid, using recording time');
+            // Use the actual recording time as duration
+            const recordingDuration = Math.max(1, Math.min(30, finalRecordingTime));
+            console.log('Using recording time as duration:', recordingDuration);
+            const newAudioData: AudioData = {
+              blob: audioBlob,
+              url: audioUrl,
+              name: audioName,
+              duration: recordingDuration
+            };
+            setAudioData(newAudioData);
+            onAudioChange(newAudioData);
+            setDuration(recordingDuration);
+            setCurrentTime(0);
+          }
+        }, 500); // Reduced timeout to 500ms for faster fallback
 
         playAudioFeedback('stop');
         stream.getTracks().forEach(track => track.stop());
@@ -184,15 +345,17 @@ export function AudioRecorder({
         stopRecording();
       };
 
-      mediaRecorder.start();
+      console.log('Starting MediaRecorder with timeslice');
+      mediaRecorder.start(1000); // Use 1-second timeslice to ensure regular data collection
       setIsRecording(true);
       setRecordingTime(0);
       playAudioFeedback('start');
 
-      // Start recording timer
+      // Start recording timer (UI only, doesn't affect MediaRecorder)
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime(prev => {
           const newTime = prev + 0.1;
+          recordingTimeRef.current = newTime; // Store in ref for access in onstop
           if (newTime >= maxDuration) {
             stopRecording();
             toast({ 
@@ -203,7 +366,7 @@ export function AudioRecorder({
           }
           return newTime;
         });
-      }, 100);
+      }, 100); // Update every 100ms for smooth UI
 
     } catch (error) {
       console.error('Error starting recording:', error);
@@ -218,9 +381,14 @@ export function AudioRecorder({
 
   // Stop recording
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop();
-    }
+    console.log('Stop recording called, MediaRecorder state:', mediaRecorderRef.current?.state);
+    
+    // Capture the current recording time BEFORE clearing it
+    const currentRecordingTime = recordingTime;
+    console.log('Current recording time before stop:', currentRecordingTime);
+    
+    // Store the recording time in the ref BEFORE resetting state
+    recordingTimeRef.current = currentRecordingTime;
     
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current);
@@ -228,8 +396,15 @@ export function AudioRecorder({
     }
     
     setIsRecording(false);
+    
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      console.log('Stopping MediaRecorder...');
+      mediaRecorderRef.current.stop();
+    }
+    
+    // Reset recording time after MediaRecorder has been stopped
     setRecordingTime(0);
-  }, []);
+  }, [recordingTime]);
 
   // Toggle play/pause
   const togglePlayPause = useCallback(async () => {
@@ -248,6 +423,10 @@ export function AudioRecorder({
           await new Promise<void>((resolve, reject) => {
             const handleLoadedMetadata = () => {
               audioRef.current?.removeEventListener('loadedmetadata', handleLoadedMetadata);
+              // Ensure duration is set before resolving
+              if (audioRef.current && audioRef.current.duration > 0) {
+                setDuration(audioRef.current.duration);
+              }
               resolve();
             };
             const handleError = () => {
@@ -262,25 +441,49 @@ export function AudioRecorder({
         await audioRef.current.play();
         setIsPlaying(true);
         
+        // Ensure we have a valid duration before starting the timer
+        const initialDuration = audioRef.current.duration;
+        console.log('Initial duration before playback:', initialDuration);
+        
+        if (isFinite(initialDuration) && initialDuration > 0 && initialDuration < 3600) {
+          setDuration(initialDuration);
+          console.log('Duration set to:', initialDuration);
+        } else if (audioData && isFinite(audioData.duration) && audioData.duration > 0 && audioData.duration < 3600) {
+          // Use the duration from audioData if available
+          setDuration(audioData.duration);
+          console.log('Using audioData duration:', audioData.duration);
+        } else {
+          console.log('No valid duration available, using default');
+          setDuration(30); // Default fallback
+        }
+        
         // Start playback timer
         playbackTimerRef.current = setInterval(() => {
           if (audioRef.current && !audioRef.current.paused) {
             const currentTime = audioRef.current.currentTime;
             const duration = audioRef.current.duration;
             
-            // Only update if we have a valid duration and current time
+            // Always update current time if it's valid
+            if (currentTime && !isNaN(currentTime) && isFinite(currentTime)) {
+              setCurrentTime(currentTime);
+            }
+            
+            // Update duration if we have a valid duration and it's different from current
             if (duration && !isNaN(duration) && isFinite(duration) && duration > 0) {
-              // Update current time and ensure it doesn't exceed duration
-              const clampedTime = Math.min(currentTime, duration);
-              setCurrentTime(clampedTime);
-              
               // Update duration if it's different from what we have
               if (Math.abs(duration - (audioData?.duration || 0)) > 0.1) {
                 setDuration(duration);
               }
             }
+          } else {
+            // Audio finished or paused
+            if (playbackTimerRef.current) {
+              clearInterval(playbackTimerRef.current);
+              playbackTimerRef.current = null;
+            }
+            setIsPlaying(false);
           }
-        }, 100);
+        }, 50); // Update more frequently for smoother animation
       } else {
         audioRef.current.pause();
         setIsPlaying(false);

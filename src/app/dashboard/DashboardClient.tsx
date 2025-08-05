@@ -500,12 +500,12 @@ export default function DashboardPage() {
             Your central hub for campus safety management.
           </p>
           <div className="flex flex-wrap gap-4 mt-6">
-            <Button asChild variant="default" size="lg" className="bg-white text-blue-600 hover:bg-white/90 hover:text-blue-700">
+            <Button asChild variant="default" size="lg" className="bg-white text-blue-600 hover:bg-white/90 hover:text-blue-700 shadow-lg">
               <Link href="/assessment-forms/new">
                 New Assessment
               </Link>
             </Button>
-            <Button asChild variant="outline" className="border-white/40 text-white hover:bg-white/20 hover:text-white">
+            <Button asChild variant="secondary" size="lg" className="bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 hover:text-white shadow-lg">
               <Link href="/map">
                 <MapPin className="mr-2 h-4 w-4" /> View Campus Map
               </Link>

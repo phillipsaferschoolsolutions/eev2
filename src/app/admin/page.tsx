@@ -5,7 +5,7 @@ import { useAuth } from "@/context/auth-context";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Users, MapPin, LockIcon } from "lucide-react";
+import { Shield, Users, MapPin, LockIcon, FileText } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -78,6 +78,19 @@ export default function AdminPage() {
           <CardContent>
              <Button asChild>
                <Link href="/admin/locations">Manage Locations</Link>
+             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Assignment Management Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><FileText className="text-primary"/> Assignment Management</CardTitle>
+            <CardDescription>Create, edit, and manage assignments.</CardDescription>
+          </CardHeader>
+          <CardContent>
+             <Button asChild>
+               <Link href="/assignments">Manage Assignments</Link>
              </Button>
           </CardContent>
         </Card>

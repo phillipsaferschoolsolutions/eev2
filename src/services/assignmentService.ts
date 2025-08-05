@@ -20,6 +20,8 @@ const fromFirestore = (doc: QueryDocumentSnapshot<DocumentData>): Assignment => 
     frequency: data.frequency,
     schoolSelectorId: data.schoolSelectorId,
     shareWith: data.shareWith as ShareWith | undefined,
+    updatedAt: data.updatedAt,
+    updatedBy: data.updatedBy,
     // Ensure all fields present in your Firestore docs are mapped here
   };
 };
@@ -40,8 +42,62 @@ export async function getAssignments(): Promise<Assignment[]> {
   }
 }
 
-// Placeholder for future functions
-// export async function getAssignmentById(id: string): Promise<Assignment | null> { /* ... */ return null; }
-// export async function addAssignment(assignmentData: Omit<Assignment, 'id'>): Promise<string> { /* ... */ return ""; }
-// export async function updateAssignment(id: string, assignmentData: Partial<Assignment>): Promise<void> { /* ... */ }
-// export async function deleteAssignment(id: string): Promise<void> { /* ... */ }
+// Helper function to make authenticated requests to the assignments API
+async function authedFetch(endpoint: string, options: RequestInit = {}) {
+  const { auth } = await import('@/lib/firebase');
+  const { userProfile } = await import('@/context/auth-context');
+  
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  const token = await user.getIdToken();
+  const account = userProfile?.account;
+  
+  if (!account) {
+    throw new Error('Account not found');
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5001/your-project/us-central1/assignmentsv2';
+  
+  const response = await fetch(`${baseUrl}${endpoint}`, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'account': account,
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+// Delete an assignment
+export async function deleteAssignment(assignmentId: string): Promise<void> {
+  await authedFetch(`/${assignmentId}`, {
+    method: 'DELETE',
+  });
+}
+
+// Rename an assignment
+export async function renameAssignment(assignmentId: string, newName: string): Promise<{ message: string; assessmentName: string }> {
+  return await authedFetch(`/${assignmentId}/rename`, {
+    method: 'PATCH',
+    body: JSON.stringify({ assessmentName: newName }),
+  });
+}
+
+// Copy an assignment
+export async function copyAssignment(assignmentId: string, newName?: string): Promise<{ message: string; newAssignmentId: string; assessmentName: string }> {
+  return await authedFetch(`/${assignmentId}/copy`, {
+    method: 'POST',
+    body: JSON.stringify({ newAssessmentName: newName }),
+  });
+}

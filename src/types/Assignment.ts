@@ -33,6 +33,8 @@ export interface Assignment {
   frequency?: string;
   schoolSelectorId?: string;
   shareWith?: ShareWith;
+  updatedAt?: string; // Last updated timestamp
+  updatedBy?: string; // User who last updated the assignment
   // Include any other top-level fields observed in your Firestore documents
   // status?: string; // Example if there's a status field at the top level
 }

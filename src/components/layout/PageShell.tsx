@@ -16,7 +16,7 @@ import { AnimatedBackground } from "@/components/ui/animated-background";
 export const baseNavItems = [
   { href: "/", label: "Dashboard", icon: "LayoutDashboard" },
   { href: "/map", label: "Campus Map", icon: "Map" },
-  { href: "/assessment-forms", label: "Assignments", icon: "ClipboardList" },
+  { href: "/assignments", label: "Assignments", icon: "ClipboardList" },
   { href: "/drill-tracking", label: "Drill Tracking", icon: "Zap" },
   { href: "/tasks", label: "Tasks", icon: "ListTodo" },
   { href: "/assets", label: "Assets", icon: "HardDrive" },
