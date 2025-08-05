@@ -190,7 +190,7 @@ export default function AssignmentDetailsPage() {
     <div className="container mx-auto py-8 px-4 space-y-6">
       <div>
         <Button variant="outline" /* onClick={() => router.back()} */ asChild className="mb-4">
-          <Link href="/assessment-forms">
+          <Link href="/assignments">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Assignments
           </Link>
         </Button>

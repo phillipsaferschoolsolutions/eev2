@@ -204,7 +204,7 @@ export default function NewAssignmentPage() {
         description: `Assignment "${data.assessmentName}" created successfully.`
       });
       reset();
-      router.push("/assessment-forms");
+              router.push("/assignments");
    } catch (error: unknown) {
       toast({
         variant: "destructive",
@@ -249,7 +249,7 @@ export default function NewAssignmentPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 space-y-6">
-      <Button variant="outline" onClick={() => router.push('/assessment-forms')} className="mb-4">
+              <Button variant="outline" onClick={() => router.push('/assignments')} className="mb-4">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Assignments
       </Button>
 

@@ -45,7 +45,6 @@ export async function getAssignments(): Promise<Assignment[]> {
 // Helper function to make authenticated requests to the assignments API
 async function authedFetch(endpoint: string, options: RequestInit = {}) {
   const { auth } = await import('@/lib/firebase');
-  const { userProfile } = await import('@/context/auth-context');
   
   const user = auth.currentUser;
   if (!user) {
@@ -53,7 +52,7 @@ async function authedFetch(endpoint: string, options: RequestInit = {}) {
   }
 
   const token = await user.getIdToken();
-  const account = userProfile?.account;
+  const account = localStorage.getItem('accountName');
   
   if (!account) {
     throw new Error('Account not found');

@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
-import { usePathname } from "next/navigation"; 
+import { usePathname, useRouter } from "next/navigation"; 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePersistedState } from "@/hooks/use-persisted-state";
@@ -32,6 +32,29 @@ const sampleTemplates = [
 
 export default function AssessmentFormsPage() {
   const { user, userProfile, customClaims, loading: authLoading, profileLoading, claimsLoading } = useAuth();
+  const router = useRouter();
+  
+  // Redirect to the new assignments page
+  useEffect(() => {
+    if (!authLoading && !profileLoading) {
+      router.replace('/assignments');
+    }
+  }, [authLoading, profileLoading, router]);
+  
+  // Show loading while redirecting
+  if (authLoading || profileLoading) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <Skeleton className="h-8 w-1/4 mb-2" />
+        <Skeleton className="h-10 w-1/2 mb-6" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+        </div>
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
   const [myAssignments, setMyAssignments] = useState<AssignmentMetadata[]>([]);
   const [isLoadingMyAssignments, setIsLoadingMyAssignments] = useState(true);
   const [myAssignmentsError, setMyAssignmentsError] = useState<string | null>(null);
@@ -216,7 +239,7 @@ export default function AssessmentFormsPage() {
           asChild 
           className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
         >
-          <Link href="/assessment-forms/new">
+                          <Link href="/assignments/new">
             <FilePlus2 className="mr-2 h-5 w-5" /> Create New Assignment
           </Link>
         </Button>

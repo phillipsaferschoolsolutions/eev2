@@ -501,7 +501,7 @@ export default function DashboardPage() {
           </p>
           <div className="flex flex-wrap gap-4 mt-6">
             <Button asChild variant="default" size="lg" className="bg-white text-blue-600 hover:bg-white/90 hover:text-blue-700 shadow-lg">
-              <Link href="/assessment-forms/new">
+                              <Link href="/assignments/new">
                 New Assessment
               </Link>
             </Button>

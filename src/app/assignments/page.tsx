@@ -77,14 +77,19 @@ export default function AssignmentsPage() {
         
         const data = await getAssignments();
         
+        // Filter assignments by account
+        const accountAssignments = data.filter(assignment => 
+          assignment.accountSubmittedFor === userProfile?.account
+        );
+        
         // Filter assignments for current user (simplified logic - in real app this would be based on user assignments)
-        const userAssignments = data.filter(assignment => 
+        const userAssignments = accountAssignments.filter(assignment => 
           assignment.author === userProfile?.email || 
           assignment.assignmentAdminArray?.some(admin => admin.displayName === userProfile?.displayName)
         );
         
         setMyAssignments(userAssignments);
-        setAllAccountAssignments(data);
+        setAllAccountAssignments(accountAssignments);
         
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to fetch assignments";
@@ -152,11 +157,16 @@ export default function AssignmentsPage() {
         console.log("Assignment copied successfully:", result);
         // Refresh the assignments list
         const updatedAssignments = await getAssignments();
-        setMyAssignments(updatedAssignments.filter(a => 
+        // Filter assignments by account
+        const accountAssignments = updatedAssignments.filter(assignment => 
+          assignment.accountSubmittedFor === userProfile?.account
+        );
+        
+        setMyAssignments(accountAssignments.filter(a => 
           a.author === userProfile?.email || 
           a.assignmentAdminArray?.some(admin => admin.displayName === userProfile?.displayName)
         ));
-        setAllAccountAssignments(updatedAssignments);
+        setAllAccountAssignments(accountAssignments);
       }
     } catch (error) {
       console.error("Error copying assignment:", error);
@@ -180,11 +190,33 @@ export default function AssignmentsPage() {
   };
 
   // Format date helper
-  const formatDate = (dateString?: string) => {
+  const formatDate = (dateString?: string | any) => {
     if (!dateString) return "N/A";
+    
     try {
-      return format(new Date(dateString), "MMM dd, yyyy");
-    } catch {
+      let date: Date;
+      
+      // Handle Firebase Timestamp objects
+      if (dateString && typeof dateString === 'object' && dateString.toDate) {
+        date = dateString.toDate();
+      } else if (dateString && typeof dateString === 'object' && dateString.seconds) {
+        // Handle Firestore timestamp with seconds
+        date = new Date(dateString.seconds * 1000);
+      } else if (typeof dateString === 'string') {
+        date = new Date(dateString);
+      } else if (dateString instanceof Date) {
+        date = dateString;
+      } else {
+        return "Invalid Date";
+      }
+      
+      if (isNaN(date.getTime())) {
+        return "Invalid Date";
+      }
+      
+      return format(date, "MMM dd, yyyy");
+    } catch (error) {
+      console.error("Date formatting error:", error, "for dateString:", dateString);
       return "Invalid Date";
     }
   };
@@ -296,16 +328,15 @@ export default function AssignmentsPage() {
             <>
               <div className="rounded-md border overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full table-fixed">
                     <thead>
                       <tr className="border-b bg-muted/50">
                         <th className="text-left p-4 font-medium w-1/4">Title</th>
-                        <th className="text-left p-4 font-medium w-1/3">Description</th>
-                        <th className="text-left p-4 font-medium w-32">Author</th>
+                        <th className="text-left p-4 font-medium w-1/5">Description</th>
+                        <th className="text-left p-4 font-medium w-40">Author</th>
                         <th className="text-left p-4 font-medium w-24">Frequency</th>
-                        <th className="text-left p-4 font-medium w-32">Last Updated</th>
+                        <th className="text-left p-4 font-medium w-28">Last Updated</th>
                         <th className="text-left p-4 font-medium w-24">Type</th>
-                        <th className="text-left p-4 font-medium w-20">Status</th>
                         <th className="text-right p-4 font-medium w-20">Actions</th>
                       </tr>
                     </thead>
@@ -317,6 +348,11 @@ export default function AssignmentsPage() {
                               <div className="font-medium">{assignment.assessmentName}</div>
                               <div className="text-sm text-muted-foreground">
                                 Created: {formatDate(assignment.createdDate)}
+                              </div>
+                              <div className="mt-1">
+                                <Badge variant="default" className="text-xs">
+                                  Active
+                                </Badge>
                               </div>
                             </div>
                           </td>
@@ -351,42 +387,14 @@ export default function AssignmentsPage() {
                               {assignment.assignmentType || "Assignment"}
                             </Badge>
                           </td>
-                          <td className="p-4">
-                            <Badge variant="default" className="text-xs">
-                              Active
-                            </Badge>
-                          </td>
+
                           <td className="p-4">
                             <div className="flex justify-end">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleViewDetails(assignment.id)}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View Details
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleRename(assignment.id)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Rename
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleMakeCopy(assignment)}>
-                                    <Copy className="mr-2 h-4 w-4" />
-                                    Make a Copy
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    onClick={() => handleDelete(assignment.id)}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <Button asChild size="sm">
+                                <Link href={`/assignments/${assignment.id}/complete`}>
+                                  Go
+                                </Link>
+                              </Button>
                             </div>
                           </td>
                         </tr>
@@ -511,16 +519,15 @@ export default function AssignmentsPage() {
               <>
                 <div className="rounded-md border overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full table-fixed">
                       <thead>
                         <tr className="border-b bg-muted/50">
                           <th className="text-left p-4 font-medium w-1/4">Title</th>
-                          <th className="text-left p-4 font-medium w-1/3">Description</th>
-                          <th className="text-left p-4 font-medium w-32">Author</th>
+                          <th className="text-left p-4 font-medium w-1/5">Description</th>
+                          <th className="text-left p-4 font-medium w-40">Author</th>
                           <th className="text-left p-4 font-medium w-24">Frequency</th>
-                          <th className="text-left p-4 font-medium w-32">Last Updated</th>
+                          <th className="text-left p-4 font-medium w-28">Last Updated</th>
                           <th className="text-left p-4 font-medium w-24">Type</th>
-                          <th className="text-left p-4 font-medium w-20">Status</th>
                           <th className="text-right p-4 font-medium w-20">Actions</th>
                         </tr>
                       </thead>
@@ -532,6 +539,11 @@ export default function AssignmentsPage() {
                                 <div className="font-medium">{assignment.assessmentName}</div>
                                 <div className="text-sm text-muted-foreground">
                                   Created: {formatDate(assignment.createdDate)}
+                                </div>
+                                <div className="mt-1">
+                                  <Badge variant="default" className="text-xs">
+                                    Active
+                                  </Badge>
                                 </div>
                               </div>
                             </td>
@@ -566,11 +578,7 @@ export default function AssignmentsPage() {
                                 {assignment.assignmentType || "Assignment"}
                               </Badge>
                             </td>
-                            <td className="p-4">
-                              <Badge variant="default" className="text-xs">
-                                Active
-                              </Badge>
-                            </td>
+
                             <td className="p-4">
                               <div className="flex justify-end">
                                 <DropdownMenu>
@@ -579,28 +587,34 @@ export default function AssignmentsPage() {
                                       <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleViewDetails(assignment.id)}>
-                                      <Eye className="mr-2 h-4 w-4" />
-                                      View Details
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleRename(assignment.id)}>
-                                      <Edit className="mr-2 h-4 w-4" />
-                                      Rename
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleMakeCopy(assignment)}>
-                                      <Copy className="mr-2 h-4 w-4" />
-                                      Make a Copy
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
-                                      onClick={() => handleDelete(assignment.id)}
-                                      className="text-destructive focus:text-destructive"
-                                    >
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
+                                                                     <DropdownMenuContent align="end">
+                                     <DropdownMenuItem asChild>
+                                       <Link href={`/assignments/${assignment.id}/complete`}>
+                                         <FileText className="mr-2 h-4 w-4" />
+                                         Go
+                                       </Link>
+                                     </DropdownMenuItem>
+                                     <DropdownMenuItem onClick={() => handleViewDetails(assignment.id)}>
+                                       <Eye className="mr-2 h-4 w-4" />
+                                       View Details
+                                     </DropdownMenuItem>
+                                     <DropdownMenuItem onClick={() => handleRename(assignment.id)}>
+                                       <Edit className="mr-2 h-4 w-4" />
+                                       Rename
+                                     </DropdownMenuItem>
+                                     <DropdownMenuItem onClick={() => handleMakeCopy(assignment)}>
+                                       <Copy className="mr-2 h-4 w-4" />
+                                       Make a Copy
+                                     </DropdownMenuItem>
+                                     <DropdownMenuSeparator />
+                                     <DropdownMenuItem 
+                                       onClick={() => handleDelete(assignment.id)}
+                                       className="text-destructive focus:text-destructive"
+                                     >
+                                       <Trash2 className="mr-2 h-4 w-4" />
+                                       Delete
+                                     </DropdownMenuItem>
+                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
                             </td>

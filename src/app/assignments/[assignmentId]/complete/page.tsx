@@ -680,12 +680,12 @@ export default function CompleteAssignmentPage() {
     
     // Process Photo Bank photos that have been assigned to questions
     const photoBankPhotos = photoBank.getAllPhotos().filter(p => p.assignmentId === assignmentId);
-    const uploadedPhotos: Record<string, any> = {};
+    const allUploadedPhotos: Record<string, any> = {};
     
     // Add photos from Photo Bank that are assigned to questions
     photoBankPhotos.forEach(photo => {
       if (photo.questionId && photo.status === 'uploaded') {
-        uploadedPhotos[photo.questionId] = {
+        allUploadedPhotos[photo.questionId] = {
           date: new Date().toLocaleDateString('en-US', { 
             month: '2-digit', 
             day: '2-digit', 
@@ -703,7 +703,7 @@ export default function CompleteAssignmentPage() {
     Object.keys(uploadedFileDetails).forEach(questionId => {
       const fileDetail = uploadedFileDetails[questionId];
       if (fileDetail) {
-        uploadedPhotos[questionId] = {
+        allUploadedPhotos[questionId] = {
           date: new Date().toLocaleDateString('en-US', { 
             month: '2-digit', 
             day: '2-digit', 
@@ -713,6 +713,24 @@ export default function CompleteAssignmentPage() {
           link: fileDetail.url,
           submittedBy: user.email,
           originalName: fileDetail.name
+        };
+      }
+    });
+
+    // Add photos from direct question uploads (uploadedPhotos state)
+    Object.keys(uploadedPhotos).forEach(questionId => {
+      const photoData = uploadedPhotos[questionId];
+      if (photoData && photoData.url) {
+        allUploadedPhotos[questionId] = {
+          date: new Date().toLocaleDateString('en-US', { 
+            month: '2-digit', 
+            day: '2-digit', 
+            year: 'numeric', 
+            timeZone: 'America/New_York' 
+          }),
+          link: photoData.url,
+          submittedBy: user.email,
+          originalName: photoData.name
         };
       }
     });
@@ -897,8 +915,8 @@ export default function CompleteAssignmentPage() {
       }));
       
       // Add uploaded photos data - use syncPhotoLinks as expected by backend
-      if (Object.keys(uploadedPhotos).length > 0) {
-        formDataForSubmission.append('syncPhotoLinks', JSON.stringify(uploadedPhotos));
+      if (Object.keys(allUploadedPhotos).length > 0) {
+        formDataForSubmission.append('syncPhotoLinks', JSON.stringify(allUploadedPhotos));
       }
       
       // Set location name from school selector if available
@@ -933,7 +951,7 @@ export default function CompleteAssignmentPage() {
         setUploadedPhotos({});
         
         toast({ title: "Assignment Submitted Successfully", description: "Your assignment has been submitted." });
-        router.push('/assessment-forms');
+        router.replace('/assignments');
       } else {
         throw new Error("Submission failed - no response received");
       }
@@ -1110,7 +1128,7 @@ export default function CompleteAssignmentPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{assignment.assessmentName}</h1>
             <p className="text-muted-foreground mt-1">{assignment.description}</p>
           </div>
-          <Button variant="outline" onClick={() => router.push('/assessment-forms')} className="self-start">
+          <Button variant="outline" onClick={() => router.push('/assignments')} className="self-start">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Assignments
           </Button>
