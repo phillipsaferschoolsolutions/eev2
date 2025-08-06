@@ -4,7 +4,7 @@ import { usePhotoBank } from '@/hooks/use-photo-bank';
 import { QuestionPhotoUpload } from '@/components/ui/question-photo-upload';
 import { PhotoBank } from '@/components/ui/photo-bank';
 import { AudioRecorder, type AudioData } from '@/components/ui/audio-recorder';
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo, useReducer } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,7 +13,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
 import Image from "next/image";
 import { format } from "date-fns";
-import { ArrowLeft, X, Loader2, Trash2, ImageIcon, Camera, Upload } from "lucide-react";
+import { ArrowLeft, X, Loader2, Trash2, ImageIcon, Camera, Upload, Plus, Minus, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,6 +75,45 @@ function getGradientClassForText(text?: string): string {
   return pillGradientClasses[index];
 }
 
+// UI State Management Reducer
+interface UIState {
+  photoToggleStates: { [questionId: string]: boolean };
+  commentToggleStates: { [questionId: string]: boolean };
+}
+
+type UIAction = 
+  | { type: 'TOGGLE_PHOTO'; questionId: string }
+  | { type: 'TOGGLE_COMMENT'; questionId: string }
+  | { type: 'RESET_TOGGLES' };
+
+function uiReducer(state: UIState, action: UIAction): UIState {
+  switch (action.type) {
+    case 'TOGGLE_PHOTO':
+      return {
+        ...state,
+        photoToggleStates: {
+          ...state.photoToggleStates,
+          [action.questionId]: !state.photoToggleStates[action.questionId]
+        }
+      };
+    case 'TOGGLE_COMMENT':
+      return {
+        ...state,
+        commentToggleStates: {
+          ...state.commentToggleStates,
+          [action.questionId]: !state.commentToggleStates[action.questionId]
+        }
+      };
+    case 'RESET_TOGGLES':
+      return {
+        photoToggleStates: {},
+        commentToggleStates: {}
+      };
+    default:
+      return state;
+  }
+}
+
 export default function CompleteAssignmentPage() {
   const params = useParams();
   const router = useRouter();
@@ -125,6 +164,12 @@ export default function CompleteAssignmentPage() {
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [selectedSubSection, setSelectedSubSection] = useState<string>("all");
   const [answeredStatusFilter, setAnsweredStatusFilter] = useState<'all' | 'answered' | 'unanswered'>('all');
+
+  // UI Toggle State Management
+  const [uiState, uiDispatch] = useReducer(uiReducer, {
+    photoToggleStates: {},
+    commentToggleStates: {}
+  });
 
   const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, getValues } = useForm<FormDataSchema>({
     resolver: zodResolver(formSchema),
@@ -1119,8 +1164,136 @@ export default function CompleteAssignmentPage() {
     );
   }
 
+  // Progress Sidebar Component
+  const ProgressSidebar = () => {
+    const sectionProgress = useMemo(() => {
+      const sections: { [key: string]: { total: number; answered: number } } = {};
+      
+      assignment.questions.forEach(question => {
+        const sectionName = question.section || 'Unassigned';
+        if (!sections[sectionName]) {
+          sections[sectionName] = { total: 0, answered: 0 };
+        }
+        sections[sectionName].total++;
+        if (isQuestionAnswered(question, mergedFormData)) {
+          sections[sectionName].answered++;
+        }
+      });
+      
+      return Object.entries(sections).map(([name, data]) => ({
+        name,
+        progress: data.total > 0 ? (data.answered / data.total) * 100 : 0,
+        answered: data.answered,
+        total: data.total
+      }));
+    }, [assignment.questions, mergedFormData]);
+
+    return (
+      <div className="hidden lg:block w-64 bg-card border rounded-lg p-4 h-fit sticky top-6">
+        <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+          <CheckCircle2 className="h-5 w-5 text-primary" />
+          Progress Overview
+        </h3>
+        
+        <div className="space-y-4">
+          {sectionProgress.map((section) => (
+            <div 
+              key={section.name} 
+              className={cn(
+                "space-y-2 cursor-pointer p-2 rounded-lg transition-colors",
+                selectedSection === (section.name === 'Unassigned' ? UNASSIGNED_FILTER_VALUE : section.name)
+                  ? "bg-primary/10 border border-primary/20" 
+                  : "hover:bg-muted/50"
+              )}
+              onClick={() => {
+                const sectionValue = section.name === 'Unassigned' ? UNASSIGNED_FILTER_VALUE : section.name;
+                setSelectedSection(sectionValue);
+              }}
+              title={`Click to filter by ${section.name === 'Unassigned' ? 'General' : section.name} section`}
+            >
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium truncate">
+                  {section.name === 'Unassigned' ? 'General' : section.name}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {section.answered}/{section.total}
+                </span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div 
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${section.progress}%` }}
+                />
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {Math.round(section.progress)}% complete
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 pt-4 border-t">
+          <div 
+            className={cn(
+              "space-y-2 cursor-pointer p-2 rounded-lg transition-colors",
+              selectedSection === "all"
+                ? "bg-primary/10 border border-primary/20"
+                : "hover:bg-muted/50"
+            )}
+            onClick={() => {
+              setSelectedSection("all");
+              setSelectedSubSection("all");
+            }}
+            title="Click to show all questions"
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Overall Progress</span>
+              <span className="text-xs text-muted-foreground">
+                {questionsToRender.filter(q => isQuestionAnswered(q, mergedFormData)).length}/{questionsToRender.length}
+              </span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-3">
+              <div 
+                className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-300"
+                style={{ width: `${overallProgress}%` }}
+              />
+            </div>
+            <div className="text-sm font-medium text-center">
+              {Math.round(overallProgress)}% Complete
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-6">
+      <div className="flex gap-6">
+        {/* Progress Sidebar */}
+        <ProgressSidebar />
+        
+        {/* Main Content */}
+        <div className="flex-1 space-y-6">
+      {/* Mobile Progress Indicator */}
+      <div className="lg:hidden bg-card border rounded-lg p-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Progress</span>
+          <span className="text-xs text-muted-foreground">
+            {questionsToRender.filter(q => isQuestionAnswered(q, mergedFormData)).length}/{questionsToRender.length} completed
+          </span>
+        </div>
+        <div className="mt-2 w-full bg-muted rounded-full h-2">
+          <div 
+            className="bg-primary h-2 rounded-full transition-all duration-300"
+            style={{ width: `${overallProgress}%` }}
+          />
+        </div>
+        <div className="mt-1 text-xs text-muted-foreground text-center">
+          {Math.round(overallProgress)}% Complete
+        </div>
+      </div>
+
       {/* Header */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -1982,15 +2155,32 @@ export default function CompleteAssignmentPage() {
                 {/* Comment Section */}
                 {question.comment && (
                   <div className="space-y-2 border-t pt-4">
-                    <Label htmlFor={`${question.id}_comment`} className="text-sm font-medium">
-                      Additional Comments
-                    </Label>
-                    <Textarea
-                      id={`${question.id}_comment`}
-                      {...register(`${question.id}_comment`)}
-                      placeholder="Add any additional comments or notes..."
-                      rows={3}
-                    />
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor={`${question.id}_comment`} className="text-sm font-medium">
+                        Additional Comments
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => uiDispatch({ type: 'TOGGLE_COMMENT', questionId: question.id })}
+                        className="h-auto p-1"
+                      >
+                        {uiState.commentToggleStates[question.id] ? (
+                          <Minus className="h-4 w-4" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    {uiState.commentToggleStates[question.id] && (
+                      <Textarea
+                        id={`${question.id}_comment`}
+                        {...register(`${question.id}_comment`)}
+                        placeholder="Add any additional comments or notes..."
+                        rows={3}
+                      />
+                    )}
                   </div>
                 )}
 
@@ -2009,25 +2199,42 @@ export default function CompleteAssignmentPage() {
 
                 {/* Photo Upload Component */}
                 {question.photoUpload && (
-                  <div className="mt-4">
-                    <Label className="text-sm font-medium mb-2 block">
-                      Upload Photos
-                    </Label>
-                    <QuestionPhotoUpload
-                      questionId={question.id}
-                      assignmentId={assignmentId}
-                      onPhotosChange={(photos) => {
-                        // Update form data with photo information
-                        const photoUrls = photos
-                          .filter(p => p.status === 'uploaded')
-                          .map(p => p.url);
-                        
-                        setFormData(prev => ({
-                          ...prev,
-                          [`${question.id}_photos`]: photoUrls,
-                        }));
-                      }}
-                    />
+                  <div className="mt-4 border-t pt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-sm font-medium">
+                        Upload Photos
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => uiDispatch({ type: 'TOGGLE_PHOTO', questionId: question.id })}
+                        className="h-auto p-1"
+                      >
+                        {uiState.photoToggleStates[question.id] ? (
+                          <Minus className="h-4 w-4" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    {uiState.photoToggleStates[question.id] && (
+                      <QuestionPhotoUpload
+                        questionId={question.id}
+                        assignmentId={assignmentId}
+                        onPhotosChange={(photos) => {
+                          // Update form data with photo information
+                          const photoUrls = photos
+                            .filter(p => p.status === 'uploaded')
+                            .map(p => p.url);
+                          
+                          setFormData(prev => ({
+                            ...prev,
+                            [`${question.id}_photos`]: photoUrls,
+                          }));
+                        }}
+                      />
+                    )}
                   </div>
                 )}
 
@@ -2126,6 +2333,8 @@ export default function CompleteAssignmentPage() {
           </div>
         </DialogContent>
       </Dialog>
+        </div>
+      </div>
     </div>
   );
 }
