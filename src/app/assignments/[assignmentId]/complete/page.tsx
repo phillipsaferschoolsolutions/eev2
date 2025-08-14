@@ -4,7 +4,7 @@ import { usePhotoBank } from '@/hooks/use-photo-bank';
 import { QuestionPhotoUpload } from '@/components/ui/question-photo-upload';
 import { PhotoBank } from '@/components/ui/photo-bank';
 import { AudioRecorder, type AudioData } from '@/components/ui/audio-recorder';
-import { useEffect, useState, useCallback, useRef, useMemo, useReducer } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo, useReducer } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import { useForm, Controller, type SubmitHandler, type FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1171,9 +1171,35 @@ export default function CompleteAssignmentPage() {
     );
   }
 
-  // Progress Overview Component
-  const ProgressOverview = ({ position }: { position: 'left' | 'top' | 'right' | 'hidden' }) => {
+  // Progress Overview Component - moved outside to fix hooks issue
+  const ProgressOverview = React.memo(({ 
+    position, 
+    assignment, 
+    mergedFormData, 
+    questionsToRender, 
+    overallProgress, 
+    selectedSection, 
+    setSelectedSection, 
+    setSelectedSubSection, 
+    progressPosition, 
+    setProgressPosition 
+  }: { 
+    position: 'left' | 'top' | 'right' | 'hidden';
+    assignment: AssignmentWithPermissions | null;
+    mergedFormData: { [key: string]: any };
+    questionsToRender: AssignmentQuestion[];
+    overallProgress: number;
+    selectedSection: string;
+    setSelectedSection: (section: string) => void;
+    setSelectedSubSection: (section: string) => void;
+    progressPosition: 'left' | 'top' | 'right' | 'hidden';
+    setProgressPosition: (position: 'left' | 'top' | 'right' | 'hidden') => void;
+  }) => {
     const sectionProgress = useMemo(() => {
+      if (!assignment || !assignment.questions) {
+        return [];
+      }
+      
       const sections: { [key: string]: { total: number; answered: number } } = {};
       
       assignment.questions.forEach(question => {
@@ -1193,7 +1219,7 @@ export default function CompleteAssignmentPage() {
         answered: data.answered,
         total: data.total
       }));
-    }, [assignment.questions, mergedFormData]);
+    }, [assignment?.questions, mergedFormData]);
 
     // Don't render if hidden
     if (position === 'hidden') return null;
@@ -1299,7 +1325,7 @@ export default function CompleteAssignmentPage() {
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Overall Progress</span>
               <span className="text-xs text-muted-foreground">
-                {questionsToRender.filter(q => isQuestionAnswered(q, mergedFormData)).length}/{questionsToRender.length}
+                {questionsToRender?.filter(q => isQuestionAnswered(q, mergedFormData)).length || 0}/{questionsToRender?.length || 0}
               </span>
             </div>
             <div className="w-full bg-muted rounded-full h-3">
@@ -1309,20 +1335,31 @@ export default function CompleteAssignmentPage() {
               />
             </div>
             <div className="text-sm font-medium text-center">
-              {Math.round(overallProgress)}% Complete
+              {isNaN(overallProgress) ? '0' : Math.round(overallProgress)}% Complete
             </div>
           </div>
         </div>
       </div>
     );
-  };
+  });
 
   return (
     <div className="container mx-auto p-6">
       <div className="flex gap-6">
         {/* Progress Overview - Left Position */}
         {progressPosition === 'left' && (
-          <ProgressOverview position="left" />
+          <ProgressOverview 
+            position="left"
+            assignment={assignment}
+            mergedFormData={mergedFormData}
+            questionsToRender={questionsToRender}
+            overallProgress={overallProgress}
+            selectedSection={selectedSection}
+            setSelectedSection={setSelectedSection}
+            setSelectedSubSection={setSelectedSubSection}
+            progressPosition={progressPosition}
+            setProgressPosition={setProgressPosition}
+          />
         )}
         
         {/* Main Content */}
@@ -1332,7 +1369,7 @@ export default function CompleteAssignmentPage() {
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Progress</span>
           <span className="text-xs text-muted-foreground">
-            {questionsToRender.filter(q => isQuestionAnswered(q, mergedFormData)).length}/{questionsToRender.length} completed
+            {questionsToRender?.filter(q => isQuestionAnswered(q, mergedFormData)).length || 0}/{questionsToRender?.length || 0} completed
           </span>
         </div>
         <div className="mt-2 w-full bg-muted rounded-full h-2">
@@ -1478,10 +1515,21 @@ export default function CompleteAssignmentPage() {
         </CardContent>
       </Card>
 
-      {/* Progress Overview - Top Position */}
-      {progressPosition === 'top' && (
-        <ProgressOverview position="top" />
-      )}
+              {/* Progress Overview - Top Position */}
+        {progressPosition === 'top' && (
+          <ProgressOverview 
+            position="top"
+            assignment={assignment}
+            mergedFormData={mergedFormData}
+            questionsToRender={questionsToRender}
+            overallProgress={overallProgress}
+            selectedSection={selectedSection}
+            setSelectedSection={setSelectedSection}
+            setSelectedSubSection={setSelectedSubSection}
+            progressPosition={progressPosition}
+            setProgressPosition={setProgressPosition}
+          />
+        )}
 
       {/* Photo Bank */}
       <Card>
@@ -1720,9 +1768,9 @@ export default function CompleteAssignmentPage() {
                       )}
                     </div>
 
-                    {question.description && (
-                      <CardDescription>{question.description}</CardDescription>
-                    )}
+                                {question.label && question.label !== question.id && (
+              <CardDescription>{question.label}</CardDescription>
+            )}
                   </div>
 
                   {/* Answer Status Indicator */}
@@ -1743,7 +1791,7 @@ export default function CompleteAssignmentPage() {
                       return (
                         <Input
                           {...register(question.id)}
-                          placeholder={question.placeholder}
+                          placeholder={question.label || "Enter your answer"}
                           className={formErrors[question.id] ? "border-destructive" : ""}
                           onChange={(e) => {
                             console.log(`Text input change for ${question.id}:`, e.target.value);
@@ -1760,7 +1808,7 @@ export default function CompleteAssignmentPage() {
                       return (
                         <Textarea
                           {...register(question.id)}
-                          placeholder={question.placeholder}
+                          placeholder={question.label || "Enter your answer"}
                           rows={4}
                           className={formErrors[question.id] ? "border-destructive" : ""}
                           onChange={(e) => {
@@ -2404,7 +2452,18 @@ export default function CompleteAssignmentPage() {
         
         {/* Progress Overview - Right Position */}
         {progressPosition === 'right' && (
-          <ProgressOverview position="right" />
+          <ProgressOverview 
+            position="right"
+            assignment={assignment}
+            mergedFormData={mergedFormData}
+            questionsToRender={questionsToRender}
+            overallProgress={overallProgress}
+            selectedSection={selectedSection}
+            setSelectedSection={setSelectedSection}
+            setSelectedSubSection={setSelectedSubSection}
+            progressPosition={progressPosition}
+            setProgressPosition={setProgressPosition}
+          />
         )}
       </div>
     </div>

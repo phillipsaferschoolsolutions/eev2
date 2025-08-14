@@ -431,42 +431,52 @@ export default function AssetsPage() {
       </div>
 
       {/* Asset Statistics */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Asset Distribution by Type</CardTitle>
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="min-h-[300px]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base sm:text-lg">Asset Distribution by Type</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={{}} className="h-[200px]">
+          <CardContent className="pt-0">
+            <ChartContainer config={{}} className="w-full h-[200px] sm:h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={typeChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="type" />
-                  <YAxis />
+                <BarChart data={typeChartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="type" 
+                    tick={{ fontSize: 12 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="count" fill="#3B82F6" />
+                  <Bar dataKey="count" fill="#3B82F6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Asset Condition</CardTitle>
+        <Card className="min-h-[300px]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base sm:text-lg">Asset Condition</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={{}} className="h-[200px]">
+          <CardContent className="pt-0">
+            <ChartContainer config={{}} className="w-full h-[200px] sm:h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
                   <Pie
                     data={conditionChartData}
                     cx="50%"
                     cy="50%"
-                    outerRadius={60}
+                    outerRadius="70%"
+                    innerRadius="30%"
                     fill="#8884d8"
                     dataKey="count"
-                    label={({ condition, count }) => `${condition}: ${count}`}
+                    label={({ condition, count, percent }) => 
+                      `${condition}: ${count} (${(percent * 100).toFixed(0)}%)`
+                    }
+                    labelLine={false}
                   >
                     {conditionChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -479,22 +489,26 @@ export default function AssetsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Asset Distribution by Location</CardTitle>
+        <Card className="min-h-[300px]">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base sm:text-lg">Asset Distribution by Location</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={{}} className="h-[200px]">
+          <CardContent className="pt-0">
+            <ChartContainer config={{}} className="w-full h-[200px] sm:h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
                   <Pie
                     data={locationChartData}
                     cx="50%"
                     cy="50%"
-                    outerRadius={60}
+                    outerRadius="70%"
+                    innerRadius="30%"
                     fill="#8884d8"
                     dataKey="count"
-                    label={({ location, count }) => `${location}: ${count}`}
+                    label={({ location, count, percent }) => 
+                      `${location}: ${count} (${(percent * 100).toFixed(0)}%)`
+                    }
+                    labelLine={false}
                   >
                     {locationChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

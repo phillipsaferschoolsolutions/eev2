@@ -22,6 +22,10 @@ import { getSavedReports, deleteReport } from "@/services/reportService";
 import { FileText, FilePlus, FileEdit, Lightbulb, AlertTriangle, Eye, Download, Loader2, Trash2, BarChart2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { usePersistedState } from "@/hooks/use-persisted-state";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,6 +64,11 @@ export default function ReportStudioPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<string | null>(null);
   
+  // Pagination and search state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = usePersistedState('report-studio-current-page', 1);
+  const [itemsPerPage, setItemsPerPage] = usePersistedState('report-studio-items-per-page', 5);
+  
   // Check if user has admin permissions
   const isAdmin = !authLoading && userProfile && ADMIN_ROLES.includes(userProfile.role || "");
   
@@ -86,6 +95,30 @@ export default function ReportStudioPage() {
       fetchSavedReports();
     }
   }, [userProfile?.account, authLoading, fetchSavedReports]);
+
+  // Filter reports based on search term
+  const filteredReports = savedReports.filter(report =>
+    report.reportName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (report.assignmentId && report.assignmentId.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredReports.length / itemsPerPage);
+  const paginatedReports = filteredReports.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Handler for changing items per page
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(Number(value));
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
+
+  // Reset page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, setCurrentPage]);
   
   // Function to handle report deletion
   const handleDeleteReport = async (reportId: string) => {
@@ -290,6 +323,17 @@ export default function ReportStudioPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Search Bar */}
+          <div className="flex items-center space-x-2 mb-4">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search reports..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
+
           {isLoadingReports ? (
             <div className="space-y-4">
               <Skeleton className="h-10 w-full" />
@@ -302,61 +346,112 @@ export default function ReportStudioPage() {
               <AlertTitle>Error Loading Reports</AlertTitle>
               <AlertDescription>{reportsError}</AlertDescription>
             </Alert>
-          ) : savedReports.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Report Name</TableHead>
-                  <TableHead>Created Date</TableHead>
-                  <TableHead>Assignment</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {savedReports.map((report: SavedReport) => (
-                  <TableRow key={report.id}>
-                    <TableCell className="font-medium">{report.reportName}</TableCell>
-                    <TableCell>{formatDate(report.createdAt)}</TableCell>
-                    <TableCell>{report.assignmentId || "Unknown Assignment"}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/report-studio/view/${report.id}`}>
-                            <Eye className="mr-1 h-4 w-4" /> View
-                          </Link>
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Download className="mr-1 h-4 w-4" /> Download
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-destructive hover:bg-destructive/10"
-                          onClick={() => setReportToDelete(report.id)}
-                          disabled={isDeleting}
-                        >
-                          {isDeleting && reportToDelete === report.id ? (
-                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="mr-1 h-4 w-4" />
-                          )}
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          ) : filteredReports.length > 0 ? (
+            <>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Report Name</TableHead>
+                      <TableHead>Created Date</TableHead>
+                      <TableHead>Assignment</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedReports.map((report: SavedReport) => (
+                      <TableRow key={report.id}>
+                        <TableCell className="font-medium">{report.reportName}</TableCell>
+                        <TableCell>{formatDate(report.createdAt)}</TableCell>
+                        <TableCell>{report.assignmentId || "Unknown Assignment"}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="outline" size="sm" asChild>
+                              <Link href={`/report-studio/view/${report.id}`}>
+                                <Eye className="mr-1 h-4 w-4" /> View
+                              </Link>
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <Download className="mr-1 h-4 w-4" /> Download
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-destructive hover:bg-destructive/10"
+                              onClick={() => setReportToDelete(report.id)}
+                              disabled={isDeleting}
+                            >
+                              {isDeleting && reportToDelete === report.id ? (
+                                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="mr-1 h-4 w-4" />
+                              )}
+                              Delete
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="flex items-center justify-between mt-4">
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <span>Rows per page</span>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={handleItemsPerPageChange}
+                  >
+                    <SelectTrigger className="w-[70px] h-8">
+                      <SelectValue placeholder={itemsPerPage} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[5, 10, 20, 50].map(size => (
+                        <SelectItem key={size} value={size.toString()}>{size}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages || 1}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
           ) : (
             <div className="text-center py-12">
               <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Reports Yet</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                {searchTerm ? "No Reports Found" : "No Reports Yet"}
+              </h3>
               <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                No completions found for the selected filters.
+                {searchTerm 
+                  ? "No reports found matching your search criteria." 
+                  : "No reports have been generated yet."
+                }
               </p>
-              <Button onClick={() => router.push('/report-studio/generate')}>
-                Generate Your First Report
+              <Button onClick={() => searchTerm ? setSearchTerm("") : router.push('/report-studio/generate')}>
+                {searchTerm ? "Clear Search" : "Generate Your First Report"}
               </Button>
             </div>
           )}
