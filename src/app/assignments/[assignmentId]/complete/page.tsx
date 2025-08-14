@@ -37,6 +37,7 @@ import { getAssignmentById, getAssignmentDraft, submitCompletedAssignment, saveA
 import { getLocationsForLookup, type Location } from "@/services/locationService";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
+import { usePersistedState } from "@/hooks/use-persisted-state";
 
 const formSchema = z.record(z.any());
 type FormDataSchema = z.infer<typeof formSchema>;
@@ -164,6 +165,12 @@ export default function CompleteAssignmentPage() {
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [selectedSubSection, setSelectedSubSection] = useState<string>("all");
   const [answeredStatusFilter, setAnsweredStatusFilter] = useState<'all' | 'answered' | 'unanswered'>('all');
+
+  // Progress Overview positioning state with persistence
+  const [progressPosition, setProgressPosition] = usePersistedState<'left' | 'top' | 'right' | 'hidden'>(
+    'assignment-progress-position',
+    'left'
+  );
 
   // UI Toggle State Management
   const [uiState, uiDispatch] = useReducer(uiReducer, {
@@ -1164,8 +1171,8 @@ export default function CompleteAssignmentPage() {
     );
   }
 
-  // Progress Sidebar Component
-  const ProgressSidebar = () => {
+  // Progress Overview Component
+  const ProgressOverview = ({ position }: { position: 'left' | 'top' | 'right' | 'hidden' }) => {
     const sectionProgress = useMemo(() => {
       const sections: { [key: string]: { total: number; answered: number } } = {};
       
@@ -1188,12 +1195,55 @@ export default function CompleteAssignmentPage() {
       }));
     }, [assignment.questions, mergedFormData]);
 
+    // Don't render if hidden
+    if (position === 'hidden') return null;
+
+    const getPositionClasses = () => {
+      switch (position) {
+        case 'left':
+          return "hidden lg:block w-64 bg-card border rounded-lg p-4 h-fit sticky top-6";
+        case 'right':
+          return "hidden lg:block w-64 bg-card border rounded-lg p-4 h-fit sticky top-6";
+        case 'top':
+          return "w-full bg-card border rounded-lg p-4 mb-6";
+        default:
+          return "hidden lg:block w-64 bg-card border rounded-lg p-4 h-fit sticky top-6";
+      }
+    };
+
     return (
-      <div className="hidden lg:block w-64 bg-card border rounded-lg p-4 h-fit sticky top-6">
-        <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-primary" />
-          Progress Overview
-        </h3>
+      <div className={getPositionClasses()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-lg flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-primary" />
+            Progress Overview
+          </h3>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const newPosition = progressPosition === 'left' ? 'top' : 
+                  progressPosition === 'top' ? 'right' : 
+                  progressPosition === 'right' ? 'hidden' : 'left';
+                setProgressPosition(newPosition);
+              }}
+              className="h-6 w-6 p-0"
+              title="Reposition Progress Overview"
+            >
+              <ArrowLeft className="h-3 w-3 rotate-90" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setProgressPosition('hidden')}
+              className="h-6 w-6 p-0"
+              title="Hide Progress Overview"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
         
         <div className="space-y-4">
           {sectionProgress.map((section) => (
@@ -1270,13 +1320,15 @@ export default function CompleteAssignmentPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex gap-6">
-        {/* Progress Sidebar */}
-        <ProgressSidebar />
+        {/* Progress Overview - Left Position */}
+        {progressPosition === 'left' && (
+          <ProgressOverview position="left" />
+        )}
         
         {/* Main Content */}
         <div className="flex-1 space-y-6">
-      {/* Mobile Progress Indicator */}
-      <div className="lg:hidden bg-card border rounded-lg p-3">
+          {/* Mobile Progress Indicator */}
+          <div className="lg:hidden bg-card border rounded-lg p-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Progress</span>
           <span className="text-xs text-muted-foreground">
@@ -1324,7 +1376,17 @@ export default function CompleteAssignmentPage() {
           <CardDescription>
             Use the filters below to navigate through different sections of the assignment.
           </CardDescription>
-          <div className="flex justify-end mt-4">
+          <div className="flex justify-end mt-4 gap-2">
+            {progressPosition === 'hidden' && (
+              <Button
+                variant="outline"
+                onClick={() => setProgressPosition('left')}
+                className="flex items-center gap-2"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Show Progress
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => setIsPhotoBankModalOpen(true)}
@@ -1415,6 +1477,11 @@ export default function CompleteAssignmentPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Progress Overview - Top Position */}
+      {progressPosition === 'top' && (
+        <ProgressOverview position="top" />
+      )}
 
       {/* Photo Bank */}
       <Card>
@@ -2334,6 +2401,11 @@ export default function CompleteAssignmentPage() {
         </DialogContent>
       </Dialog>
         </div>
+        
+        {/* Progress Overview - Right Position */}
+        {progressPosition === 'right' && (
+          <ProgressOverview position="right" />
+        )}
       </div>
     </div>
   );

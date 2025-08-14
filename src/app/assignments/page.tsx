@@ -350,7 +350,7 @@ export default function AssignmentsPage() {
                                 Created: {formatDate(assignment.createdDate)}
                               </div>
                               <div className="mt-1">
-                                <Badge variant="default" className="text-xs">
+                                <Badge variant="secondary" className="text-xs">
                                   Active
                                 </Badge>
                               </div>
@@ -541,7 +541,7 @@ export default function AssignmentsPage() {
                                   Created: {formatDate(assignment.createdDate)}
                                 </div>
                                 <div className="mt-1">
-                                  <Badge variant="default" className="text-xs">
+                                  <Badge variant="secondary" className="text-xs">
                                     Active
                                   </Badge>
                                 </div>
