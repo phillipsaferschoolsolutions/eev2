@@ -182,10 +182,10 @@ export function AppHeader({ navItems }: AppHeaderProps) {
       )}
       {layoutMode === "standard" && !isMobileViewForLayout && <SidebarTrigger className="hidden md:flex" />}
 
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         {isSuperAdmin && userProfile?.account && (
-          <div className="text-xs sm:text-sm text-muted-foreground">
-            Account: <span className="font-semibold text-primary">{userProfile.account}</span>
+          <div className="text-xs sm:text-sm text-muted-foreground truncate">
+            Account: <span className="font-semibold text-primary break-words">{userProfile.account}</span>
           </div>
         )}
         {layoutMode === "topNav" && !isMobileViewForLayout && renderTopNavItems()}

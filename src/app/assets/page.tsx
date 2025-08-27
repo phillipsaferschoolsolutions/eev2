@@ -419,13 +419,13 @@ export default function AssetsPage() {
   return (
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Asset Management</h1>
-          <p className="text-lg text-muted-foreground">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Asset Management</h1>
+          <p className="text-lg text-muted-foreground break-words">
             Track and manage hardware assets for account: {userProfile?.account || "Loading..."}
           </p>
         </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
+        <Button onClick={() => setIsCreateDialogOpen(true)} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" /> Add Asset
         </Button>
       </div>
@@ -443,12 +443,13 @@ export default function AssetsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis 
                     dataKey="type" 
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 10 }}
                     angle={-45}
                     textAnchor="end"
-                    height={60}
+                    height={80}
+                    interval={0}
                   />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="count" fill="#3B82F6" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -563,25 +564,27 @@ export default function AssetsPage() {
               </p>
             </div>
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Condition</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Assigned To</TableHead>
-                    <TableHead>Serial Number</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="w-1/2 sm:min-w-[200px]">Name</TableHead>
+                    <TableHead className="w-1/4">Type</TableHead>
+                    <TableHead className="w-1/4">Condition</TableHead>
+                    <TableHead className="hidden md:table-cell">Location</TableHead>
+                    <TableHead className="hidden lg:table-cell">Assigned To</TableHead>
+                    <TableHead className="hidden lg:table-cell">Serial Number</TableHead>
+                    <TableHead className="text-right w-20">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedAssets.map((asset) => (
                     <TableRow key={asset.id}>
-                      <TableCell className="font-medium">{asset.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="text-sm break-words">{asset.name}</div>
+                      </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{asset.type}</Badge>
+                        <Badge variant="outline" className="text-xs">{asset.type}</Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant={
@@ -589,29 +592,29 @@ export default function AssetsPage() {
                           asset.condition === 'Needs Repair' ? 'destructive' :
                           asset.condition === 'Retired' ? 'secondary' :
                           'outline'
-                        }>
+                        } className="text-xs">
                           {asset.condition}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div className="flex items-center gap-1">
                           <MapPin className="h-3 w-3 text-muted-foreground" />
-                          {asset.locationName || 'N/A'}
+                          <span className="text-xs truncate max-w-[120px]">{asset.locationName || 'N/A'}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <div className="flex items-center gap-1">
                           <User className="h-3 w-3 text-muted-foreground" />
-                          {asset.assignedToName || 'Unassigned'}
+                          <span className="text-xs truncate max-w-[120px]">{asset.assignedToName || 'Unassigned'}</span>
                         </div>
                       </TableCell>
-                      <TableCell>{asset.serialNumber || 'N/A'}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-xs">{asset.serialNumber || 'N/A'}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => openEditDialog(asset)}>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="outline" size="sm" onClick={() => openEditDialog(asset)} className="h-7 w-7 p-0">
                             <Edit className="h-3 w-3" />
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => openDeleteDialog(asset)}>
+                          <Button variant="outline" size="sm" onClick={() => openDeleteDialog(asset)} className="h-7 w-7 p-0">
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>

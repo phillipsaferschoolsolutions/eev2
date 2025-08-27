@@ -801,9 +801,9 @@ export default function ResourcesPage() {
   
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Resources & Documentation</h1>
-        <p className="text-lg text-muted-foreground">
+      <div className="min-w-0">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Resources & Documentation</h1>
+        <p className="text-lg text-muted-foreground break-words">
           Manage procedures, training materials, site maps, and other critical documents.
         </p>
       </div>
@@ -867,14 +867,14 @@ export default function ResourcesPage() {
             <Table className="dark:bg-transparent">
               <TableHeader className="dark:bg-slate-900/50">
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="hidden sm:table-cell">Type</TableHead>
-                  <TableHead className="hidden md:table-cell">Modified</TableHead>
+                  <TableHead className="w-1/2 sm:min-w-[200px]">Name</TableHead>
+                  <TableHead className="w-1/6 hidden sm:table-cell">Type</TableHead>
+                  <TableHead className="w-1/6 hidden md:table-cell">Modified</TableHead>
                   <TableHead className="hidden lg:table-cell">Tags</TableHead>
-                  <TableHead>Summary</TableHead>
-                  <TableHead>Audio Note</TableHead>
-                  <TableHead className="text-right dark:text-slate-300">View</TableHead>
-                  <TableHead className="text-right dark:text-slate-300">Actions</TableHead>
+                  <TableHead className="w-1/6">Summary</TableHead>
+                  <TableHead className="w-1/6">Audio Note</TableHead>
+                  <TableHead className="text-right dark:text-slate-300 w-16">View</TableHead>
+                  <TableHead className="text-right dark:text-slate-300 w-16">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -940,12 +940,14 @@ export default function ResourcesPage() {
 
                     return (
                       <TableRow key={doc.id}>
-                        <TableCell className="font-medium truncate max-w-[150px] dark:text-white">{doc.name}</TableCell>
-                        <TableCell className="hidden sm:table-cell dark:text-white">{doc.fileType || "N/A"}</TableCell>
-                        <TableCell className="hidden md:table-cell dark:text-white">
+                        <TableCell className="font-medium truncate max-w-[150px] dark:text-white">
+                          <div className="text-sm break-words">{doc.name}</div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell dark:text-white text-xs">{doc.fileType || "N/A"}</TableCell>
+                        <TableCell className="hidden md:table-cell dark:text-white text-xs">
                           {isValidDate ? format(parsedDate, "PP") : "Invalid date"}
                         </TableCell>
-                        <TableCell className="hidden lg:table-cell truncate max-w-[100px] dark:text-white">
+                        <TableCell className="hidden lg:table-cell truncate max-w-[100px] dark:text-white text-xs">
                           {doc.tags?.join(', ') || "None"}
                         </TableCell>
                         <TableCell>

@@ -253,14 +253,14 @@ export default function AssignmentsPage() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Assignments</h1>
-          <p className="text-muted-foreground mt-1">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Assignments</h1>
+          <p className="text-muted-foreground mt-1 break-words">
             Manage and view all assignments for your organization
           </p>
         </div>
-        <Button asChild size="lg">
+        <Button asChild size="lg" className="w-full sm:w-auto">
           <Link href="/assignments/new">
             <Plus className="mr-2 h-5 w-5" /> Create Assignment
           </Link>
@@ -274,7 +274,7 @@ export default function AssignmentsPage() {
             <Briefcase className="h-6 w-6 text-primary" /> 
             My Assignments ({filteredMyAssignments.length})
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="break-words">
             Assignments assigned to you for account: {userProfile?.account || "your current account"}.
           </CardDescription>
         </CardHeader>
@@ -328,25 +328,25 @@ export default function AssignmentsPage() {
             <>
               <div className="rounded-md border overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full table-fixed">
+                  <table className="w-full">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left p-4 font-medium w-1/4">Title</th>
-                        <th className="text-left p-4 font-medium w-1/5">Description</th>
-                        <th className="text-left p-4 font-medium w-40">Author</th>
-                        <th className="text-left p-4 font-medium w-24">Frequency</th>
-                        <th className="text-left p-4 font-medium w-28">Last Updated</th>
-                        <th className="text-left p-4 font-medium w-24">Type</th>
-                        <th className="text-right p-4 font-medium w-20">Actions</th>
+                        <th className="text-left p-2 sm:p-4 font-medium w-1/2 sm:min-w-[200px]">Title</th>
+                        <th className="text-left p-2 sm:p-4 font-medium hidden md:table-cell w-1/4">Description</th>
+                        <th className="text-left p-2 sm:p-4 font-medium hidden lg:table-cell w-1/6">Author</th>
+                        <th className="text-left p-2 sm:p-4 font-medium w-1/4 sm:w-auto">Frequency</th>
+                        <th className="text-left p-2 sm:p-4 font-medium hidden sm:table-cell w-1/6">Updated</th>
+                        <th className="text-left p-2 sm:p-4 font-medium hidden lg:table-cell w-1/6">Type</th>
+                        <th className="text-right p-2 sm:p-4 font-medium w-1/6">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {paginatedMyAssignments.map((assignment) => (
                         <tr key={assignment.id} className="border-b hover:bg-muted/30">
-                          <td className="p-4">
+                          <td className="p-2 sm:p-4">
                             <div>
-                              <div className="font-medium">{assignment.assessmentName}</div>
-                              <div className="text-sm text-muted-foreground">
+                              <div className="font-medium text-sm break-words">{assignment.assessmentName}</div>
+                              <div className="text-xs text-muted-foreground">
                                 Created: {formatDate(assignment.createdDate)}
                               </div>
                               <div className="mt-1">
@@ -356,25 +356,25 @@ export default function AssignmentsPage() {
                               </div>
                             </div>
                           </td>
-                          <td className="p-4">
-                            <div className="text-sm text-muted-foreground max-w-none break-words">
+                          <td className="p-2 sm:p-4 hidden md:table-cell">
+                            <div className="text-sm text-muted-foreground break-words max-w-[200px]">
                               {assignment.description || "No description"}
                             </div>
                           </td>
-                          <td className="p-4">
+                          <td className="p-2 sm:p-4 hidden lg:table-cell">
                             <div className="flex items-center gap-2">
                               <User className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                              <span className="text-xs text-muted-foreground truncate">
+                              <span className="text-xs text-muted-foreground truncate max-w-[100px]">
                                 {assignment.author || "Unknown"}
                               </span>
                             </div>
                           </td>
-                          <td className="p-4">
+                          <td className="p-2 sm:p-4">
                             <Badge variant="outline" className="text-xs">
                               {assignment.frequency || "One-time"}
                             </Badge>
                           </td>
-                          <td className="p-4">
+                          <td className="p-2 sm:p-4 hidden sm:table-cell">
                             <div className="flex items-center gap-2">
                               <Clock className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                               <span className="text-xs text-muted-foreground">
@@ -382,15 +382,15 @@ export default function AssignmentsPage() {
                               </span>
                             </div>
                           </td>
-                          <td className="p-4">
+                          <td className="p-2 sm:p-4 hidden lg:table-cell">
                             <Badge variant="secondary" className="text-xs">
                               {assignment.assignmentType || "Assignment"}
                             </Badge>
                           </td>
 
-                          <td className="p-4">
+                          <td className="p-2 sm:p-4">
                             <div className="flex justify-end">
-                              <Button asChild size="sm">
+                              <Button asChild size="sm" className="text-xs px-2 py-1 h-auto">
                                 <Link href={`/assignments/${assignment.id}/complete`}>
                                   Go
                                 </Link>
@@ -519,74 +519,74 @@ export default function AssignmentsPage() {
               <>
                 <div className="rounded-md border overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full table-fixed">
+                    <table className="w-full">
                       <thead>
                         <tr className="border-b bg-muted/50">
-                          <th className="text-left p-4 font-medium w-1/4">Title</th>
-                          <th className="text-left p-4 font-medium w-1/5">Description</th>
-                          <th className="text-left p-4 font-medium w-40">Author</th>
-                          <th className="text-left p-4 font-medium w-24">Frequency</th>
-                          <th className="text-left p-4 font-medium w-28">Last Updated</th>
-                          <th className="text-left p-4 font-medium w-24">Type</th>
-                          <th className="text-right p-4 font-medium w-20">Actions</th>
+                          <th className="text-left p-2 sm:p-4 font-medium w-1/2 sm:min-w-[200px]">Title</th>
+                          <th className="text-left p-2 sm:p-4 font-medium hidden md:table-cell w-1/4">Description</th>
+                          <th className="text-left p-2 sm:p-4 font-medium hidden lg:table-cell w-1/6">Author</th>
+                          <th className="text-left p-2 sm:p-4 font-medium w-1/4 sm:w-auto">Frequency</th>
+                          <th className="text-left p-2 sm:p-4 font-medium hidden sm:table-cell w-1/6">Updated</th>
+                          <th className="text-left p-2 sm:p-4 font-medium hidden lg:table-cell w-1/6">Type</th>
+                          <th className="text-right p-2 sm:p-4 font-medium w-1/6">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {paginatedAllAccountAssignments.map((assignment) => (
                           <tr key={assignment.id} className="border-b hover:bg-muted/30">
-                            <td className="p-4">
-                              <div>
-                                <div className="font-medium">{assignment.assessmentName}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  Created: {formatDate(assignment.createdDate)}
-                                </div>
-                                <div className="mt-1">
-                                  <Badge variant="secondary" className="text-xs">
-                                    Active
-                                  </Badge>
-                                </div>
+                                                      <td className="p-2 sm:p-4">
+                            <div>
+                              <div className="font-medium text-sm break-words">{assignment.assessmentName}</div>
+                              <div className="text-xs text-muted-foreground">
+                                Created: {formatDate(assignment.createdDate)}
                               </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="text-sm text-muted-foreground max-w-none break-words">
-                                {assignment.description || "No description"}
+                              <div className="mt-1">
+                                <Badge variant="secondary" className="text-xs">
+                                  Active
+                                </Badge>
                               </div>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-2">
-                                <User className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                <span className="text-xs text-muted-foreground truncate">
-                                  {assignment.author || "Unknown"}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <Badge variant="outline" className="text-xs">
-                                {assignment.frequency || "One-time"}
-                              </Badge>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-2">
-                                <Clock className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDate(assignment.updatedAt)}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <Badge variant="secondary" className="text-xs">
-                                {assignment.assignmentType || "Assignment"}
-                              </Badge>
-                            </td>
+                            </div>
+                          </td>
+                          <td className="p-2 sm:p-4 hidden md:table-cell">
+                            <div className="text-sm text-muted-foreground break-words max-w-[200px]">
+                              {assignment.description || "No description"}
+                            </div>
+                          </td>
+                          <td className="p-2 sm:p-4 hidden lg:table-cell">
+                            <div className="flex items-center gap-2">
+                              <User className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                              <span className="text-xs text-muted-foreground truncate max-w-[100px]">
+                                {assignment.author || "Unknown"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-2 sm:p-4">
+                            <Badge variant="outline" className="text-xs">
+                              {assignment.frequency || "One-time"}
+                            </Badge>
+                          </td>
+                          <td className="p-2 sm:p-4 hidden sm:table-cell">
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                              <span className="text-xs text-muted-foreground">
+                                {formatDate(assignment.updatedAt)}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-2 sm:p-4 hidden lg:table-cell">
+                            <Badge variant="secondary" className="text-xs">
+                              {assignment.assignmentType || "Assignment"}
+                            </Badge>
+                          </td>
 
-                            <td className="p-4">
-                              <div className="flex justify-end">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
+                                                      <td className="p-2 sm:p-4">
+                            <div className="flex justify-end">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
                                                                      <DropdownMenuContent align="end">
                                      <DropdownMenuItem asChild>
                                        <Link href={`/assignments/${assignment.id}/complete`}>

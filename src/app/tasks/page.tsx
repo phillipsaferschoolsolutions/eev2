@@ -384,19 +384,20 @@ export default function TasksPage() {
   return (
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
-          <p className="text-lg text-muted-foreground">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Tasks</h1>
+          <p className="text-lg text-muted-foreground break-words">
             Manage and track tasks for account: {userProfile?.account || "Loading..."}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           {selectedTasks.length > 0 && (
             <>
               <Button 
                 variant="outline" 
                 onClick={handleCloseTasks}
                 disabled={isPerformingAction}
+                className="w-full sm:w-auto"
               >
                 <Check className="mr-2 h-4 w-4" />
                 Close ({selectedTasks.length})
@@ -405,13 +406,14 @@ export default function TasksPage() {
                 variant="destructive" 
                 onClick={handleDeleteTasks}
                 disabled={isPerformingAction}
+                className="w-full sm:w-auto"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete ({selectedTasks.length})
               </Button>
             </>
           )}
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Button onClick={() => setIsCreateDialogOpen(true)} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" /> Create Task
           </Button>
         </div>
@@ -469,19 +471,19 @@ export default function TasksPage() {
               </p>
             </div>
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">Select</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Issue Type</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Assignee</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="w-1/2 sm:min-w-[200px]">Title</TableHead>
+                    <TableHead className="w-1/4">Status</TableHead>
+                    <TableHead className="w-1/4 hidden sm:table-cell">Priority</TableHead>
+                    <TableHead className="hidden md:table-cell">Issue Type</TableHead>
+                    <TableHead className="hidden lg:table-cell">Location</TableHead>
+                    <TableHead className="hidden lg:table-cell">Assignee</TableHead>
+                    <TableHead className="hidden md:table-cell">Created</TableHead>
+                    <TableHead className="text-right w-20">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -494,9 +496,11 @@ export default function TasksPage() {
                         />
                       </TableCell>
                       <TableCell className="font-medium">
-                        {task.taskTitle || task.title || 'Untitled Task'}
+                        <div className="text-sm break-words">
+                          {task.taskTitle || task.title || 'Untitled Task'}
+                        </div>
                         {task.description && (
-                          <p className="text-sm text-muted-foreground truncate max-w-xs">
+                          <p className="text-xs text-muted-foreground truncate max-w-[150px]">
                             {task.description}
                           </p>
                         )}
@@ -507,47 +511,47 @@ export default function TasksPage() {
                           task.status === 'In Progress' ? 'default' :
                           task.status === 'Resolved' ? 'default' :
                           'outline'
-                        }>
+                        } className="text-xs">
                           {task.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <Badge variant={
                           task.priority === 'Critical' || task.priority === 'High' ? 'destructive' :
                           task.priority === 'High' ? 'destructive' :
                           task.priority === 'Medium' ? 'default' :
                           'secondary'
-                        }>
+                        } className="text-xs">
                           {task.priority}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div className="flex items-center gap-1">
                           <Tag className="h-3 w-3 text-muted-foreground" />
-                          {task.issueType || 'N/A'}
+                          <span className="text-xs truncate max-w-[100px]">{task.issueType || 'N/A'}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <div className="flex items-center gap-1">
                           <MapPin className="h-3 w-3 text-muted-foreground" />
-                          {task.locationName || 'N/A'}
+                          <span className="text-xs truncate max-w-[100px]">{task.locationName || 'N/A'}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <div className="flex items-center gap-1">
                           <User className="h-3 w-3 text-muted-foreground" />
-                          {task.assignedToUserId || 'Unassigned'}
+                          <span className="text-xs truncate max-w-[100px]">{task.assignedToUserId || 'Unassigned'}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell text-xs">
                         {task.createdTime ? formatDisplayDateShort(task.createdTime) : 'N/A'}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => openEditTaskDialog(task)}>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="outline" size="sm" onClick={() => openEditTaskDialog(task)} className="h-7 w-7 p-0">
                             <Edit className="h-3 w-3" />
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => openDeleteTaskDialog(task)}>
+                          <Button variant="outline" size="sm" onClick={() => openDeleteTaskDialog(task)} className="h-7 w-7 p-0">
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
