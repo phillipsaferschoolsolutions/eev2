@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/context/auth-context";
 import { LayoutProvider } from "@/context/layout-context";
+import { NotificationProvider } from "@/context/notification-context";
 import { PageShell } from "@/components/layout/PageShell";
 import { ThemeBackgroundSetter } from "@/components/layout/ThemeBackgroundSetter";
 import { PhotoBankProvider } from "@/context/photo-bank-context";
@@ -52,11 +53,13 @@ export function ClientAppShell({ children }: { children: React.ReactNode }) {
           disableTransitionOnChange={false}
         >
           <LayoutProvider>
-            <SidebarProvider>
-              <ThemeBackgroundSetter />
-              <PageShell>{children}</PageShell>
-              <Toaster />
-            </SidebarProvider>
+            <NotificationProvider>
+              <SidebarProvider>
+                <ThemeBackgroundSetter />
+                <PageShell>{children}</PageShell>
+                <Toaster />
+              </SidebarProvider>
+            </NotificationProvider>
           </LayoutProvider>
         </ThemeProvider>
       </PhotoBankProvider>

@@ -22,7 +22,11 @@ import {
 } from "@/services/assignmentFunctionsService";
 import { getDashboardWidgetsSandbox, getWidgetTrends } from "@/services/analysisService";
 import { getLocationsForLookup, type Location } from "@/services/locationService";
+import { getAllDrillEvents } from "@/services/drillTrackingService";
+import { getMyTasks } from "@/services/taskService";
 import type { WidgetSandboxData, TrendsResponse } from "@/types/Analysis";
+import type { DrillEvent } from "@/types/Drill";
+import type { Task } from "@/types/Task";
 import {
   Activity,
   MapPin,
@@ -133,6 +137,15 @@ export default function DashboardPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+
+  // Drill and task data for widgets
+  const [upcomingDrills, setUpcomingDrills] = useState<DrillEvent[]>([]);
+  const [drillsLoading, setDrillsLoading] = useState(false);
+  const [drillsError, setDrillsError] = useState<string | null>(null);
+  
+  const [criticalTasks, setCriticalTasks] = useState<Task[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [tasksError, setTasksError] = useState<string | null>(null);
   const [assignmentsError, setAssignmentsError] = useState<string | null>(null);
   const [locationsError, setLocationsError] = useState<string | null>(null);
 
@@ -373,6 +386,75 @@ export default function DashboardPage() {
       setLastCompletions([]);
     }
   }, [userProfile?.account, authLoading, profileLoading, selectedAssignment, selectedSchool, selectedPeriod, setCurrentPage]);
+
+  // Fetch upcoming drills for the Upcoming Events & Drills widget
+  useEffect(() => {
+    if (!authLoading && !profileLoading && userProfile?.account) {
+      setDrillsLoading(true);
+      getAllDrillEvents(userProfile.account)
+        .then(data => {
+          console.log("Fetched all drill events:", data);
+          
+          // Filter upcoming drills using the same logic as Drill Tracking page
+          const now = new Date();
+          const thirtyDaysFromNow = new Date();
+          thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+          
+          const upcoming = (data || []).filter(drill => {
+            if (!drill.startDate) return false;
+            
+            const startDate = new Date(drill.startDate);
+            const endDate = drill.endDate ? new Date(drill.endDate) : startDate;
+            
+            // Check if drill is upcoming (starts within next 30 days) or currently active
+            const isUpcoming = startDate >= now && startDate <= thirtyDaysFromNow;
+            const isActive = startDate <= now && endDate >= now;
+            
+            return isUpcoming || isActive;
+          });
+          
+          console.log("Filtered upcoming drills:", upcoming);
+          setUpcomingDrills(upcoming);
+          setDrillsError(null);
+        })
+        .catch(err => {
+          console.error("Error fetching drill events:", err);
+          setDrillsError("Could not load upcoming drills");
+          setUpcomingDrills([]);
+        })
+        .finally(() => setDrillsLoading(false));
+    } else {
+      setDrillsLoading(false);
+      setUpcomingDrills([]);
+    }
+  }, [userProfile?.account, authLoading, profileLoading]);
+
+  // Fetch critical tasks for the Critical Tasks widget
+  useEffect(() => {
+    if (!authLoading && !profileLoading && userProfile?.account) {
+      setTasksLoading(true);
+      getMyTasks("Open")
+        .then(data => {
+          console.log("Fetched tasks:", data);
+          // Filter for critical/overdue tasks
+          const critical = (data.tasks || []).filter(task => 
+            task.priority === 'Critical' || 
+            (task.dueDate && new Date(task.dueDate) < new Date())
+          );
+          setCriticalTasks(critical);
+          setTasksError(null);
+        })
+        .catch(err => {
+          console.error("Error fetching critical tasks:", err);
+          setTasksError("Could not load critical tasks");
+          setCriticalTasks([]);
+        })
+        .finally(() => setTasksLoading(false));
+    } else {
+      setTasksLoading(false);
+      setCriticalTasks([]);
+    }
+  }, [userProfile?.account, authLoading, profileLoading]);
 
   const getWeatherIcon = (condition: string) => {
     const lowerCondition = condition.toLowerCase();
@@ -1085,13 +1167,65 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="text-center py-8">
-              <ListChecks className="mx-auto h-12 w-12 mb-4 text-muted-foreground opacity-50" />
-              <p className="text-lg font-semibold">No Critical Tasks</p>
-              <p className="text-sm text-muted-foreground">
-                You&apos;re all caught up! No urgent tasks at this time.
-              </p>
-            </div>
+            {tasksLoading ? (
+              <div className="text-center py-8">
+                <Loader2 className="mx-auto h-8 w-8 mb-4 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Loading critical tasks...</p>
+              </div>
+            ) : tasksError ? (
+              <div className="text-center py-8">
+                <AlertTriangle className="mx-auto h-8 w-8 mb-4 text-red-500" />
+                <p className="text-sm text-red-600">{tasksError}</p>
+              </div>
+            ) : criticalTasks.length === 0 ? (
+              <div className="text-center py-8">
+                <ListChecks className="mx-auto h-12 w-12 mb-4 text-muted-foreground opacity-50" />
+                <p className="text-lg font-semibold">No Critical Tasks</p>
+                <p className="text-sm text-muted-foreground">
+                  You&apos;re all caught up! No urgent tasks at this time.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {criticalTasks.length} Critical Task{criticalTasks.length !== 1 ? 's' : ''}
+                  </span>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/tasks">View All</Link>
+                  </Button>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {criticalTasks.slice(0, 3).map((task) => (
+                    <div key={task.id} className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-red-900 truncate">
+                            {task.title}
+                          </p>
+                          <p className="text-xs text-red-700 mt-1">
+                            Priority: {task.priority}
+                          </p>
+                          {task.dueDate && (
+                            <p className="text-xs text-red-600 mt-1">
+                              Due: {new Date(task.dueDate).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant="destructive" className="ml-2 text-xs">
+                          {task.priority}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {criticalTasks.length > 3 && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    +{criticalTasks.length - 3} more critical tasks
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -1107,18 +1241,75 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="text-center py-8">
-              <Calendar className="mx-auto h-12 w-12 mb-4 text-muted-foreground opacity-50" />
-              <p className="text-lg font-semibold">No Upcoming Events</p>
-              <p className="text-sm text-muted-foreground">
-                No events scheduled at this time.
-              </p>
-              <Button variant="outline" className="mt-4" asChild>
-                <Link href="/drill-tracking/new">
-                  Schedule a Drill
-                </Link>
-              </Button>
-            </div>
+            {drillsLoading ? (
+              <div className="text-center py-8">
+                <Loader2 className="mx-auto h-8 w-8 mb-4 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Loading upcoming drills...</p>
+              </div>
+            ) : drillsError ? (
+              <div className="text-center py-8">
+                <AlertTriangle className="mx-auto h-8 w-8 mb-4 text-red-500" />
+                <p className="text-sm text-red-600">{drillsError}</p>
+              </div>
+            ) : upcomingDrills.length === 0 ? (
+              <div className="text-center py-8">
+                <Calendar className="mx-auto h-12 w-12 mb-4 text-muted-foreground opacity-50" />
+                <p className="text-lg font-semibold">No Upcoming Events</p>
+                <p className="text-sm text-muted-foreground">
+                  No events scheduled at this time.
+                </p>
+                <Button variant="outline" className="mt-4" asChild>
+                  <Link href="/drill-tracking/new">
+                    Schedule a Drill
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {upcomingDrills.length} Upcoming Drill{upcomingDrills.length !== 1 ? 's' : ''}
+                  </span>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/drill-tracking">View All</Link>
+                  </Button>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {upcomingDrills.slice(0, 3).map((drill) => (
+                    <div key={drill.id} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-blue-900 truncate">
+                            {drill.hazardType || 'Drill Event'}
+                          </p>
+                          <p className="text-xs text-blue-700 mt-1">
+                            {drill.startDate && new Date(drill.startDate).toLocaleDateString()} - {drill.endDate && new Date(drill.endDate).toLocaleDateString()}
+                          </p>
+                          {drill.locationIds && drill.locationIds.length > 0 && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              {drill.locationIds.length} location{drill.locationIds.length !== 1 ? 's' : ''} assigned
+                            </p>
+                          )}
+                        </div>
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          {drill.status || 'Scheduled'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {upcomingDrills.length > 3 && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    +{upcomingDrills.length - 3} more upcoming drills
+                  </p>
+                )}
+                <Button variant="outline" className="w-full mt-3" asChild>
+                  <Link href="/drill-tracking/new">
+                    Schedule New Drill
+                  </Link>
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -121,6 +121,23 @@ export default function TasksPage() {
       fetchTasks();
     }
   }, [userProfile?.account, authLoading, user?.email, fetchTasks]);
+
+  // Debug: Log task data to see available fields
+  useEffect(() => {
+    if (tasks.length > 0) {
+      console.log('Task data sample:', tasks[0]);
+      console.log('Available date fields:', {
+        createdAt: tasks[0].createdAt,
+        createdTime: (tasks[0] as any).createdTime,
+        created: (tasks[0] as any).created,
+        date: (tasks[0] as any).date,
+        timestamp: (tasks[0] as any).timestamp,
+        createdDate: (tasks[0] as any).createdDate,
+        created_at: (tasks[0] as any).created_at,
+        created_time: (tasks[0] as any).created_time
+      });
+    }
+  }, [tasks]);
   
   // Fetch issue types
   useEffect(() => {
@@ -339,7 +356,7 @@ export default function TasksPage() {
   
   // Filter tasks based on search term
   const filteredTasks = tasks.filter(task =>
-    (task.taskTitle || task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ((task as any).taskTitle || task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     task.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
@@ -474,17 +491,17 @@ export default function TasksPage() {
             <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">Select</TableHead>
-                    <TableHead className="w-1/2 sm:min-w-[200px]">Title</TableHead>
-                    <TableHead className="w-1/4">Status</TableHead>
-                    <TableHead className="w-1/4 hidden sm:table-cell">Priority</TableHead>
-                    <TableHead className="hidden md:table-cell">Issue Type</TableHead>
-                    <TableHead className="hidden lg:table-cell">Location</TableHead>
-                    <TableHead className="hidden lg:table-cell">Assignee</TableHead>
-                    <TableHead className="hidden md:table-cell">Created</TableHead>
-                    <TableHead className="text-right w-20">Actions</TableHead>
-                  </TableRow>
+                                              <TableRow>
+                              <TableHead className="w-12">Select</TableHead>
+                              <TableHead className="w-1/2 sm:min-w-[200px]">Title</TableHead>
+                              <TableHead className="w-1/6">Status</TableHead>
+                              <TableHead className="w-1/8 hidden sm:table-cell">Priority</TableHead>
+                              <TableHead className="hidden md:table-cell">Issue Type</TableHead>
+                              <TableHead className="hidden lg:table-cell">Location</TableHead>
+                              <TableHead className="hidden lg:table-cell w-1/4">Assignee</TableHead>
+                              <TableHead className="hidden md:table-cell">Created</TableHead>
+                              <TableHead className="text-right w-20">Actions</TableHead>
+                            </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedTasks.map((task) => (
@@ -497,7 +514,7 @@ export default function TasksPage() {
                       </TableCell>
                       <TableCell className="font-medium">
                         <div className="text-sm break-words">
-                          {task.taskTitle || task.title || 'Untitled Task'}
+                          {(task as any).taskTitle || task.title || 'Untitled Task'}
                         </div>
                         {task.description && (
                           <p className="text-xs text-muted-foreground truncate max-w-[150px]">
@@ -517,18 +534,18 @@ export default function TasksPage() {
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         <Badge variant={
-                          task.priority === 'Critical' || task.priority === 'High' ? 'destructive' :
-                          task.priority === 'High' ? 'destructive' :
-                          task.priority === 'Medium' ? 'default' :
-                          'secondary'
+                          task.priority === 'Critical' ? 'destructive' :
+                          task.priority === 'High' ? 'default' :
+                          task.priority === 'Medium' ? 'secondary' :
+                          'outline'
                         } className="text-xs">
-                          {task.priority}
+                          {task.priority || 'Low'}
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <div className="flex items-center gap-1">
                           <Tag className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs truncate max-w-[100px]">{task.issueType || 'N/A'}</span>
+                          <span className="text-xs truncate max-w-[100px]">{(task as any).issueType || 'N/A'}</span>
                         </div>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
@@ -540,11 +557,11 @@ export default function TasksPage() {
                       <TableCell className="hidden lg:table-cell">
                         <div className="flex items-center gap-1">
                           <User className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs truncate max-w-[100px]">{task.assignedToUserId || 'Unassigned'}</span>
+                          <span className="text-xs truncate max-w-[100px]">{(task as any).assignedToUserId || 'Unassigned'}</span>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-xs">
-                        {task.createdTime ? formatDisplayDateShort(task.createdTime) : 'N/A'}
+                        {(task as any).createdTime ? formatDisplayDateShort((task as any).createdTime) : 'N/A'}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">

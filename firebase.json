@@ -10,7 +10,7 @@
   },
   "storage": {
     "rules": "storage.rules"
-  }
+  },
   "functions": {
     "source": ".",
     "runtime": "nodejs20"

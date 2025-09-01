@@ -15,7 +15,7 @@ exports.getCompletedAssignments = functions.https.onCall(async (data, context) =
 
     // If accountId is provided, filter the query
     if (accountId) {
-      query = query.where('accountId', '==', accountId);
+      query = query.where('account', '==', accountId);
     }
 
     const snapshot = await query.get();
@@ -52,7 +52,7 @@ exports.getCompletedAssignments = functions.https.onCall(async (data, context) =
 
     // If accountId is provided, filter the query
     if (accountId) {
-      query = query.where('accountId', '==', accountId);
+      query = query.where('account', '==', accountId);
     }
 
     const snapshot = await query.get();

@@ -15,8 +15,8 @@ const getCompletedAssignments = functions.https.onCall(async (data, context) => 
 
     // Apply accountId filter if provided
     if (accountId) {
-      // Assuming each completion document has an 'accountId' field
-      query = query.where('accountId', '==', accountId);
+      // Assuming each completion document has an 'account' field
+      query = query.where('account', '==', accountId);
     }
 
     const snapshot = await query.get();

@@ -15,9 +15,18 @@ export function usePersistedState<T>(key: string, defaultValue: T): [T, (value: 
     
     try {
       const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : defaultValue;
+      if (item === null || item === 'undefined' || item === 'null') {
+        return defaultValue;
+      }
+      return JSON.parse(item);
     } catch (error) {
       console.warn(`Error reading localStorage key "${key}":`, error);
+      // Clear the invalid item from localStorage
+      try {
+        window.localStorage.removeItem(key);
+      } catch (clearError) {
+        console.warn(`Error clearing invalid localStorage key "${key}":`, clearError);
+      }
       return defaultValue;
     }
   });

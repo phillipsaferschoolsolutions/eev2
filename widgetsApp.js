@@ -16,7 +16,7 @@ widgetsApp.get('/completed-assignments', async (req, res) => {
     }
 
     if (accountId) {
-      query = query.where('accountId', '==', accountId);
+      query = query.where('account', '==', accountId);
     }
 
     if (timePeriod) {
