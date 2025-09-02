@@ -37,6 +37,11 @@ const questionSchema = z.object({
   deficiencyLabel: z.string().optional(),
   deficiencyValues: z.array(z.string()).optional(),
   aiDeficiencyCheck: z.boolean().optional(),
+  dynamic: z.boolean().optional(),
+  conditional: z.object({
+    field: z.string(),
+    value: z.string(),
+  }).optional(),
   assignedTo: z.object({
     users: z.array(z.string()).optional(),
     sites: z.array(z.string()).optional(),
@@ -56,25 +61,24 @@ type AssignmentFormData = z.infer<typeof assignmentFormSchema>;
 
 const componentTypes = [
   { value: "text", label: "Text Input" },
-  { value: "textarea", label: "Text Area" },
-  { value: "number", label: "Number Input" },
-  { value: "email", label: "Email Input" },
-  { value: "url", label: "URL Input" },
-  { value: "telephone", label: "Phone Input" },
-  { value: "date", label: "Date Picker" },
-  { value: "time", label: "Time Picker" },
-  { value: "datetime", label: "Date & Time Picker" },
-  { value: "select", label: "Dropdown Select" },
-  { value: "options", label: "Radio Buttons" }, // Typically renders as RadioGroup
-  { value: "checkbox", label: "Checkbox (Single/Multiple Options)" }, // Can be single or represent multiple choices
-  { value: "buttonSelect", label: "Button Select (Single Choice)"},
-  { value: "multiButtonSelect", label: "Button Select (Multiple Choice)"},
-  { value: "range", label: "Range Slider" },
-  { value: "staticContent", label: "Text (Static Content)" },
-  { value: "staticImage", label: "Image (Static Content)" },
+  { value: "textarea", label: "Long Text (Textarea)" },
+  { value: "number", label: "Number" },
+  { value: "email", label: "Email" },
+  { value: "telephone", label: "Telephone" },
+  { value: "url", label: "URL" },
+  { value: "radio", label: "Radio (Single Choice)" },
+  { value: "select", label: "Select Dropdown" },
+  { value: "checkbox", label: "Checkbox (Multiple Choice)" },
+  { value: "buttonSelect", label: "Button Select (Single)" },
+  { value: "multiSelect", label: "Button Select (Multiple)" },
+  { value: "schoolSelector", label: "School Select Dropdown" },
+  { value: "range", label: "Range" },
+  { value: "date", label: "Date" },
+  { value: "completionDate", label: "Date of Completion" },
+  { value: "time", label: "Time" },
+  { value: "completionTime", label: "Time of Completion" },
+  { value: "datetime", label: "Datetime" },
   { value: "photoUpload", label: "Photo Upload" },
-  { value: "schoolSelector", label: "School/Site Selector" },
-  // { value: "dynamicQuestion", label: "Dynamic Question (Logic-based)" },
 ];
 
 const assignmentTypes = [
@@ -150,6 +154,9 @@ export default function EditAssignmentPage() {
               options: Array.isArray(q.options) 
                 ? q.options.map(opt => typeof opt === 'object' ? opt.label : opt).join(';') 
                 : "",
+              // Ensure dynamic and conditional fields are properly set
+              dynamic: q.dynamic || false,
+              conditional: q.conditional || undefined,
               // Ensure deficiencyValues is an array of strings
               deficiencyValues: q.deficiencyValues || [], 
             })) || [],
@@ -214,6 +221,8 @@ export default function EditAssignmentPage() {
       deficiencyLabel: "",
       deficiencyValues: [],
       aiDeficiencyCheck: false,
+      dynamic: false,
+      conditional: undefined,
       assignedTo: {},
     });
   };
@@ -402,7 +411,7 @@ export default function EditAssignmentPage() {
                         {errors.questions?.[index]?.component && <p className="text-sm text-destructive mt-1">{errors.questions[index]?.component?.message}</p>}
                       </div>
 
-                      {(questionType === 'select' || questionType === 'options' || questionType === 'checkbox' || questionType === 'buttonSelect' || questionType === 'multiButtonSelect') && (
+                      {(questionType === 'select' || questionType === 'options' || questionType === 'checkbox' || questionType === 'radio' || questionType === 'buttonSelect' || questionType === 'multiButtonSelect' || questionType === 'multiSelect') && (
                         <div>
                           <Label htmlFor={`questions.${index}.options`}>Options (semicolon-separated)</Label>
                           <Textarea id={`questions.${index}.options`} {...register(`questions.${index}.options`)} placeholder="Option A; Option B; Option C"/>
@@ -410,7 +419,8 @@ export default function EditAssignmentPage() {
                       )}
                     </div>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         <div className="flex items-center space-x-2">
                             <Controller name={`questions.${index}.required`} control={control} render={({ field: controllerField }) => (
                                 <Checkbox id={`questions.${index}.required`} checked={controllerField.value} onCheckedChange={controllerField.onChange} />
@@ -429,7 +439,104 @@ export default function EditAssignmentPage() {
                             )} />
                             <Label htmlFor={`questions.${index}.photoUpload`} className="font-normal">Enable Photo Upload</Label>
                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-1 gap-3 pt-2 border-t border-border">
+                        <div className="flex items-center space-x-2">
+                            <Controller name={`questions.${index}.conditional`} control={control} render={({ field: controllerField }) => (
+                                <Checkbox 
+                                  id={`questions.${index}.conditional`} 
+                                  checked={!!controllerField.value} 
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      controllerField.onChange({ field: '', value: '' });
+                                    } else {
+                                      controllerField.onChange(undefined);
+                                    }
+                                  }} 
+                                />
+                            )} />
+                            <Label htmlFor={`questions.${index}.conditional`} className="font-medium text-blue-700">Question Appears Conditionally</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Controller name={`questions.${index}.dynamic`} control={control} render={({ field: controllerField }) => (
+                                <Checkbox id={`questions.${index}.dynamic`} checked={!!controllerField.value} onCheckedChange={controllerField.onChange} />
+                            )} />
+                            <Label htmlFor={`questions.${index}.dynamic`} className="font-medium text-green-700">🔄 Dynamic Mode (Allow Multiple Instances)</Label>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Conditional Question Settings */}
+                    {watch(`questions.${index}.conditional`) && (
+                      <div className="bg-blue-50 p-4 rounded-lg space-y-4">
+                        <h4 className="font-medium text-blue-900">Conditional Question Settings</h4>
+                        
+                        <div className="space-y-2">
+                          <Label>Select the question that triggers this conditional item</Label>
+                          <Controller
+                            name={`questions.${index}.conditional.field`}
+                            control={control}
+                            render={({ field: controllerField }) => (
+                              <Select onValueChange={controllerField.onChange} value={controllerField.value || ''}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select parent question..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {fields.slice(0, index).filter(q => 
+                                    q.label && (q.component === 'radio' || q.component === 'select' || q.component === 'checkbox') && q.options
+                                  ).map((parentQ, idx) => (
+                                    <SelectItem key={parentQ.id} value={parentQ.id}>
+                                      {idx + 1}) {parentQ.label || 'Untitled Question'}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                          {fields.slice(0, index).filter(q => 
+                            q.label && (q.component === 'radio' || q.component === 'select' || q.component === 'checkbox') && q.options
+                          ).length === 0 && (
+                            <p className="text-sm text-amber-600">
+                              No questions with options available. Add radio, select, or checkbox questions above this one.
+                            </p>
+                          )}
+                        </div>
+
+                        {watch(`questions.${index}.conditional.field`) && (
+                          <div className="space-y-2">
+                            <Label>Select the answer that triggers this conditional item</Label>
+                            <Controller
+                              name={`questions.${index}.conditional.value`}
+                              control={control}
+                              render={({ field: controllerField }) => {
+                                const parentQuestionId = watch(`questions.${index}.conditional.field`);
+                                const parentQuestion = fields.find(q => q.id === parentQuestionId);
+                                const parentOptions = parentQuestion?.options ? 
+                                  (typeof parentQuestion.options === 'string' ? 
+                                    parentQuestion.options.split(';').map(opt => opt.trim()).filter(opt => opt) : 
+                                    parentQuestion.options) : [];
+                                
+                                return (
+                                  <Select onValueChange={controllerField.onChange} value={controllerField.value || ''}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select trigger value..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {parentOptions.map((option, optIdx) => (
+                                        <SelectItem key={optIdx} value={option}>
+                                          {option}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                );
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
                     <Separator />
                     <Label className="font-medium">Deficiency Settings</Label>

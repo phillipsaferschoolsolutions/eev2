@@ -178,7 +178,7 @@ export default function CompleteAssignmentPage() {
     commentToggleStates: {}
   });
 
-  const { control, register, handleSubmit, watch, reset, formState: { errors: formErrors }, getValues } = useForm<FormDataSchema>({
+  const { control, register, handleSubmit, watch, reset, setValue, formState: { errors: formErrors }, getValues } = useForm<FormDataSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {},
   });
@@ -204,8 +204,11 @@ export default function CompleteAssignmentPage() {
     }
     
     if (Array.isArray(options) && options.length > 0 && typeof options[0] === 'object' && options[0] !== null && 'label' in options[0]) {
-      const objectOptions = options as { label: string; value?: string }[];
-      return objectOptions.map(opt => ({ label: String(opt.label), value: String(opt.value ?? opt.label) }));
+      const objectOptions = options as { label: string; value?: string; component?: string }[];
+      return objectOptions.map(opt => ({ 
+        label: String(opt.label), 
+        value: String(opt.value ?? opt.label) 
+      }));
     }
     
     if (Array.isArray(options)) {
@@ -270,6 +273,11 @@ export default function CompleteAssignmentPage() {
   const isQuestionAnswered = useCallback((question: AssignmentQuestion, formData: FieldValues): boolean => {
     const value = formData[question.id];
     
+    // Handle dynamic questions
+    if (question.dynamic) {
+      return Array.isArray(value) ? value.some(v => v && String(v).trim() !== '') : false;
+    }
+    
     switch (question.component) {
       case 'text':
       case 'textarea':
@@ -279,6 +287,7 @@ export default function CompleteAssignmentPage() {
       case 'number':
       case 'datetime':
         return value !== undefined && value !== null && String(value).trim() !== '';
+      case 'radio':
       case 'select':
       case 'options':
       case 'buttonSelect':
@@ -798,7 +807,7 @@ export default function CompleteAssignmentPage() {
       let questionAnswer: unknown;
 
       // Handle different question types
-      if (question.component === 'select' || question.component === 'options') {
+      if (question.component === 'radio' || question.component === 'select' || question.component === 'options') {
         const selectedOptions = formDataToProcess[question.id];
         console.log(`Select/options question ${question.id}:`, { selectedOptions, type: typeof selectedOptions });
         if (Array.isArray(selectedOptions)) {
@@ -861,6 +870,16 @@ export default function CompleteAssignmentPage() {
           questionAnswer = selectedLocation ? selectedLocation.locationName : selectedLocationId;
         } else {
           questionAnswer = '';
+        }
+      } else if (question.dynamic) {
+        // Handle questions in dynamic mode
+        const dynamicValue = formDataToProcess[question.id];
+        console.log(`Dynamic question ${question.id}:`, { dynamicValue, type: typeof dynamicValue });
+        if (Array.isArray(dynamicValue)) {
+          // Filter out empty values
+          questionAnswer = dynamicValue.filter(v => v && String(v).trim() !== '');
+        } else {
+          questionAnswer = [];
         }
       } else if (question.component === 'text' || question.component === 'textarea' || question.component === 'email' || question.component === 'url' || question.component === 'telephone' || question.component === 'number') {
         // Handle text-based questions (React Hook Form registered fields)
@@ -1786,6 +1805,125 @@ export default function CompleteAssignmentPage() {
               <CardContent className="space-y-4">
                 {/* Question Input Based on Component Type */}
                 {(() => {
+                  // Handle dynamic mode for any question type
+                  if (question.dynamic) {
+                    return (() => {
+                      const dynamicInstances = watch(`${question.id}_instances`) || [{ id: 0, value: '' }];
+                      const nextInstanceId = Math.max(...dynamicInstances.map(inst => inst.id)) + 1;
+
+                      const addInstance = () => {
+                        const newInstances = [...dynamicInstances, { id: nextInstanceId, value: '' }];
+                        setValue(`${question.id}_instances`, newInstances);
+                        const allValues = newInstances.map(inst => inst.value).filter(v => v.trim() !== '');
+                        setValue(question.id, allValues);
+                      };
+
+                      const removeInstance = (instanceId: number) => {
+                        if (dynamicInstances.length <= 1) return;
+                        const newInstances = dynamicInstances.filter(inst => inst.id !== instanceId);
+                        setValue(`${question.id}_instances`, newInstances);
+                        const allValues = newInstances.map(inst => inst.value).filter(v => v.trim() !== '');
+                        setValue(question.id, allValues);
+                      };
+
+                      const updateInstance = (instanceId: number, value: string) => {
+                        const newInstances = dynamicInstances.map(inst =>
+                          inst.id === instanceId ? { ...inst, value } : inst
+                        );
+                        setValue(`${question.id}_instances`, newInstances);
+                        const allValues = newInstances.map(inst => inst.value).filter(v => v.trim() !== '');
+                        setValue(question.id, allValues);
+                      };
+
+                      const renderQuestionInstance = (instance: any, index: number) => {
+                        switch (question.component) {
+                          case 'text':
+                            return (
+                              <Input
+                                value={instance.value}
+                                onChange={(e) => updateInstance(instance.id, e.target.value)}
+                                placeholder={`${question.label} #${index + 1}`}
+                                className={formErrors[question.id] ? "border-destructive" : ""}
+                              />
+                            );
+                          case 'select':
+                            return (
+                              <Select
+                                value={instance.value}
+                                onValueChange={(value) => updateInstance(instance.id, value)}
+                              >
+                                <SelectTrigger className={formErrors[question.id] ? "border-destructive" : ""}>
+                                  <SelectValue placeholder={`${question.label} #${index + 1}`} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {parseOptions(question.options, question).map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            );
+                          case 'number':
+                            return (
+                              <Input
+                                type="number"
+                                value={instance.value}
+                                onChange={(e) => updateInstance(instance.id, e.target.value)}
+                                placeholder={`${question.label} #${index + 1}`}
+                                className={formErrors[question.id] ? "border-destructive" : ""}
+                              />
+                            );
+                          default:
+                            return (
+                              <Input
+                                value={instance.value}
+                                onChange={(e) => updateInstance(instance.id, e.target.value)}
+                                placeholder={`${question.label} #${index + 1}`}
+                                className={formErrors[question.id] ? "border-destructive" : ""}
+                              />
+                            );
+                        }
+                      };
+
+                      return (
+                        <div className="space-y-3">
+                          <div className="text-sm text-muted-foreground mb-2">
+                            Add multiple answers for this question. You can add more instances using the + button.
+                          </div>
+                          {dynamicInstances.map((instance, index) => (
+                            <div key={instance.id} className="flex gap-2 items-start">
+                              <div className="flex-1">
+                                {renderQuestionInstance(instance, index)}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addInstance()}
+                                className="px-2"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                              {dynamicInstances.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeInstance(instance.id)}
+                                  className="px-2 text-destructive hover:text-destructive"
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })();
+                  }
+
+                  // Regular (non-dynamic) question rendering
                   switch (question.component) {
                     case 'text':
                       return (
@@ -1935,8 +2073,38 @@ export default function CompleteAssignmentPage() {
                         </div>
                       );
 
+                    case 'radio':
                     case 'options':
-                      const radioOptions = parseOptions(question.options);
+                      const radioOptions = parseOptions(question.options, question);
+                      console.log(`Radio question ${question.id} options:`, { 
+                        rawOptions: question.options, 
+                        parsedOptions: radioOptions,
+                        component: question.component 
+                      });
+                      
+                      // If no options, fall back to text input
+                      if (!radioOptions || radioOptions.length === 0) {
+                        console.log(`No options for radio question ${question.id}, falling back to text input`);
+                        return (
+                          <div className="space-y-2">
+                            <div className="text-sm text-amber-600 p-2 bg-amber-50 rounded border">
+                              ⚠️ This radio question has no options configured. Please edit the assignment to add options like "Red;Blue;Green;Yellow".
+                            </div>
+                            <Input
+                              {...register(question.id)}
+                              placeholder="Enter your answer (options not configured)"
+                              className={formErrors[question.id] ? "border-destructive" : ""}
+                              onChange={(e) => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  [question.id]: e.target.value
+                                }));
+                              }}
+                            />
+                          </div>
+                        );
+                      }
+                      
                       return (
                         <RadioGroup
                           value={formData[question.id] || ''}
@@ -2255,6 +2423,8 @@ export default function CompleteAssignmentPage() {
                           )}
                         </div>
                       );
+
+
 
                     default:
                       return (

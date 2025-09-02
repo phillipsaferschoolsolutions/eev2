@@ -9,27 +9,42 @@ import type { ResourceDocument, AccessControlPayload } from '@/types/Resource';
 const RESOURCES_BASE_URL = 'https://us-central1-webmvp-5b733.cloudfunctions.net/resources';
 
 // --- Helper to get ID Token (consistent with other services) ---
-async function getIdToken(): Promise<string | null> {
+async function getIdToken(forceRefresh: boolean = false): Promise<string | null> {
   const currentUser: User | null = auth.currentUser;
-  if (currentUser) {
-    try {
-      return await currentUser.getIdToken();
-    } catch (error) {
-      console.error("Error getting ID token:", error);
-      throw new Error("Could not get Firebase ID token.");
-    }
+  if (!currentUser) {
+    console.error("No current user found");
+    throw new Error("User not authenticated.");
   }
-  throw new Error("User not authenticated.");
+  
+  try {
+    console.log('Getting ID token, forceRefresh:', forceRefresh);
+    const token = await currentUser.getIdToken(forceRefresh);
+    console.log('Got ID token, length:', token?.length);
+    return token;
+  } catch (error) {
+    console.error("Error getting ID token:", error);
+    throw new Error("Could not get Firebase ID token.");
+  }
 }
 
 // --- Generic Fetch Wrapper (consistent with other services) ---
 async function authedFetch<T>(
   fullUrl: string,
   options: RequestInit = {},
-  account?: string
+  account?: string,
+  forceRefreshToken: boolean = false
 ): Promise<T> {
-  const token = await getIdToken();
+  const token = await getIdToken(forceRefreshToken);
   const headers = new Headers(options.headers || {});
+
+  console.log('authedFetch preparing request:', {
+    url: fullUrl,
+    method: options.method || 'GET',
+    hasToken: !!token,
+    tokenLength: token?.length,
+    account: account,
+    forceRefreshToken
+  });
 
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
@@ -43,6 +58,8 @@ async function authedFetch<T>(
   } else {
      console.warn(`[CRITICAL] authedFetch (resourceService): 'account' header NOT SET for URL: ${fullUrl} because account parameter was: '${account}'. This may cause API errors.`);
   }
+
+  console.log('Final headers:', Object.fromEntries(headers.entries()));
 
   // Automatically set Content-Type for non-FormData POST/PUT/PATCH etc.
   if (!(options.body instanceof FormData) && !headers.has('Content-Type') && options.method && !['GET', 'HEAD'].includes(options.method.toUpperCase())) {
@@ -66,10 +83,18 @@ async function authedFetch<T>(
     try {
       errorData = await response.json();
     } catch (e) {
-      console.log(`Raw error: ${e}`);
+      console.log(`Raw error parsing response: ${e}`);
       errorData = { message: response.statusText || `HTTP error ${response.status}` };
     }
-    console.error(`API Error ${response.status} for ${fullUrl} (resourceService):`, errorData);
+    
+    console.error(`API Error ${response.status} for ${fullUrl} (resourceService):`, {
+      status: response.status,
+      statusText: response.statusText,
+      errorData,
+      headers: Object.fromEntries(response.headers.entries()),
+      url: fullUrl
+    });
+    
     throw new Error(`API Error: ${response.status} ${errorData?.message || response.statusText}`);
   }
   
@@ -219,6 +244,39 @@ export async function cloneResourceDocument(resourceId: string, account: string)
   return authedFetch<ResourceDocument>(`${RESOURCES_BASE_URL}/${resourceId}/clone`, {
     method: 'POST',
   }, account);
+}
+
+/**
+ * Refreshes the download URL for a resource document.
+ * @param resourceId The ID of the resource document.
+ * @param account The account ID.
+ * @returns The refreshed resource document with new download URL.
+ */
+export async function refreshResourceDownloadUrl(resourceId: string, account: string): Promise<{ downloadURL: string }> {
+  console.log('refreshResourceDownloadUrl called with:', { resourceId, account, baseUrl: RESOURCES_BASE_URL });
+  
+  if (!resourceId) {
+    throw new Error('Resource ID is required');
+  }
+  
+  if (!account) {
+    throw new Error('Account is required');
+  }
+  
+  const url = `${RESOURCES_BASE_URL}/${resourceId}/download`;
+  console.log('Making request to:', url);
+  
+  try {
+    const result = await authedFetch<{ downloadURL: string }>(url, {
+      method: 'GET',
+    }, account, true); // Force token refresh
+    
+    console.log('refreshResourceDownloadUrl success:', result);
+    return result;
+  } catch (error) {
+    console.error('refreshResourceDownloadUrl failed:', error);
+    throw error;
+  }
 }
 
 /**

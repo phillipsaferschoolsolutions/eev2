@@ -31,7 +31,8 @@ import {
   deleteResourceDocument,
   cloneResourceDocument,
   shareResourceDocument,
-  updateResourceMetadata
+  updateResourceMetadata,
+  refreshResourceDownloadUrl
 } from "@/services/resourceService";
 import { auth } from "@/lib/firebase";
 
@@ -180,7 +181,15 @@ export default function ResourcesPage() {
     setIsLoadingDocuments(true);
     setDocumentsError(null);
     try {
+      console.log('Fetching documents for account:', userProfile.account, 'page:', page);
       const result = await getResourceDocuments(userProfile.account, page, 5);
+      console.log('Fetched documents:', result.resources.map(doc => ({ 
+        id: doc.id, 
+        name: doc.name, 
+        downloadURL: doc.downloadURL,
+        storagePath: doc.storagePath || 'NO_STORAGE_PATH',
+        fileRef: doc.fileRef || 'NO_FILE_REF'
+      })));
       setDocuments(result.resources.map(doc => ({ ...doc, summaryGenerating: false })));
       setCurrentPage(result.pagination.page);
       setTotalPages(result.pagination.totalPages);
@@ -258,38 +267,65 @@ export default function ResourcesPage() {
     try {
       // Refresh the download URL to ensure it's not expired
       if (userProfile?.account) {
-        console.log('Refreshing download URL for document:', doc.id);
+        console.log('Refreshing download URL for document:', doc.id, 'Account:', userProfile.account);
         
-        // Call the backend to get a fresh download URL
-        const response = await fetch(`${RESOURCES_BASE_URL}/${doc.id}/download`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${await auth.currentUser?.getIdToken()}`,
-            'account': userProfile.account
-          }
-        });
+        const data = await refreshResourceDownloadUrl(doc.id, userProfile.account);
+        console.log('Received fresh download URL:', data);
         
-        if (response.ok) {
-          const data = await response.json();
-          const refreshedDoc = { ...doc, downloadURL: data.downloadURL };
-          setSelectedDocument(refreshedDoc);
-          setDocumentModalOpen(true);
-        } else {
-          console.error('Failed to refresh download URL:', response.status);
-          // Fallback to original document
-          setSelectedDocument(doc);
-          setDocumentModalOpen(true);
-        }
-      } else {
-        // Fallback if no account info
-        setSelectedDocument(doc);
+        const refreshedDoc = { ...doc, downloadURL: data.downloadURL };
+        setSelectedDocument(refreshedDoc);
         setDocumentModalOpen(true);
+        
+        // Also update the document in the list to avoid future expired URL issues
+        setDocuments(prevDocs => 
+          prevDocs.map(d => d.id === doc.id ? refreshedDoc : d)
+        );
+        
+        toast({
+          title: "Success",
+          description: "Document loaded successfully."
+        });
+      } else {
+        console.error('No account information available:', { userProfile, account: userProfile?.account });
+        toast({
+          title: "Error", 
+          description: "Account information not available. Please try refreshing the page.",
+          variant: "destructive"
+        });
+        return;
       }
     } catch (error) {
       console.error('Error refreshing download URL:', error);
-      // Fallback to original document
-      setSelectedDocument(doc);
-      setDocumentModalOpen(true);
+      
+      // More specific error handling
+      let errorMessage = "Failed to access document. Please try again.";
+      if (error instanceof Error) {
+        console.log('Full error details:', error);
+        if (error.message.includes('404')) {
+          errorMessage = `Document not found (ID: ${doc.id}). The document may have been deleted or moved. Please refresh the page and try again.`;
+        } else if (error.message.includes('403')) {
+          errorMessage = "Access denied. Please check your permissions.";
+        } else if (error.message.includes('Network Error')) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        } else if (error.message.includes('Account header is required')) {
+          errorMessage = "Authentication error. Please refresh the page and try again.";
+        } else {
+          errorMessage = `Error: ${error.message}`;
+        }
+      }
+      
+      console.log('Document access failed for:', {
+        documentId: doc.id,
+        documentName: doc.name,
+        account: userProfile?.account,
+        error: error
+      });
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
     }
   };
 
@@ -330,14 +366,54 @@ export default function ResourcesPage() {
     setEditMetadataModalOpen(true);
   };
 
-  const handleDownload = (doc: ResourceDocument) => {
-    if (doc.downloadURL) {
-      const link = document.createElement('a');
-      link.href = doc.downloadURL;
-      link.download = doc.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+  const handleDownload = async (doc: ResourceDocument) => {
+    try {
+      let downloadUrl = doc.downloadURL;
+      
+      // Refresh the download URL to ensure it's not expired
+      if (userProfile?.account) {
+        console.log('Refreshing download URL for download:', doc.id);
+        
+        const data = await refreshResourceDownloadUrl(doc.id, userProfile.account);
+        downloadUrl = data.downloadURL;
+        
+        // Update the document in state with fresh URL
+        setDocuments(prevDocs => 
+          prevDocs.map(d => d.id === doc.id ? { ...d, downloadURL: downloadUrl } : d)
+        );
+        
+        // Update selected document if it's the same one
+        if (selectedDocument?.id === doc.id) {
+          setSelectedDocument(prev => prev ? { ...prev, downloadURL: downloadUrl } : null);
+        }
+      }
+      
+      if (downloadUrl) {
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = doc.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({
+          title: "Download Started",
+          description: `Downloading ${doc.name}...`
+        });
+      } else {
+        toast({
+          title: "Download Error",
+          description: "No download URL available for this document.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast({
+        title: "Download Error",
+        description: "Failed to download document. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -815,6 +891,8 @@ export default function ResourcesPage() {
           This Resources module is foundational. Features like versioning, advanced permissions, and AI-powered search are planned.
         </AlertDescription>
       </Alert>
+
+
 
       <Card>
         <CardHeader>

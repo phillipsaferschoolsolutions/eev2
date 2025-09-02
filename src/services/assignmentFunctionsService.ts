@@ -9,7 +9,8 @@ import type { User } from 'firebase/auth';
 
 // More detailed question structure
 export interface AssignmentQuestion {
-  id: string; // Unique ID for the question itself
+  id: string; // Unique ID for the question itself (frontend)
+  _uid?: string; // Backend unique identifier
   questionId?: string; //  Might be redundant if 'id' is the question's unique key
   label: string; // The question text
   component: string; // Type of input: 'text', 'textarea', 'radio', 'checkbox', 'select', 'number', 'email', 'photoUpload', etc.
@@ -17,6 +18,7 @@ export interface AssignmentQuestion {
   required?: boolean;
   comment?: boolean; // Allow text comments
   photoUpload?: boolean; // Allow file/image uploads
+  dynamic?: boolean; // Allow multiple instances of this question
   pageNumber?: number;
   section?: string; // Section name for grouping questions
   subSection?: string; // Sub-section name for further grouping
@@ -24,6 +26,9 @@ export interface AssignmentQuestion {
     field: string; // ID of the question this one depends on
     value: string | string[]; // Value(s) of the dependent question that trigger this one
   };
+  // Backend conditional fields
+  conditionalQuestionId?: string; // Backend field for conditional parent
+  conditionalQuestionValue?: string; // Backend field for conditional trigger value
   deficiencyLabel?: string; // Description of what a deficiency means for this question
   deficiencyValues?: string[]; // For closed-ended: specific option values that are deficiencies
   aiDeficiencyCheck?: boolean; // For open-ended: flag to use AI to check for deficiency
@@ -70,11 +75,11 @@ export interface AssignmentWithPermissions extends AssignmentField {
   completionTimeId?: string; // Ensure this is part of the type
 }
 
-interface CreateAssignmentPayload extends AssignmentField {
+export interface CreateAssignmentPayload extends AssignmentField {
   assessmentName: string;
   assignmentType?: string;
   description?: string;
-  questions: AssignmentQuestion[]; // Standardized to 'questions'
+  content: AssignmentQuestion[]; // Backend expects 'content', not 'questions'
   accountSubmittedFor?: string;
   schoolSelectorId?: string; // Added to link the assignment to a location
 }
